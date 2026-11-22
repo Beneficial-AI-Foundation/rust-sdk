@@ -1,0 +1,23 @@
+id: E09
+rust_symbol: rmcp::model::request_state::RequestStateCodec::open_rs1_at
+source_file: crates/rmcp/src/model/request_state.rs
+source_line: 620  # at base 0e2396f; refreshed at S04a pinned commit
+generated_symbol: null          # filled in at S04a
+translation: NOT_TRIED
+spec: DRAFT
+linkage: ORIGINAL
+proof: OPEN
+proof_file: formal/proofs/Proofs/Model/RequestState/OpenRs1At.lean
+spec_file: formal/specs/Specs/Model/RequestState.lean
+theorem: null
+used_by: [E11]  # targets whose proofs consume this theorem; also consumed by the rs1 round trips (not IDs)
+axioms: []                      # as printed by `#print axioms` in the spec file
+evidence: [formal/docs/evidence/S01.md]  # records created at S01; S01.md is the source of source_line
+spec_drafted_by: null           # person, or "AI: <tool>, <model>"
+spec_reviews: []                # independent agent reviews (tool, model, verdict)
+spec_owner: null                # human who signed off the spec
+prover: null                    # person, or "AI: <tool>, <model>"; not the AI spec drafter
+reviewer: null
+# Copied from the specification column of plan Section 2 for convenience.
+behaviour: |-  # derived copy of plan §2.1/§2.2; informational, not a specification
+  Exact error order (Section 3); accept iff some configured key verifies the tag; then E01

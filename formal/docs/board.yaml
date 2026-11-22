@@ -1,0 +1,323 @@
+# Task board for docs/MCP_SDK_Verification_Master_Plan_EN.md (Section 8, "Steps").
+# Authoritative task state. States: NOT_STARTED, IN_PROGRESS, ACCEPTED, BLOCKED, DEFERRED
+# (plan Section 6). Only a human (project owner / spec owner) may set ACCEPTED; an AI agent
+# never does. Paths are relative to the repository root; abbreviated paths in the plan's
+# Steps table are expanded from the plan's Section 5 "Files" tree and Section 8 "Steps", with
+# noted deviations (see the comments on individual files).
+steps:
+  - id: S01
+    day: D1
+    state: IN_PROGRESS
+    # drafted and agent-reviewed in the working tree; awaiting human sign-off (see evidence)
+    depends_on: []
+    owner: Lead
+    files:
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/docs/functions/*.yaml
+      - formal/docs/evidence/S01.md   # per plan §7
+    acceptance: >-
+      Base commit, scope decision (Section 1), named human owners and budget recorded;
+      25 function records.
+
+  - id: S02
+    day: D1
+    state: IN_PROGRESS
+    # agent role files (.claude/agents/) and guide edits exist in the working tree; CLAUDE.md
+    # and docs/VERIFICATION.md missing; not run through the review cycle as its own step
+    depends_on: [S01]
+    owner: Lead
+    files:
+      - CLAUDE.md
+      - .claude/agents/*.md
+      - docs/VERIFICATION.md
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+      - docs/STYLE_GUIDE.md
+      - docs/REVIEWER_GUIDE.md
+      - docs/AI_PR_REVIEW_QUESTIONS.md
+      - formal/docs/evidence/S02.md   # per plan §7
+    acceptance: >-
+      Roles and edit permissions defined; CLAUDE.md points to the guides; the guides describe
+      the formal/ layout, the Lean build gate (plan Section 5, CI: lake build with
+      warningAsError per library plus the scripts/lean-guard.sh checks sources, build-log,
+      axioms and aeneas-archive), spec files with #guard_msgs and STATUS.md instead of the
+      old layout.
+
+  - id: S03
+    day: D1
+    state: IN_PROGRESS
+    # drafted and agent-reviewed in the working tree (5 rounds); accepted limits and open items
+    # recorded in evidence/S03.md; awaiting human sign-off
+    depends_on: [S01]
+    owner: Extraction
+    files:
+      - formal/lakefile.toml
+      - formal/lean-toolchain
+      - formal/lake-manifest.json
+      - formal/README.md
+      - scripts/aeneas-install.sh
+      - scripts/aeneas-translate.sh
+      - scripts/apply-patches.sh
+      - crates/rmcp/Cargo.toml
+      - .gitignore
+      - .github/workflows/lean-build.yml
+      - scripts/lean-guard.sh
+      - scripts/lean_guard.py
+      - scripts/lean-axiom-audit.lean
+      - formal/trusted/aeneas-bundle.sha256
+      # Deviation: the next three are placeholders created at S03 so the empty project builds;
+      # the plan assigns the real roots to S05.
+      - formal/specs/Defs.lean      # placeholder (S03)
+      - formal/specs/Specs.lean     # placeholder (S03)
+      - formal/proofs/Proofs.lean   # placeholder (S03)
+      - formal/docs/evidence/S03.md   # per plan §7
+    acceptance: >-
+      aeneas-install.sh installs nightly-2026.08.20-5d08da4 and is a no-op on rerun; bundle
+      versions match Section 5; the pinned Charon reads [package.metadata.charon] (otherwise
+      the script passes the same lists as flags, recorded in the evidence); the empty project
+      builds in CI (B10); aeneas-translate.sh fails on a nonzero Aeneas exit, a missing
+      target, any sorry, or a dependency version mismatch; output on the fixed Linux target
+      compared with the run-3 output.
+
+  - id: S04
+    day: D1
+    state: IN_PROGRESS
+    # drafted and agent-reviewed in the working tree; awaiting human sign-off (see evidence)
+    depends_on: [S01]
+    owner: Extraction
+    files:
+      - formal/docs/pilot.md
+      - formal/docs/pilot/
+      - typos.toml   # deviation: lead edit during docs sync; excludes formal/docs/pilot/
+      - formal/docs/evidence/S04.md
+    acceptance: >-
+      Runs 1-3 artifacts (refactor patch, Charon arguments, scripts, logs, token harness)
+      copied from scratch.
+
+  - id: S04a
+    day: D1-2
+    state: IN_PROGRESS
+    # refactor part (PR 1) drafted and agent-reviewed in the working tree; translation part
+    # (PR 2) not started; awaiting human sign-off (see evidence)
+    depends_on: [S03, S04]
+    owner: Extraction + reviewer
+    files:
+      - crates/rmcp/src/model/request_state_wire.rs
+      - crates/rmcp/src/model/request_state.rs
+      - crates/rmcp/src/model.rs
+      - formal/translation/**
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - .github/workflows/aeneas-translation.yml
+      - .github/workflows/patched-tests.yml
+      - formal/docs/evidence/S04a.md   # per plan §7
+    acceptance: >-
+      Two PRs: (1) the refactor, with the checklist of Section 9 passing, landed in the fork
+      and the pinned commit recorded; (2) the translation, where all three CI workflows pass
+      and every target is present in Funs.lean with a real body.
+
+  - id: S05
+    day: D2
+    state: NOT_STARTED
+    depends_on: [S01]
+    owner: Spec drafter (mcp-spec or a person) + independent agent reviewers + spec owner
+    files:
+      - formal/specs/Defs.lean
+      - formal/specs/Defs/Wire.lean
+      - formal/specs/Defs/RequestState.lean
+      - formal/specs/Drafts/
+      - formal/specs/Specs.lean
+      - formal/proofs/Proofs.lean
+      - formal/docs/evidence/S05.md   # per plan §7
+    acceptance: >-
+      W01-W15 and E01-E04 statements reviewed by >= 2 independent agents, then signed off.
+
+  - id: S06
+    day: D2-4
+    state: NOT_STARTED
+    depends_on: [S04a, S05]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/RequestStateWire/B64Len.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/KeyLengthOk.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/CheckKidLen.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/BytesEq.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/NextDot.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/ComponentCount.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/DecodeExpiry.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/IsExpired.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/OpenFrame.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/Frame.lean
+      - formal/specs/Specs/Model/RequestStateWire.lean
+      - formal/docs/evidence/S06.md   # per plan §7
+    acceptance: >-
+      W01-W06, W12-W15 checked and recalled; W01 overflow domain explicit.
+
+  - id: S07
+    day: D3-4
+    state: NOT_STARTED
+    depends_on: [S06]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/RequestState/OpenAuthenticatedBody.lean
+      - formal/proofs/Proofs/Model/RequestState/B64Len.lean
+      - formal/proofs/Proofs/Model/RequestState/ValidateKeyLength.lean
+      - formal/proofs/Proofs/Model/RequestState/ValidateConfigKid.lean
+      - formal/specs/Specs/Model/RequestState.lean
+      - formal/docs/evidence/S07.md   # per plan §7
+    acceptance: >-
+      E01-E04 checked using only W theorems.
+
+  - id: S08
+    day: D3-4
+    state: NOT_STARTED
+    depends_on: [S04a]
+    owner: Extraction + reviewers + spec owner
+    files:
+      - formal/trusted/Rmcp/FunsExternal.lean   # HMAC, Base64
+      - formal/proofs/Proofs/Consistency/Hmac.lean
+      - formal/proofs/Proofs/Consistency/Base64.lean
+      - formal/trusted/evidence/README.md
+      - formal/docs/evidence/S08.md   # per plan §7
+    acceptance: >-
+      prim axioms reviewed by >= 2 independent agents, then signed off; consistency models
+      build; RFC 4231 and Base64 vectors pass through prim in Rust tests.
+
+  - id: S09
+    day: D3-4
+    state: NOT_STARTED
+    depends_on: [S04a]
+    owner: Extraction + reviewers + spec owner
+    files:
+      - formal/trusted/Rmcp/FunsExternal.lean   # standard library
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/proofs/Proofs/Consistency/HashMap.lean
+      - formal/docs/evidence/S09.md   # per plan §7
+    acceptance: >-
+      Standard-library models reviewed, as definitions where possible.
+
+  - id: S10
+    day: D4-5
+    state: NOT_STARTED
+    depends_on: [S06]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/RequestStateWire/VersionOf.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/ParseRs1.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/ParseRs2.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/TranscriptV1.lean
+      - formal/proofs/Proofs/Model/RequestStateWire/TranscriptV2.lean
+      - formal/docs/evidence/S10.md   # per plan §7
+    acceptance: >-
+      W07-W11 checked against List.splitOn and the transcript specs.
+
+  - id: S11
+    day: D5-6
+    state: NOT_STARTED
+    depends_on: [S07, S08, S09, S10]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/RequestState/SealRs1.lean
+      - formal/proofs/Proofs/Model/RequestState/SealRs2.lean
+      - formal/docs/evidence/S11.md   # per plan §7
+    acceptance: >-
+      E07/E08 output-format theorems checked on the no-overflow domain.
+
+  - id: S12
+    day: D5
+    state: NOT_STARTED
+    depends_on: [S05]
+    owner: Spec drafter + reviewers + spec owner
+    files:
+      - formal/specs/Defs/CodecState.lean
+      - formal/docs/evidence/S12.md   # per plan §7
+    acceptance: >-
+      Codec-state invariant reviewed against the constructors.
+
+  - id: S13
+    day: D6-8
+    state: NOT_STARTED
+    depends_on: [S07, S08, S09, S10, S12]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/RequestState/Rs1FallbacksVerify.lean
+      - formal/proofs/Proofs/Model/RequestState/OpenRs1At.lean
+      - formal/proofs/Proofs/Model/RequestState/OpenRs2At.lean
+      - formal/docs/evidence/S13.md   # per plan §7
+    acceptance: >-
+      E09a, E09, E10 checked with full error order.
+
+  - id: S14
+    day: D8
+    state: NOT_STARTED
+    depends_on: [S10, S13]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/RequestState/OpenAt.lean
+      - formal/docs/evidence/S14.md   # per plan §7
+    acceptance: >-
+      E11 dispatch theorem checked.
+
+  - id: S15
+    day: D8-9
+    state: NOT_STARTED
+    depends_on: [S11, S13, S14]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/RequestState/Roundtrip.lean
+      - formal/specs/Specs/Model/RequestState.lean   # end of file
+      - formal/docs/evidence/S15.md   # per plan §7
+    acceptance: >-
+      Each round-trip theorem accepted on its own; missing ones listed OPEN.
+
+  - id: S16
+    day: D2-9
+    state: NOT_STARTED
+    depends_on: [S04a]   # plan: "S04a onward"
+    owner: Review
+    files:
+      - crates/rmcp/src/model/request_state_wire.rs   # mod tests only
+      - crates/rmcp/src/model/request_state.rs        # mod tests only
+      - formal/docs/evidence/S16.md   # per plan §7
+    acceptance: >-
+      Section 7 boundary cases and contract test vectors pass under
+      cargo test --features request-state.
+
+  - id: S17
+    day: D9
+    state: NOT_STARTED
+    depends_on: []   # plan: "accepted results" (no specific step)
+    owner: Lead
+    files:
+      - .github/workflows/aeneas-translation.yml
+      - .github/workflows/lean-build.yml
+      - .github/workflows/patched-tests.yml
+      - formal/docs/evidence/S17.md   # per plan §7
+    acceptance: >-
+      Each CI check shown to fail once on a throwaway branch: a hand edit to Funs.lean, a new
+      axiom (#guard_msgs diff), a sorry, and a failing test on the patched copy.
+
+  - id: S18
+    day: D9-10
+    state: NOT_STARTED
+    depends_on: [S17]
+    owner: Review
+    files:
+      - formal/docs/evidence/S18.md
+    acceptance: >-
+      Fresh clone: install, translate, git status clean, lake build (warningAsError per
+      library) and the scripts/lean-guard.sh checks (sources, build-log, axioms,
+      aeneas-archive) pass.
+
+  - id: S19
+    day: D10
+    state: NOT_STARTED
+    depends_on: []   # plan: "board state; no success required"; S19 is mandatory
+    owner: Lead + human owner
+    files:
+      - formal/docs/STATUS.md
+      - formal/README.md
+      - formal/docs/evidence/S19.md   # per plan §7
+    acceptance: >-
+      Honest per-function status, trusted base, bugs found, open items, cost; next-sprint
+      scope.

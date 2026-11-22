@@ -1,0 +1,16 @@
+# Trusted-axiom lock (plan Section 4; formal/README.md, "Trusted base").
+#
+# One line per axiom declared in the roots of the RmcpExternal library
+# (Rmcp.TypesExternal, Rmcp.FunsExternal): `<full name> sha256:<hex>`, where <hex> is the
+# sha256 of the axiom's canonical statement as printed by scripts/lean-axiom-audit.lean
+# (structural: constants by full name with universe levels, de Bruijn indices, binder info;
+# binder names and metadata dropped; independent of notation and pretty-printer options).
+# `scripts/lean-guard.sh axioms` fails unless the axioms in the build output are exactly the
+# names below, each with this statement hash, so a forged RmcpExternal .olean cannot keep a
+# reviewed axiom's name with another statement.
+#
+# Updating: in the same PR that adds or changes the axiom (with its justification docstring
+# and backing Rust tests, docs/WORKFLOW_AND_PR_GUIDE.md "External functions and axioms"), run
+# `lake build` and `scripts/lean-guard.sh axioms`; the failure message prints the line to add
+# for each axiom not in the lock. Reviewers check that every line here belongs to a reviewed
+# axiom of that PR. Empty at S03: there are no axioms yet (S08-S09 add them).

@@ -1,0 +1,198 @@
+# Lean project builds (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 5, "CI").
+# The gate (human decision at S03): every library in formal/lakefile.toml sets
+# `warningAsError`, and CI runs a plain `lake build`, which fails on any warning in this
+# project's modules, including `sorry`, and runs every `#guard_msgs` axiom check in the
+# spec files. `--wfail` is not used: with the pinned Aeneas rev it also fails on four
+# `sorry` warnings replayed from the Aeneas library itself (Aeneas/Std/Slice.lean:363,586,
+# Aeneas/Std/StringIter.lean:12,15; formal/docs/evidence/S03.md).
+#
+# Two jobs, because `lake build` runs code of the project (elaboration) that could rewrite
+# files of the runner, including scripts/lean-guard.sh, before a later step of the same job:
+#   build: checks that the checkout holds no Lake state (scripts/lean-guard.sh fresh) and the
+#          lean-toolchain, lakefile, manifest and sources (scripts/lean-guard.sh sources)
+#          before elan is installed and before any `lean`/`lake` command, builds, and uploads formal/.lake/build and the
+#          build log as one tar file.
+#   check: a fresh runner and a fresh checkout (the scripts come from git, not from job
+#          `build`), `fresh` and `sources` again before elan, a freshly installed pinned elan, freshly fetched Mathlib cache and Aeneas
+#          release archive (no cache restored), then the archive check; only then the
+#          artifact is unpacked (scripts/lean-guard.sh unpack-build) and the build log, axiom
+#          audit and kernel replay are checked. No project code runs in this job: Lake is not
+#          run after the unpack, and the audit reads the .olean files without running any
+#          of their code, with the toolchain first on LEAN_PATH (scripts/lean-guard.sh,
+#          "axioms").
+# What job `check` cannot see is whether the artifact was compiled from these sources (a
+# build that runs code could forge it). The `sources` bans on code-running constructs, checked
+# before the build, do not exclude build-time code execution; the accepted barrier is human
+# review of every Lean file (human decision, 2026-11-22; formal/README.md, "What CI checks").
+name: Lean build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'formal/**'
+      - 'scripts/lean-guard.sh'
+      - 'scripts/lean_guard.py'
+      - 'scripts/lean-axiom-audit.lean'
+      - 'scripts/aeneas-install.sh'
+      - '.github/workflows/lean-build.yml'
+  pull_request:
+    paths:
+      - 'formal/**'
+      - 'scripts/lean-guard.sh'
+      - 'scripts/lean_guard.py'
+      - 'scripts/lean-axiom-audit.lean'
+      - 'scripts/aeneas-install.sh'
+      - '.github/workflows/lean-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lean-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # elan v4.4.0, linux x86_64 release asset; sha256 as published for the release.
+  ELAN_URL: https://github.com/leanprover/elan/releases/download/v4.4.0/elan-x86_64-unknown-linux-gnu.tar.gz
+  ELAN_SHA256: 0e8250aa2be86c7af929ade68db617af9edc8b9ccf6eaf5ece228250d0d032e2
+  # Must equal LEAN_TOOLCHAIN in scripts/lean_guard.py (which `sources` checks against
+  # formal/lean-toolchain); updated with the Aeneas rev.
+  LEAN_TOOLCHAIN: leanprover/lean4:v4.31.0
+
+jobs:
+  build:
+    name: lake build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        # Explicit `bash` runs each step with `bash -eo pipefail`.
+        shell: bash
+        working-directory: formal
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # First, before elan or any `lean`/`lake` command (plain Python, python3 >= 3.11 is
+      # preinstalled): no committed Lake state (Lake loads .lake/config/<idx>/lakefile.olean
+      # at its first command), and formal/lean-toolchain, lakefile, manifest and sources as
+      # pinned (elan would run whatever toolchain formal/lean-toolchain names).
+      - name: Fresh checkout (no committed .lake)
+        run: ../scripts/lean-guard.sh fresh
+
+      - name: Check lean-toolchain, lakefile, manifest and sources
+        run: ../scripts/lean-guard.sh sources
+
+      # The pinned elan binary is used instead of elan-init.sh, which installs the latest elan;
+      # the Lean toolchain is installed by its name (LEAN_TOOLCHAIN, equal to the checked
+      # formal/lean-toolchain), not from the file.
+      - name: Install elan and the Lean toolchain
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          curl -sSfL --retry 3 -o "$tmp/elan.tar.gz" "$ELAN_URL"
+          echo "$ELAN_SHA256  $tmp/elan.tar.gz" | sha256sum -c -
+          tar -xzf "$tmp/elan.tar.gz" -C "$tmp"
+          "$tmp/elan-init" -y --default-toolchain none
+          "$HOME/.elan/bin/elan" toolchain install "$LEAN_TOOLCHAIN"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      # Dependencies only, and only in this job: this project's own build output
+      # (formal/.lake/build) is never restored from a cache, and job `check` fetches its
+      # dependencies afresh.
+      - name: Cache Lake packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: formal/.lake/packages
+          key: lean-packages-${{ runner.os }}-${{ hashFiles('formal/lean-toolchain', 'formal/lake-manifest.json') }}
+
+      - name: Fetch Mathlib cache
+        run: lake exe cache get
+
+      - name: Build
+        run: |
+          set -o pipefail
+          lake build 2>&1 | tee .lake/build.log
+
+      # One tar file (the artifact holds exactly this file): paths build/... and build.log
+      # relative to formal/.lake, as scripts/lean-guard.sh unpack-build expects.
+      - name: Pack build output
+        run: tar -C .lake -cf "$RUNNER_TEMP/lean-build.tar" build build.log
+
+      - name: Upload build output
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lean-build
+          path: ${{ runner.temp }}/lean-build.tar
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  check:
+    name: check build output
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+        working-directory: formal
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Again, with the scripts of this checkout, before elan and before anything is fetched.
+      # First, before elan or any `lean`/`lake` command (plain Python, python3 >= 3.11 is
+      # preinstalled): no committed Lake state (Lake loads .lake/config/<idx>/lakefile.olean
+      # at its first command), and formal/lean-toolchain, lakefile, manifest and sources as
+      # pinned (elan would run whatever toolchain formal/lean-toolchain names).
+      - name: Fresh checkout (no committed .lake)
+        run: ../scripts/lean-guard.sh fresh
+
+      - name: Check lean-toolchain, lakefile, manifest and sources
+        run: ../scripts/lean-guard.sh sources
+
+      # The pinned elan binary is used instead of elan-init.sh, which installs the latest elan;
+      # the Lean toolchain is installed by its name (LEAN_TOOLCHAIN, equal to the checked
+      # formal/lean-toolchain), not from the file.
+      - name: Install elan and the Lean toolchain
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          curl -sSfL --retry 3 -o "$tmp/elan.tar.gz" "$ELAN_URL"
+          echo "$ELAN_SHA256  $tmp/elan.tar.gz" | sha256sum -c -
+          tar -xzf "$tmp/elan.tar.gz" -C "$tmp"
+          "$tmp/elan-init" -y --default-toolchain none
+          "$HOME/.elan/bin/elan" toolchain install "$LEAN_TOOLCHAIN"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      # Dependencies afresh (no cache): Mathlib oleans, then the Aeneas release archive
+      # (preferReleaseBuild); only dependency packages are built, nothing of this project.
+      - name: Fetch Mathlib cache
+        run: lake exe cache get
+
+      - name: Fetch the Aeneas library
+        run: lake build Aeneas
+
+      - name: Check the Aeneas Lean-library archive and installed build
+        run: ../scripts/lean-guard.sh aeneas-archive
+
+      # From here on, no Lake command runs.
+      - name: Download build output
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lean-build
+          path: ${{ runner.temp }}/lean-build
+
+      - name: Unpack build output into formal/.lake
+        run: ../scripts/lean-guard.sh unpack-build "$RUNNER_TEMP/lean-build/lean-build.tar"
+
+      - name: Check build log (only the four recorded Aeneas warnings)
+        run: ../scripts/lean-guard.sh build-log .lake/build.log
+
+      - name: Audit axioms and replay this project's constants in the kernel
+        run: ../scripts/lean-guard.sh axioms

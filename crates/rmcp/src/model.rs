@@ -16,6 +16,8 @@ mod mrtr;
 mod prompt;
 #[cfg(feature = "request-state")]
 mod request_state;
+#[cfg(feature = "request-state")]
+pub mod request_state_wire;
 mod resource;
 mod serde_impl;
 mod skill;

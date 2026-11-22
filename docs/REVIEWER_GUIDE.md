@@ -3,8 +3,9 @@
 ## Objectives
 
 This document gives guidelines for reviewers of PRs that add functional-correctness
-specifications, external contracts, and proofs for this fork of the Rust MCP SDK. The scope and
-targets are defined in the [master plan](MCP_SDK_Verification_Master_Plan_EN.md). Review is a
+specifications, external axioms, translation patches, Charon settings, and proofs for this fork of
+the Rust MCP SDK. The process is in [`VERIFICATION.md`](VERIFICATION.md); the scope and targets are
+defined in the [master plan](MCP_SDK_Verification_Master_Plan_EN.md). Review is a
 second layer of quality control. It ensures that every specification (or proof of it) meets the
 following criteria as far as possible:
 
@@ -24,10 +25,18 @@ same review as hand-written ones, with the additional checks in
 [step 2](#2-review-ai-drafted-specifications). The checklist for AI-assisted review is in
 [AI review questions](AI_PR_REVIEW_QUESTIONS.md).
 
+Everything that must be trusted — specifications, `Defs` definitions, axioms, patches, and
+`exclude`/`opaque` entries — gets at least two independent agent reviews before it reaches you
+([Review and sign-off](WORKFLOW_AND_PR_GUIDE.md#review-and-sign-off)). Read those reports, but do
+not treat their agreement as acceptance: the human sign-off is yours. Proofs and the generated
+translation need no trust review: Lean checks the former and the translation CI regenerates the
+latter.
+
 ## Recommended steps for reviewers
 
 We assume the typical review deals with a PR that covers one plan step for a single function
-(`Exx`), provides a specification and a proof of it, and stays near the recommended 500 LOC cap.
+(`Wxx` or `Exx`), provides a specification (or its proof, once the specification is signed off), and
+stays near the recommended 500 LOC cap.
 For other kinds of PR use the steps below as guidelines, with your own judgement.
 
 ### 1. Check for specification correctness
@@ -43,10 +52,23 @@ particular:
 You can spend less effort on proof details when the PR introduces a `sorry`-free proof. You cannot
 skip the statement check.
 
-For contracts in `Specs/External/` and axioms, inspect the cited sources (RFC, crate
+For external models and axioms in `formal/trusted/Rmcp/`, inspect the cited sources (RFC, crate
 documentation, pinned crate source) to make sure they are legitimate and that the formulation was
-correctly transcribed. Check that each axiom has an ID in `verification/assumptions.yaml` and that
-the Rust test vectors cited for it exist and pass. A contract may not refer to a target function.
+correctly transcribed. Check that:
+
+- each axiom is listed in the trusted-base section of `formal/docs/STATUS.md`, and the Rust test
+  vectors cited for it exist and pass;
+- no external is a bare `Result` axiom (`axiom f : … → Result T`); it is an exact model or `ok` of
+  an opaque value;
+- no axiom is stated about a function whose Lean type merges distinct Rust types;
+- the axiom group has a consistency model in `formal/proofs/Proofs/Consistency/`;
+- the axiom does not refer to a target function.
+
+For a translation patch in `formal/trusted/patches/`, check that its header states the change, why
+it is needed, and why the behaviour is unchanged; that it is minimal, with one concern; and that
+`patched-tests.yml` passes. For a new `exclude` entry, check that no target depends on the item;
+for a new `opaque` entry, check that the item truly cannot be translated and has no useful Rust
+model, since it adds an axiom.
 
 Comments about correctness are _blocking_.
 
@@ -64,8 +86,9 @@ The PR footer lists AI-drafted artifacts. For each one:
 - Check that the drafting agent is not also the prover or the AI reviewer of the same statement.
 
 Only a named human spec owner may accept the specification and set `spec: REVIEWED` in
-`verification/functions/Exx.yaml`. Agreement between AI tools, or an AI review with no findings,
-does not count as acceptance.
+`formal/docs/functions/<ID>.yaml`. Check that `spec_reviews` lists at least two independent agent
+reviews, none by the drafter. Agreement between AI tools, or an AI review with no findings, does
+not count as acceptance.
 
 ### 3. Assess the level of abstraction
 
@@ -80,8 +103,9 @@ have any of these specifications:
 All are correct, and each is stronger than the previous one (it implies it). Which to choose
 usually depends on several factors:
 
-- **Upstream requirements.** In this project the later steps are known in advance: E09–E11 build
-  on E01, E05, and E06, and the round trips of S15 build on E07–E11. A specification must give
+- **Upstream requirements.** In this project the later steps are known in advance: the codec
+  targets build on the public wire theorems (for example E09–E11 on W07–W11 and E01), and the
+  round trips of S15 build on E07–E11. A specification must give
   those steps what they need (transcripts, exact output format, error results), but need not go
   further. Functions that may be called from outside the known call sites should have
   specifications that make no assumptions about their callers.
@@ -100,13 +124,25 @@ judgement.
 
 ### 4. Check linkage, trust, and status records
 
-- Confirm that the theorem is about the extracted function in `Rmcp/Funs.lean`, with its current
-  generated name, and that the source hash in `verification/manifest.yaml` matches the file.
-- Run or read the axiom audit (`lake build Checks`). Every axiom outside `propext`,
-  `Classical.choice`, and `Quot.sound` must have an approved assumption ID.
+- Confirm that the theorem is about the translated function in
+  `formal/translation/Rmcp/Funs.lean`, with its current generated name, and that all three CI
+  workflows pass on the head commit (translation not stale, Lean build with the
+  `scripts/lean-guard.sh` checks, patched tests).
+- Read the `#guard_msgs` axiom lists in the spec files. Every axiom outside `propext`,
+  `Classical.choice`, and `Quot.sound` must be in the trusted-base section of
+  `formal/docs/STATUS.md`. A changed list is a trust change and must be named in the PR footer.
+- Check that the hand-written Lean (`proofs/`, `specs/`, `trusted/`) has no metaprogramming:
+  no `run_cmd`, `run_tac`, `#eval`, `elab`, `macro`, `syntax`, `initialize`, `addDecl`,
+  `modifyEnv`, `simproc`, metaprogram attributes (`tactic`, `init`, `delab`, ...) or the like,
+  and no indirect route to one (for example an Aesop rule that runs a tactic definition).
+  `scripts/lean-guard.sh sources` bans these words as defence in depth, but its list is textual
+  and incomplete, and code run during `lake build` could forge the build output that CI audits
+  (`formal/README.md`, "What CI checks"). A proof that needs a custom tactic writes it out inline;
+  a custom tactic needs a separately reviewed module, which is a human decision (lead decision
+  2026-11-22).
 - Check that the function record and board use the vocabulary of plan Section 6 and do not
   overstate the result. A function is "verified" only when `proof: CHECKED`, `spec: REVIEWED`,
-  `linkage: ORIGINAL`, and the audit is clean.
+  `linkage: ORIGINAL`, and its axioms are all in the trusted base.
 
 Comments that show an overstated status or an unapproved assumption are _blocking_.
 
@@ -125,15 +161,19 @@ decreases are worth fixing immediately. Use your judgement to decide whether to:
 Comment on the specifications without reservation, including:
 
 - requests for adding or changing comments,
-- recommendations for new definitions in `Specs`,
+- recommendations for new definitions in `Defs`,
 - requests for generalizing proof chunks into shared lemmas,
-- recommendations for reusing existing spec code or contracts,
+- recommendations for reusing existing spec code or external models,
 - incompatibilities with the [style guide](STYLE_GUIDE.md),
 - etc.
 
 These comments are generally _non-blocking_, and the author may act on them at their discretion.
 They may be made _blocking_ if the problem is particularly serious, especially for chunk
 generalization and code reuse.
+
+During phase B the rule is "complete first" (plan Section 8): a working proof is acceptable, and
+proof-style comments (flexible tactics, missing shared lemmas) are non-blocking unless the proof is
+fragile enough to break CI. Phase C addresses them without changing any statement.
 
 Even when only adding comments, use "Submit review > Comment" rather than adding each comment
 individually.

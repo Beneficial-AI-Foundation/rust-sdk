@@ -1,9 +1,10 @@
 # Style Guide
 
-This guide covers hand-written Lean in the crate-local project `crates/rmcp/lean/` (written
-`<LEAN>` below). Generated files (`Rmcp/Types.lean`, `Rmcp/Funs.lean`) are not subject to it.
-Rust code follows the repository's `rustfmt.toml`, `clippy.toml`, and the
-[contribution guide](CONTRIBUTE.MD).
+This guide covers hand-written Lean in `formal/`: `trusted/` (external models and axioms),
+`specs/` (definitions and spec files), and `proofs/`. Generated files under `formal/translation/`
+are not subject to it. Rust code follows the repository's `rustfmt.toml`, `clippy.toml`, and the
+[contribution guide](CONTRIBUTE.MD). The process is in [`VERIFICATION.md`](VERIFICATION.md) and the
+[workflow guide](WORKFLOW_AND_PR_GUIDE.md).
 
 ## General Style Guidelines
 
@@ -46,13 +47,37 @@ possible:
 When a flexible tactic is genuinely the best option (e.g. a `simp` that closes a goal and whose
 lemma list would be impractically long), document why in a short comment.
 
-Do not use `native_decide`; see [Proof cheats](WORKFLOW_AND_PR_GUIDE.md#proof-cheats).
+These rules are the target for merged proofs. During phase B ("complete first") a working proof
+that uses flexible tactics is acceptable; phase C replaces them without changing any statement.
+
+Do not use `native_decide` or `bv_decide` in a merged proof; see
+[External functions and axioms](WORKFLOW_AND_PR_GUIDE.md#external-functions-and-axioms).
 
 ### Linters
 
-Resolve linter warnings rather than suppressing them. Do not leave `#check`/`#eval`/`#print`
-leftovers, and do not use `set_option linter.* false` without a justification documented in a
-comment.
+Resolve linter warnings rather than suppressing them: every library sets `warningAsError`, so every
+warning in this project's files fails the build (see
+[Building and Checking](WORKFLOW_AND_PR_GUIDE.md#building-and-checking)). Do not leave
+`#check`/`#eval` leftovers. The only `#print` allowed is `#print axioms` under a bare
+`#guard_msgs in` in spec files. `scripts/lean-guard.sh sources` rejects the whole words
+`warningAsError`, `sorry`, `sorryAx`, `admit`, `native_decide`, `bv_decide`, `skipKernelTC`,
+`proofAsSorry`, `implemented_by`, `extern`, `unsafe`, `ofReduceBool`, `ofReduceNat` and
+`trustCompiler`, and the `native` option of `decide`, in every Lean file under `formal/` except
+`.lake/` and `formal/specs/Drafts/`; `set_option linter.<name> false` everywhere outside
+`formal/translation/`, `formal/trusted/` included; and `axiom` outside `formal/trusted/` (the
+unbuilt Aeneas `*_Template.lean` files in `formal/translation/` are exempt). It also rejects, in
+`proofs/`, `specs/` and `trusted/` alike, anything that runs or registers a metaprogram: `#eval`,
+`#exit`, `run_cmd`, `run_tac`, `run_elab`, `run_meta`, `elab`, `elab_rules`, `initialize`,
+`macro`, `macro_rules`, `syntax`, `simproc`, `addDecl`, `modifyEnv`, `withOptions`, the types
+`IO`, `CoreM`, `MetaM`, `TacticM` and the like, `Lean.Elab`, any `debug.` option, and attributes
+such as `tactic`, `init` or `delab` (full list in `formal/README.md`). `notation`, `infix`, local
+instances and `simp` attributes are allowed. Write a custom tactic out inline; a separately
+reviewed tactic module is a human decision (lead decision 2026-11-22). The check is textual, so
+these words are rejected in comments and docstrings too: write "placeholder" or "unproved" for
+sorry, "assumption" or "postulate" for axiom, "foreign" for extern, "unchecked" for unsafe,
+"grammar" or "notation" for syntax, "set up" for initialize and "input/output" for IO in prose. Only `#guard_msgs` may be written as prose in backticks
+(`` `#guard_msgs` ``); see [Building and Checking](WORKFLOW_AND_PR_GUIDE.md#building-and-checking)
+for the full rules.
 
 ### Heartbeats
 
@@ -71,53 +96,72 @@ declaration with `set_option ... in`. Use multiples of **200000** as the standar
 
 ## Library layering
 
-The project has four libraries, following plan Section 5. Their import directions are fixed:
+`formal/lakefile.toml` declares five libraries, following plan Section 5. Each has its own
+`srcDir` and explicit `roots` (no `globs`: `scripts/lean-guard.sh` allows only `name`, `srcDir`,
+`roots` and `leanOptions`), so every module belongs to exactly one library. Their import
+directions are fixed:
 
-| Library | Contents | May import |
-| --- | --- | --- |
-| `Specs` | Pure definitions used by statements: byte-level models, transcripts, `b64`, HMAC state, codec-state invariant | `Aeneas`, Mathlib, `Rmcp.Types` |
-| `Proofs` | Spec theorems about the extracted functions and their support lemmas | `Rmcp`, `Specs` |
-| `Theorems` | Public, readable restatements of accepted results | `Proofs`, `Specs` |
-| `Checks` | Axiom and `sorry` audit of `Theorems` | `Theorems` |
+| Library | `srcDir` | Contents | May import |
+| --- | --- | --- | --- |
+| `Rmcp` | `translation` | Generated `Rmcp.Types`, `Rmcp.Funs` | Aeneas, `RmcpExternal` |
+| `RmcpExternal` | `trusted` | Hand-written `Rmcp.TypesExternal`, `Rmcp.FunsExternal`: external models, opaque functions, axioms | Aeneas, `Rmcp.Types` (the generated `FunsExternal` template imports it) |
+| `Defs` | `specs` | Pure definitions used by statements: byte-level models, transcripts, codec-state invariant | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
+| `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, consistency models | `Rmcp`, `RmcpExternal`, `Defs` |
+| `Specs` | `specs` | One spec file per Rust source file: `recall` of each accepted statement and its axioms | `Defs`, `Proofs` |
 
-- `Specs` imports nothing from `Proofs`, `Theorems`, or `Checks`, and nothing imports `Checks`.
-- A public theorem in `Theorems` is phrased only with `Specs` definitions, so that its meaning
-  never depends on a proof-private definition.
-- Proof-only helpers stay in `Proofs`. Promote a helper to `Specs` only if a statement needs it.
+- `Proofs` never imports `Specs`, and nothing imports `Specs`.
+- A statement is phrased only with `Defs` definitions (and the translated function), so that its
+  meaning never depends on a proof-private definition.
+- Proof-only helpers stay in `Proofs`. Promote a helper to `Defs` only if a statement needs it.
+- `formal/specs/Drafts/` belongs to no library. Draft statements live there until their proofs are
+  complete.
+
+## External models and axioms
+
+`formal/trusted/Rmcp/FunsExternal.lean` and `TypesExternal.lean` declare everything Aeneas does not
+translate (plan Section 4). Organise `FunsExternal.lean` in sections: HMAC, Base64, standard
+library, clock.
+
+- Each opaque reference function (`hmacSha256`, `b64`, `b64Decode`) is an `opaque` declaration,
+  and the translated external is a `def` returning `ok` of it, never a bare `Result` axiom.
+- Each axiom describes its primitive on its own terms, never by referring to a target function.
+- Each axiom has a docstring giving its justification and the Rust tests that check it. The same
+  axiom is listed in the trusted-base section of `formal/docs/STATUS.md`. For example (the test
+  name is a placeholder):
+
+  ```lean
+  /-- `URL_SAFE_NO_PAD` decoding inverts encoding.
+
+  Justified by the `base64` crate documentation for `Engine::decode` at the pinned version
+  (`0.23.x`, checked by `scripts/aeneas-translate.sh`), and checked by the `b64_vectors` test in
+  `request_state_wire.rs`. Consistency model: `Proofs/Consistency/Base64.lean`. -/
+  axiom b64Decode_b64 (x : List U8) : b64Decode (b64 x) = some x
+  ```
 
 ## Specification Definition Guidelines
 
-`<LEAN>/Specs/` holds the definitions that statements are written in.
+`formal/specs/Defs/` holds the definitions that statements are written in.
 
-- `Specs/RequestState.lean`: framing, expiry, lengths, error predicates for the codec.
-- `Specs/CodecState.lean`: the codec-state invariant enforced by the constructors.
-- `Specs/External/<Primitive>.lean`: one file per external contract (`Hmac`, `Base64`, `Str`).
+- `Defs/Wire.lean`: `splitOn` components, `be64`, transcripts, framing and expiry.
+- `Defs/RequestState.lean`: codec outputs and error predicates.
+- `Defs/CodecState.lean`: the codec-state invariant enforced by the constructors.
 
-Rules for definitions in `Specs`:
+Rules for definitions in `Defs`:
 
 - Each definition has a docstring that says what it denotes, and the Rust lines (at the pinned
   commit) or plan section it models.
 - Prefer mathematical objects (`List UInt8`/`List U8`, `Nat`, `Int`) over machine types, except
   where the machine width is part of the claim. State conversions explicitly, e.g. signed
   big-endian decoding of 8 bytes.
-- Do not restate the implementation step by step. A specification that mirrors the extracted
+- Do not restate the implementation step by step. A specification that mirrors the translated
   code proves nothing beyond translation.
-- An external contract describes its primitive on its own terms, never by referring to a target
-  function. Each axiom it introduces names its ID from `verification/assumptions.yaml` in its
-  docstring. In this illustrative example, the ID and test name are placeholders:
+- `Defs` contains no axioms. Anything taken on trust belongs in `formal/trusted/`.
 
-  ```lean
-  /-- `URL_SAFE_NO_PAD` decoding inverts encoding.
+## Proof File Guidelines
 
-  Assumption `A-B64-ROUNDTRIP` (`verification/assumptions.yaml`). Justified by the `base64`
-  crate documentation for `Engine::decode` at the pinned version, and checked by the
-  `b64_vectors` test in `request_state.rs`. -/
-  axiom b64_decode_encode (x : List U8) : decode (b64 x) = .ok x
-  ```
-
-## Spec Theorem File Guidelines
-
-Each target function `Exx` has one proof file under `<LEAN>/Proofs/Model/RequestState/`.
+There is one proof file per Rust item (`VERIFICATION.md` §8), under
+`formal/proofs/Proofs/Model/RequestStateWire/` for `Wxx` and
+`formal/proofs/Proofs/Model/RequestState/` for `Exx`.
 
 - The file holds the function's spec theorem together with any lemmas needed only for its proof.
   Lemmas usable elsewhere go in a shared file (e.g. `Proofs/Model/RequestState/Common.lean`).
@@ -133,12 +177,15 @@ Each target function `Exx` has one proof file under `<LEAN>/Proofs/Model/Request
   Opens an `rs1` token: parses three `.`-separated parts, decodes body and tag, verifies the tag
   against the configured keys, then checks expiry.
 
-  Source: "crates/rmcp/src/model/request_state.rs", line 620 at `0e2396f`
+  Source: "crates/rmcp/src/model/request_state.rs", line 620 at `<pinned commit>`
   -/
   ```
 
 - Further details or an overview of the proof can go in other comments if useful.
-- Other extracted code (e.g. `verification/host_origin/`) mirrors the Rust module path below
+- Consistency models of axioms go in `Proofs/Consistency/<Group>.lean` (`Hmac`, `Base64`,
+  `HashMap`). Each one instantiates the opaque functions with a concrete model and proves every
+  axiom of the group for it.
+- Other translated code, if it later moves into `formal/`, mirrors the Rust module path below
   `Proofs/Model/`, for example
   `Proofs/Model/Transport/StreamableHttpServer/Tower/HostIsAllowed.lean`.
 
@@ -146,7 +193,7 @@ Each target function `Exx` has one proof file under `<LEAN>/Proofs/Model/Request
 
 State every function spec theorem with the Aeneas `⦃ ... ⦄` WP syntax of the pinned Aeneas
 library. The canonical layout is below; the argument types are illustrative, so use the
-generated signature from `Rmcp/Funs.lean`:
+generated signature from `formal/translation/Rmcp/Funs.lean`:
 
 ```lean
 /-- **Spec theorem for `rmcp::model::request_state::RequestStateCodec::open_rs1_at`**
@@ -159,8 +206,11 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
     open_rs1_at self sealed associated_data now_ms ⦃ (result : Result (Vec U8) Error) =>
       post_condition_1 ∧
       post_condition_2 ⦄ := by
-  sorry
+  ...
 ```
+
+The statement means that the call terminates without panicking and its result satisfies the
+postcondition (plan Section 3); preconditions say when that is guaranteed.
 
 - Add the attribute `@[step]` so that the Aeneas `step` tactic can use the theorem in callers.
   Start a new line after the attributes.
@@ -184,6 +234,9 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
   - postconditions `post_condition_i ∧`: 6 spaces
   - proof body: 2 spaces
 
+A draft in `formal/specs/Drafts/` uses the same layout, with the proof replaced by `sorry`; it is
+never built.
+
 ### Hypothesis conventions
 
 - Write a no-overflow domain as a named hypothesis (e.g. `(h_no_overflow : 4 * ((n + 2) / 3) ≤
@@ -192,30 +245,60 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
 - Write a target-width assumption as a named hypothesis (e.g. `(h64 : System.Platform.numBits =
   64)`), used only where the claim depends on it.
 - Take the codec-state invariant as a single hypothesis `(h : self.Valid)` using the definition in
-  `Specs/CodecState.lean`, rather than restating its clauses.
+  `Defs/CodecState.lean`, rather than restating its clauses.
 
-## Composition Theorem File Guidelines
+## Composition Theorems
 
-Round-trip and dispatch theorems that span several functions go in
-`<LEAN>/Theorems/Model/RequestStateComposition.lean`.
+Round-trip and dispatch theorems that span several functions are proved in
+`formal/proofs/Proofs/Model/RequestState/Roundtrip.lean` (`frame_roundtrip` in
+`Proofs/Model/RequestStateWire/Frame.lean`), and recalled at the end of the spec file of the
+corresponding Rust file.
 
 - Theorem names say what the result is, following the [Mathlib naming guidelines][mathlib-naming]
   and the names of plan Section 5 (`rs1_roundtrip`, `open_at_roundtrip_rs2`, ...), rather than
   `<function>_spec`. They are not tagged `@[step]`.
 - The docstring lists every premise of the round trip in words (body length, expiry, same
-  associated data, key or kid conditions), and says which extracted functions the theorem is
+  associated data, key or kid conditions), and says which translated functions the theorem is
   about.
 - A theorem that takes successful calls as hypotheses (`f args = ok r`) says in its docstring that
   it covers only successful calls and does not show that any call succeeds.
 
-## Public Theorem Files
+## Spec Files
 
-`<LEAN>/Theorems/Model/RequestState.lean` restates each accepted `Exx` spec theorem for readers.
+`formal/specs/Specs/Model/RequestStateWire.lean` and `Specs/Model/RequestState.lean` are the spec
+files, one per Rust source file (`VERIFICATION.md` §7). They are what a reader needs to trust the
+result.
 
-- Each restatement is a theorem whose proof is the corresponding `Proofs` theorem, with a
-  docstring giving the plan ID, the Rust function, the assumptions it depends on (by ID), and what
-  it does not claim (plan Section 1).
-- Add a theorem here only when its proof has no `sorry` and its specification is `REVIEWED`.
+- The module docstring states the translated configuration
+  (`x86_64-unknown-linux-gnu`, `--no-default-features --features request-state`), names the `Defs`
+  the statements use, and lists the items of that Rust file that were not translated (plan
+  Section 2.3).
+- Statements appear in Rust source order, composition theorems last.
+- Each statement is restated with `recall` from its proof, with a docstring giving the plan ID and
+  a one-line summary, and is followed by its axioms, checked by `#print axioms`:
+
+  ```lean
+  open rmcp.model.request_state_wire  -- for `Rs1Parts`; the theorem is still named in full
+
+  /-- W08 `parse_rs1`: `Some {body, tag}` iff the token splits on `.` into
+  `["rs1", body, tag]`. -/
+  recall rmcp.model.request_state_wire.parse_rs1_spec (s : Slice U8) :
+      rmcp.model.request_state_wire.parse_rs1 s ⦃ (r : Option Rs1Parts) =>
+        r = Defs.parseRs1 s.val ⦄
+
+  /--
+  info: 'rmcp.model.request_state_wire.parse_rs1_spec' depends on axioms: [propext, Quot.sound]
+  -/
+  #guard_msgs in
+  #print axioms rmcp.model.request_state_wire.parse_rs1_spec
+  ```
+
+  Use exactly this form: a bare `#guard_msgs in` (no options such as `drop`, `whitespace` or
+  `substring`) followed by one `#print axioms` line; `scripts/lean-guard.sh` rejects any other.
+  The docstring therefore matches the complete message, which prints the full name of the theorem
+  (generated definitions live in `namespace rmcp`, so the name starts with `rmcp.model.`).
+
+- Add a statement here only when its proof has no `sorry` and its specification is `REVIEWED`.
 
 [mathlib-style]: https://leanprover-community.github.io/contribute/style.html
 [mathlib-naming]: https://leanprover-community.github.io/contribute/naming.html
