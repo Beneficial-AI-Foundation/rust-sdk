@@ -13,7 +13,7 @@ import Proofs.External.String
 
 Facts about generated value constants of `request_state.rs`, used by several E proofs, and the
 UTF-8 content of Aeneas string literals. Unfolding a generated value constant (not a W function)
-is allowed by the lead decision recorded in the S05 evidence (git history at 01bdc9b).
+is allowed by the lead decision recorded in the S05 evidence (git history at 223ff12).
 -/
 
 open Aeneas Aeneas.Std Result

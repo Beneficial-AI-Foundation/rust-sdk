@@ -15,8 +15,8 @@ order with the composition theorem last. Each is restated as a theorem
 `Theorems.request_state_wire.<function>`, proved by the spec theorem in
 `Proofs/Model/RequestStateWire/`, and followed by the assumptions its proof depends on, checked by
 `#print axioms` under `#guard_msgs`. The statements were signed off by the spec owner on
-2026-11-23 (the S05 evidence (git history at 01bdc9b)); their signed-off text is in `specs/Drafts/RequestStateWire.lean`
-at commit `46cfb02`, removed when they were incorporated (the W-batch incorporation procedure (git history at 01bdc9b)).
+2026-11-23 (the S05 evidence (git history at 223ff12)); their signed-off text is in `specs/Drafts/RequestStateWire.lean`
+at commit `9bd8144`, removed when they were incorporated (the W-batch incorporation procedure (git history at 223ff12)).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 features `--no-default-features --features request-state`, with `overflow-checks=true` and
@@ -25,7 +25,7 @@ features `--no-default-features --features request-state`, with `overflow-checks
 which Aeneas models as failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is
 the patched copy (patch 01 on origin/main 7caec76,
 `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23; translation
-committed at `46cfb02`). Line numbers refer to
+committed at `9bd8144`). Line numbers refer to
 `request_state_wire.rs` in the patched copy, the only place the file exists.
 
 Definitions used: `Defs.Wire` (`b64Len`, `minKeyLength`, `maxKidLen`, `dot`, `components`,

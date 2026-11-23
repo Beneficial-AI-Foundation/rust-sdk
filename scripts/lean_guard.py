@@ -298,7 +298,7 @@ RULE_LINTER = ("set_option linter.<name> false", re.compile(r"set_option\s+linte
 # check of the build output can detect (formal/README.md, "What CI checks"). None of it is
 # needed in specs, definitions, proofs or externals.
 #
-# META_WORDS was derived from the pinned toolchain and packages (the S03 evidence (git history at 01bdc9b),
+# META_WORDS was derived from the pinned toolchain and packages (the S03 evidence (git history at 223ff12),
 # fix round 5, W1): every syntax kind whose registered elaborator or macro reaches, through
 # constant bodies, `implemented_by` and `_unsafe_rec`, an evaluation primitive
 # (Environment.evalConst/evalConstCheck, Meta.evalExpr(')/Term.evalTerm, elabEvalCoreUnsafe,
@@ -658,7 +658,7 @@ def check_sources(formal):
 # ---------------------------------------------------------------------------------------
 # build log
 
-# The four warnings Lake replays from the pinned Aeneas library (the S03 evidence (git history at 01bdc9b)).
+# The four warnings Lake replays from the pinned Aeneas library (the S03 evidence (git history at 223ff12)).
 ALLOWED_LOG_LINES = {
     "warning: Aeneas/Std/Slice.lean:363:4: declaration uses `sorry`",
     "warning: Aeneas/Std/Slice.lean:586:8: declaration uses `sorry`",

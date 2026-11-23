@@ -6,11 +6,11 @@ every *.rs file, stay byte-identical to it; only crates/rmcp/Cargo.toml differs,
 metadata that cargo ignores). Applied only to the copy in .llbc/work/ by
 scripts/apply-patches.sh (patch -p1 -F 0, file-name order); the real source is never patched.
 Files: crates/rmcp/src/model.rs, crates/rmcp/src/model/request_state.rs,
-crates/rmcp/src/model/request_state_wire.rs (new). Generated with git diff 7caec762 ccaf9ee --
+crates/rmcp/src/model/request_state_wire.rs (new). Generated with git diff 7caec762 544e87f --
 crates/rmcp/src/model.rs crates/rmcp/src/model/request_state.rs \
 crates/rmcp/src/model/request_state_wire.rs
-(ccaf9ee on docs/verification-guides holds the refactor of 9b030c6 plus the S16 tests of
-317ace2). The patch body below is the authoritative content. The Charon settings
+(544e87f on docs/verification-guides holds the refactor of f8fb6a7 plus the S16 tests of
+afab9d2). The patch body below is the authoritative content. The Charon settings
 ([package.metadata.charon] in
 crates/rmcp/Cargo.toml) are not part of this patch; they stay in the repository.
 
@@ -80,8 +80,8 @@ Behaviour (argument of the plan Section 9 "Refactor" table):
   now shows it as wire::MIN_KEY_LENGTH.
 
 Review checklist (plan Section 9): evidence. It applies to this patch because the patched files
-are byte-identical to ccaf9ee, where the S04a and S16 checks ran (records in git history at
-01bdc9b):
+are byte-identical to 544e87f, where the S04a and S16 checks ran (records in git history at
+223ff12):
 - evidence: existing request-state tests and the Section 7 boundary tests pass (S04a, S16);
 - evidence: RFC 4231 HMAC vectors and RFC 4648 Base64 vectors pass through prim (S04a);
 - evidence: tokens sealed before and after are byte-identical, committed regression test mod
@@ -101,7 +101,7 @@ blocking issue (2026-11-23); signed off by the human
 
 Size and scope: VERIFICATION.md Section 4 describes a small, one-concern patch. This one is about
 3,200 lines because the D2 fallback carries the whole reviewed refactor over unchanged (byte-
-identical to ccaf9ee): about 335 lines of production code (the wire module and the codec
+identical to 544e87f): about 335 lines of production code (the wire module and the codec
 changes) and about 2,000 lines of tests. The tests stay in the same patch because they use
 items the patch creates (wire, prim), so a separate test patch could not apply without this
 one, and because mod byte_identity and the RFC vectors are the evidence for the behaviour

@@ -3,9 +3,9 @@
 Plan: [`docs/MCP_SDK_Verification_Master_Plan_EN.md`][plan].
 Task state: [`board.yaml`](board.yaml) (authoritative). Per-function records:
 [`functions/`](functions/). Step evidence: [`evidence/`](evidence/); this report's evidence:
-the S19 evidence (git history at 01bdc9b).
+the S19 evidence (git history at 223ff12).
 
-Last updated 2026-11-23: S19 final status report, written at local commit `1640c77` (branch
+Last updated 2026-11-23: S19 final status report, written at local commit `aacfbf7` (branch
 `docs/verification-guides`, not pushed). S19 itself awaits acceptance by the human owner.
 Updated 2026-11-23 for the D2 fallback (human decision 2026-11-23): the SDK `*.rs` files are
 byte-identical to upstream `origin/main` (`7caec76`); the `request_state_wire` refactor and all
@@ -60,13 +60,13 @@ the last sentence names the excluded functions and non-targets instead.
 `REVIEWED` (signed off by the spec owner), proof `CHECKED` and linkage `patch-01` in every record of
 `functions/`, with the restated theorem in a spec file; each theorem holds under its stated premises
 (no-overflow and size domains, codec-state clauses) and is about the patched copy. (Before the D2
-fallback, this count read "verified 25" with linkage `ORIGINAL` relative to local commit `9b030c6`;
+fallback, this count read "verified 25" with linkage `ORIGINAL` relative to local commit `f8fb6a7`;
 the proofs did not change.) If the refactor lands in the SDK source, patch 01 is deleted and the
 targets can become `ORIGINAL`. Plus 5 composition theorems. Excluded (not counted, not verified):
 the items under "Excluded functions" below. Not targets: 4 translatable wrappers.
 
 Restated theorems (`theorem Theorems.…`, each proved by the spec theorem it restates and guarded
-by `#guard_msgs in` + `#print axioms`), counted at `1640c77`:
+by `#guard_msgs in` + `#print axioms`), counted at `aacfbf7`:
 
 | Spec file | Theorems | Content |
 |---|---|---|
@@ -83,18 +83,18 @@ by `#guard_msgs in` + `#print axioms`), counted at `1640c77`:
 | Base commit | `0e2396f73a88617141b31f645de6f1171ed5f993` |
 | SHA-256 of `request_state.rs` at base | `41e69cad…b416` (full value: plan Section 1) |
 | Pinned commit | upstream `origin/main` `7caec762799bece6fba38e4298b8ca7db8bac12c`; every SDK `*.rs` file is byte-identical to it (D2 fallback, 2026-11-23) |
-| Translation patch | `formal/trusted/patches/01-request-state-wire.patch`: the refactor of local commit `9b030c6` plus the S16 tests of `317ace2`, applied only to `.llbc/work/` by `scripts/apply-patches.sh` |
-| Verified Rust source | the patched copy (`7caec76` + patch 01); its non-test lines equal those of `9b030c6`, so line numbers are unchanged |
-| Translation | committed at `46cfb02` (from `9b030c6` + Charon settings); reproduced byte for byte through the patch path (2026-11-23) |
-| Aeneas | release tag `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 01bdc9b)) |
+| Translation patch | `formal/trusted/patches/01-request-state-wire.patch`: the refactor of local commit `f8fb6a7` plus the S16 tests of `afab9d2`, applied only to `.llbc/work/` by `scripts/apply-patches.sh` |
+| Verified Rust source | the patched copy (`7caec76` + patch 01); its non-test lines equal those of `f8fb6a7`, so line numbers are unchanged |
+| Translation | committed at `9bd8144` (from `f8fb6a7` + Charon settings); reproduced byte for byte through the patch path (2026-11-23) |
+| Aeneas | release tag `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 223ff12)) |
 
 `request_state.rs` at `7caec76` has the base SHA-256 above (unchanged since `0e2396f`).
-History: SHA-256 of the target files at `9b030c6`: `request_state.rs` `a09f02e3…f076`,
+History: SHA-256 of the target files at `f8fb6a7`: `request_state.rs` `a09f02e3…f076`,
 `request_state_wire.rs` `96f433d7…c357`. Since then the files changed only by the S16 test
-insertions inside `mod tests` (`317ace2`; `git diff -U0 9b030c6 1640c77` shows two insertion-only
+insertions inside `mod tests` (`afab9d2`; `git diff -U0 f8fb6a7 aacfbf7` shows two insertion-only
 hunks, after line 735 resp. 280), and `crates/rmcp/Cargo.toml` only in comments and the
-derived-`Debug` `exclude` entries (`46cfb02`, `baf1762`). The committed translation was reproduced
-byte for byte on a fresh clone at `2cb8d58` (the S18 evidence (git history at 01bdc9b)). Since
+derived-`Debug` `exclude` entries (`9bd8144`, `af41799`). The committed translation was reproduced
+byte for byte on a fresh clone at `a32553d` (the S18 evidence (git history at 223ff12)). Since
 the D2 fallback these changes are in patch 01, and the files in the repository are upstream.
 
 Target files, in the patched copy (both compile only with the `request-state` feature):
@@ -160,7 +160,7 @@ Only the named human spec owner may set `spec: REVIEWED`, and only a human may m
 
 ## Per-function status
 
-Mirrors `formal/docs/functions/*.yaml` (the records are authoritative), checked at `1640c77`:
+Mirrors `formal/docs/functions/*.yaml` (the records are authoritative), checked at `aacfbf7`:
 every record has `translation: LEAN_OK`, `spec: REVIEWED`, `spec_owner: "Hoang Le Truong"`,
 `linkage: patch-01` (patch 01, since 2026-11-23), `proof: CHECKED`.
 
@@ -232,7 +232,7 @@ directly, with no seal wrapper verified; the codec-state invariant is permanentl
 
 ## Trusted base
 
-Checked at `1640c77` by `scripts/lean-guard.sh axioms` (exit 0; 2110 constants in 46 project
+Checked at `aacfbf7` by `scripts/lean-guard.sh axioms` (exit 0; 2110 constants in 46 project
 modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
 
 - **Trusted axioms: 0.** `formal/trusted/axioms.lock` has no entry; the `RmcpExternal` roots
@@ -339,11 +339,11 @@ Defects found in the plan, documents and tooling, with their state:
    tokens starting with `rs1`/`rs2`). Found in the S13 spec rounds, decision (j). **Fixed** (plan
    §3).
 4. The differential check's `rdiff/Cargo.lock` was git-ignored, but `run.sh` builds `--locked`, so
-   a fresh clone could not run it. **Fixed** in `b4cf8d9` (lock tracked).
+   a fresh clone could not run it. **Fixed** in `d8435ed` (lock tracked).
 5. The differential check was built with whatever Rust toolchain rustup selected. Found at S18
-   (F4). **Fixed**: `rdiff/rust-toolchain.toml` pins Rust 1.96 (`1640c77`).
+   (F4). **Fixed**: `rdiff/rust-toolchain.toml` pins Rust 1.96 (`aacfbf7`).
 6. `formal/README.md` status line was stale ("S03: toolchain only"). Found at S18 (F1).
-   **Fixed** in `1640c77`.
+   **Fixed** in `aacfbf7`.
 7. The macOS Aeneas release bundle links `/nix/store` libraries, so its binaries do not start on
    a plain Mac. Found at S03. **Worked around** (`DYLD_FALLBACK_LIBRARY_PATH=/usr/lib`); not
    reported upstream.
@@ -366,7 +366,7 @@ Defects found in the plan, documents and tooling, with their state:
 12. The plan (S04a, Section 5), the guides and `docs/VERIFICATION.md` name three CI workflows;
     only `.github/workflows/lean-build.yml` existed. Found at S19. **Fixed** (2026-11-23):
     `aeneas-translation.yml` and `patched-tests.yml` written, reviewed and checked locally
-    (the CI-workflows evidence (git history at 01bdc9b)); they have not run on GitHub yet (S17).
+    (the CI-workflows evidence (git history at 223ff12)); they have not run on GitHub yet (S17).
 
 Items 1–3 are in the plan text the specifications were checked against, not in the Rust code.
 
@@ -381,11 +381,11 @@ Human decisions and actions:
   agent reviews (no blocking; a side-by-side run of upstream and the patched copy gave identical
   results on 2,463,458 cases) and the human sign-off on 2026-11-23. Landing the refactor upstream
   would let the patch be deleted and the targets become `ORIGINAL`. (Before 2026-11-23 this item
-  read: not landed in the fork; results about local commit `9b030c6` / `1640c77`.)
+  read: not landed in the fork; results about local commit `f8fb6a7` / `aacfbf7`.)
 - **S01–S04a acceptance**: `IN_PROGRESS` on the board; S02 lacks `CLAUDE.md` and its own review.
 - **CI has never run on GitHub**: the three workflows (`lean-build.yml`,
   `aeneas-translation.yml`, `patched-tests.yml`) need a push; the last two were checked only
-  locally on macOS (the CI-workflows evidence (git history at 01bdc9b)). S17 (each CI check shown to fail once on a
+  locally on macOS (the CI-workflows evidence (git history at 223ff12)). S17 (each CI check shown to fail once on a
   throwaway branch) is `NOT_STARTED`.
 - **`docs/VERIFICATION.md` Section 9 vs the CI workflows** (the guide is kept verbatim; human
   decision pending): it gives generic trigger paths including `Cargo.lock` (not committed here),
@@ -394,7 +394,7 @@ Human decisions and actions:
   `scripts/apply-patches.sh` uses `patch -p1 -F 0` in file-name (lexical) order.
 - **Pilot artifacts and per-step evidence**: removed from the working tree on 2026-11-23 (human
   decision), together with the W-batch procedure; they remain in git history (last at commit
-  `01bdc9b`: `formal/docs/evidence/`, `formal/docs/review/`). The pilot record (`formal/docs/pilot/`,
+  `223ff12`: `formal/docs/evidence/`, `formal/docs/review/`). The pilot record (`formal/docs/pilot/`,
   `formal/docs/pilot.md`, whose logs contained local paths) was removed from git history on
   2026-11-23 (human decision).
 - **No shared verification lockfile**: `Cargo.lock` is not committed (plan Section 4), so
@@ -407,16 +407,16 @@ Human decisions and actions:
 - **Upstream Aeneas `toStr` issue** (`Aeneas/Std/String.lean`): to be filed by a human; after a
   fix and a rev bump, `native-axioms.lock` can be emptied.
 
-Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evidence (git history at 01bdc9b)):
+Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evidence (git history at 223ff12)):
 - S03 X4: `Specs` imports `Proofs`, so a global instance or notation in `proofs/` could change a
-  spec statement's meaning; no structural fix decided. At `1640c77` a text search finds no
+  spec statement's meaning; no structural fix decided. At `aacfbf7` a text search finds no
   `instance`, `notation` or infix declaration in `proofs/` or `trusted/` (the two `Decidable`
   instances are in `specs/Defs/`).
 - S03 R5a-1: the word bans and allowlists of `lean-guard.sh sources` can be bypassed by gluing a
   banned token to a preceding literal or `)`.
 - S03 R5a-2: `axioms.lock` locks referenced constants by name only (moot while it is empty).
 - S08–S09 (R3a-1, R3a-2): nothing enforces that `RmcpExternal` imports only Aeneas and
-  `Rmcp.Types` (at `1640c77` it does: `import Aeneas`, `import Rmcp.Types`), and global
+  `Rmcp.Types` (at `aacfbf7` it does: `import Aeneas`, `import Rmcp.Types`), and global
   `notation`/`instance` in `trusted/` is not banned; a root-level name in `trusted/` could make a
   generated name ambiguous. Reviewers check these by hand.
 - External models are not covered by any lock: a hash lock over the declarations of
@@ -426,10 +426,10 @@ Documents:
 - `docs/VERIFICATION.md` differs from the project's design in eight documented places (build
   gate, `#guard_msgs` form, generated root module, reading `proofs/`, `globs`, native-code
   axioms, externals as definitions (amended), `theorem Theorems.…` instead of `recall`).
-- Docs-sync round 3 (2026-11-22) left ten wording items open; at `1640c77` items (7) base64
+- Docs-sync round 3 (2026-11-22) left ten wording items open; at `aacfbf7` items (7) base64
   `0.23.x` and (8) `b64_decode` no longer appear in the guides; the others were not re-checked.
 - The guides do not describe the `sources` attribute and `#`-command allowlists or the
-  `lean-guard.sh fresh` step (text search at `1640c77`).
+  `lean-guard.sh fresh` step (text search at `aacfbf7`).
 
 Deferred proof and record polish (phase C, plan Section 12; no statement change):
 - Phase B proofs use flexible tactics (`simp`, `simp_all`, `step*`, `scalar_tac`, `nlinarith`,
@@ -444,7 +444,7 @@ Deferred scope:
 - Negative round trips (tampered token or other key → `IntegrityCheckFailed`): provable only
   under a no-collision premise on the opaque HMAC model (S15, decided 2026-11-23: deferred).
 - Specifications for `open`, `open_with`, `new`, `try_new`; the remaining plan Section 12 items.
-  Next-sprint scope: the S19 evidence (git history at 01bdc9b).
+  Next-sprint scope: the S19 evidence (git history at 223ff12).
 
 ## Incident
 
@@ -453,6 +453,6 @@ its destination; it ran for about three minutes before it was killed. Every unli
 no deletion was found afterwards. The output-directory check now refuses `/`, a second guard
 runs before `rsync --delete`, `RMCP_LLBC_DIR` is guarded (fix round 4, V3), and the agent role
 files (`.claude/agents/*.md`, local only since 2026-11-23, "Safety") restrict destructive commands to scratch directories.
-Details: the S03 evidence (git history at 01bdc9b), "U6: output directory".
+Details: the S03 evidence (git history at 223ff12), "U6: output directory".
 
 [plan]: ../../docs/MCP_SDK_Verification_Master_Plan_EN.md

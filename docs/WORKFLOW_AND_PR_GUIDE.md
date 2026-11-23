@@ -231,7 +231,7 @@ The build gate (human decision, S03): every `[[lean_lib]]` in `formal/lakefile.t
 project's modules, including `sorry`, and runs the `#guard_msgs` checks. `lake build --wfail` is
 not used: the pinned Aeneas Lean library has four `sorry` warnings
 (`Aeneas/Std/Slice.lean:363,586`, `Aeneas/Std/StringIter.lean:12,15`) that Lake replays on every
-build, so `--wfail` can never pass (the S03 evidence (git history at 01bdc9b)). The gate can return to
+build, so `--wfail` can never pass (the S03 evidence (git history at 223ff12)). The gate can return to
 `--wfail` once an Aeneas bump removes them. Because a file can switch `warningAsError` off, hide
 messages, add declarations without a kernel check, or run code during the build,
 `scripts/lean-guard.sh` adds these checks (implemented in `scripts/lean_guard.py`, run with

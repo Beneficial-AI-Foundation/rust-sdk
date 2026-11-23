@@ -78,7 +78,7 @@ lakefile's `git`, `rev` and `subDir`; Mathlib at `fabf563a7c95a166b8d7b6efca11c8
 `scripts/lean_guard.py`, updated in the same PR as the Aeneas rev), and unless `lean-toolchain` is
 exactly `leanprover/lean4:v4.31.0` (`LEAN_TOOLCHAIN`, same rule). Whether the Mathlib pin and
 its prebuilt oleans belong to the trusted base, and how they are checked, is an open scope
-question for the human (the S03 evidence (git history at 01bdc9b), open items).
+question for the human (the S03 evidence (git history at 223ff12), open items).
 
 | Component | Version | Source |
 |---|---|---|
@@ -143,7 +143,7 @@ The build gate (decided at S03): every library sets `warningAsError`, and CI run
 `lake build`, which fails on any warning in this project's modules, including `sorry`.
 `lake build --wfail` is not used because the pinned Aeneas Lean library has four `sorry`
 warnings that Lake replays on every build (`Aeneas/Std/Slice.lean:363,586`,
-`Aeneas/Std/StringIter.lean:12,15`; the S03 evidence (git history at 01bdc9b)) and `--wfail` fails on them.
+`Aeneas/Std/StringIter.lean:12,15`; the S03 evidence (git history at 223ff12)) and `--wfail` fails on them.
 
 A file could switch `warningAsError` off, hide messages (`#guard_msgs (drop all) in`) or use a
 construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the checks are in
@@ -187,7 +187,7 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
     `CommandElabM`, `MacroM`, `SimpM`, `DelabM`, `CommandElab`, `TermElab`, and `Elab` (so both
     `Lean.Elab` and `open Lean Elab`). The list was derived from the pinned toolchain and packages:
     every syntax whose elaborator or macro reaches an evaluation primitive or builds such syntax
-    (the S03 evidence (git history at 01bdc9b), fix round 5, W1);
+    (the S03 evidence (git history at 223ff12), fix round 5, W1);
   - any `#` command except `#check`, `#print` and `#guard_msgs` (`#eval`, `#exit`, `#guard`,
     Aeneas's `#assert`, Plausible's `#test`, `#leansearch`, ... run code or have side effects);
     `#guard_msgs` only in `specs/Specs.lean` and `specs/Specs/`, and there only as
@@ -234,7 +234,7 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
   alias (see "Trusted base"); or the kernel rejects a project constant when all of them are replayed
   (`Lean.Environment.replay`, the check `leanchecker` runs) onto the non-project modules they
   import. The replay catches declarations that were added without a kernel check (for example
-  through `debug.skipKernelTC` set from a metaprogram, the S03 evidence (git history at 01bdc9b), V1) and altered
+  through `debug.skipKernelTC` set from a metaprogram, the S03 evidence (git history at 223ff12), V1) and altered
   `.olean` files. The audit reads the `.olean` files without running any code from them
   (`loadExts := false`) and runs with the toolchain's own `lean`, not `lake env`, with the
   toolchain library first on `LEAN_PATH`; `leanchecker` is not run separately (it uses the same
@@ -252,7 +252,7 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
   through any inductive/constructor cycle, not only a mutual block: Lean stores per module the axiom
   set of each constant computed with a shared cache, and a constant entered while its cycle is open
   gets an incomplete set (`#print axioms rmcp.model.request_state.Keys.Single` omits the `HashMap`
-  and `RandomState` axioms that `Keys` reports; the S03 evidence (git history at 01bdc9b)). `axioms` fails if a used
+  and `RandomState` axioms that `Keys` reports; the S03 evidence (git history at 223ff12)). `axioms` fails if a used
   axiom declared in a root of `RmcpExternal` is not in `trusted/axioms.lock`, if a lock entry names
   no axiom declared in those roots (stale), or if the sha256 of a declared axiom's canonical
   statement differs from its entry (a structural text of the type `Expr`: constants by full name
@@ -295,7 +295,7 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
   `Defs`, `Proofs` or `Specs` module imports `Rmcp.Funs` (S06) or they become default targets (a
   change of `lakefile.toml` by the lead; the unused placeholder externals no longer block it:
   with `Rmcp` and `RmcpExternal` added to the default targets, `lake build` and the `sources`,
-  `build-log` and `axioms` checks pass, the S03 evidence (git history at 01bdc9b), test D1); until then native-lock
+  `build-log` and `axioms` checks pass, the S03 evidence (git history at 223ff12), test D1); until then native-lock
   entries for `Rmcp.Types`/`Rmcp.Funs` are reported as not checked (entries for any other module
   fail) and any `axioms.lock` entry fails as stale, even when `.olean` files of `Rmcp` exist from
   an explicit `lake build Rmcp RmcpExternal`. Since S06 the proof modules import `Rmcp.Funs`, so
@@ -304,7 +304,7 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
   the `expect` message in `rs1_fallbacks_verify`). These side conditions also have a kernel proof
   (`simp only [U32.max, U32.numBits, UScalarTy.numBits]; decide`, axioms `[propext]`), so an
   upstream Aeneas `toStr` fix and a rev bump would remove the axioms; that is preferred to a
-  local replacement (open item, the S04a evidence (git history at 01bdc9b));
+  local replacement (open item, the S04a evidence (git history at 223ff12));
 - the Aeneas Lean-library archive downloaded by Lake does not match its committed sha256, the
   installed Aeneas build and the archive do not hold the same regular files with the same bytes
   (every file except `*.hash` and `*.trace`: `.olean`, `.olean.private`, `.olean.server`,
@@ -357,7 +357,7 @@ Accepted residual limits (human decision, 2026-11-22; S03 is accepted with them)
   `Parser.runParserCategory` and run with `elabCommand` from code that some executor runs; the
   configuration terms and rule clauses of tactics that compile and run them (`linarith`,
   `nlinarith`, `aesop` and its wrappers, `saturate`/`forward`, Aeneas `step`/`progress`; a
-  `linarith` discharger given as a `do` block ran during the build, the S03 evidence (git history at 01bdc9b));
+  `linarith` discharger given as a `do` block ran during the build, the S03 evidence (git history at 223ff12));
   and constructs in packages not yet seen. The run-code-free barrier against a forged artifact
   (V2) is therefore not closed against a determined attacker; review is the barrier.
 - The locks cover axioms only. The external models of `trusted/` are definitions, structures and
@@ -375,7 +375,7 @@ Accepted residual limits (human decision, 2026-11-22; S03 is accepted with them)
   `instance (priority := high) : OfNat Nat 2 := ⟨1⟩` makes `theorem spec : (1 : Nat) = 2`
   provable, and every gate passes). Reading `trusted/` and `specs/` is therefore not enough for
   an auditor while this holds; `proofs/` must be read for such declarations too. The structural
-  fix is still undecided (the S03 evidence (git history at 01bdc9b), open items; `docs/STATUS.md`, open items); at
+  fix is still undecided (the S03 evidence (git history at 223ff12), open items; `docs/STATUS.md`, open items); at
   S19 a text search finds no `instance`, `notation` or infix declaration in `proofs/`.
 - The Mathlib oleans of job `check` come from Mathlib's cache server and are not checked
   against a digest here (open scope question, see Toolchain).
@@ -399,7 +399,7 @@ Accepted residual limits (human decision, 2026-11-22; S03 is accepted with them)
 Rmcp RmcpExternal` builds them); `lake build` builds `Defs`, `Proofs` and `Specs`. Since S06 the
 proof modules import `Rmcp.Funs` (and so `Rmcp.FunsExternal`), so `lake build` builds and the
 `axioms` check audits both through that import. Making them default targets is a change of
-`lakefile.toml` by the lead; nothing blocks it (the S03 evidence (git history at 01bdc9b), test D1).
+`lakefile.toml` by the lead; nothing blocks it (the S03 evidence (git history at 223ff12), test D1).
 
 ## Trusted base
 
@@ -446,7 +446,7 @@ starts with `rmcp`, including auxiliary ones such as `rmcp.x_def`, or any alias 
 module (`export`, read from Lean's alias table), fails. Layer (2) runs only when `RmcpExternal`
 is reached from the default targets (once a `Defs`/`Proofs`/`Specs` module imports `Rmcp.Funs`
 and so `Rmcp.FunsExternal`, or `RmcpExternal` becomes a default target, see "Layout"; until then
-only in a scratch audit, see the S04a evidence (git history at 01bdc9b); since S06 layer (2) runs in every
+only in a scratch audit, see the S04a evidence (git history at 223ff12); since S06 layer (2) runs in every
 `axioms` check). Open routes (human decision 2026-11-23; still not enforced at S19): layer (2)
 checks only constants declared in the `RmcpExternal` roots themselves, so a shadowing
 `rmcp.<x>` declared in another project module that a trusted root imports passes both layers
