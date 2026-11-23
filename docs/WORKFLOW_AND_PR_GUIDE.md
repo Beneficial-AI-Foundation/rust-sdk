@@ -18,7 +18,7 @@ Work runs in three phases (plan Section 8, "Process"):
 1. **Phase A, once for the whole crate:** scope, translate, review the trusted part of the
    translation (exclusions, opaque items, patches, external axioms), turn on CI.
 2. **Phase B, per function, pipelined in call-graph batches:** spec draft, at least two
-   independent agent reviews, human sign-off, proof, `recall` in the spec file.
+   independent agent reviews, human sign-off, proof, restated `theorem` in the spec file.
 3. **Phase C, once after every proof is checked:** proof refinement with spec statements frozen.
 
 A proof starts only after its own spec is signed off, and after the axioms it uses are signed off.
@@ -203,7 +203,7 @@ by hand and list only accepted modules:
 
 - add a module to `Defs.lean` when its definitions are signed off;
 - add a proof module to `Proofs.lean` when its proof is complete;
-- add a statement to a spec file under `Specs/` (with `recall` and its `#guard_msgs` axiom check)
+- add a statement to a spec file under `Specs/` (as a `theorem Theorems.…` proved by the spec theorem, with its `#guard_msgs` axiom check)
   only when its proof is complete and its spec is `REVIEWED`.
 
 Statements awaiting proofs stay in `formal/specs/Drafts/`, which belongs to no library and is never
@@ -539,7 +539,7 @@ afterwards to make the proof go through. Any change to a signed-off statement re
 
 AI-generated proofs are welcome if they comply with the [style guide](STYLE_GUIDE.md) and this
 document. In phase B any working proof is acceptable; refinement waits for phase C. The proof
-worker edits only its assigned file under `formal/proofs/Proofs/` and the statement's `recall`
+worker edits only its assigned file under `formal/proofs/Proofs/` and the statement's restated theorem
 entry in the spec file. It may not change statements, `Defs`, generated files, or anything under
 `formal/trusted/`, and may not add axioms, `sorry`, `native_decide`, or `bv_decide`.
 

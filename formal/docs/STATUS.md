@@ -225,7 +225,7 @@ None recorded.
   whether E09/E10 use it or a premise over the decoded parts is decided when they are drafted
   (`evidence/S10.md`, "Notes for review").
 - `docs/VERIFICATION.md` (the Aeneas process guide, added 2026-11-22 verbatim) differs from this
-  project's decided design in seven places, kept as documented deviations: (1) it uses
+  project's decided design in eight places, kept as documented deviations: (1) it uses
   `lake build --wfail`; the project uses `warningAsError` per library plus the lean-guard checks
   (human decision: the pinned Aeneas library replays 4 `sorry` warnings); (2) its spec-file
   example uses `#guard_msgs (whitespace := lax, substring := true)`; the guard accepts only a bare
@@ -239,9 +239,11 @@ None recorded.
   `Rmcp.Types`/`Rmcp.Funs` and locked in `formal/trusted/native-axioms.lock` (human decision
   2026-11-22), and no other; (7) it states the behaviour of an opaque item as a Lean axiom with a
   consistency model; since S08–S09 the project states it as a definition or `ok` of an `opaque`
-  constant and declares no trusted axiom (human decision 2026-11-23). A wording change of
-  `docs/VERIFICATION.md` for (7) is proposed with S08/S09, not applied (the file stays verbatim
-  until the human decides; `evidence/S08.md`, "Open items").
+  constant and declares no trusted axiom (human decision 2026-11-23). `docs/VERIFICATION.md` was
+  amended for (7) at the S08/S09 incorporation (human approval 2026-11-23); (8) its spec files
+  restate each statement with `recall` (§7); the project restates it as a `theorem Theorems.…`
+  proved by the spec theorem, as in the curve25519-dalek fork's `ForHumans/Theorems` (human decision
+  2026-11-23), so `Specs` no longer imports `Mathlib.Tactic.Recall`.
 - S08–S09 (externals rewrite), open by human decision 2026-11-23 (S04a review R3a-1, R3a-2):
   (1) a shadowing `rmcp.<x>` declared in a project module that a trusted root imports passes all
   gates — enforce plan Section 5's rule that `RmcpExternal` imports only Aeneas and `Rmcp.Types`;

@@ -107,7 +107,7 @@ directions are fixed:
 | `RmcpExternal` | `trusted` | Hand-written `Rmcp.TypesExternal`, `Rmcp.FunsExternal`: external models (definitions, structures, `opaque` constants; no axiom since S08–S09) | Aeneas, `Rmcp.Types` (the generated `FunsExternal` template imports it) |
 | `Defs` | `specs` | Pure definitions used by statements: byte-level models, transcripts, codec-state invariant | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
 | `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, laws of the external models (`Proofs/External/`; consistency models only if a trusted axiom is added again) | `Rmcp`, `RmcpExternal`, `Defs` |
-| `Specs` | `specs` | One spec file per Rust source file: `recall` of each accepted statement and its axioms | `Defs`, `Proofs`, `Mathlib.Tactic.Recall` (the `recall` command) |
+| `Specs` | `specs` | One spec file per Rust source file: each accepted statement restated as a `theorem` in `Theorems`, and its axioms | `Defs`, `Proofs` |
 
 - `Proofs` never imports `Specs`, and nothing imports `Specs`.
 - A statement is phrased only with `Defs` definitions (and the translated function), so that its
@@ -261,7 +261,7 @@ never built.
 
 Round-trip and dispatch theorems that span several functions are proved in
 `formal/proofs/Proofs/Model/RequestState/Roundtrip.lean` (`frame_roundtrip` in
-`Proofs/Model/RequestStateWire/Frame.lean`), and recalled at the end of the spec file of the
+`Proofs/Model/RequestStateWire/Frame.lean`), and restated at the end of the spec file of the
 corresponding Rust file.
 
 - Theorem names say what the result is, following the [Mathlib naming guidelines][mathlib-naming]
@@ -284,23 +284,31 @@ result.
   the statements use, and lists the items of that Rust file that were not translated (plan
   Section 2.3).
 - Statements appear in Rust source order, composition theorems last.
-- Each statement is restated with `recall` from its proof, with a docstring giving the plan ID and
-  a one-line summary, and is followed by its axioms, checked by `#print axioms`:
+- Each statement is restated as a `theorem` in the `Theorems` namespace (as in the
+  curve25519-dalek fork's `ForHumans/Theorems`), with the statement text of the signed-off spec,
+  proved by the spec theorem it restates (so Lean checks the restated type against the proved
+  one). It has a docstring giving the plan ID and a one-line summary, and is followed by its
+  axioms, checked by `#print axioms`. Names: `Theorems.<module>.<function>` without `_spec` for
+  targets (`Theorems.request_state_wire.parse_rs1`,
+  `Theorems.request_state.RequestStateCodec.open_rs1_at`); `Theorems.External.<original name>`
+  for the laws of the external models, keeping the original name, because a shorter one could
+  shadow a Rust function name that the statements mention.
 
   ```lean
-  open rmcp.model.request_state_wire  -- for `Rs1Parts`; the theorem is still named in full
+  open rmcp.model.request_state_wire  -- for `Rs1Parts`; the function is still named in full
 
   /-- W08 `parse_rs1`: `Some {body, tag}` iff the token splits on `.` into
   `["rs1", body, tag]`. -/
-  recall rmcp.model.request_state_wire.parse_rs1_spec (s : Slice U8) :
+  theorem Theorems.request_state_wire.parse_rs1 (s : Slice U8) :
       rmcp.model.request_state_wire.parse_rs1 s ⦃ (r : Option Rs1Parts) =>
-        r = Defs.parseRs1 s.val ⦄
+        r = Defs.parseRs1 s.val ⦄ :=
+    rmcp.model.request_state_wire.parse_rs1_spec s
 
   /--
-  info: 'rmcp.model.request_state_wire.parse_rs1_spec' depends on axioms: [propext, Quot.sound]
+  info: 'Theorems.request_state_wire.parse_rs1' depends on axioms: [propext, Quot.sound]
   -/
   #guard_msgs in
-  #print axioms rmcp.model.request_state_wire.parse_rs1_spec
+  #print axioms Theorems.request_state_wire.parse_rs1
   ```
 
   Use exactly this form: a bare `#guard_msgs in` (no options such as `drop`, `whitespace` or

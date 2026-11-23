@@ -20,7 +20,7 @@ Date: 22 November 2026. This is the single current plan.
 | New functions are public, foundational (pure byte/integer logic, no I/O) and reusable outside the codec | 2 |
 | Every target translates with the pinned toolchain; no target may depend on an unresolved blocker | 2, 9 |
 | Functions that cannot be translated with the pinned toolchain are excluded from the project, not deferred | 2.3, 9 |
-| Layout and process of `VERIFICATION.md`: a single `formal/` folder, one translated configuration, spec files with `recall` and `#print axioms` checks | 5, 9 |
+| Layout and process of `VERIFICATION.md`: a single `formal/` folder, one translated configuration, spec files restating each theorem (as `theorem Theorems.…`) with `#print axioms` checks | 5, 9 |
 | Aeneas pinned by one GitHub release tag in `formal/lakefile.toml`, read by both scripts | 5 |
 | Patches, axioms and spec statements are reviewed by multiple independent agents, then signed off by a human | 4, 6, 10 |
 | CI checks that the translation is current, the Lean project builds, and the patched copy passes the crate's tests | 5, 8 |
@@ -384,7 +384,7 @@ docs/AI_PR_REVIEW_QUESTIONS.md                  UPDATE S02   align with formal/ 
 | `RmcpExternal` | `trusted` | `Rmcp.TypesExternal`, `Rmcp.FunsExternal` | Aeneas, `Rmcp.Types` (the generated `FunsExternal` template imports it) |
 | `Defs` | `specs` | `Defs.*` | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
 | `Proofs` | `proofs` | `Proofs.*` | `Rmcp`, `RmcpExternal`, `Defs` |
-| `Specs` | `specs` | `Specs.*` | `Defs`, `Proofs`, `Mathlib.Tactic.Recall` (the `recall` command) |
+| `Specs` | `specs` | `Specs.*` | `Defs`, `Proofs` |
 
 - Spec statements use only `Defs` definitions, so their meaning never depends on proof-private definitions. `Proofs` never imports `Specs`; nothing imports `Specs`.
 - The library roots (`Defs.lean`, `Specs.lean`, `Proofs.lean`) are maintained by hand. Statements awaiting proofs stay in `formal/specs/Drafts/`, outside every library; a proof with `sorry` is never merged, because every library sets `warningAsError` and CI fails on any warning in this project's files (CI, below).
@@ -393,24 +393,25 @@ docs/AI_PR_REVIEW_QUESTIONS.md                  UPDATE S02   align with formal/ 
 
 ### Spec files
 
-There is one spec file per Rust source file (VERIFICATION.md §7): `Specs/Model/RequestStateWire.lean` and `Specs/Model/RequestState.lean`. Each lists its file's targets in source order. Each statement is restated with `recall` from its proof, followed by the axioms that proof depends on, checked by `#print axioms`:
+There is one spec file per Rust source file (VERIFICATION.md §7): `Specs/Model/RequestStateWire.lean` and `Specs/Model/RequestState.lean`. Each lists its file's targets in source order. Each statement is restated as a `theorem` in the `Theorems` namespace (as in the curve25519-dalek fork's `ForHumans/Theorems`; human decision 2026-11-23), proved by the spec theorem it restates, so Lean checks the restated type against the proved one. It is followed by the axioms that proof depends on, checked by `#print axioms`:
 
 ```lean
 open rmcp.model.request_state_wire  -- for `Rs1Parts`; the theorem is still named in full
 
 /-- `parse_rs1`: `Some {body, tag}` iff the token splits on `.` into `["rs1", body, tag]`. -/
-recall rmcp.model.request_state_wire.parse_rs1_spec (s : Slice U8) :
+theorem Theorems.request_state_wire.parse_rs1 (s : Slice U8) :
     rmcp.model.request_state_wire.parse_rs1 s ⦃ (r : Option Rs1Parts) =>
-      r = (Defs.parseRs1 s.val) ⦄
+      r = (Defs.parseRs1 s.val) ⦄ :=
+  rmcp.model.request_state_wire.parse_rs1_spec s
 
-/-- info: 'rmcp.model.request_state_wire.parse_rs1_spec' depends on axioms: [propext, Quot.sound] -/
+/-- info: 'Theorems.request_state_wire.parse_rs1' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
-#print axioms rmcp.model.request_state_wire.parse_rs1_spec
+#print axioms Theorems.request_state_wire.parse_rs1
 ```
 
 The guard accepts only this form: a bare `#guard_msgs in` (no options) followed by exactly one `#print axioms` line, so the docstring must match the complete message, which prints the full name of the theorem. The module docstring states the translated configuration, names the `Defs` the statements use, and lists what was not translated (Section 2.3). If a proof starts using a new axiom, the `#guard_msgs` check fails the build, so every change to the trusted base shows up as a diff of a spec file.
 
-**Theorem names.** Each identifier is the full generated function name with `_spec`, per the style guide. Aeneas generates every definition inside `namespace rmcp` (run-3 `Funs.lean`: `rmcp.model.request_state_wire.parse_rs1`, `rmcp.model.request_state.RequestStateCodec.open_rs1_at`), so the spec theorems are, for example, `rmcp.model.request_state_wire.parse_rs1_spec` and `rmcp.model.request_state.RequestStateCodec.open_rs1_at_spec`; proof files may open the namespace, but `recall`, `#print axioms` and the `#guard_msgs` message use the full name. The composition theorems are `rs1_roundtrip`, `rs2_roundtrip`, `open_at_roundtrip_rs1`, `open_at_roundtrip_rs2` (end of `RequestState.lean`) and `frame_roundtrip` (`RequestStateWire.lean`). Each spec covers both success and error results, not only the success path.
+**Theorem names.** Each identifier is the full generated function name with `_spec`, per the style guide. Aeneas generates every definition inside `namespace rmcp` (run-3 `Funs.lean`: `rmcp.model.request_state_wire.parse_rs1`, `rmcp.model.request_state.RequestStateCodec.open_rs1_at`), so the spec theorems are, for example, `rmcp.model.request_state_wire.parse_rs1_spec` and `rmcp.model.request_state.RequestStateCodec.open_rs1_at_spec`; proof files may open the namespace. In the spec files the restated theorem is `Theorems.<module>.<function>` (for example `Theorems.request_state_wire.parse_rs1`), and the laws of the external models are `Theorems.External.<original name>`; `#print axioms` and the `#guard_msgs` message use that full name. The composition theorems are `rs1_roundtrip`, `rs2_roundtrip`, `open_at_roundtrip_rs1`, `open_at_roundtrip_rs2` (end of `RequestState.lean`) and `frame_roundtrip` (`RequestStateWire.lean`). Each spec covers both success and error results, not only the success path.
 
 ### CI
 
@@ -449,7 +450,7 @@ One vocabulary is used everywhere.
 Specifications follow VERIFICATION.md §6: drafted (by a person or the `mcp-spec` agent), **reviewed independently by multiple agents**, then signed off by a named human spec owner, all before any proof work starts. Only the spec owner sets `spec: REVIEWED` or moves a task to `ACCEPTED`. The drafter is recorded in `spec_drafted_by`, and an AI drafter never sets `REVIEWED`. Any change to an accepted statement returns `spec` to `DRAFT`.
 
 **Verified** requires all of the following:
-- `proof: CHECKED` (the proof is in `Proofs`, and the statement is `recall`ed in `Specs` with its `#guard_msgs` check);
+- `proof: CHECKED` (the proof is in `Proofs`, and the statement is restated in `Specs` as a `theorem Theorems.…` with its `#guard_msgs` check);
 - `spec: REVIEWED`;
 - `linkage: ORIGINAL`;
 - the external models it uses are signed off (S08/S09), and any axiom its `#guard_msgs` list shows besides `propext`, `Classical.choice` and `Quot.sound` is in the trusted-base section of `STATUS.md`. `#print axioms`, the spec files' `#guard_msgs` lists and `axioms.lock` show axioms only: the external models (definitions, structures and `opaque` constants of `trusted/`) do not appear in them, so a change to a model is caught only by review of `formal/trusted/`; a hash lock over the declarations of `RmcpExternal` is an option for the human at the S08/S09 sign-off (not adopted).
@@ -553,7 +554,7 @@ The work runs in three phases. Only phase B is per function. Translation and its
 Phase A — once, crate-wide (S01–S04a, S08–S09)
   scope → translate → review the translation → CI on
 Phase B — per function, pipelined in batches (S05–S15)
-  spec draft → ≥ 2 independent agent reviews → human sign-off → proof → recall in spec file
+  spec draft → ≥ 2 independent agent reviews → human sign-off → proof → restated theorem in spec file
 Phase C — once, after every proof is checked (next sprint, Section 12)
   proof refinement, with spec statements frozen
 ```
@@ -581,7 +582,7 @@ Phase B may start drafting specs during phase A (S05 needs only S01), but no pro
 In each pipeline:
 - The drafter (the `mcp-spec` agent or a person) writes the statement into `formal/specs/Drafts/`, citing the Rust lines for each clause.
 - At least two `mcp-review` runs review it independently with `AI_PR_REVIEW_QUESTIONS.md`. Each checks three things: is the spec faithful to the Rust and its documentation, is it strong enough to be useful, and does it assume what it should prove? Then the spec owner signs it off (`spec: REVIEWED`).
-- An `mcp-lean` worker who did not draft the spec proves it in its own proof file. Any working proof is acceptable. The worker then moves the statement from `Drafts/` into the spec file with `recall` and a `#guard_msgs` axiom check, and CI must pass.
+- An `mcp-lean` worker who did not draft the spec proves it in its own proof file. Any working proof is acceptable. The worker then moves the statement from `Drafts/` into the spec file as a `theorem Theorems.…` proved by the spec theorem, with a `#guard_msgs` axiom check, and CI must pass.
 
 **What sends work back.** Each of these is recorded in `formal/docs/blockers/Sxx.md` or the function record:
 
@@ -604,7 +605,7 @@ In each pipeline:
 | S04 | D1 | S01 | `formal/docs/pilot.md`, `formal/docs/pilot/`, `formal/docs/evidence/S04.md`, `typos.toml` | Extraction — runs 1–3 artifacts (refactor patch, Charon arguments, scripts, logs, token harness) copied from scratch |
 | S04a | D1–2 | S03, S04 | `request_state_wire.rs`, `request_state.rs`, `model.rs`; `formal/translation/**`; `formal/trusted/Rmcp/*External.lean`; `aeneas-translation.yml`, `patched-tests.yml` | Extraction + reviewer — two PRs, as the workflow guide requires: (1) the refactor, with the checklist of Section 9 passing, landed in the fork and the pinned commit recorded; (2) the translation, where all three CI workflows pass and every target is present in `Funs.lean` with a real body |
 | S05 | D2 | S01 | `Defs.lean`, `Defs/Wire.lean`, `Defs/RequestState.lean`, `formal/specs/Drafts/`, `Specs.lean`, `Proofs.lean` | Spec drafter (`mcp-spec` or a person) + independent agent reviewers + spec owner — W01–W15 and E01–E04 statements reviewed by ≥ 2 independent agents, then signed off |
-| S06 | D2–4 | S04a, S05 | W01–W06, W12–W15 proof files; `Specs/Model/RequestStateWire.lean` | Lean — W01–W06, W12–W15 checked and `recall`ed; W01 overflow domain explicit |
+| S06 | D2–4 | S04a, S05 | W01–W06, W12–W15 proof files; `Specs/Model/RequestStateWire.lean` | Lean — W01–W06, W12–W15 checked and restated in the spec file; W01 overflow domain explicit |
 | S07 | D3–4 | S06 | E01–E04 proof files; `Specs/Model/RequestState.lean` | Lean — E01–E04 checked using only W theorems |
 | S08 | D3–4 | S04a | `formal/trusted/Rmcp/FunsExternal.lean` (model functions, HMAC, Base64), `Proofs/External/Base64.lean`, `Proofs/External/String.lean`, `Proofs/External/Prim.lean`, `formal/specs/Drafts/External.lean` and `Drafts/Staged/External.lean` (shared with S09), `formal/trusted/evidence/README.md`, `formal/trusted/evidence/differential/`, `formal/docs/evidence/S08.md` | Extraction + reviewers + spec owner — `prim` models (definitions, opaque `hmacSha256`; no axiom, decision 2026-11-23) and their statements reviewed by ≥ 2 independent agents, then signed off; Base64 laws proved; RFC 4231 and Base64 vectors pass through `prim` in Rust tests; the differential check passes |
 | S09 | D3–4 | S04a | `formal/trusted/Rmcp/FunsExternal.lean` (standard library, `HashMap`, `zeroize`, clock), `TypesExternal.lean`, `Proofs/External/Std.lean`, `formal/specs/Drafts/External.lean` and `Drafts/Staged/External.lean` (shared with S08), `formal/trusted/evidence/README.md`, `formal/docs/evidence/S09.md`, the `#guard_msgs` update of `formal/specs/Drafts/Staged/RequestState.lean` | Extraction + reviewers + spec owner — standard-library, `HashMap`, `zeroize` and clock models (definitions and structures; opaque `sipHash13`, `nowMs`, `SerdeJsonErrorImpl`; no axiom) and their statements reviewed by ≥ 2 independent agents, then signed off; the Rust tests named in the evidence pass |
@@ -766,7 +767,7 @@ The lead is the main Claude Code session. It owns the board, integrates changes,
 |---|---|---|
 | `mcp-extraction.md` | Run the install and translate scripts, list external declarations, draft external models and patches, write reproducers for new failures | `formal/trusted/Rmcp/*External.lean`, `formal/trusted/patches/`, `formal/trusted/evidence/`, `formal/docs/pilot.md`, `formal/docs/blockers/` |
 | `mcp-spec.md` | Draft specifications, `Defs` and axiom statements, each clause citing the Rust lines or plan section it encodes | the assigned `formal/specs/Defs/…` or `formal/specs/Drafts/…` file |
-| `mcp-lean.md` | Prove one signed-off spec against the generated code, then `recall` it in the spec file | the assigned `formal/proofs/Proofs/…` file and its entry in the spec file |
+| `mcp-lean.md` | Prove one signed-off spec against the generated code, then restate it in the spec file | the assigned `formal/proofs/Proofs/…` file and its entry in the spec file |
 | `mcp-review.md` | Independent review of specs, axioms and patches with `AI_PR_REVIEW_QUESTIONS.md` (run at least twice, in separate sessions, with no access to each other's reports); boundary tests and contract test vectors; may propose labelled replacement statements | `mod tests` in both target files, review notes |
 
 Start with the lead and two workers (extraction and review). Add the spec worker when S05 starts, and the Lean worker once the translation and a signed-off spec exist. Because the W proofs are independent of each other, S06 and S10 can use two Lean workers in parallel. Run one heavy build at a time until memory use is measured. A Lean LSP / Beam MCP server (goals at a point, run a tactic, `#print axioms`) speeds proof work; it is an optional aid.
@@ -779,7 +780,7 @@ name: mcp-lean
 description: Prove one signed-off request-state spec against the Aeneas translation.
 ---
 Read CLAUDE.md, docs/VERIFICATION.md and the task given by the lead.
-Edit only the assigned file under formal/proofs/Proofs/ and the spec's recall entry in formal/specs/Specs/.
+Edit only the assigned file under formal/proofs/Proofs/ and the spec's restated theorem in formal/specs/Specs/.
 Do not change spec statements, Defs, generated files, or anything under formal/trusted/.
 Do not prove a spec that this session drafted.
 Do not add axioms, sorry, native_decide or bv_decide. Follow docs/STYLE_GUIDE.md.

@@ -148,7 +148,7 @@ PR that touches several kinds needs each applicable section.
 | Kind of change | Typical files | Sections to apply |
 | --- | --- | --- |
 | Specification of one target | `formal/specs/Drafts/*.lean`, `formal/specs/Defs/*.lean` | Specification strength and error order; Status records |
-| Proof of one target | `formal/proofs/Proofs/Model/RequestState{,Wire}/*.lean`, its `recall` entry in `formal/specs/Specs/Model/*.lean` | Specification strength; Proof maintainability; Validation |
+| Proof of one target | `formal/proofs/Proofs/Model/RequestState{,Wire}/*.lean`, its restated theorem in `formal/specs/Specs/Model/*.lean` | Specification strength; Proof maintainability; Validation |
 | Refactor, source change, or Aeneas `rev` bump | `crates/rmcp/src/model/request_state{,_wire}.rs`, `formal/lakefile.toml` | Translation, refactor, and source linkage; Validation |
 | Translation, Charon settings, or patch | `crates/rmcp/Cargo.toml` (`[package.metadata.charon]`), `formal/trusted/patches/`, `formal/translation/**`, `formal/docs/pilot.md` | Translation, refactor, and source linkage; External axioms |
 | External model or axiom | `formal/trusted/Rmcp/*External.lean`, `formal/trusted/evidence/`, `formal/proofs/Proofs/External/` (and `formal/proofs/Proofs/Consistency/` if an axiom is added again), trusted base in `formal/docs/STATUS.md` | External axioms and the trust boundary |
@@ -358,7 +358,7 @@ Historical examples for each question are listed in the [appendix](#appendix-his
   `RmcpExternal`, and `Defs`, never `Specs`; nothing imports `Specs`. Does a draft with `sorry`
   stay in `formal/specs/Drafts/`, outside every library?
 - Is the statement in the spec file phrased only with `Defs` definitions, so its meaning does not
-  depend on proof-private definitions? Does its `recall` match the proved theorem, and is it in
+  depend on proof-private definitions? Does its restated `theorem Theorems.…` have the signed-off statement text and is it proved by the spec theorem, and is it in
   Rust source order with its `#guard_msgs` axiom check?
 - Does the file sit at the path the plan assigns (one file per Rust item,
   `Proofs/Model/RequestState{,Wire}/<Function>.lean`), and does the theorem use the plan's name
@@ -372,7 +372,7 @@ Historical examples for each question are listed in the [appendix](#appendix-his
   heartbeat increases justified and local?
 - Do docstrings explain the statement, the Rust lines it covers, and its assumptions, rather than
   narrate proof development? Do they state the arithmetic domain and target width when relevant?
-- Did a proof worker stay inside its assigned file and the statement's `recall` entry? The
+- Did a proof worker stay inside its assigned file and the statement's restated theorem? The
   `mcp-lean` role may not change statements, `Defs`, generated files, or anything under
   `formal/trusted/`, and may not add axioms, `sorry`, `native_decide`, or `bv_decide`.
 
