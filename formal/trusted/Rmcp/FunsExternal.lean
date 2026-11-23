@@ -21,7 +21,15 @@ where it has one (the external functions of other crates; the five opaque `rmcp`
 four `prim` functions and `RequestStateCodec::now_ms`, have none in the template). **This module
 declares no axiom.** The two things the models cannot compute are `opaque` constants, which
 add no axiom: the HMAC-SHA256 reference function `ExtModel.hmacSha256` and the clock reading
-`ExtModel.nowMs` (and, for the unused hasher, `ExtModel.sipHash13`).
+`ExtModel.nowMs` (and, for the unused hasher, `ExtModel.sipHash13`). The 26 external functions
+that the Phase 2 translation (plan step S21) added are temporary `opaque` placeholders (S21,
+last section) that assert nothing; plan steps S26/S27 replace them by exact models (plan
+Section 18). The conventions below apply to the models, not to these placeholders.
+
+Ordering note (S21): the generated external `core.result.Result.ok` shadows Aeneas' `ok` for
+every declaration after it in the namespace `core.result.Result` (and for proofs that open it), so
+such code must write `Aeneas.Std.Result.ok`; the models above it (`is_err`, `map_err`) are
+unaffected.
 
 Each definition returns `ok` exactly where the Rust function returns and `fail` where it
 panics, with the exceptions stated in its docstring. Two conventions apply throughout:
@@ -704,3 +712,240 @@ are pure in the model; no spec statement may mention the functions
 `open_authenticated_body`, is not covered). -/
 def model.request_state.RequestStateCodec.now_ms : Result Std.I64 :=
   ok ExtModel.nowMs
+
+/-! ## Placeholders of plan step S21
+
+The Phase 2 translation (plan step S21) calls 26 more external functions. Each is a temporary
+`opaque` constant with the generated name, signature and `@[rust_fun]` attribute of the
+template (in template order). `opaque` adds no axiom; its required `Inhabited` instance is
+Aeneas' `Result_Inhabited` (`fail panic`), which is never unfolded, so no statement about
+the Rust behaviour follows. Plan steps S26/S27 replace each one by an exact model (plan
+Section 18). -/
+
+/-- [core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T]}::eq]:
+    Source: '/rustc/library/core/src/array/equality.rs', lines 48:4-48:40
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq"]
+opaque Slice.Insts.CoreCmpPartialEqArray.eq
+  {T : Type} {U : Type} {N : Std.Usize} (cmpPartialEqInst : core.cmp.PartialEq
+  T U) :
+  Slice T → Array U N → Result Bool
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 668:4-668:41
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets"]
+opaque core.net.ip_addr.Ipv4Addr.octets
+  : core.net.ip_addr.Ipv4Addr → Result (Array Std.U8 4#usize)
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 728:4-728:46
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified"]
+opaque core.net.ip_addr.Ipv4Addr.is_unspecified
+  : core.net.ip_addr.Ipv4Addr → Result Bool
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 750:4-750:43
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback"]
+opaque core.net.ip_addr.Ipv4Addr.is_loopback
+  : core.net.ip_addr.Ipv4Addr → Result Bool
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 781:4-781:42
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private"]
+opaque core.net.ip_addr.Ipv4Addr.is_private
+  : core.net.ip_addr.Ipv4Addr → Result Bool
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 809:4-809:45
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local"]
+opaque core.net.ip_addr.Ipv4Addr.is_link_local
+  : core.net.ip_addr.Ipv4Addr → Result Bool
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1010:4-1010:44
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast"]
+opaque core.net.ip_addr.Ipv4Addr.is_multicast
+  : core.net.ip_addr.Ipv4Addr → Result Bool
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1032:4-1032:44
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast"]
+opaque core.net.ip_addr.Ipv4Addr.is_broadcast
+  : core.net.ip_addr.Ipv4Addr → Result Bool
+
+/-- [core::net::ip_addr::{impl core::convert::From<u32> for core::net::ip_addr::Ipv4Addr}::from]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1288:4-1288:32
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "core::net::ip_addr::{core::convert::From<core::net::ip_addr::Ipv4Addr, u32>}::from"]
+opaque core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from
+  : Std.U32 → Result core.net.ip_addr.Ipv4Addr
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1495:4-1495:44
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments"]
+opaque core.net.ip_addr.Ipv6Addr.segments
+  : core.net.ip_addr.Ipv6Addr → Result (Array Std.U16 8#usize)
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1558:4-1558:46
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified"]
+opaque core.net.ip_addr.Ipv6Addr.is_unspecified
+  : core.net.ip_addr.Ipv6Addr → Result Bool
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1582:4-1582:43
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback"]
+opaque core.net.ip_addr.Ipv6Addr.is_loopback
+  : core.net.ip_addr.Ipv6Addr → Result Bool
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1942:4-1942:44
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast"]
+opaque core.net.ip_addr.Ipv6Addr.is_multicast
+  : core.net.ip_addr.Ipv6Addr → Result Bool
+
+/-- [core::num::{impl core::str::traits::FromStr<core::num::error::ParseIntError> for i64}::from_str]:
+    Source: '/rustc/library/core/src/num/mod.rs', lines 1626:12-1626:68
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "core::num::{core::str::traits::FromStr<i64, core::num::error::ParseIntError>}::from_str"]
+opaque I64.Insts.CoreStrTraitsFromStrParseIntError.from_str
+  : Str → Result (core.result.Result Std.I64 core.num.error.ParseIntError)
+
+/-- [core::ops::range::{core::ops::range::RangeInclusive<Idx>}::contains]:
+    Source: '/rustc/library/core/src/ops/range.rs', lines 522:4-525:44
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::contains"]
+opaque core.ops.range.RangeInclusive.contains
+  {Idx : Type} {U : Type} (cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
+  (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U) (cmpPartialOrdInst2 :
+  core.cmp.PartialOrd U Idx) :
+  core.ops.range.RangeInclusive Idx → U → Result Bool
+
+/-- [core::option::{core::option::Option<T>}::or_else]:
+    Source: '/rustc/library/core/src/option.rs', lines 1644:4-1649:28
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::option::{core::option::Option<@T>}::or_else"]
+opaque core.option.Option.or_else
+  {T : Type} {F : Type} (opsfunctionFnOnceFTupleOptionInst :
+  core.ops.function.FnOnce F Unit (Option T)) :
+  Option T → F → Result (Option T)
+
+/-- [core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq]:
+    Source: '/rustc/library/core/src/option.rs', lines 2440:4-2440:38
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq"]
+opaque core.option.Option.Insts.CoreCmpPartialEqOption.eq
+  {T : Type} (cmpPartialEqInst : core.cmp.PartialEq T T) :
+  Option T → Option T → Result Bool
+
+/-- [core::result::{core::result::Result<T, E>}::ok]:
+    Source: '/rustc/library/core/src/result.rs', lines 708:4-711:28
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::ok"]
+opaque core.result.Result.ok
+  {T : Type} {E : Type} : core.result.Result T E → Result (Option T)
+
+/-- [core::slice::{[T]}::first]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 155:4-155:43
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::slice::{[@T]}::first"]
+opaque core.slice.Slice.first {T : Type} : Slice T → Result (Option T)
+
+/-- [core::slice::{[T]}::strip_suffix]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 2719:4-2721:21
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::slice::{[@T]}::strip_suffix"]
+opaque core.slice.Slice.strip_suffix
+  {T : Type} {P : Type} (SlicePatternInst : core.slice.SlicePattern P T)
+  (cmpPartialEqInst : core.cmp.PartialEq T T) :
+  Slice T → P → Result (Option (Slice T))
+
+/-- [core::slice::{impl core::slice::SlicePattern<T> for [T; N]}::as_slice]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 5678:4-5678:39
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::slice::{core::slice::SlicePattern<[@T; @N], @T>}::as_slice"]
+opaque Array.Insts.CoreSliceSlicePattern.as_slice
+  {T : Type} {N : Std.Usize} : Array T N → Result (Slice T)
+
+/-- [core::str::{str}::parse]:
+    Source: '/rustc/library/core/src/str/mod.rs', lines 2765:4-2765:56
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::str::{str}::parse"]
+opaque core.str.Str.parse
+  {F : Type} {Clause0_Err : Type} (traitsFromStrInst : core.str.traits.FromStr
+  F Clause0_Err) :
+  Str → Result (core.result.Result F Clause0_Err)
+
+/-- [core::str::traits::{impl core::cmp::PartialEq<str> for str}::eq]:
+    Source: '/rustc/library/core/src/str/traits.rs', lines 29:4-29:37
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun "core::str::traits::{core::cmp::PartialEq<str, str>}::eq"]
+opaque Str.Insts.CoreCmpPartialEqStr.eq : Str → Str → Result Bool
+
+/-- [alloc::string::{impl core::ops::deref::Deref<str> for alloc::string::String}::deref]:
+    Source: '/rustc/library/alloc/src/string.rs', lines 2835:4-2835:27
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "alloc::string::{core::ops::deref::Deref<alloc::string::String, str>}::deref"]
+opaque alloc.string.String.Insts.CoreOpsDerefDerefStr.deref
+  : String → Result Str
+
+/-- [alloc::sync::{impl core::ops::deref::Deref<T> for alloc::sync::Arc<T>}::deref]:
+    Source: '/rustc/library/alloc/src/sync.rs', lines 2443:4-2443:25
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "alloc::sync::{core::ops::deref::Deref<alloc::sync::Arc<@T>, @T>}::deref"]
+opaque alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref
+  {T : Type} (A : Type) : alloc.sync.Arc T → Result T
+
+/-- [alloc::sync::{impl core::cmp::PartialEq<alloc::sync::Arc<T>> for alloc::sync::Arc<T>}::eq]:
+    Source: '/rustc/library/alloc/src/sync.rs', lines 3580:4-3580:43
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_fun
+  "alloc::sync::{core::cmp::PartialEq<alloc::sync::Arc<@T>, alloc::sync::Arc<@T>>}::eq"]
+opaque alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq
+  {T : Type} (A : Type) (corecmpPartialEqInst : core.cmp.PartialEq T T) :
+  alloc.sync.Arc T → alloc.sync.Arc T → Result Bool

@@ -23,7 +23,7 @@ steps:
     day: D1
     state: IN_PROGRESS
     # agent role files (.claude/agents/) and guide edits exist in the working tree; CLAUDE.md
-    # and docs/VERIFICATION.md missing; not run through the review cycle as its own step
+    # missing (docs/VERIFICATION.md tracked since af41799); not run through the review cycle as its own step
     depends_on: [S01]
     owner: Lead
     files:
@@ -324,3 +324,240 @@ steps:
     acceptance: >-
       Honest per-function status, trusted base, bugs found, open items, cost; next-sprint
       scope.
+
+  # ---- Phase 2 (plan Part II, Section 21). Added at S20, 2026-11-23. ----
+  - id: S20
+    day: D1
+    state: IN_PROGRESS  # H1-H4 decided 2026-11-23 (human); H5 (owner, budget) open; records and guides drafted
+    depends_on: []
+    owner: Lead + human
+    files:
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/docs/functions/{M01..M14,T01..T08,A01..A03}.yaml
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+      - docs/STYLE_GUIDE.md
+      - docs/REVIEWER_GUIDE.md
+      - docs/AI_PR_REVIEW_QUESTIONS.md
+    acceptance: >-
+      25 records (linkage ORIGINAL pending S22); owner and budget named; H1-H5 decided; guides updated for plan Section 20 paths and the linkage check.
+
+  - id: S21
+    day: D1
+    state: IN_PROGRESS  # translated and reviewed 2026-11-23; human sign-off and CI on GitHub pending
+    depends_on: [S20]
+    owner: Extraction
+    files:
+      - crates/rmcp/Cargo.toml
+      - scripts/aeneas-translate.sh
+      - .github/workflows/patched-tests.yml
+      - formal/translation/**
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/README.md
+      - docs/WORKFLOW_AND_PR_GUIDE.md  # configuration text, feature flags (deferred from S20)
+      - docs/AI_PR_REVIEW_QUESTIONS.md  # procedure commands, feature flags (deferred from S20)
+      - formal/specs/Specs/Model/RequestState.lean  # module docstring only: widened configuration
+      - formal/specs/Specs/Model/RequestStateWire.lean  # module docstring only: widened configuration
+      - scripts/lean_guard.py  # pinned exception for generated files (human decisions 2026-11-23)
+      - formal/trusted/translation-pins.txt  # sha256 + exact-line pin (trusted)
+      - scripts/lean-guard.sh  # header comment of that exception
+      - formal/proofs/Proofs/External/Std.lean  # `ok` qualified (human decision 2026-11-23)
+      - formal/docs/functions/{M01..M14,T01..T08,A01..A03}.yaml  # translation, generated_symbol
+      - formal/docs/STATUS.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 5 (toStr note), 15 (pin, glob, test features), 21 (S21 row)
+    acceptance: >-
+      Translation regenerated with the widened configuration; script fails on a missing or duplicated Phase 2 target; every Phase 1 block byte-identical; new externals as opaque placeholders (no axiom); three CI workflows green; lake build and lean-guard.sh checks pass.
+
+  - id: S22
+    day: D1-2
+    state: NOT_STARTED
+    depends_on: [S21]
+    owner: Extraction
+    files:
+      - scripts/check-original-linkage.sh
+      - .github/workflows/aeneas-translation.yml
+    acceptance: >-
+      Linkage check passes on 7caec76 and fails once on a seeded body change.
+
+  - id: S23
+    day: D2
+    state: NOT_STARTED
+    depends_on: [S21, S22]
+    owner: Reviewers + spec owner
+    files:
+    acceptance: >-
+      Charon settings, opaque AuthorizationManager type, widened configuration and placeholders reviewed (>= 2) and signed off.
+
+  - id: S24
+    day: D2-3
+    state: NOT_STARTED
+    depends_on: [S20]
+    owner: Spec drafter + reviewers + spec owner
+    files:
+      - formal/specs/Defs/JsonRpc.lean
+      - formal/specs/Defs/IntParse.lean
+      - formal/specs/Defs/Methods.lean
+      - formal/specs/Drafts/
+    acceptance: >-
+      M01-M14, T04-T08, C03, C05 and the plan Section 16.1 joint lemmas statements reviewed by >= 2 agents and signed off.
+
+  - id: S25
+    day: D2-4
+    state: NOT_STARTED
+    depends_on: [S20]
+    owner: Spec drafter + reviewers + spec owner
+    files:
+      - formal/specs/Defs/Sse.lean
+      - formal/specs/Defs/Net.lean
+      - formal/specs/Drafts/
+    acceptance: >-
+      T01-T03, A01-A03, C01, C02, C04 statements reviewed by >= 2 agents and signed off.
+
+  - id: S26
+    day: D3-4
+    state: NOT_STARTED
+    depends_on: [S21]
+    owner: Extraction + reviewers + spec owner
+    files:
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/proofs/Proofs/External/String.lean
+      - formal/proofs/Proofs/External/Std.lean
+      - formal/proofs/Proofs/External/Option.lean
+      - formal/specs/Specs/External.lean
+      - formal/trusted/evidence/README.md
+    acceptance: >-
+      Models (strings, Arc, Option, Result, slices) are definitions; laws proved; signed off.
+
+  - id: S27
+    day: D3-5
+    state: NOT_STARTED
+    depends_on: [S21, S24]
+    owner: Extraction + reviewers + spec owner
+    files:
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/proofs/Proofs/External/Net.lean
+      - formal/proofs/Proofs/External/IntParse.lean
+      - formal/specs/Specs/External.lean
+      - formal/trusted/evidence/differential/net/
+      - formal/trusted/evidence/differential/intparse/
+      - formal/trusted/evidence/README.md
+    acceptance: >-
+      core::net and integer-parsing models; exhaustive IPv4 and sampled IPv6 differential pass; integer-parse tests pass; parseI64 law proved; no placeholder left; signed off.
+
+  - id: S28
+    day: D3-5
+    state: NOT_STARTED
+    depends_on: [S24, S26]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/JsonRpcMessage.lean
+      - formal/proofs/Proofs/Model/Task.lean
+      - formal/proofs/Proofs/Model/SamplingContent.lean
+      - formal/proofs/Proofs/Model/Reference.lean
+      - formal/specs/Specs/Model.lean
+      - formal/specs/Specs/Model/Task.lean
+    acceptance: >-
+      M01-M05, M08-M14, C03 and the plan Section 16.1 joint lemmas checked and restated.
+
+  - id: S29
+    day: D4-6
+    state: NOT_STARTED
+    depends_on: [S24, S26]  # and human decision H2 (accepted 2026-11-23)
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Transport/AsyncRw.lean
+      - formal/proofs/Proofs/Transport/Tower.lean
+      - formal/specs/Specs/Transport/AsyncRw.lean
+      - formal/specs/Specs/Transport/StreamableHttpServer/Tower.lean
+      - formal/trusted/native-axioms.lock
+    acceptance: >-
+      T04-T08, C05 checked; 30 native-lock entries (H2); #guard_msgs lists show them.
+
+  - id: S30
+    day: D5-6
+    state: NOT_STARTED
+    depends_on: [S27, S28]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/NumberOrString.lean
+      - formal/specs/Specs/Model.lean
+    acceptance: >-
+      M06, M07 checked.
+
+  - id: S31
+    day: D4-8
+    state: NOT_STARTED
+    depends_on: [S21, S25]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Transport/ClientSideSse.lean
+      - formal/specs/Specs/Transport/Common/ClientSideSse.lean
+    acceptance: >-
+      T01-T03, C01, C02 checked.
+
+  - id: S32
+    day: D6-8
+    state: NOT_STARTED
+    depends_on: [S25, S26, S27]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Transport/Auth.lean
+      - formal/specs/Specs/Transport/Auth.lean
+    acceptance: >-
+      A01-A03, C04 checked.
+
+  - id: S33
+    day: D8-9
+    state: NOT_STARTED
+    depends_on: [S28, S29, S30, S31, S32]
+    owner: Lean + review
+    files:
+      - formal/specs/Specs/
+      - formal/specs/Defs.lean  # library roots: the lead updates them from S24 to S33 (plan Section 20)
+      - formal/specs/Specs.lean
+      - formal/proofs/Proofs.lean
+    acceptance: >-
+      Every Phase 2 theorem restated; each spec file's module docstring states the widened configuration.
+
+  - id: S34
+    day: D2-9
+    state: NOT_STARTED
+    depends_on: [S21]
+    owner: Review
+    files:
+      - formal/trusted/evidence/README.md
+      - formal/trusted/patches/02-phase2-tests.patch  # only if an uncovered case needs it (H3)
+    acceptance: >-
+      Each plan Section 22 boundary case covered by an upstream test, a differential test or (H3 exception) patch 02, and the tests pass.
+
+  - id: S35
+    day: D9
+    state: NOT_STARTED
+    depends_on: [S22, S29]
+    owner: Lead
+    files:
+    acceptance: >-
+      Linkage check, missing target and removed native-lock entry each shown to fail once on a throwaway branch.
+
+  - id: S36
+    day: D9-10
+    state: NOT_STARTED
+    depends_on: [S35]
+    owner: Review
+    files:
+    acceptance: >-
+      Fresh clone: install, translate, linkage check, lake build and lean-guard.sh checks pass.
+
+  - id: S37
+    day: D10
+    state: NOT_STARTED
+    depends_on: []   # plan: board state; no success required; S37 is mandatory
+    owner: Lead + human owner
+    files:
+      - formal/docs/STATUS.md
+      - formal/README.md
+    acceptance: >-
+      Phase 2 results (plan Section 25), trusted-base delta, bugs found, open items, cost; Phase 3 scope.

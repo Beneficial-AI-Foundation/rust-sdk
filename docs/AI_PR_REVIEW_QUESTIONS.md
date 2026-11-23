@@ -14,7 +14,9 @@ and [workflow guide](WORKFLOW_AND_PR_GUIDE.md), which in turn build on the proce
 [master plan](MCP_SDK_Verification_Master_Plan_EN.md): its scope (Section 1), source behaviour
 (Section 3), external axioms and trusted base (Section 4), layout, libraries, spec files and CI
 (Section 5), status model (Section 6), acceptance evidence (Section 7), process (Section 8), and
-agent rules (Section 10). Recheck those policies when reviewing future changes. The workflow
+agent rules (Section 10); for Phase 2 also Part II: scope (Section 13), targets (Section 16), source
+behaviour (Section 17), external models (Section 18), linkage check (Section 19), layout (Section
+20), process and human decisions (Section 21), and acceptance and boundary cases (Section 22). Recheck those policies when reviewing future changes. The workflow
 permits AI-drafted specifications and proofs, under disclosure and human responsibility.
 Specifications, axioms, patches, and Charon setting changes each get at least two independent
 agent reviews — this checklist is what each of those reviews follows — and then a human sign-off.
@@ -51,7 +53,7 @@ refer to.
    If the author pushes after the review starts, re-record the head and re-read the changed hunks.
 2. **Read the PR metadata and earlier reviews.** Check title, body, and footer against the
    [workflow guide](WORKFLOW_AND_PR_GUIDE.md#pr-workflow-and-formatting): step (`Sxx`) and
-   function ID (`Wxx` or `Exx`) in the title, body starting with "This PR", full Rust function names, the
+   function ID (`Wxx`, `Exx`, or Phase 2 `Mxx`, `Txx`, `Axx`) in the title, body starting with "This PR", full Rust function names, the
    AI-disclosure line, `Closes #...` where an issue exists, roughly 500 LOC, and no meaningful
    pushes after the PR was marked ready. Check that the diff stays inside the files the plan
    assigns to that step. Read earlier reviews, inline threads, and author replies. For each
@@ -85,8 +87,9 @@ refer to.
    ```
 
    Any difference means the committed translation is stale or was edited by hand; both are
-   blocking. The translate script fails on a nonzero Aeneas exit, a missing target, any `sorry`,
-   or a dependency version mismatch.
+   blocking. The translate script fails on a nonzero Aeneas exit, a missing target, a `_` glob of
+   `start_from` that does not match exactly one Rust item, any `sorry`, or a dependency version
+   mismatch (on rmcp's own edges, plan Section 15).
 5. **Build the head.** For Lean changes the baseline is:
 
    ```bash
@@ -129,8 +132,8 @@ refer to.
    test vectors:
 
    ```bash
-   cargo test -p rmcp --no-default-features --features request-state --lib
-   cargo clippy -p rmcp --no-default-features --features request-state --lib -- -D warnings
+   cargo test -p rmcp --no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth,macros --lib
+   cargo clippy -p rmcp --no-default-features --features request-state --lib -- -D warnings   # clippy stays on request-state: with the widened features, upstream helpers are unused (dead_code; S21 review)
    cargo +nightly fmt --check
    ```
 
@@ -148,14 +151,14 @@ PR that touches several kinds needs each applicable section.
 | Kind of change | Typical files | Sections to apply |
 | --- | --- | --- |
 | Specification of one target | `formal/specs/Drafts/*.lean`, `formal/specs/Defs/*.lean` | Specification strength and error order; Status records |
-| Proof of one target | `formal/proofs/Proofs/Model/RequestState{,Wire}/*.lean`, its restated theorem in `formal/specs/Specs/Model/*.lean` | Specification strength; Proof maintainability; Validation |
+| Proof of one target | `formal/proofs/Proofs/Model/RequestState{,Wire}/*.lean`, its restated theorem in `formal/specs/Specs/Model/*.lean`; Phase 2: `formal/proofs/Proofs/{Model,Transport}/*.lean`, restated in `formal/specs/Specs/{Model.lean,Model/Task.lean,Transport/**}` | Specification strength; Proof maintainability; Validation |
 | Refactor, source change, or Aeneas `rev` bump | `crates/rmcp/src/model/request_state{,_wire}.rs`, `formal/lakefile.toml` | Translation, refactor, and source linkage; Validation |
-| Translation, Charon settings, or patch | `crates/rmcp/Cargo.toml` (`[package.metadata.charon]`), `formal/trusted/patches/`, `formal/translation/**`, the pilot record (removed from git history on 2026-11-23) | Translation, refactor, and source linkage; External axioms |
+| Translation, Charon settings, or patch | `crates/rmcp/Cargo.toml` (`[package.metadata.charon]`), `formal/trusted/translation-pins.txt`, `formal/trusted/patches/`, `formal/translation/**`, the pilot record (removed from git history on 2026-11-23) | Translation, refactor, and source linkage; External axioms |
 | External model or axiom | `formal/trusted/Rmcp/*External.lean`, `formal/trusted/evidence/`, `formal/proofs/Proofs/External/` (and `formal/proofs/Proofs/Consistency/` if an axiom is added again), trusted base in `formal/docs/STATUS.md` | External axioms and the trust boundary |
 | Transcript, encoding, or round trip | `RequestStateWire/TranscriptV{1,2}.lean`, `SealRs1/SealRs2`, `RequestState/Roundtrip.lean` | Transcripts, encoding, and round trips; External axioms |
-| Rust boundary tests | `mod tests` in `request_state.rs` or `request_state_wire.rs` | Validation; core question 8 |
+| Rust boundary tests | `mod tests` in `request_state.rs` or `request_state_wire.rs` (Phase 1, in patch 01); Phase 2: no SDK `*.rs` change, only a test-only `formal/trusted/patches/02-phase2-tests.patch` under human decision H3 | Validation; core question 8 |
 | Status and evidence only | `formal/docs/board.yaml`, `functions/*.yaml`, `evidence/`, `blockers/`, `STATUS.md` | Status records and evidence |
-| CI, scripts, agents, documentation | `.github/workflows/{aeneas-translation,lean-build,patched-tests}.yml`, `scripts/` (including `scripts/lean-guard.sh`), `formal/trusted/aeneas-bundle.sha256`, `CLAUDE.md`, `.claude/agents/`, `docs/`, `formal/README.md` | Validation and CI; question 8 |
+| CI, scripts, agents, documentation | `.github/workflows/{aeneas-translation,lean-build,patched-tests}.yml`, `scripts/` (including `scripts/lean-guard.sh` and, from S22, `scripts/check-original-linkage.sh`), `formal/trusted/aeneas-bundle.sha256`, `CLAUDE.md`, `.claude/agents/`, `docs/`, `formal/README.md` | Validation and CI; question 8 |
 | Other extractions | `verification/host_origin/**` and similar | Translation, refactor, and source linkage; External axioms |
 
 ## Questions to answer on every PR
@@ -186,8 +189,8 @@ PR that touches several kinds needs each applicable section.
    external models that changed, new patches or `exclude`/`opaque` entries, and hand edits to
    generated files. Determine whether an
    apparent reduction in axioms merely moved assumptions into model definitions.
-7. **Can callers actually use this result?** Can the E09–E11 and round-trip proofs, and for a W
-   target every E proof listed in its `used_by` field, consume this theorem as stated? Does the postcondition expose the transcript, error, and output facts the
+7. **Can callers actually use this result?** Can the E09–E11 and round-trip proofs, and every target or composition theorem listed in
+   its `used_by` field (W, E, M, T, A or C), consume this theorem as stated? Does the postcondition expose the transcript, error, and output facts the
    next step needs? Is the statement in the spec file phrased only with `Defs` definitions?
 8. **What validation supports my conclusion?** Report the commands from the procedure that
    actually ran on the head revision and their results. Separate command results from claims in
@@ -253,7 +256,9 @@ Historical examples for each question are listed in the [appendix](#appendix-his
 - Does the `linkage` field match the decision actually taken? A landed and re-pinned refactor makes
   targets `ORIGINAL` relative to the new pin; if the refactor is applied as a patch in
   `formal/trusted/patches/` instead, every target's linkage names that patch (the case since the D2
-  fallback of 2026-11-23: all 25 targets are `patch-01`).
+  fallback of 2026-11-23: all 25 Phase 1 targets, W/E, are `patch-01`). A Phase 2 target (M/T/A)
+  may be `ORIGINAL` only while `scripts/check-original-linkage.sh` passes on the head commit (plan
+  Section 19); before S22 lands, `ORIGINAL` on such a record is only pending.
 - For a translation patch: does its header state the change, why it is needed (with the upstream
   issue, if any), and why the behaviour is unchanged? Is it minimal, with one concern? Does
   `patched-tests.yml` pass on the patched copy, and do those tests actually exercise the changed
@@ -275,6 +280,10 @@ Historical examples for each question are listed in the [appendix](#appendix-his
 
 ## External axioms and the trust boundary
 
+- If `formal/trusted/translation-pins.txt` changes (a trusted item): does its sha256 equal the `Funs.lean` that
+  `scripts/aeneas-translate.sh` regenerates (and `aeneas-translation.yml` reproduces)? Is each pinned line, read in
+  context, a line where Lean reads the pinned word inside a string literal (no open string or comment before it)? Is
+  every new entry needed (a word the translation really emits)?
 - Does each external model or axiom describe its primitive on its own terms? It may not assume
   that a target function is correct.
 - Is any external a bare `Result` axiom (`axiom f : … → Result T`)? It must be an exact model or
@@ -302,8 +311,8 @@ Historical examples for each question are listed in the [appendix](#appendix-his
   `axiom` (human decision 2026-11-23)? An axiom added again needs a human decision and a
   consistency model in `formal/proofs/Proofs/Consistency/` that proves every axiom of its group.
 - Are the dependency versions the models rely on pinned in `scripts/aeneas-translate.sh`
-  (`hmac`, `sha2`, `base64`; `digest`, `zeroize`, `chrono`, `serde_json` are cited but not yet
-  pinned, plan Section 4), and do they match the crate source cited?
+  (`PINNED_DEPS`: `hmac`, `sha2`, `base64`, `digest`, `zeroize`, `chrono`, `serde_json`; checked on
+  rmcp's own edges since S21, plan Section 15), and do they match the crate source cited?
 - Is each model checked against concrete vectors from the real crates (RFC 4231 for HMAC, known
   Base64url values, split behaviour) in `mod tests`, and listed in
   `formal/trusted/evidence/README.md`? These tests catch a mismatched model; they are not a
@@ -338,7 +347,8 @@ Historical examples for each question are listed in the [appendix](#appendix-his
 
 - Does the function record use the plan's vocabulary exactly, with `translation`, `spec`,
   `linkage`, and `proof` as independent fields? Is a function called verified only when
-  `proof: CHECKED`, `spec: REVIEWED`, `linkage: ORIGINAL`, and its axioms are all in the trusted
+  `proof: CHECKED`, `spec: REVIEWED`, `linkage: ORIGINAL` (for a Phase 2 target: with the plan
+  Section 19 linkage check passing on the head commit), and its axioms are all in the trusted
   base?
 - Was `spec: REVIEWED` set by a named human spec owner after at least two independent agent
   reviews recorded in `spec_reviews`, none by the drafter, as plan Section 6 and the workflow guide
@@ -361,8 +371,9 @@ Historical examples for each question are listed in the [appendix](#appendix-his
 - Is the statement in the spec file phrased only with `Defs` definitions, so its meaning does not
   depend on proof-private definitions? Does its restated `theorem Theorems.…` have the signed-off statement text and is it proved by the spec theorem, and is it in
   Rust source order with its `#guard_msgs` axiom check?
-- Does the file sit at the path the plan assigns (one file per Rust item,
-  `Proofs/Model/RequestState{,Wire}/<Function>.lean`), and does the theorem use the plan's name
+- Does the file sit at the path the plan assigns (Phase 1: one file per Rust item,
+  `Proofs/Model/RequestState{,Wire}/<Function>.lean`; Phase 2: one file per Rust type or module,
+  plan Section 20), and does the theorem use the plan's name
   (`<function>_spec`, `rs1_roundtrip`, …) or a recorded replacement once generated signatures are
   known?
 - Is there an existing Aeneas, Mathlib, or local lemma that avoids rebuilding infrastructure? Is a
@@ -392,8 +403,8 @@ The commands are in the [procedure](#procedure). These questions interpret their
   axiom, a `sorry`, and a failing patched test (plan S17)?
 - Does a fresh clone reproduce the install, translation, and build, with `git status` clean
   (plan S18)?
-- Do the Rust boundary tests exercise each case in the plan's Section 7 table for the affected
-  function? A test asserting only `is_err()` does not check which error variant is returned.
+- Do the Rust boundary tests exercise each case in the plan's Section 7 table (Phase 2:
+  Section 22) for the affected function? A test asserting only `is_err()` does not check which error variant is returned.
 - For automated or agent-driven workflows, are claimed trigger conditions and edit limits actually
   enforced by permission settings, not only by role prompts?
 - Does the proof's build cost come from repeated arguments, broad imports, or expensive

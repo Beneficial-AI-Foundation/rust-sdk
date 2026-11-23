@@ -51,7 +51,10 @@
 #          ATTR_ALLOWED (in `@[...]` and `attribute [...]`), the `native` option of decide,
 #          `debug.` options, `set_option linter.<name> false` (except in formal/translation/,
 #          where Aeneas emits it) and `axiom` outside formal/trusted/ (and the unbuilt
-#          Aeneas *_Template.lean files). Comments and docstrings count. Symlinks under
+#          Aeneas *_Template.lean files). Comments and docstrings count (exception, S21,
+#          generated files only: a word on a line pinned, with the file's sha256, in the
+#          trusted file formal/trusted/translation-pins.txt; today the MCP method name
+#          "initialize" in T06). Symlinks under
 #          formal/ (outside .lake/) fail. In formal/trusted/ only, after comments, string and
 #          character literals are blanked: any identifier whose first component is `rmcp`
 #          (also `_root_.rmcp`, `«rmcp»`) and the keyword `export` fail; the only exception

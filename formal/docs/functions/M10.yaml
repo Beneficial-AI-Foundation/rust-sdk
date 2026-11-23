@@ -1,0 +1,22 @@
+id: M10
+rust_symbol: rmcp::model::SamplingContent::is_empty
+source_file: crates/rmcp/src/model.rs  # upstream 7caec76, unmodified (Phase 2; plan Section 16)
+source_line: 2934  # at 7caec76; in the patched copy, model.rs lines are +2 (patch 01)
+generated_symbol: rmcp.model.SamplingContent.is_empty  # S21 translation
+translation: LEAN_OK  # S21 (2026-11-23): scripts/aeneas-translate.sh exit 0; lake build passes
+spec: DRAFT
+linkage: ORIGINAL  # pending S22: holds only while scripts/check-original-linkage.sh passes (plan Section 19)
+proof: OPEN
+proof_file: formal/proofs/Proofs/Model/SamplingContent.lean
+spec_file: formal/specs/Specs/Model.lean
+theorem: null
+used_by: []  # Phase 2 targets/composition theorems consuming this theorem (plan Section 16); also the Section 16.1 joint lemmas
+axioms: []  # as printed by `#print axioms` in the spec file
+evidence: [formal/docs/STATUS.md]
+spec_drafted_by: null
+spec_reviews: []
+spec_owner: null
+prover: null
+reviewer: null
+behaviour: |-  # derived copy of plan Section 16; informational, not a specification
+  `Single _` -> `false`; `Multiple v` -> `v = []`

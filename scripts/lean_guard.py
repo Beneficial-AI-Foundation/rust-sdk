@@ -461,6 +461,66 @@ EXT_ID_COMP = re.compile(r"«[^»\n]*»|[^.«]+")
 EXT_OPEN_OK = re.compile(r"^open rmcp$", re.M)
 
 
+# Pinned exception for generated files (human decision 2026-11-23, S21; replaces a lexing-based
+# exemption that four review rounds bypassed). formal/trusted/translation-pins.txt (trusted, read
+# by review) records, per generated file, its sha256 and the exact text of the lines on which a
+# META word is excused (today the T06 line holding the MCP method name "initialize"). A hit is
+# excused only if the file's bytes have the pinned sha256 AND the hit's whole line equals a pinned
+# line; any other file content gets the strict rule. No lexing is involved.
+PINS_FILE = os.path.join("trusted", "translation-pins.txt")
+
+
+def load_translation_pins(formal):
+    """{rel path: (sha256, {line number: (word, exact text)})} from PINS_FILE, and errors.
+    Format, one entry per line; `#` comments (in column 1) and blank lines ignored:
+      file <rel path under formal/, starting with translation/> sha256 <64 lowercase hex digits>
+      line <line number> <META word> <exact text of that line>   (belongs to the last `file`)
+    The pin file must be a regular file (not a symlink) without CR bytes; a path pinned twice,
+    a line number pinned twice, or a malformed entry is an error."""
+    pins, errs, cur = {}, [], None
+    path = os.path.join(formal, PINS_FILE)
+    if os.path.islink(path) or (os.path.exists(path) and not os.path.isfile(path)):
+        return pins, [f"{PINS_FILE}: must be a regular file, not a symlink or directory"]
+    if not os.path.exists(path):
+        return pins, errs
+    with open(path, "rb") as f:
+        raw_bytes = f.read()
+    if b"\r" in raw_bytes:
+        return pins, [f"{PINS_FILE}: CR byte (use LF line endings)"]
+    try:
+        content = raw_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        return pins, [f"{PINS_FILE}: not UTF-8"]
+    for k, raw in enumerate(content.split("\n"), 1):
+        if not raw.strip() or raw.startswith("#"):
+            continue
+        m = re.fullmatch(r"file (translation/[\w/.-]+\.lean) sha256 ([0-9a-f]{64})", raw)
+        ml = re.fullmatch(r"line ([1-9][0-9]*) (\S+) (.*)", raw)
+        if m:
+            cur = m.group(1)
+            if os.path.normpath(cur) != cur:
+                errs.append(f"{PINS_FILE}:{k}: path {cur} is not normal")
+            elif not os.path.isfile(os.path.join(formal, cur)):
+                errs.append(f"{PINS_FILE}:{k}: pinned file {cur} does not exist")
+            if cur in pins:
+                errs.append(f"{PINS_FILE}:{k}: {cur} pinned twice")
+            pins[cur] = (m.group(2), {})
+        elif ml and cur is not None:
+            n = int(ml.group(1))
+            if n in pins[cur][1]:
+                errs.append(f"{PINS_FILE}:{k}: line {n} of {cur} pinned twice")
+            pins[cur][1][n] = (ml.group(2), ml.group(3))
+        else:
+            errs.append(f"{PINS_FILE}:{k}: malformed entry")
+    return pins, errs
+
+
+def line_at(text, pos):
+    a = text.rfind("\n", 0, pos) + 1
+    b = text.find("\n", pos)
+    return text[a:] if b < 0 else text[a:b]
+
+
 def external_code(text):
     """TEXT with comments (`--` to the end of the line; `/- -/` nested, docstrings included),
     string literals (also raw `r"…"`, `r#"…"#`, interpolated) and character literals replaced
@@ -585,6 +645,8 @@ def lineno(text, pos):
 def check_sources(formal):
     formal = os.path.abspath(formal)
     errs, nfiles = [], 0
+    pins, pin_errs = load_translation_pins(formal)
+    errs += pin_errs
     tracked = tracked_lake_paths(formal)
     if tracked is None:
         print("[lean-guard] note: not a git work tree; the check of tracked .lake paths is skipped")
@@ -615,8 +677,9 @@ def check_sources(formal):
             if rel.startswith("specs/Drafts/"):
                 continue
             nfiles += 1
-            with open(path, encoding="utf-8", errors="replace") as f:
-                text = f.read()
+            with open(path, "rb") as f:
+                raw_bytes = f.read()
+            text = raw_bytes.decode("utf-8", errors="replace")
             generated = rel.startswith("translation/")
             template = generated and fn.endswith("_Template.lean")
             rules = list(RULES_ALL) + RULES_META
@@ -626,9 +689,31 @@ def check_sources(formal):
                 rules.append(RULE_AXIOM)
             if rel.startswith("trusted/"):
                 errs += external_ns_errors(rel, text)
+            # Pinned exception, generated files only (PINS_FILE): a META word is excused only at
+            # a pinned line number, if it is the pinned word, the line has the pinned text, and the
+            # file's bytes (the same bytes the text was decoded from) have the pinned sha256.
+            pinned = {}
+            if generated and rel in pins:
+                if hashlib.sha256(raw_bytes).hexdigest() == pins[rel][0]:
+                    pinned = pins[rel][1]
+                    for n, (_, want) in pinned.items():
+                        lines = text.split("\n")
+                        if n > len(lines) or lines[n - 1] != want:
+                            errs.append(f"{PINS_FILE}: line {n} of {rel} does not have the pinned text")
+                else:
+                    errs.append(f"{rel}: note: sha256 differs from its pin in {PINS_FILE}; "
+                                "the strict rule applies (update the pin in a reviewed PR)")
+            used = set()
             for name, rx in rules:
                 for m in rx.finditer(text):
-                    errs.append(f"{rel}:{lineno(text, m.start())}: banned: {name}")
+                    n = lineno(text, m.start())
+                    if ((name, rx) in RULES_META and n in pinned and pinned[n][0] == name
+                            and line_at(text, m.start()) == pinned[n][1]):
+                        used.add(n)
+                        continue
+                    errs.append(f"{rel}:{n}: banned: {name}")
+            for n in sorted(set(pinned) - used):
+                errs.append(f"{PINS_FILE}: line {n} of {rel} is pinned but excuses no hit")
             for m in HASH_CMD.finditer(text):
                 if m.group(0) not in HASH_ALLOWED:
                     errs.append(f"{rel}:{lineno(text, m.start())}: banned: {m.group(0)} (only "

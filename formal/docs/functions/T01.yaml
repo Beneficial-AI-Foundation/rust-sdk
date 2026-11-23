@@ -1,0 +1,22 @@
+id: T01
+rust_symbol: rmcp::transport::common::client_side_sse::SseEventSizeLimiter::check_limit
+source_file: crates/rmcp/src/transport/common/client_side_sse.rs  # upstream 7caec76, unmodified (Phase 2; plan Section 16)
+source_line: 90  # at 7caec76; file not touched by patch 01
+generated_symbol: rmcp.transport.common.client_side_sse.SseEventSizeLimiter.check_limit  # S21 translation
+translation: LEAN_OK  # S21 (2026-11-23): scripts/aeneas-translate.sh exit 0; lake build passes
+spec: DRAFT
+linkage: ORIGINAL  # pending S22: holds only while scripts/check-original-linkage.sh passes (plan Section 19)
+proof: OPEN
+proof_file: formal/proofs/Proofs/Transport/ClientSideSse.lean
+spec_file: formal/specs/Specs/Transport/Common/ClientSideSse.lean
+theorem: null
+used_by: [T02, T03, C02]  # Phase 2 targets/composition theorems consuming this theorem (plan Section 16)
+axioms: []  # as printed by `#print axioms` in the spec file
+evidence: [formal/docs/STATUS.md]
+spec_drafted_by: null
+spec_reviews: []
+spec_owner: null
+prover: null
+reviewer: null
+behaviour: |-  # derived copy of plan Section 16; informational, not a specification
+  `Err ()` iff `sat(retained_size + line_size) > max_size`

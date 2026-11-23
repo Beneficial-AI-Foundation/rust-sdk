@@ -53,6 +53,36 @@ rustdoc-args = ["--cfg", "docsrs"]
 start_from = [
   "rmcp::model::request_state",
   "rmcp::model::request_state_wire",
+  # Phase 2 (plan Sections 15-16): existing upstream functions, unmodified. Inherent methods are
+  # reached with the `_` glob (B8); each glob matches exactly one item, which
+  # scripts/aeneas-translate.sh checks against translation.json (distinct local `rust_name`s per glob),
+  # so a new upstream method of the same name
+  # fails the translation instead of entering silently.
+  "rmcp::model::_::into_request",            # M01
+  "rmcp::model::_::into_response",           # M02
+  "rmcp::model::_::into_notification",       # M03
+  "rmcp::model::_::into_error",              # M04
+  "rmcp::model::_::into_result",             # M05
+  "rmcp::model::_::numeric_string_value",    # M06
+  "rmcp::model::_::matches_response_id",     # M07
+  "rmcp::model::task::_::is_terminal",       # M08
+  "rmcp::model::_::into_vec",                # M09
+  "rmcp::model::_::is_empty",                # M10
+  "rmcp::model::_::len",                     # M11
+  "rmcp::model::_::first",                   # M12
+  "rmcp::model::_::as_prompt_name",          # M13
+  "rmcp::model::_::as_resource_uri",         # M14
+  "rmcp::transport::common::client_side_sse::_::check_limit",      # T01
+  "rmcp::transport::common::client_side_sse::_::finish_line",      # T02
+  "rmcp::transport::common::client_side_sse::_::observe",          # T03
+  "rmcp::transport::async_rw::without_carriage_return",            # T04
+  "rmcp::transport::async_rw::is_standard_notification",           # T05
+  "rmcp::transport::async_rw::is_standard_method",                 # T06
+  "rmcp::transport::streamable_http_server::tower::default_port",  # T07
+  "rmcp::transport::streamable_http_server::tower::_::matches",    # T08
+  "rmcp::transport::auth::_::embedded_ipv4",                       # A01
+  "rmcp::transport::auth::_::is_disallowed_metadata_ipv4",         # A02
+  "rmcp::transport::auth::_::is_disallowed_metadata_ipv6",         # A03
 ]
 hide_marker_traits = true
 exclude = [
@@ -94,6 +124,17 @@ opaque = [
   "rmcp::model::request_state::_::now_ms",
   # External crates: only signatures are needed; Lean models: Section 4.
   "zeroize", "base64", "hmac", "sha2", "thiserror", "chrono", "serde_json",
+  # Phase 2 (plan Section 15): external crates reached by the widened feature list; only
+  # signatures are needed, no Phase 2 target body calls into them.
+  "http", "tokio", "tokio_util", "tracing", "tracing_core", "futures", "futures_util",
+  "futures_core", "bytes", "sse_stream", "hyper", "tower_service", "uuid", "schemars",
+  "pin_project_lite", "tokio_stream", "http_body", "http_body_util", "rand", "async_trait",
+  "pastey", "oauth2", "reqwest", "url",
+  # Phase 2, human decision H4: the type only. A01-A03 are associated functions of
+  # AuthorizationManager that never use `self`; translating the type pulls in oauth2's client
+  # type aliases, on which Aeneas fails with an internal error (plan Section 14). Opaque, the
+  # type does not appear in the generated files; the three function bodies are translated.
+  "rmcp::transport::auth::AuthorizationManager",
 ]
 
 [dependencies]

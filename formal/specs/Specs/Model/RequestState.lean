@@ -17,7 +17,8 @@ statements were signed off by the spec owner on 2026-11-23 (the S05 evidence (gi
 text is in `specs/Drafts/RequestState.lean` at commit `9bd8144`.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state`, with `overflow-checks=true` and
+features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
+(widened for Phase 2, plan Section 15; the translation of this file's targets is unchanged), with `overflow-checks=true` and
 `debug-assertions=true` (plan Section 1), so arithmetic overflow panics, which Aeneas models as
 failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is the patched copy (patch 01
 on origin/main 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback

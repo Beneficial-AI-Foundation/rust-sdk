@@ -8,12 +8,18 @@
 # cargo-features, every dependency from crates.io, PINNED_DEPS versions, build.rs sha256), leaving
 # the checked resolution in .llbc/work/Cargo.lock. It then runs the crate's library tests in the
 # translated feature configuration on the copy, on exactly that resolution:
-#   cargo test --locked --no-default-features --features request-state --lib   (in .llbc/work/crates/rmcp)
+#   cargo test --locked --no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth,macros --lib
+#   (in .llbc/work/crates/rmcp). The feature list is FEATURES of scripts/aeneas-translate.sh (widened
+#   for Phase 2, plan Section 15, human decision H1) plus `macros`: upstream tests in
+#   handler/server/router/tool/tool_traits.rs need it (human decision 2026-11-23, S21). `macros`
+#   pulls the workspace path crate rmcp-macros (a proc macro, not translated); a step below checks
+#   that it is the only dependency of the test build not from crates.io.
 # With no patches this is the plain test suite; it becomes evidence that the patches (part of
 # the trusted base) preserve behaviour if the D2 fallback is used. Since 2026-11-23 it is (human
 # decision): this job is the evidence for formal/trusted/patches/01-request-state-wire.patch,
 # whose tests (byte identity, codec constants, RFC 4231/4648 vectors, S16 boundary cases) exist
-# only in the patched copy. Same trigger paths as aeneas-translation.yml.
+# only in the patched copy. Same trigger paths as aeneas-translation.yml, plus crates/rmcp-macros/**
+# (compiled by the test build since S21; not part of the translation).
 #
 # Cargo.lock is not committed (plan Section 4) and apply-patches.sh never copies one, so this job
 # and aeneas-translation.yml each resolve and check their own Cargo.lock: the pinned crates and
@@ -33,6 +39,7 @@ on:
       - 'crates/rmcp/src/**'
       - 'crates/rmcp/Cargo.toml'
       - 'crates/rmcp/build.rs'
+      - 'crates/rmcp-macros/**'   # compiled by the test build (`macros`, S21); not translated
       - 'Cargo.toml'
       - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
       - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
@@ -53,6 +60,7 @@ on:
       - 'crates/rmcp/src/**'
       - 'crates/rmcp/Cargo.toml'
       - 'crates/rmcp/build.rs'
+      - 'crates/rmcp-macros/**'   # compiled by the test build (`macros`, S21); not translated
       - 'Cargo.toml'
       - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
       - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
@@ -128,6 +136,52 @@ jobs:
       - name: Copy the workspace, apply the translation patches, check the dependencies
         run: scripts/aeneas-translate.sh --check-deps
 
+      # The test build adds `macros` to the translated features (human decision 2026-11-23, S21).
+      # Its dependencies (normal, build and dev edges) must come from crates.io except the
+      # workspace crates rmcp itself and rmcp-macros (path, not translated).
+      # The translated feature list is read from scripts/aeneas-translate.sh (FEATURES); the test
+      # build adds `macros`. The checks below catch accidental drift between the script's FEATURES
+      # and FEATURE_ARGS; deliberate tricks (array or `printf -v` assignments, eval) are not
+      # detected, and review of scripts/ is the barrier for those (as stated in the header).
+      - name: Read the translated feature list
+        run: |
+          set -euo pipefail
+          f="$(sed -n 's/^FEATURES="\([a-z0-9,-]*\)"$/\1/p' scripts/aeneas-translate.sh)"
+          [[ -n "$f" ]] \
+            || { echo "::error::no unique FEATURES=\"...\" line in scripts/aeneas-translate.sh"; exit 1; }
+          # Exactly one assignment (also `+=`, `export`, indented) to each of FEATURES and
+          # FEATURE_ARGS, and FEATURE_ARGS is exactly the recorded line.
+          [[ "$(grep -cE '(^|[^A-Za-z0-9_])FEATURES\+?=' scripts/aeneas-translate.sh)" == 1 ]] \
+            || { echo "::error::FEATURES is assigned more than once in scripts/aeneas-translate.sh"; exit 1; }
+          [[ "$(grep -cE '(^|[^A-Za-z0-9_])FEATURE_ARGS\+?=' scripts/aeneas-translate.sh)" == 1 ]] \
+            || { echo "::error::FEATURE_ARGS is assigned more than once in scripts/aeneas-translate.sh"; exit 1; }
+          grep -qxF 'FEATURE_ARGS=(--target "$TARGET_TRIPLE" --no-default-features --features "$FEATURES")' scripts/aeneas-translate.sh \
+            || { echo "::error::FEATURE_ARGS in scripts/aeneas-translate.sh is not the recorded line"; exit 1; }
+          echo "FEATURES=$f" >> "$GITHUB_ENV"
+
+      - name: Check the test build's dependency sources
+        working-directory: .llbc/work/crates/rmcp
+        env:
+          CARGO_HOME: ${{ github.workspace }}/.llbc/cargo-home
+        run: |
+          set -euo pipefail
+          tree="$(cargo tree --color never --locked --no-default-features \
+            --features "$FEATURES,macros" \
+            -e normal,build,dev --prefix none --format '{p}' | sed -e 's/ (\*)$//' -e 's/ (proc-macro)//' | sort -u)"
+          ws="$(cd ../.. && pwd -P)"
+          # Exact text comparison of name and path (no regex built from the runner path).
+          foreign="$(awk -v ws="$ws" '/ \(/ {
+              name = $1; src = $0; sub(/^[^ ]+ v[^ ]+ \(/, "", src); sub(/\)$/, "", src)
+              if (!((name == "rmcp" && src == ws "/crates/rmcp") || (name == "rmcp-macros" && src == ws "/crates/rmcp-macros"))) print
+            }' <<<"$tree")"
+          if [[ -n "$foreign" ]]; then
+            printf '%s\n' "$foreign"
+            echo "::error::test-build dependencies not from crates.io (only rmcp and rmcp-macros may be path crates)"
+            exit 1
+          fi
+          awk -v ws="$ws" '$1 == "rmcp-macros" && index($0, "(" ws "/crates/rmcp-macros)") { f = 1 } END { exit !f }' <<<"$tree" \
+            || { echo "::error::rmcp-macros not found in the test build"; exit 1; }
+
       - name: Run the crate's library tests on the patched copy
         working-directory: .llbc/work/crates/rmcp
         # --locked: exactly the resolution checked above (cargo fails if .llbc/work/Cargo.lock
@@ -138,5 +192,5 @@ jobs:
         env:
           CARGO_HOME: ${{ github.workspace }}/.llbc/cargo-home
         run: >-
-          cargo test --locked --no-default-features --features request-state --lib
+          cargo test --locked --no-default-features --features "$FEATURES,macros" --lib
           --config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true

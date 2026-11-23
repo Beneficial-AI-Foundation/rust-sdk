@@ -32,6 +32,41 @@ structure core.hash.BuildHasher (Self : Type) (Self_Hasher : Type) where
   HasherInst : core.hash.Hasher Self_Hasher
   build_hasher : Self → Result Self_Hasher
 
+/-- Trait declaration: [core::str::traits::FromStr]
+    Source: '/rustc/library/core/src/str/traits.rs', lines 883:0-883:30
+    Name pattern: [core::str::traits::FromStr]
+    Visibility: public -/
+@[rust_trait "core::str::traits::FromStr"]
+structure core.str.traits.FromStr (Self : Type) (Self_Err : Type) where
+  from_str : Str → Result (core.result.Result Self Self_Err)
+
+/-- Trait declaration: [core::slice::SlicePattern]
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 5655:0-5655:22
+    Name pattern: [core::slice::SlicePattern]
+    Visibility: public -/
+@[rust_trait "core::slice::SlicePattern"]
+structure core.slice.SlicePattern (Self : Type) (Self_Item : Type) where
+  as_slice : Self → Result (Slice Self_Item)
+
+/-- Trait declaration: [alloc::borrow::ToOwned]
+    Source: '/rustc/library/alloc/src/borrow.rs', lines 27:0-27:17
+    Name pattern: [alloc::borrow::ToOwned]
+    Visibility: public -/
+@[rust_trait "alloc::borrow::ToOwned"
+  (parentClauses := ["coreborrowBorrowInst"])]
+structure alloc.borrow.ToOwned (Self : Type) (Self_Owned : Type) where
+  coreborrowBorrowInst : core.borrow.Borrow Self_Owned Self
+  to_owned : Self → Result Self_Owned
+
+/-- [alloc::borrow::Cow]
+    Source: '/rustc/library/alloc/src/borrow.rs', lines 169:0-169:32
+    Name pattern: [alloc::borrow::Cow]
+    Visibility: public -/
+@[discriminant isize, rust_type "alloc::borrow::Cow"]
+inductive alloc.borrow.Cow (B : Type) (Clause0_Owned : Type) where
+| Borrowed : B → alloc.borrow.Cow B Clause0_Owned
+| Owned : Clause0_Owned → alloc.borrow.Cow B Clause0_Owned
+
 /-- Trait declaration: [zeroize::Zeroize]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.2/src/lib.rs', lines 253:0-253:17
     Name pattern: [zeroize::Zeroize]
@@ -150,5 +185,138 @@ def model.request_state.RequestStateCodec.open_rs2_at.closure := Unit
 structure model.request_state_wire.Rs1Parts where
   body : Slice Std.U8
   tag : Slice Std.U8
+
+/-- [rmcp::model::task::TaskStatus]
+    Source: 'crates/rmcp/src/model/task.rs', lines 21:0-34:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.task.TaskStatus where
+| Working : model.task.TaskStatus
+| InputRequired : model.task.TaskStatus
+| Completed : model.task.TaskStatus
+| Failed : model.task.TaskStatus
+| Cancelled : model.task.TaskStatus
+
+/-- [rmcp::model::JsonRpcVersion2_0]
+    Source: 'crates/rmcp/src/model.rs', lines 91:8-91:25
+    Visibility: public -/
+@[reducible]
+def model.JsonRpcVersion2_0 := Unit
+
+/-- [rmcp::model::NumberOrString]
+    Source: 'crates/rmcp/src/model.rs', lines 308:0-313:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.NumberOrString where
+| Number : Std.I64 → model.NumberOrString
+| String : alloc.sync.Arc Str → model.NumberOrString
+
+/-- [rmcp::model::JsonRpcRequest]
+    Source: 'crates/rmcp/src/model.rs', lines 565:0-570:1
+    Visibility: public -/
+structure model.JsonRpcRequest (R : Type) where
+  jsonrpc : model.JsonRpcVersion2_0
+  id : model.NumberOrString
+  request : R
+
+/-- [rmcp::model::JsonRpcResponse]
+    Source: 'crates/rmcp/src/model.rs', lines 587:0-591:1
+    Visibility: public -/
+structure model.JsonRpcResponse (R : Type) where
+  jsonrpc : model.JsonRpcVersion2_0
+  id : model.NumberOrString
+  result : R
+
+/-- [rmcp::model::ErrorCode]
+    Source: 'crates/rmcp/src/model.rs', lines 634:0-634:30
+    Visibility: public -/
+@[reducible]
+def model.ErrorCode := Std.I32
+
+/-- [rmcp::model::ErrorData]
+    Source: 'crates/rmcp/src/model.rs', lines 657:0-668:1
+    Visibility: public -/
+structure model.ErrorData where
+  code : model.ErrorCode
+  message : alloc.borrow.Cow Str String
+  data : Option serde_json.value.Value
+
+/-- [rmcp::model::JsonRpcError]
+    Source: 'crates/rmcp/src/model.rs', lines 596:0-604:1
+    Visibility: public -/
+structure model.JsonRpcError where
+  jsonrpc : model.JsonRpcVersion2_0
+  id : Option model.NumberOrString
+  error : model.ErrorData
+
+/-- [rmcp::model::JsonRpcNotification]
+    Source: 'crates/rmcp/src/model.rs', lines 620:0-624:1
+    Visibility: public -/
+structure model.JsonRpcNotification (N : Type) where
+  jsonrpc : model.JsonRpcVersion2_0
+  notification : N
+
+/-- [rmcp::model::JsonRpcMessage]
+    Source: 'crates/rmcp/src/model.rs', lines 778:0-787:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.JsonRpcMessage (Req : Type) (Resp : Type) (Noti : Type) where
+| Request : model.JsonRpcRequest Req → model.JsonRpcMessage Req Resp Noti
+| Response : model.JsonRpcResponse Resp → model.JsonRpcMessage Req Resp Noti
+| Notification :
+  model.JsonRpcNotification Noti →
+  model.JsonRpcMessage Req Resp Noti
+| Error : model.JsonRpcError → model.JsonRpcMessage Req Resp Noti
+
+/-- [rmcp::model::SamplingContent]
+    Source: 'crates/rmcp/src/model.rs', lines 2921:0-2924:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.SamplingContent (T : Type) where
+| Single : T → model.SamplingContent T
+| Multiple : alloc.vec.Vec T → model.SamplingContent T
+
+/-- [rmcp::model::PromptReference]
+    Source: 'crates/rmcp/src/model.rs', lines 3775:0-3779:1
+    Visibility: public -/
+structure model.PromptReference where
+  «name» : String
+  title : Option String
+
+/-- [rmcp::model::ResourceTemplateReference]
+    Source: 'crates/rmcp/src/model.rs', lines 3762:0-3764:1
+    Visibility: public -/
+structure model.ResourceTemplateReference where
+  uri : String
+
+/-- [rmcp::model::Reference]
+    Source: 'crates/rmcp/src/model.rs', lines 3710:0-3715:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.Reference where
+| Resource : model.ResourceTemplateReference → model.Reference
+| Prompt : model.PromptReference → model.Reference
+
+/-- [rmcp::transport::common::client_side_sse::SseEventSizeLimiter]
+    Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 29:0-35:1 -/
+structure transport.common.client_side_sse.SseEventSizeLimiter where
+  max_size : Std.Usize
+  retained_size : Std.Usize
+  line_size : Std.Usize
+  line_is_comment : Bool
+  previous_was_cr : Bool
+
+/-- [rmcp::transport::streamable_http_server::tower::AllowedPort]
+    Source: 'crates/rmcp/src/transport/streamable_http_server/tower.rs', lines 1155:0-1161:1 -/
+@[discriminant isize]
+inductive transport.streamable_http_server.tower.AllowedPort where
+| Any : transport.streamable_http_server.tower.AllowedPort
+| Unspecified : transport.streamable_http_server.tower.AllowedPort
+| Exact : Std.U16 → transport.streamable_http_server.tower.AllowedPort
+
+/-- [rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches::closure]
+    Source: 'crates/rmcp/src/transport/streamable_http_server/tower.rs', lines 1168:56-1168:79 -/
+@[reducible]
+def transport.streamable_http_server.tower.AllowedPort.matches.closure := Str
 
 end rmcp

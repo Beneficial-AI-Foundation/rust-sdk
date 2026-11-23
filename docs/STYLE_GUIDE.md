@@ -171,16 +171,20 @@ Rules for definitions in `Defs`:
 
 There is one proof file per Rust item (`VERIFICATION.md` §8), under
 `formal/proofs/Proofs/Model/RequestStateWire/` for `Wxx` and
-`formal/proofs/Proofs/Model/RequestState/` for `Exx`.
+`formal/proofs/Proofs/Model/RequestState/` for `Exx`. Phase 2 (plan Part II) instead uses one file per
+Rust type or module, holding several targets (a deviation from `VERIFICATION.md` §8, recorded in
+`formal/docs/STATUS.md`, "Documents"): `Proofs/Model/{JsonRpcMessage,NumberOrString,Task,SamplingContent,Reference}.lean`
+for `Mxx` and `Proofs/Transport/{ClientSideSse,AsyncRw,Tower,Auth}.lean` for `Txx`/`Axx` (plan Section 20).
 
 - The file holds the function's spec theorem together with any lemmas needed only for its proof.
   Lemmas usable elsewhere go in a shared file (e.g. `Proofs/Model/RequestState/Common.lean`).
-- The file is named after the function in UpperCamelCase. E.g., for `open_rs1_at` the file is
-  `OpenRs1At.lean`. File names are fixed by the table in plan Section 5.
+- The file is named after the function (Phase 2: the type or module) in UpperCamelCase. E.g., for `open_rs1_at` the file is
+  `OpenRs1At.lean`. File names are fixed by the table in plan Section 5 (Phase 1) and the tree in plan
+  Section 20 (Phase 2).
 - The file contains a module docstring immediately after the imports. It explains the function
   concisely, and gives the plan ID, the Rust source path, and the line at the pinned commit
   (since the D2 fallback of 2026-11-23: the line in the patched copy, patch 01 on origin/main
-  `7caec76`):
+  `7caec76`; Phase 2 files cite the line at upstream `7caec76`, which differs by two in `model.rs`):
 
   ```lean
   /-!
@@ -201,7 +205,8 @@ There is one proof file per Rust item (`VERIFICATION.md` §8), under
   about the external models are theorems in `Proofs/External/<Group>.lean`.
 - Other translated code, if it later moves into `formal/`, mirrors the Rust module path below
   `Proofs/Model/`, for example
-  `Proofs/Model/Transport/StreamableHttpServer/Tower/HostIsAllowed.lean`.
+  `Proofs/Model/Transport/StreamableHttpServer/Tower/HostIsAllowed.lean`. Phase 2 uses the paths of
+  plan Section 20 instead (`Proofs/Model/<Type>.lean`, `Proofs/Transport/<Module>.lean`).
 
 ### Spec Theorem Style
 
@@ -269,10 +274,13 @@ never built.
 Round-trip and dispatch theorems that span several functions are proved in
 `formal/proofs/Proofs/Model/RequestState/Roundtrip.lean` (`frame_roundtrip` in
 `Proofs/Model/RequestStateWire/Frame.lean`), and restated at the end of the spec file of the
-corresponding Rust file.
+corresponding Rust file. Phase 2's C01–C05 are proved in the proof file of the targets they combine
+(plan Section 20, e.g. C03 in `Proofs/Model/JsonRpcMessage.lean`) and restated at the end of that
+Rust file's spec file.
 
 - Theorem names say what the result is, following the [Mathlib naming guidelines][mathlib-naming]
-  and the names of plan Section 5 (`rs1_roundtrip`, `open_at_roundtrip_rs2`, ...), rather than
+  and the names of plan Section 5 (`rs1_roundtrip`, `open_at_roundtrip_rs2`, ...) or plan Section 16.4
+  for Phase 2 (`sse_observe_append`, `ipv6_embedding_no_bypass`, ...), rather than
   `<function>_spec`. They are not tagged `@[step]`.
 - The docstring lists every premise of the round trip in words (body length, expiry, same
   associated data, key or kid conditions), and says which translated functions the theorem is
@@ -283,11 +291,19 @@ corresponding Rust file.
 ## Spec Files
 
 `formal/specs/Specs/Model/RequestStateWire.lean` and `Specs/Model/RequestState.lean` are the spec
-files, one per Rust source file (`VERIFICATION.md` §7). They are what a reader needs to trust the
+files, one per Rust source file (`VERIFICATION.md` §7). Phase 2 adds one spec file per Rust source
+file, mirroring its module path: `Specs/Model.lean`, `Specs/Model/Task.lean`,
+`Specs/Transport/Common/ClientSideSse.lean`, `Specs/Transport/AsyncRw.lean`,
+`Specs/Transport/StreamableHttpServer/Tower.lean` and `Specs/Transport/Auth.lean` (plan Section 20).
+Restated theorems are named `Theorems.<last module segment>.<Type>.<function>` (`<Type>.` only for
+methods; free functions are `Theorems.<last module segment>.<function>`, e.g. Phase 2's
+`Theorems.async_rw.is_standard_method`). Examples: Phase 1 `Theorems.request_state.RequestStateCodec.open_at`;
+Phase 2 `Theorems.model.JsonRpcMessage.into_request`. They are what a reader needs to trust the
 result.
 
 - The module docstring states the translated configuration
-  (`x86_64-unknown-linux-gnu`, `--no-default-features --features request-state`), names the `Defs`
+  (`x86_64-unknown-linux-gnu`, `--no-default-features --features request-state`; from S21 the widened
+  feature list of plan Section 15, human decision H1), names the `Defs`
   the statements use, and lists the items of that Rust file that were not translated (plan
   Section 2.3).
 - Statements appear in Rust source order, composition theorems last.

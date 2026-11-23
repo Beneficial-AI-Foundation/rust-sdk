@@ -27,6 +27,16 @@ def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T := {
   borrow := core.borrow.Borrow.Blanket.borrow
 }
 
+/-- Trait implementation: [core::num::{impl core::str::traits::FromStr<core::num::error::ParseIntError> for i64}]
+    Source: '/rustc/library/core/src/num/mod.rs', lines 1589:8-1589:38
+    Name pattern: [core::str::traits::FromStr<i64, core::num::error::ParseIntError>] -/
+@[reducible, rust_trait_impl
+  "core::str::traits::FromStr<i64, core::num::error::ParseIntError>"]
+def I64.Insts.CoreStrTraitsFromStrParseIntError : core.str.traits.FromStr
+  Std.I64 core.num.error.ParseIntError := {
+  from_str := I64.Insts.CoreStrTraitsFromStrParseIntError.from_str
+}
+
 /-- Trait implementation: [core::slice::cmp::{impl core::cmp::PartialEq<[U]> for [T]}]
     Source: '/rustc/library/core/src/slice/cmp.rs', lines 14:0-16:28
     Name pattern: [core::cmp::PartialEq<[@T], [@U]>] -/
@@ -34,6 +44,23 @@ def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T := {
 def Slice.Insts.CoreCmpPartialEqSlice {T : Type} {U : Type} (cmpPartialEqInst :
   core.cmp.PartialEq T U) : core.cmp.PartialEq (Slice T) (Slice U) := {
   eq := core.slice.cmp.PartialEqSlice.eq cmpPartialEqInst
+}
+
+/-- Trait implementation: [core::slice::{impl core::slice::SlicePattern<T> for [T; N]}]
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 5674:0-5674:47
+    Name pattern: [core::slice::SlicePattern<[@T; @N], @T>] -/
+@[reducible, rust_trait_impl "core::slice::SlicePattern<[@T; @N], @T>"]
+def Array.Insts.CoreSliceSlicePattern (T : Type) (N : Std.Usize) :
+  core.slice.SlicePattern (Array T N) T := {
+  as_slice := Array.Insts.CoreSliceSlicePattern.as_slice
+}
+
+/-- Trait implementation: [core::str::traits::{impl core::cmp::PartialEq<str> for str}]
+    Source: '/rustc/library/core/src/str/traits.rs', lines 27:0-27:28
+    Name pattern: [core::cmp::PartialEq<str, str>] -/
+@[reducible, rust_trait_impl "core::cmp::PartialEq<str, str>"]
+def Str.Insts.CoreCmpPartialEqStr : core.cmp.PartialEq Str Str := {
+  eq := Str.Insts.CoreCmpPartialEqStr.eq
 }
 
 /-- Trait implementation: [std::hash::random::{impl core::clone::Clone for std::hash::random::RandomState}]
@@ -105,6 +132,17 @@ def alloc.string.String.Insts.CoreCloneClone : core.clone.Clone String := {
 def alloc.string.String.Insts.CoreHashHash : core.hash.Hash String := {
   hash := fun {H : Type} (corehashHasherInst : core.hash.Hasher H) =>
     alloc.string.String.Insts.CoreHashHash.hash corehashHasherInst
+}
+
+/-- Trait implementation: [alloc::sync::{impl core::cmp::PartialEq<alloc::sync::Arc<T>> for alloc::sync::Arc<T>}]
+    Source: '/rustc/library/alloc/src/sync.rs', lines 3561:0-3561:65
+    Name pattern: [core::cmp::PartialEq<alloc::sync::Arc<@T>, alloc::sync::Arc<@T>>] -/
+@[reducible, rust_trait_impl
+  "core::cmp::PartialEq<alloc::sync::Arc<@T>, alloc::sync::Arc<@T>>"]
+def alloc.sync.Arc.Insts.CoreCmpPartialEqArc {T : Type} (A : Type)
+  (corecmpPartialEqInst : core.cmp.PartialEq T T) : core.cmp.PartialEq
+  (alloc.sync.Arc T) (alloc.sync.Arc T) := {
+  eq := alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq A corecmpPartialEqInst
 }
 
 /-- Trait implementation: [zeroize::{impl zeroize::Zeroize for Z}]
@@ -1637,5 +1675,865 @@ def model.request_state_wire.frame
     alloc.vec.Vec.extend_from_slice core.clone.CloneU8 (alloc.vec.Vec.new
       Std.U8) s
   alloc.vec.Vec.extend_from_slice core.clone.CloneU8 body payload
+
+/-- [rmcp::model::task::{rmcp::model::task::TaskStatus}::is_terminal]:
+    Source: 'crates/rmcp/src/model/task.rs', lines 38:4-40:5
+    Visibility: public -/
+def model.task.TaskStatus.is_terminal
+  (self : model.task.TaskStatus) : Result Bool := do
+  match self with
+  | model.task.TaskStatus.Working => ok false
+  | model.task.TaskStatus.InputRequired => ok false
+  | model.task.TaskStatus.Completed => ok true
+  | model.task.TaskStatus.Failed => ok true
+  | model.task.TaskStatus.Cancelled => ok true
+
+/-- [rmcp::model::{impl core::cmp::PartialEq<rmcp::model::NumberOrString> for rmcp::model::NumberOrString}::eq]:
+    Source: 'crates/rmcp/src/model.rs', lines 306:27-306:36
+    Visibility: public -/
+def model.NumberOrString.Insts.CoreCmpPartialEqNumberOrString.eq
+  (self : model.NumberOrString) (other : model.NumberOrString) :
+  Result Bool
+  := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  if self1 = other1
+  then
+    match self with
+    | model.NumberOrString.Number __self_0 =>
+      match other with
+      | model.NumberOrString.Number __arg1_0 =>
+        lift (core.cmp.impls.PartialEqI64.eq __self_0 __arg1_0)
+      | model.NumberOrString.String _ => fail panic
+    | model.NumberOrString.String __self_0 =>
+      match other with
+      | model.NumberOrString.Number _ => fail panic
+      | model.NumberOrString.String __arg1_0 =>
+        alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq Global
+          Str.Insts.CoreCmpPartialEqStr __self_0 __arg1_0
+  else ok false
+
+/-- Trait implementation: [rmcp::model::{impl core::cmp::PartialEq<rmcp::model::NumberOrString> for rmcp::model::NumberOrString}]
+    Source: 'crates/rmcp/src/model.rs', lines 306:27-306:36 -/
+@[reducible]
+def model.NumberOrString.Insts.CoreCmpPartialEqNumberOrString :
+  core.cmp.PartialEq model.NumberOrString model.NumberOrString := {
+  eq := model.NumberOrString.Insts.CoreCmpPartialEqNumberOrString.eq
+}
+
+/-- [rmcp::model::{rmcp::model::NumberOrString}::numeric_string_value]:
+    Source: 'crates/rmcp/src/model.rs', lines 324:4-329:5 -/
+def model.NumberOrString.numeric_string_value
+  (self : model.NumberOrString) : Result (Option Std.I64) := do
+  match self with
+  | model.NumberOrString.Number _ => ok none
+  | model.NumberOrString.String id =>
+    let s ← alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref Global id
+    let r ← core.str.Str.parse I64.Insts.CoreStrTraitsFromStrParseIntError s
+    core.result.Result.ok r
+
+/-- [rmcp::model::{rmcp::model::NumberOrString}::matches_response_id]:
+    Source: 'crates/rmcp/src/model.rs', lines 332:4-339:5 -/
+def model.NumberOrString.matches_response_id
+  (self : model.NumberOrString) (response_id : model.NumberOrString) :
+  Result Bool
+  := do
+  let b ←
+    model.NumberOrString.Insts.CoreCmpPartialEqNumberOrString.eq self
+      response_id
+  if b
+  then ok true
+  else
+    match self with
+    | model.NumberOrString.Number request_id =>
+      let o ← model.NumberOrString.numeric_string_value response_id
+      let b1 ←
+        core.option.Option.Insts.CoreCmpPartialEqOption.eq
+          core.cmp.PartialEqI64 o (some request_id)
+      if b1
+      then ok true
+      else ok false
+    | model.NumberOrString.String _ => ok false
+
+/-- [rmcp::model::{rmcp::model::JsonRpcMessage<Req, Resp, Not>}::into_request]:
+    Source: 'crates/rmcp/src/model.rs', lines 821:4-826:5
+    Visibility: public -/
+def model.JsonRpcMessage.into_request
+  {Req : Type} {Resp : Type} {Not : Type}
+  (self : model.JsonRpcMessage Req Resp Not) :
+  Result (Option (Req × model.NumberOrString))
+  := do
+  match self with
+  | model.JsonRpcMessage.Request r => ok (some (r.request, r.id))
+  | model.JsonRpcMessage.Response _ => ok none
+  | model.JsonRpcMessage.Notification _ => ok none
+  | model.JsonRpcMessage.Error _ => ok none
+
+/-- [rmcp::model::{rmcp::model::JsonRpcMessage<Req, Resp, Not>}::into_response]:
+    Source: 'crates/rmcp/src/model.rs', lines 827:4-832:5
+    Visibility: public -/
+def model.JsonRpcMessage.into_response
+  {Req : Type} {Resp : Type} {Not : Type}
+  (self : model.JsonRpcMessage Req Resp Not) :
+  Result (Option (Resp × model.NumberOrString))
+  := do
+  match self with
+  | model.JsonRpcMessage.Request _ => ok none
+  | model.JsonRpcMessage.Response r => ok (some (r.result, r.id))
+  | model.JsonRpcMessage.Notification _ => ok none
+  | model.JsonRpcMessage.Error _ => ok none
+
+/-- [rmcp::model::{rmcp::model::JsonRpcMessage<Req, Resp, Not>}::into_notification]:
+    Source: 'crates/rmcp/src/model.rs', lines 833:4-838:5
+    Visibility: public -/
+def model.JsonRpcMessage.into_notification
+  {Req : Type} {Resp : Type} {Not : Type}
+  (self : model.JsonRpcMessage Req Resp Not) :
+  Result (Option Not)
+  := do
+  match self with
+  | model.JsonRpcMessage.Request _ => ok none
+  | model.JsonRpcMessage.Response _ => ok none
+  | model.JsonRpcMessage.Notification n => ok (some n.notification)
+  | model.JsonRpcMessage.Error _ => ok none
+
+/-- [rmcp::model::{rmcp::model::JsonRpcMessage<Req, Resp, Not>}::into_error]:
+    Source: 'crates/rmcp/src/model.rs', lines 839:4-844:5
+    Visibility: public -/
+def model.JsonRpcMessage.into_error
+  {Req : Type} {Resp : Type} {Not : Type}
+  (self : model.JsonRpcMessage Req Resp Not) :
+  Result (Option (model.ErrorData × (Option model.NumberOrString)))
+  := do
+  match self with
+  | model.JsonRpcMessage.Request _ => ok none
+  | model.JsonRpcMessage.Response _ => ok none
+  | model.JsonRpcMessage.Notification _ => ok none
+  | model.JsonRpcMessage.Error jre => ok (some (jre.error, jre.id))
+
+/-- [rmcp::model::{rmcp::model::JsonRpcMessage<Req, Resp, Not>}::into_result]:
+    Source: 'crates/rmcp/src/model.rs', lines 845:4-852:5
+    Visibility: public -/
+def model.JsonRpcMessage.into_result
+  {Req : Type} {Resp : Type} {Not : Type}
+  (self : model.JsonRpcMessage Req Resp Not) :
+  Result (Option ((core.result.Result Resp model.ErrorData) × (Option
+    model.NumberOrString)))
+  := do
+  match self with
+  | model.JsonRpcMessage.Request _ => ok none
+  | model.JsonRpcMessage.Response r =>
+    ok (some (core.result.Result.Ok r.result, some r.id))
+  | model.JsonRpcMessage.Notification _ => ok none
+  | model.JsonRpcMessage.Error jre =>
+    ok (some (core.result.Result.Err jre.error, jre.id))
+
+/-- [rmcp::model::{rmcp::model::SamplingContent<T>}::into_vec]:
+    Source: 'crates/rmcp/src/model.rs', lines 2928:4-2933:5
+    Visibility: public -/
+def model.SamplingContent.into_vec
+  {T : Type} (self : model.SamplingContent T) : Result (alloc.vec.Vec T) := do
+  match self with
+  | model.SamplingContent.Single item =>
+    let y ←
+      lift (Std.Array.to_slice (Array.make 1#usize [ item ] : Array T 1#usize))
+    ok (alloc.slice.Slice.into_vec y)
+  | model.SamplingContent.Multiple items => ok items
+
+/-- [rmcp::model::{rmcp::model::SamplingContent<T>}::is_empty]:
+    Source: 'crates/rmcp/src/model.rs', lines 2936:4-2941:5
+    Visibility: public -/
+def model.SamplingContent.is_empty
+  {T : Type} (self : model.SamplingContent T) : Result Bool := do
+  match self with
+  | model.SamplingContent.Single _ => ok false
+  | model.SamplingContent.Multiple items => alloc.vec.Vec.is_empty Global items
+
+/-- [rmcp::model::{rmcp::model::SamplingContent<T>}::len]:
+    Source: 'crates/rmcp/src/model.rs', lines 2944:4-2949:5
+    Visibility: public -/
+def model.SamplingContent.len
+  {T : Type} (self : model.SamplingContent T) : Result Std.Usize := do
+  match self with
+  | model.SamplingContent.Single _ => ok 1#usize
+  | model.SamplingContent.Multiple items => ok (alloc.vec.Vec.len items)
+
+/-- [rmcp::model::{rmcp::model::SamplingContent<T>}::first]:
+    Source: 'crates/rmcp/src/model.rs', lines 2960:4-2965:5
+    Visibility: public -/
+def model.SamplingContent.first
+  {T : Type} (self : model.SamplingContent T) : Result (Option T) := do
+  match self with
+  | model.SamplingContent.Single item => ok (some item)
+  | model.SamplingContent.Multiple items =>
+    let s := alloc.vec.Vec.deref items
+    core.slice.Slice.first s
+
+/-- [rmcp::model::{rmcp::model::Reference}::as_prompt_name]:
+    Source: 'crates/rmcp/src/model.rs', lines 3743:4-3748:5
+    Visibility: public -/
+def model.Reference.as_prompt_name
+  (self : model.Reference) : Result (Option Str) := do
+  match self with
+  | model.Reference.Resource _ => ok none
+  | model.Reference.Prompt prompt_ref =>
+    let s ←
+      alloc.string.String.Insts.CoreOpsDerefDerefStr.deref prompt_ref.«name»
+    ok (some s)
+
+/-- [rmcp::model::{rmcp::model::Reference}::as_resource_uri]:
+    Source: 'crates/rmcp/src/model.rs', lines 3751:4-3756:5
+    Visibility: public -/
+def model.Reference.as_resource_uri
+  (self : model.Reference) : Result (Option Str) := do
+  match self with
+  | model.Reference.Resource resource_ref =>
+    let s ←
+      alloc.string.String.Insts.CoreOpsDerefDerefStr.deref resource_ref.uri
+    ok (some s)
+  | model.Reference.Prompt _ => ok none
+
+/-- [rmcp::transport::async_rw::without_carriage_return]:
+    Source: 'crates/rmcp/src/transport/async_rw.rs', lines 385:0-387:1 -/
+def transport.async_rw.without_carriage_return
+  (s : Slice Std.U8) : Result (Slice Std.U8) := do
+  let o ←
+    core.slice.Slice.strip_suffix (Array.Insts.CoreSliceSlicePattern Std.U8
+      1#usize) core.cmp.PartialEqU8 s (Array.make 1#usize [ 13#u8 ])
+  ok (core.option.Option.unwrap_or o s)
+
+/-- [rmcp::transport::async_rw::is_standard_notification]:
+    Source: 'crates/rmcp/src/transport/async_rw.rs', lines 420:0-434:1 -/
+def transport.async_rw.is_standard_notification
+  (method : Str) : Result Bool := do
+  let b ←
+    Str.Insts.CoreCmpPartialEqStr.eq method (toStr "notifications/cancelled")
+  if b
+  then ok true
+  else
+    let b1 ←
+      Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+        "notifications/initialized")
+    if b1
+    then ok true
+    else
+      let b2 ←
+        Str.Insts.CoreCmpPartialEqStr.eq method (toStr "notifications/message")
+      if b2
+      then ok true
+      else
+        let b3 ←
+          Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+            "notifications/progress")
+        if b3
+        then ok true
+        else
+          let b4 ←
+            Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+              "notifications/prompts/list_changed")
+          if b4
+          then ok true
+          else
+            let b5 ←
+              Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                "notifications/resources/list_changed")
+            if b5
+            then ok true
+            else
+              let b6 ←
+                Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                  "notifications/resources/updated")
+              if b6
+              then ok true
+              else
+                let b7 ←
+                  Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                    "notifications/roots/list_changed")
+                if b7
+                then ok true
+                else
+                  let b8 ←
+                    Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                      "notifications/subscriptions/acknowledged")
+                  if b8
+                  then ok true
+                  else
+                    let b9 ←
+                      Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                        "notifications/tools/list_changed")
+                    if b9
+                    then ok true
+                    else ok false
+
+/-- [rmcp::transport::async_rw::is_standard_method]:
+    Source: 'crates/rmcp/src/transport/async_rw.rs', lines 396:0-418:1 -/
+def transport.async_rw.is_standard_method (method : Str) : Result Bool := do
+  let b ← Str.Insts.CoreCmpPartialEqStr.eq method (toStr "initialize")
+  let b1 ←
+    if b
+    then ok true
+    else
+      do
+      let b2 ← Str.Insts.CoreCmpPartialEqStr.eq method (toStr "ping")
+      if b2
+      then ok true
+      else
+        let b3 ←
+          Str.Insts.CoreCmpPartialEqStr.eq method (toStr "server/discover")
+        if b3
+        then ok true
+        else
+          let b4 ←
+            Str.Insts.CoreCmpPartialEqStr.eq method (toStr "prompts/get")
+          if b4
+          then ok true
+          else
+            let b5 ←
+              Str.Insts.CoreCmpPartialEqStr.eq method (toStr "prompts/list")
+            if b5
+            then ok true
+            else
+              let b6 ←
+                Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                  "resources/list")
+              if b6
+              then ok true
+              else
+                let b7 ←
+                  Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                    "resources/read")
+                if b7
+                then ok true
+                else
+                  let b8 ←
+                    Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                      "resources/subscribe")
+                  if b8
+                  then ok true
+                  else
+                    let b9 ←
+                      Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                        "resources/unsubscribe")
+                    if b9
+                    then ok true
+                    else
+                      let b10 ←
+                        Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                          "resources/templates/list")
+                      if b10
+                      then ok true
+                      else
+                        let b11 ←
+                          Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                            "subscriptions/listen")
+                        if b11
+                        then ok true
+                        else
+                          let b12 ←
+                            Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                              "tools/call")
+                          if b12
+                          then ok true
+                          else
+                            let b13 ←
+                              Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                                "tools/list")
+                            if b13
+                            then ok true
+                            else
+                              let b14 ←
+                                Str.Insts.CoreCmpPartialEqStr.eq method (toStr
+                                  "completion/complete")
+                              if b14
+                              then ok true
+                              else
+                                let b15 ←
+                                  Str.Insts.CoreCmpPartialEqStr.eq method
+                                    (toStr "elicitation/create")
+                                if b15
+                                then ok true
+                                else
+                                  let b16 ←
+                                    Str.Insts.CoreCmpPartialEqStr.eq method
+                                      (toStr "logging/setLevel")
+                                  if b16
+                                  then ok true
+                                  else
+                                    let b17 ←
+                                      Str.Insts.CoreCmpPartialEqStr.eq method
+                                        (toStr "roots/list")
+                                    if b17
+                                    then ok true
+                                    else
+                                      let b18 ←
+                                        Str.Insts.CoreCmpPartialEqStr.eq method
+                                          (toStr "sampling/createMessage")
+                                      if b18
+                                      then ok true
+                                      else ok false
+  if b1
+  then ok true
+  else transport.async_rw.is_standard_notification method
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1343:4-1354:5 -/
+def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4
+  (addr : core.net.ip_addr.Ipv4Addr) : Result Bool := do
+  let octets ← core.net.ip_addr.Ipv4Addr.octets addr
+  let b ← core.net.ip_addr.Ipv4Addr.is_private addr
+  if b
+  then ok true
+  else
+    let b1 ← core.net.ip_addr.Ipv4Addr.is_loopback addr
+    if b1
+    then ok true
+    else
+      let b2 ← core.net.ip_addr.Ipv4Addr.is_link_local addr
+      if b2
+      then ok true
+      else
+        let b3 ← core.net.ip_addr.Ipv4Addr.is_broadcast addr
+        if b3
+        then ok true
+        else
+          let b4 ← core.net.ip_addr.Ipv4Addr.is_unspecified addr
+          if b4
+          then ok true
+          else
+            let b5 ← core.net.ip_addr.Ipv4Addr.is_multicast addr
+            if b5
+            then ok true
+            else
+              let i ← Array.index_usize octets 0#usize
+              if i = 0#u8
+              then ok true
+              else
+                if i = 100#u8
+                then
+                  let ri ← core.ops.range.RangeInclusive.new 64#u8 127#u8
+                  let i1 ← Array.index_usize octets 1#usize
+                  let b6 ←
+                    core.ops.range.RangeInclusive.contains
+                      core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
+                      core.cmp.PartialOrdU8 ri i1
+                  if b6
+                  then ok true
+                  else
+                    if i = 198#u8
+                    then
+                      match i1 with
+                      | 18#uscalar => ok true
+                      | 19#uscalar => ok true
+                      | _ => ok false
+                    else ok false
+                else
+                  if i = 198#u8
+                  then
+                    let i1 ← Array.index_usize octets 1#usize
+                    match i1 with
+                    | 18#uscalar => ok true
+                    | 19#uscalar => ok true
+                    | _ => ok false
+                  else ok false
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::embedded_ipv4]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1359:4-1368:5 -/
+def transport.auth.AuthorizationManager.embedded_ipv4
+  (addr : core.net.ip_addr.Ipv6Addr) :
+  Result (Option core.net.ip_addr.Ipv4Addr)
+  := do
+  let a ← core.net.ip_addr.Ipv6Addr.segments addr
+  let a1 ← Array.index_usize a 0#usize
+  let b ← Array.index_usize a 1#usize
+  let c ← Array.index_usize a 2#usize
+  let d ← Array.index_usize a 3#usize
+  let e ← Array.index_usize a 4#usize
+  let f ← Array.index_usize a 5#usize
+  let g ← Array.index_usize a 6#usize
+  let h ← Array.index_usize a 7#usize
+  let i ← lift (core.convert.num.FromU32U16.from g)
+  let i1 ← i <<< 16#i32
+  let i2 ← lift (core.convert.num.FromU32U16.from h)
+  let i3 ← lift (i1 ||| i2)
+  let low ← core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from i3
+  let i4 ←
+    Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ]) 0#usize
+  match i4 with
+  | 0#uscalar =>
+    let i5 ←
+      Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ]) 1#usize
+    match i5 with
+    | 0#uscalar =>
+      let i6 ←
+        Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ]) 2#usize
+      match i6 with
+      | 0#uscalar =>
+        let i7 ←
+          Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ]) 3#usize
+        match i7 with
+        | 0#uscalar =>
+          let i8 ←
+            Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ])
+              4#usize
+          match i8 with
+          | 0#uscalar =>
+            let i9 ←
+              Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ])
+                5#usize
+            match i9 with
+            | 65535#uscalar => ok (some low)
+            | 0#uscalar =>
+              let b1 ← core.net.ip_addr.Ipv6Addr.is_loopback addr
+              if b1
+              then ok none
+              else
+                let b2 ← core.net.ip_addr.Ipv6Addr.is_unspecified addr
+                if b2
+                then ok none
+                else ok (some low)
+            | _ => ok none
+          | _ => ok none
+        | _ => ok none
+      | _ => ok none
+    | _ => ok none
+  | 100#uscalar =>
+    let i5 ←
+      Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ]) 1#usize
+    match i5 with
+    | 65435#uscalar =>
+      let i6 ←
+        Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ]) 2#usize
+      match i6 with
+      | 0#uscalar =>
+        let i7 ←
+          Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ]) 3#usize
+        match i7 with
+        | 0#uscalar =>
+          let i8 ←
+            Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ])
+              4#usize
+          match i8 with
+          | 0#uscalar =>
+            let i9 ←
+              Array.index_usize (Array.make 6#usize [ a1, b, c, d, e, f ])
+                5#usize
+            match i9 with
+            | 0#uscalar => ok (some low)
+            | _ => ok none
+          | _ => ok none
+        | _ => ok none
+      | _ => ok none
+    | _ => ok none
+  | 8194#uscalar =>
+    let i5 ← lift (core.convert.num.FromU32U16.from b)
+    let i6 ← i5 <<< 16#i32
+    let i7 ← lift (core.convert.num.FromU32U16.from c)
+    let i8 ← lift (i6 ||| i7)
+    let ia ← core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from i8
+    ok (some ia)
+  | _ => ok none
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv6]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1370:4-1383:5 -/
+def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6
+  (addr : core.net.ip_addr.Ipv6Addr) : Result Bool := do
+  let o ← transport.auth.AuthorizationManager.embedded_ipv4 addr
+  match o with
+  | none =>
+    let segments ← core.net.ip_addr.Ipv6Addr.segments addr
+    let b ← core.net.ip_addr.Ipv6Addr.is_loopback addr
+    if b
+    then ok true
+    else
+      let b1 ← core.net.ip_addr.Ipv6Addr.is_unspecified addr
+      if b1
+      then ok true
+      else
+        let b2 ← core.net.ip_addr.Ipv6Addr.is_multicast addr
+        if b2
+        then ok true
+        else
+          let i ← Array.index_usize segments 0#usize
+          let i1 ← lift (i &&& 65472#u16)
+          if i1 = 65152#u16
+          then ok true
+          else
+            let i2 ← lift (i &&& 65024#u16)
+            if i2 = 64512#u16
+            then ok true
+            else
+              let s ←
+                core.array.Array.index (core.ops.index.IndexSlice
+                  (core.slice.index.SliceIndexRangeToUsizeSlice Std.U16))
+                  segments { «end» := 2#usize }
+              let b3 ←
+                Slice.Insts.CoreCmpPartialEqArray.eq core.cmp.PartialEqU16 s
+                  (Array.make 2#usize [ 8193#u16, 0#u16 ])
+              if b3
+              then ok true
+              else
+                let s1 ←
+                  core.array.Array.index (core.ops.index.IndexSlice
+                    (core.slice.index.SliceIndexRangeToUsizeSlice Std.U16))
+                    segments { «end» := 3#usize }
+                Slice.Insts.CoreCmpPartialEqArray.eq core.cmp.PartialEqU16 s1
+                  (Array.make 3#usize [ 100#u16, 65435#u16, 1#u16 ])
+  | some embedded =>
+    transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4 embedded
+
+/-- [rmcp::transport::common::client_side_sse::{rmcp::transport::common::client_side_sse::SseEventSizeLimiter}::check_limit]:
+    Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 90:4-96:5 -/
+def transport.common.client_side_sse.SseEventSizeLimiter.check_limit
+  (self : transport.common.client_side_sse.SseEventSizeLimiter) :
+  Result (core.result.Result Unit Unit)
+  := do
+  let i ←
+    lift (core.num.Usize.saturating_add self.retained_size self.line_size)
+  if i > self.max_size
+  then ok (core.result.Result.Err ())
+  else ok (core.result.Result.Ok ())
+
+/-- [rmcp::transport::common::client_side_sse::{rmcp::transport::common::client_side_sse::SseEventSizeLimiter}::finish_line]:
+    Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 75:4-88:5 -/
+def transport.common.client_side_sse.SseEventSizeLimiter.finish_line
+  (self : transport.common.client_side_sse.SseEventSizeLimiter) :
+  Result ((core.result.Result Unit Unit) ×
+    transport.common.client_side_sse.SseEventSizeLimiter)
+  := do
+  let i ←
+    if self.line_size = 0#usize
+    then ok 0#usize
+    else
+      if self.line_is_comment
+      then ok self.retained_size
+      else
+        do
+        let i1 ←
+          lift (core.num.Usize.saturating_add self.retained_size
+            self.line_size)
+        ok (core.num.Usize.saturating_add i1 1#usize)
+  let r ←
+    transport.common.client_side_sse.SseEventSizeLimiter.check_limit
+      {
+        self
+          with
+          retained_size := i, line_size := 0#usize, line_is_comment := false
+      }
+  ok (r,
+    {
+      self
+        with
+        retained_size := i, line_size := 0#usize, line_is_comment := false
+    })
+
+/-- [rmcp::transport::common::client_side_sse::{rmcp::transport::common::client_side_sse::SseEventSizeLimiter}::observe]: loop body 0:
+    Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 49:8-73:5 -/
+@[rust_loop_body]
+def transport.common.client_side_sse.SseEventSizeLimiter.observe_loop.body
+  (iter : core.slice.iter.Iter Std.U8)
+  (self : transport.common.client_side_sse.SseEventSizeLimiter) :
+  Result (ControlFlow ((core.slice.iter.Iter Std.U8) ×
+    transport.common.client_side_sse.SseEventSizeLimiter) ((core.result.Result
+    Unit Unit) × transport.common.client_side_sse.SseEventSizeLimiter))
+  := do
+  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
+  match o with
+  | none => ok (done (core.result.Result.Ok (), self))
+  | some byte =>
+    if self.previous_was_cr
+    then
+      if byte = 10#u8
+      then ok (cont (iter1, { self with previous_was_cr := false }))
+      else
+        match byte with
+        | 13#uscalar =>
+          let (r, self1) ←
+            transport.common.client_side_sse.SseEventSizeLimiter.finish_line
+              { self with previous_was_cr := false }
+          let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+          match cf with
+          | core.ops.control_flow.ControlFlow.Continue _ =>
+            ok (cont (iter1, { self1 with previous_was_cr := true }))
+          | core.ops.control_flow.ControlFlow.Break residual =>
+            let r1 ←
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                Unit (core.convert.FromSame Unit) residual
+            ok (done (r1, self1))
+        | 10#uscalar =>
+          let (r, self1) ←
+            transport.common.client_side_sse.SseEventSizeLimiter.finish_line
+              { self with previous_was_cr := false }
+          let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+          match cf with
+          | core.ops.control_flow.ControlFlow.Continue _ =>
+            ok (cont (iter1, self1))
+          | core.ops.control_flow.ControlFlow.Break residual =>
+            let r1 ←
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                Unit (core.convert.FromSame Unit) residual
+            ok (done (r1, self1))
+        | _ =>
+          let b ←
+            if self.line_size = 0#usize
+            then ok (byte = 58#u8)
+            else ok self.line_is_comment
+          let i ← lift (core.num.Usize.saturating_add self.line_size 1#usize)
+          let r ←
+            transport.common.client_side_sse.SseEventSizeLimiter.check_limit
+              {
+                self
+                  with
+                  line_size := i,
+                  line_is_comment := b,
+                  previous_was_cr := false
+              }
+          let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+          match cf with
+          | core.ops.control_flow.ControlFlow.Continue _ =>
+            ok (cont (iter1,
+              {
+                self
+                  with
+                  line_size := i,
+                  line_is_comment := b,
+                  previous_was_cr := false
+              }))
+          | core.ops.control_flow.ControlFlow.Break residual =>
+            let r1 ←
+              core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+                Unit (core.convert.FromSame Unit) residual
+            ok (done (r1,
+              {
+                self
+                  with
+                  line_size := i,
+                  line_is_comment := b,
+                  previous_was_cr := false
+              }))
+    else
+      match byte with
+      | 13#uscalar =>
+        let (r, self1) ←
+          transport.common.client_side_sse.SseEventSizeLimiter.finish_line self
+        let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+        match cf with
+        | core.ops.control_flow.ControlFlow.Continue _ =>
+          ok (cont (iter1, { self1 with previous_was_cr := true }))
+        | core.ops.control_flow.ControlFlow.Break residual =>
+          let r1 ←
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+              Unit (core.convert.FromSame Unit) residual
+          ok (done (r1, self1))
+      | 10#uscalar =>
+        let (r, self1) ←
+          transport.common.client_side_sse.SseEventSizeLimiter.finish_line self
+        let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+        match cf with
+        | core.ops.control_flow.ControlFlow.Continue _ =>
+          ok (cont (iter1, self1))
+        | core.ops.control_flow.ControlFlow.Break residual =>
+          let r1 ←
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+              Unit (core.convert.FromSame Unit) residual
+          ok (done (r1, self1))
+      | _ =>
+        let b ←
+          if self.line_size = 0#usize
+          then ok (byte = 58#u8)
+          else ok self.line_is_comment
+        let i ← lift (core.num.Usize.saturating_add self.line_size 1#usize)
+        let r ←
+          transport.common.client_side_sse.SseEventSizeLimiter.check_limit
+            { self with line_size := i, line_is_comment := b }
+        let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+        match cf with
+        | core.ops.control_flow.ControlFlow.Continue _ =>
+          ok (cont (iter1, { self with line_size := i, line_is_comment := b }))
+        | core.ops.control_flow.ControlFlow.Break residual =>
+          let r1 ←
+            core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual
+              Unit (core.convert.FromSame Unit) residual
+          ok (done (r1, { self with line_size := i, line_is_comment := b }))
+
+/-- [rmcp::transport::common::client_side_sse::{rmcp::transport::common::client_side_sse::SseEventSizeLimiter}::observe]: loop 0:
+    Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 49:8-73:5 -/
+@[rust_loop]
+def transport.common.client_side_sse.SseEventSizeLimiter.observe_loop
+  (iter : core.slice.iter.Iter Std.U8)
+  (self : transport.common.client_side_sse.SseEventSizeLimiter) :
+  Result ((core.result.Result Unit Unit) ×
+    transport.common.client_side_sse.SseEventSizeLimiter)
+  := do
+  loop
+    (fun (iter1, self1) =>
+      transport.common.client_side_sse.SseEventSizeLimiter.observe_loop.body
+      iter1 self1)
+    (iter, self)
+
+/-- [rmcp::transport::common::client_side_sse::{rmcp::transport::common::client_side_sse::SseEventSizeLimiter}::observe]:
+    Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 48:4-73:5 -/
+def transport.common.client_side_sse.SseEventSizeLimiter.observe
+  (self : transport.common.client_side_sse.SseEventSizeLimiter)
+  (chunk : Slice Std.U8) :
+  Result ((core.result.Result Unit Unit) ×
+    transport.common.client_side_sse.SseEventSizeLimiter)
+  := do
+  let iter ←
+    SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter
+      chunk
+  transport.common.client_side_sse.SseEventSizeLimiter.observe_loop iter self
+
+/-- [rmcp::transport::streamable_http_server::tower::default_port]:
+    Source: 'crates/rmcp/src/transport/streamable_http_server/tower.rs', lines 1146:0-1152:1 -/
+def transport.streamable_http_server.tower.default_port
+  (scheme : Str) : Result (Option Std.U16) := do
+  let b ← Str.Insts.CoreCmpPartialEqStr.eq scheme (toStr "http")
+  if b
+  then ok (some 80#u16)
+  else
+    let b1 ← Str.Insts.CoreCmpPartialEqStr.eq scheme (toStr "https")
+    if b1
+    then ok (some 443#u16)
+    else ok none
+
+/-- [rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches::{impl core::ops::function::FnOnce<(), core::option::Option<u16>> for rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches::closure<'_0>}::call_once]:
+    Source: 'crates/rmcp/src/transport/streamable_http_server/tower.rs', lines 1168:56-1168:79 -/
+def
+  transport.streamable_http_server.tower.AllowedPort.matches.closure.Insts.CoreOpsFunctionFnOnceTupleOptionU16.call_once
+  (c : transport.streamable_http_server.tower.AllowedPort.matches.closure)
+  (_ : Unit) :
+  Result (Option Std.U16)
+  := do
+  transport.streamable_http_server.tower.default_port c
+
+/-- Trait implementation: [rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches::{impl core::ops::function::FnOnce<(), core::option::Option<u16>> for rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches::closure<'_0>}]
+    Source: 'crates/rmcp/src/transport/streamable_http_server/tower.rs', lines 1168:56-1168:79 -/
+@[reducible]
+def
+  transport.streamable_http_server.tower.AllowedPort.matches.closure.Insts.CoreOpsFunctionFnOnceTupleOptionU16
+  : core.ops.function.FnOnce
+  transport.streamable_http_server.tower.AllowedPort.matches.closure Unit
+  (Option Std.U16) := {
+  call_once :=
+    transport.streamable_http_server.tower.AllowedPort.matches.closure.Insts.CoreOpsFunctionFnOnceTupleOptionU16.call_once
+}
+
+/-- [rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches]:
+    Source: 'crates/rmcp/src/transport/streamable_http_server/tower.rs', lines 1164:4-1170:5 -/
+def transport.streamable_http_server.tower.AllowedPort.matches
+  (self : transport.streamable_http_server.tower.AllowedPort) (scheme : Str)
+  (port : Option Std.U16) :
+  Result Bool
+  := do
+  match self with
+  | transport.streamable_http_server.tower.AllowedPort.Any => ok true
+  | transport.streamable_http_server.tower.AllowedPort.Unspecified => ok true
+  | transport.streamable_http_server.tower.AllowedPort.Exact allowed =>
+    let o ←
+      core.option.Option.or_else
+        transport.streamable_http_server.tower.AllowedPort.matches.closure.Insts.CoreOpsFunctionFnOnceTupleOptionU16
+        port scheme
+    core.option.Option.Insts.CoreCmpPartialEqOption.eq core.cmp.PartialEqU16 o
+      (some allowed)
 
 end rmcp

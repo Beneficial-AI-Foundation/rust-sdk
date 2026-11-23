@@ -61,7 +61,7 @@ theorem core.result.Result.is_err_spec {T : Type} {E : Type} (self : core.result
 theorem core.result.Result.map_err_Ok {T E F O : Type}
     (inst : core.ops.function.FnOnce O E F) (t : T) (op : O) :
     core.result.Result.map_err inst (core.result.Result.Ok t : core.result.Result T E) op =
-      ok (core.result.Result.Ok t) := rfl
+      Aeneas.Std.Result.ok (core.result.Result.Ok t) := rfl
 
 /-- `core::result::Result::map_err` on `Err e`: `Err (op e)`; the closure's failure
 propagates. -/
@@ -69,7 +69,7 @@ propagates. -/
 theorem core.result.Result.map_err_Err {T E F O : Type}
     (inst : core.ops.function.FnOnce O E F) (e : E) (op : O) :
     core.result.Result.map_err inst (core.result.Result.Err e : core.result.Result T E) op =
-      (do let f ← inst.call_once op e; ok (core.result.Result.Err f)) := rfl
+      (do let f ← inst.call_once op e; Aeneas.Std.Result.ok (core.result.Result.Err f)) := rfl
 
 /-- **Spec theorem for `<&[T] as Default>::default`**: the empty slice. -/
 @[step]

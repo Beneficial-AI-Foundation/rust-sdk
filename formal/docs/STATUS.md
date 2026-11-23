@@ -1,4 +1,4 @@
-# Request-State Verification — Status
+# MCP SDK Verification — Status
 
 Plan: [`docs/MCP_SDK_Verification_Master_Plan_EN.md`][plan].
 Task state: [`board.yaml`](board.yaml) (authoritative). Per-function records:
@@ -6,16 +6,20 @@ Task state: [`board.yaml`](board.yaml) (authoritative). Per-function records:
 the S19 evidence (git history at 223ff12).
 
 Last updated 2026-11-23: S19 final status report, written at local commit `aacfbf7` (branch
-`docs/verification-guides`, not pushed). S19 itself awaits acceptance by the human owner.
+`docs/verification-guides`, not pushed). S19 was accepted by the human owner on 2026-11-23 (`board.yaml`).
 Updated 2026-11-23 for the D2 fallback (human decision 2026-11-23): the SDK `*.rs` files are
 byte-identical to upstream `origin/main` (`7caec76`); the `request_state_wire` refactor and all
 added tests are translation patch `formal/trusted/patches/01-request-state-wire.patch`, applied
-only to the translated copy; every target's linkage is `patch-01` (proved on upstream `7caec76` plus
-translation patch 01). The translation and all 25 proofs are unchanged.
+only to the translated copy; every Phase 1 target's (W/E) linkage is `patch-01` (proved on upstream
+`7caec76` plus translation patch 01). The translation and all 25 proofs are unchanged.
 
 Board at this report: S05–S16 and S18 `ACCEPTED` (human approval 2026-11-23); S01, S02, S03, S04
 and S04a `IN_PROGRESS` (human items open, see "Open items"); S17 `NOT_STARTED` (needs a push to
 GitHub); S19 is this report.
+
+Updated 2026-11-23 for **Phase 2** (plan Part II, Sections 13–25): S20 started; human decisions
+H1–H4 accepted, H5 (owner and budget) open; 25 Phase 2 records added; board tasks S20–S37 added.
+See "Phase 2" below. Nothing about the Phase 1 results changes.
 
 ## Results
 
@@ -104,17 +108,21 @@ Target files, in the patched copy (both compile only with the `request-state` fe
 
 ## Translated configuration
 
-Single target, fixed in `scripts/aeneas-translate.sh` (S03):
+Single target, fixed in `scripts/aeneas-translate.sh` (S03; feature list widened at S21 for Phase 2,
+human decision H1; the Phase 1 output is byte-identical under it):
 
 ```
---target x86_64-unknown-linux-gnu --no-default-features --features request-state --lib
+--target x86_64-unknown-linux-gnu --no-default-features
+--features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth --lib
 --config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true
 ```
 
 Charon settings: `[package.metadata.charon]` in `crates/rmcp/Cargo.toml` (`start_from`, `exclude`,
 `opaque`), committed (they name `request_state_wire`, which exists only in the patched copy).
 Dependency pins (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`,
-`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`. **One translation patch**,
+`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`, checked since S21 on rmcp's own edges in the
+translated configuration (human decision 2026-11-23; other versions used only by other crates,
+e.g. `oauth2`'s `sha2 0.10.9`, are allowed). **One translation patch**,
 `formal/trusted/patches/01-request-state-wire.patch` (D2 fallback, 2026-11-23), and **no hand edit**
 of the generated files (`formal/translation/` is reproduced byte for byte by the translate script,
 S18). The proofs hold only for this configuration.
@@ -250,6 +258,19 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
   `ExtModel.SerdeJsonErrorImpl`. They add no axiom and do not appear in `#print axioms` or the
   locks: a change to a model is caught only by review of `formal/trusted/`. Their 72 laws are
   proved (`Proofs/External/`) and restated in `Specs/External.lean`.
+- **Translation pin** (S21, human decision 2026-11-23): `formal/trusted/translation-pins.txt` records
+  the sha256 of `formal/translation/Rmcp/Funs.lean` and the one line on which `lean-guard.sh sources`
+  excuses a metaprogramming word (line 1971, the word `initialize`, the T06 literal). It is a trusted
+  file: the guard cannot see lexical context, so a pin whose hash is updated together with an edited
+  `Funs.lean` excuses whatever stands at the pinned line; only the byte-for-byte regeneration of
+  `aeneas-translation.yml` and review (each pinned line read in context) catch that. A legitimate
+  re-translation must update it in a reviewed PR.
+- **Phase 2 placeholders** (S21, temporary; human decisions 2026-11-23): 26 external functions as
+  `opaque` constants and 6 external types as `@[rust_type] def`s over abstract `opaque`
+  `ExtModel.*Placeholder` carriers (`formal/trusted/Rmcp/{FunsExternal,TypesExternal}.lean`, last
+  sections). They add no axiom and assert nothing; no proof may use them; S26/S27 replace each by
+  an exact model (plan Section 18). 30 more Aeneas `toStr` native-code axioms are reached (T05–T08,
+  H2) but used by no `Defs`/`Proofs`/`Specs` constant yet, so not locked until S29.
 - **Codec-state hypothesis** (accepted at S12): `Defs/CodecState.lean` defines `CodecValid`
   (keyring clauses; single-key codecs unconstrained; pairwise distinct key ids),
   `CodecFallbacksKnown` (every rs1 fallback id is a key id) and `FallbacksKnown`. It is a
@@ -310,7 +331,12 @@ Opaque items (Charon `opaque` setting in `crates/rmcp/Cargo.toml`, committed):
 `rmcp::model::request_state_wire::prim` (wraps the HMAC and base64 `Engine` types, B1, B3),
 `rmcp::model::request_state::_::now_ms` (system clock; used only by non-target wrappers), and
 the external crates `zeroize`, `base64`, `hmac`, `sha2`, `thiserror`, `chrono`, `serde_json`
-(signatures only). Marking an item opaque only keeps its signature; its contract is the model
+(signatures only); since S21 (Phase 2, plan Section 15) also the crates of the widened features
+(`http`, `tokio`, `tokio_util`, `tracing`, `tracing_core`, `futures`, `futures_util`, `futures_core`,
+`bytes`, `sse_stream`, `hyper`, `tower_service`, `uuid`, `schemars`, `pin_project_lite`,
+`tokio_stream`, `http_body`, `http_body_util`, `rand`, `async_trait`, `pastey`, `oauth2`, `reqwest`,
+`url`; signatures only) and the type `rmcp::transport::auth::AuthorizationManager` (H4; it appears
+in no generated file). Marking an item opaque only keeps its signature; its contract is the model
 above.
 
 ## Bugs found
@@ -370,14 +396,70 @@ Defects found in the plan, documents and tooling, with their state:
 
 Items 1–3 are in the plan text the specifications were checked against, not in the Rust code.
 
+## Phase 2
+
+Plan Part II (Sections 13–25). Twenty-five existing upstream functions in six files of
+`crates/rmcp/src/` at `7caec76`, unmodified, to be verified with linkage `ORIGINAL`, plus the
+composition theorems C01–C05. Selected by a measured pilot (plan Section 14, 2026-11-23); the
+pilot is not the project's translation, which is S21.
+
+**Human decisions (2026-11-23; run log of S20):**
+
+| ID | Decision | State |
+|---|---|---|
+| H1 | One translated configuration with the widened feature list `request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth` | Accepted |
+| H2 | 30 more Aeneas `toStr` native-code axioms for T05–T08, locked in `native-axioms.lock` at S29 | Accepted |
+| H3 | Boundary tests from upstream tests and differential programs; a test-only patch 02 only for an uncovered case, recorded (if created) as a further deviation from `docs/VERIFICATION.md` §4 under "Documents" | Accepted |
+| H4 | `opaque` entry for the type `rmcp::transport::auth::AuthorizationManager` | Accepted |
+| H5 | Project owner and budget | **Open**: TBD (human, 2026-11-23); spec owner named: Hoang Le Truong |
+
+**Owners:** spec owner Hoang Le Truong (named for Phase 2 on 2026-11-23); project owner and budget
+TBD (H5, open by human decision 2026-11-23).
+
+**Per-function status** (mirrors `functions/{M,T,A}*.yaml`; the records are authoritative). Every
+record: `translation: LEAN_OK` (S21), `spec: DRAFT`, `linkage: ORIGINAL` (pending the
+S22 check), `proof: OPEN`.
+
+| ID | Rust symbol | Line at `7caec76` |
+|---|---|---|
+| M01–M05 | `JsonRpcMessage::{into_request, into_response, into_notification, into_error, into_result}` | `model.rs:819, 825, 831, 837, 843` |
+| M06, M07 | `NumberOrString::{numeric_string_value, matches_response_id}` | `model.rs:322, 330` |
+| M08 | `TaskStatus::is_terminal` | `model/task.rs:38` |
+| M09–M12 | `SamplingContent::{into_vec, is_empty, len, first}` | `model.rs:2926, 2934, 2942, 2958` |
+| M13, M14 | `Reference::{as_prompt_name, as_resource_uri}` | `model.rs:3741, 3749` |
+| T01–T03 | `SseEventSizeLimiter::{check_limit, finish_line, observe}` | `transport/common/client_side_sse.rs:90, 75, 48` |
+| T04–T06 | `async_rw::{without_carriage_return, is_standard_notification, is_standard_method}` | `transport/async_rw.rs:385, 420, 396` |
+| T07, T08 | `tower::default_port`, `tower::AllowedPort::matches` | `transport/streamable_http_server/tower.rs:1146, 1164` |
+| A01–A03 | `AuthorizationManager::{embedded_ipv4, is_disallowed_metadata_ipv4, is_disallowed_metadata_ipv6}` | `transport/auth.rs:1359, 1343, 1370` |
+
+**S21 translation run (2026-11-23, local, macOS with `DYLD_FALLBACK_LIBRARY_PATH=/usr/lib`):**
+`scripts/aeneas-translate.sh`, exit 0; Aeneas `nightly-2026.08.20-5d08da4`, Charon 0.1.235, Rust
+`nightly-2026-06-01`; translated source: upstream `7caec76` plus patch 01 (`.llbc/work/`). All 50
+targets defined; the 21 `_` globs each match one Rust item; no `sorry`; all 148 Phase 1 blocks of
+`formal/translation/` (20 in `Types.lean`, 128 in `Funs.lean`) unchanged (the diff only adds
+lines). Re-run after the review fixes: output byte-identical. `lake build` (1745 jobs) and
+`lean-guard.sh` `sources`, `build-log`, `axioms`, `aeneas-archive` pass; the widened test build
+(`$FEATURES,macros`) passes 801 library tests. The three workflows have not run on GitHub.
+
+Board: S20 `IN_PROGRESS`; S21 `IN_PROGRESS` (translated, all 25 `LEAN_OK`; human sign-off and CI pending);
+S22–S37 `NOT_STARTED`.
+
 ## Open items
 
 Human decisions and actions:
+- **Phase 2 owner and budget (H5)**: not named; blocks S20 acceptance and gate G1 (plan Section 21).
+- **`external_code` in `scripts/lean_guard.py`** (pre-existing, found in the S21 review): it does not
+  treat guillemet identifiers `«…»` as one unit, so a `«"»` can shift its view of literals in
+  `trusted/` for the rule against `rmcp`-namespace identifiers. The S21 exception for generated files
+  does not lex at all (a sha256 + exact-line pin, `formal/trusted/translation-pins.txt`); fixing
+  `external_code` is a follow-up.
+- **Clippy with the widened features** fails on unused upstream helpers (`dead_code`); the guides
+  keep clippy on `--features request-state` (S21 review).
 - **Owners and budget**: project owner and budget TBD (blocks S01 acceptance and the D2 gate).
 - **D2 fallback in use (human decision 2026-11-23)**: the refactor did not land in the SDK
   source; it is translation patch `formal/trusted/patches/01-request-state-wire.patch` on
-  upstream `7caec76`, and every target's linkage is `patch-01` (proved on upstream `7caec76` plus
-  translation patch 01). The patch had the review of `docs/VERIFICATION.md` §4: two independent
+  upstream `7caec76`, and every Phase 1 target's (W/E) linkage is `patch-01` (proved on upstream
+  `7caec76` plus translation patch 01). The patch had the review of `docs/VERIFICATION.md` §4: two independent
   agent reviews (no blocking; a side-by-side run of upstream and the patched copy gave identical
   results on 2,463,458 cases) and the human sign-off on 2026-11-23. Landing the refactor upstream
   would let the patch be deleted and the targets become `ORIGINAL`. (Before 2026-11-23 this item
@@ -423,9 +505,11 @@ Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evide
   `RmcpExternal` was offered at the S08/S09 sign-off and not adopted (deferred).
 
 Documents:
-- `docs/VERIFICATION.md` differs from the project's design in eight documented places (build
+- `docs/VERIFICATION.md` differs from the project's design in nine documented places (build
   gate, `#guard_msgs` form, generated root module, reading `proofs/`, `globs`, native-code
-  axioms, externals as definitions (amended), `theorem Theorems.…` instead of `recall`).
+  axioms, externals as definitions (amended), `theorem Theorems.…` instead of `recall`, and,
+  from Phase 2, one proof file per Rust type or module instead of per item (plan Section 20,
+  `docs/STYLE_GUIDE.md`)).
 - Docs-sync round 3 (2026-11-22) left ten wording items open; at `aacfbf7` items (7) base64
   `0.23.x` and (8) `b64_decode` no longer appear in the guides; the others were not re-checked.
 - The guides do not describe the `sources` attribute and `#`-command allowlists or the

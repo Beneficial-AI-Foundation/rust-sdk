@@ -74,6 +74,12 @@ are:
   S04a), and
 - new Rust tests inside either file's private `mod tests` (plan step S16).
 
+**Phase 2** (plan Part II) changes **no** SDK `*.rs` file at all, tests included: its targets are
+verified on the unmodified upstream source (plan Sections 13 and 19). Boundary tests come from the
+existing upstream tests and the differential programs in `formal/trusted/evidence/differential/`;
+a case they do not cover may get tests only through the test-only translation patch
+`02-phase2-tests.patch` (`#[cfg(test)]` code only; human decision H3).
+
 A source change changes the translation; the translation CI forces the regenerated files into the
 same PR, and the Lean build re-checks every proof against them.
 
@@ -104,8 +110,9 @@ A patch is a small, behaviour-preserving edit applied only to the copy of the cr
 `.llbc/work/`; the real source is never patched. None were planned (plan Section 4, "What must be
 trusted"); since 2026-11-23 (D2 fallback, human decision) there is one,
 `formal/trusted/patches/01-request-state-wire.patch`, which carries the `request_state_wire`
-refactor and its tests on upstream `7caec76`, so every target's linkage is `patch-01` (proved on
-upstream `7caec76` plus translation patch 01). If one is needed:
+refactor and its tests on upstream `7caec76`, so every Phase 1 target's (W/E) linkage is `patch-01`
+(proved on upstream `7caec76` plus translation patch 01). Phase 2 targets (M/T/A) need no patch;
+their `ORIGINAL` linkage holds only while `scripts/check-original-linkage.sh` passes (plan Section 19). If one is needed:
 
 1. Run `scripts/apply-patches.sh` so that `.llbc/work/` holds the patched copy.
 2. Make the edit in `.llbc/work/`.
@@ -116,7 +123,10 @@ upstream `7caec76` plus translation patch 01). If one is needed:
 
 One concern per patch. Each patch is reviewed like an axiom (see
 [Review and sign-off](#review-and-sign-off)), and every target whose translation depends on it is
-`linkage: patch-01`. Delete a patch when an Aeneas upgrade makes it unnecessary.
+`linkage: patch-NN` (for patch 01, `patch-01`). Exception (Phase 2, human decision H3): a
+test-only patch `02-phase2-tests.patch` holds only `#[cfg(test)]` code, is not needed for any item
+to translate, cannot change the translation, and affects no target's linkage; it is recorded as a
+deviation from `VERIFICATION.md` §4 in `formal/docs/STATUS.md`, "Documents", if created. Delete a patch when an Aeneas upgrade makes it unnecessary.
 
 ## Pinned toolchain
 
@@ -147,10 +157,15 @@ bundle's channel. `RUSTUP_HOME` is allowed (container images set it); every othe
 refused. A fake `rustc` that prints exactly these lines is not caught by this check.
 
 The dependency versions that the axioms rely on are pinned in `scripts/aeneas-translate.sh`
-(`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`). The script runs one `cargo tree` over the whole
-dependency tree of `rmcp` in the translated configuration and fails if any dependency does not
-come from crates.io (path, git or other registry) or if one of these three resolves to another
-version. `Cargo.lock` is git-ignored in this repository and never copied into `.llbc/work/`, so
+(`PINNED_DEPS`: `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`, `zeroize 1.9.2`,
+`chrono 0.4.45`, `serde_json 1.0.154`). The script runs one `cargo tree` over the whole dependency
+tree of `rmcp` in the translated configuration and fails if any dependency does not come from
+crates.io (path, git or other registry), and checks the pins on the normal-edge tree of `rmcp` in that configuration (`cargo tree --prefix depth`).
+Since S21 (human decision 2026-11-23) the version that counts is the one `rmcp` itself uses: a
+version reached through normal dependency edges whose intermediate packages are all pinned crates
+(`rmcp` -> `hmac` -> `digest` counts; `rmcp` -> `oauth2` -> `sha2` does not). It must be unique and
+equal the pin; other versions used only by other crates (the widened Phase 2 features bring
+`oauth2` with `sha2 0.10`, `digest 0.10` and `base64 0.22`) are logged and allowed. `Cargo.lock` is git-ignored in this repository and never copied into `.llbc/work/`, so
 the dependencies are resolved afresh on every run and this check is what catches drift.
 
 The translate script also pins `crates/rmcp/build.rs` by sha256 (`BUILD_RS_SHA256`). A PR that
@@ -167,7 +182,8 @@ scripts/aeneas-translate.sh    # after any change to src/, patches, or Charon se
 ```
 
 The translate script fixes the configuration (`x86_64-unknown-linux-gnu`,
-`--no-default-features --features request-state --lib`), with overflow checks and debug
+`--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth --lib`;
+the feature list was widened for Phase 2, plan Section 15), with overflow checks and debug
 assertions pinned on: every cargo call, also through Charon, gets
 `--config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true`. The proofs
 hold only for that configuration. So that nothing else changes the build, the script refuses to
@@ -182,8 +198,8 @@ source, the work copy or any ancestor of it, or with `[profile]`, `[patch]`, `[r
 `CARGO_HOME` (no configuration file, only the registry and git caches), and it fails if a
 dependency of `rmcp` does not come from crates.io, if the build script is not the pinned
 `crates/rmcp/build.rs` or emits anything, on a nonzero Charon or Aeneas exit, Charon options in the
-LLBC that differ from or widen the settings, a missing target, any `sorry` in the generated files,
-or a dependency version mismatch. The exact lists are in `formal/README.md` ("Translated
+LLBC that differ from or widen the settings, a missing target, a `_` glob of `start_from` that does
+not match exactly one Rust item, any `sorry` in the generated files, or a dependency version mismatch. The exact lists are in `formal/README.md` ("Translated
 configuration") and the header of `scripts/aeneas-translate.sh`.
 
 Aeneas writes into the scratch directory `$RMCP_LLBC_DIR/out` (default `.llbc/out`); only after
@@ -268,7 +284,7 @@ messages, add declarations without a kernel check, or run code during the build,
   or the next line, by exactly one `#print axioms <name>` that ends the line (no options, no
   `drop`). Written in backticks on both sides (`` `#guard_msgs` ``) it is prose and skipped; this
   exemption covers only `#guard_msgs`, not the banned words. Generated files in `translation/`
-  get the same word, `native` and metaprogramming rules; `#guard_msgs` is banned there, Aeneas's
+  get the same word, `native` and metaprogramming rules (one exception, human decision 2026-11-23, S21: a metaprogramming word in a generated file is excused only at a line number pinned, with that word and the line's exact text, in the trusted file `formal/trusted/translation-pins.txt`, and only while the file's bytes have the sha256 pinned there; today one entry, the T06 comparison with the MCP method name "initialize". A hand edit alone changes the hash and restores the strict rule; an edit together with an updated pin is caught only by the byte-for-byte regeneration of `aeneas-translation.yml` and by review, which must read each pinned line in context. No lexing is involved (review rounds bypassed the earlier lexing-based exemption five times)); `#guard_msgs` is banned there, Aeneas's
   `set_option linter.* false` is allowed, and `axiom` is banned except in the unbuilt
   `*_Template.lean` files, which are exempt. Symlinks under `formal/` fail.
 - `build-log`: an exact allowlist. The log must have a `Build completed successfully` line, and
@@ -329,14 +345,17 @@ visited set (an over-approximation).
 For Rust-side changes:
 
 ```bash
-cargo test -p rmcp --no-default-features --features request-state --lib
-cargo clippy -p rmcp --no-default-features --features request-state --lib -- -D warnings
+cargo test -p rmcp --no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth,macros --lib   # macros: upstream tests need it (S21)
+cargo clippy -p rmcp --no-default-features --features request-state --lib -- -D warnings   # clippy stays on request-state: with the widened features, upstream helpers are unused (dead_code; S21 review)
 just fix                   # fmt and clippy fixes, see CONTRIBUTE.MD
 ```
 
 CI runs three workflows on every relevant PR: the translation is not stale
 (`aeneas-translation.yml`), the Lean project builds (`lean-build.yml`), and the patched copy passes
-the crate's tests (`patched-tests.yml`). A PR is ready only when all three pass.
+the crate's tests (`patched-tests.yml`). A PR is ready only when all three pass. From S22 (Phase 2),
+`aeneas-translation.yml` also runs `scripts/check-original-linkage.sh`, which translates the Phase 2
+targets from the unmodified source and fails if any differs from the committed translation (plan
+Section 19).
 
 `lean-build.yml` has two jobs, because `lake build` elaborates the project, and elaboration runs
 code that could rewrite files of the runner (a `#eval` rewriting `scripts/lean-guard.sh`, say)
@@ -373,7 +392,7 @@ What remains (`formal/README.md`, "What CI checks"):
 Every PR that advances a plan step updates the records under `formal/docs/` in the same PR:
 
 - `board.yaml`: task state (`NOT_STARTED`, `IN_PROGRESS`, `ACCEPTED`, `BLOCKED`, `DEFERRED`);
-- `functions/<ID>.yaml` (`W01`–`W15`, `E01`–`E11`, `E09a`): the four independent fields
+- `functions/<ID>.yaml` (`W01`–`W15`, `E01`–`E11`, `E09a`; Phase 2: `M01`–`M14`, `T01`–`T08`, `A01`–`A03`): the four independent fields
   `translation`, `spec`, `linkage`, and `proof`, plus `spec_drafted_by`, `spec_reviews`, and
   `spec_owner`;
 - `evidence/Sxx.md`: exact commands, exit status, the Aeneas tag and commit translated, axioms
@@ -391,7 +410,7 @@ Only a human may set `spec: REVIEWED` or move a task to `ACCEPTED`; see
 All verification PRs must advance a step (`Sxx`) of the master plan, or close an open issue in the
 project, unless special circumstances are justified.
 
-Whenever possible, a PR should cover exactly one step and one function (`Wxx` or `Exx`). Keep its
+Whenever possible, a PR should cover exactly one step and one function (`Wxx`, `Exx`, or Phase 2 `Mxx`, `Txx`, `Axx`). Keep its
 scope as small as possible, ideally not exceeding ~500 LOC of hand-written Lean and Rust.
 Regenerated translation output, refactoring, and documentation do not count towards that limit.
 

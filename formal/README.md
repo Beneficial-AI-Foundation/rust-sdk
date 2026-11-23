@@ -15,9 +15,15 @@ axioms; see "Results" in `docs/STATUS.md`.
 `scripts/aeneas-translate.sh` fixes it:
 
 ```
---target x86_64-unknown-linux-gnu --no-default-features --features request-state --lib
+--target x86_64-unknown-linux-gnu --no-default-features
+--features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth --lib
 --config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true
 ```
+
+Phase 2 widened the feature list (plan Section 15, human decision H1); the Phase 1 translation is
+byte-identical under it. Local runs on macOS with the bundle's binaries need
+`DYLD_FALLBACK_LIBRARY_PATH=/usr/lib` (the bundle links `libiconv` from a Nix store path; plan
+Section 14); CI on Linux does not.
 
 The two `--config` options are passed to every cargo call (also through Charon); command-line
 `--config` has the highest precedence in cargo. They fix the overflow mode explicitly: arithmetic
@@ -51,12 +57,15 @@ change the build, so the script also refuses to run when:
 - the workspace or `crates/rmcp` manifest has `[profile]`, `[patch]`, `[replace]` or
   `cargo-features`;
 - a dependency of `rmcp` in this configuration does not come from crates.io (path, git or other
-  registry, as `cargo tree` reports it), or `hmac`, `sha2`, `base64` resolve to a version other
-  than the pinned one;
+  registry, as `cargo tree` reports it), or a pinned crate (`PINNED_DEPS`) used by `rmcp` itself
+  resolves to a version other than the pinned one (see below);
 - the build script of `rmcp` is not `crates/rmcp/build.rs` with the sha256 pinned in the script,
   or its output file is not empty. That build script only runs `git config core.hooksPath` when
   `.git` exists (it does not in `.llbc/work/`) and prints no `cargo:` directive, so it adds no
-  cfg, flag or environment variable to the build.
+  cfg, flag or environment variable to the build;
+- after Aeneas, a target has no `def` in `Funs.lean`, a `_` glob of `start_from` does not match
+  exactly one Rust item in `translation.json` (plan Section 15, rule 3), or a generated file
+  contains `sorry`.
 
 Proofs hold only for this configuration and for the pinned commit (plan Section 1). The Charon
 settings (`start_from`, `exclude`, `opaque`) are in `[package.metadata.charon]` of
@@ -93,7 +102,12 @@ The release assets are checked against the sha256 values committed in
 The dependency versions the external models rely on are pinned in `scripts/aeneas-translate.sh`
 (`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, and since S08–S09 `digest 0.11.3`,
 `zeroize 1.9.2`, `chrono 0.4.45` and `serde_json 1.0.154`, which the models also cite); the
-script fails if `cargo tree` resolves any other version or a source other than crates.io. `Cargo.lock` is git-ignored and `scripts/apply-patches.sh` never copies it into
+script fails on a source other than crates.io or on another version of a pinned crate. Since S21 (human decision 2026-11-23) the version that counts is the one `rmcp` itself uses: a
+version reached, in the normal-edge tree of `rmcp` for the translated configuration (`cargo tree`),
+through edges whose intermediate packages are all pinned crates
+(`rmcp` -> `hmac` -> `digest` counts; `rmcp` -> `oauth2` -> `sha2` does not). It must be unique and
+equal the pin; other versions used only by other crates (the widened Phase 2 features bring
+`oauth2` with `sha2 0.10`, `digest 0.10` and `base64 0.22`) are logged and allowed. `Cargo.lock` is git-ignored and `scripts/apply-patches.sh` never copies it into
 `.llbc/work/`, so every run, local or CI, resolves the dependencies afresh (this needs the
 crates.io index).
 
@@ -104,7 +118,7 @@ From the repository root:
 ```bash
 scripts/aeneas-install.sh      # bundle into .aeneas/<tag>/, Rust nightly, Lean toolchain
 scripts/aeneas-translate.sh    # copy + patches (.llbc/work/), version check, Charon, Aeneas,
-                               # target and sorry checks, then formal/translation/
+                               # target, glob and sorry checks, then formal/translation/
 ```
 
 For a scratch source, set `RMCP_SOURCE_ROOT`, `RMCP_LLBC_DIR` and `RMCP_TRANSLATION_DEST`
@@ -209,7 +223,7 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
   without its keyword in the text. A proof that needs a custom tactic writes it out inline; a
   reviewed tactic module would be a human decision.
 
-  The check is textual: **comments and docstrings count**. Prose hits the banned words too:
+  The check is textual: **comments and docstrings count** (one exception, human decision 2026-11-23, S21: a metaprogramming word in a generated file is excused only at a line number pinned, with that word and the line's exact text, in the trusted file `formal/trusted/translation-pins.txt`, and only while the file's bytes have the sha256 pinned there; today one entry, the T06 comparison with the MCP method name "initialize". A hand edit alone changes the hash and restores the strict rule; an edit together with an updated pin is caught only by the byte-for-byte regeneration of `aeneas-translation.yml` and by review, which must read each pinned line in context. No lexing is involved (review rounds bypassed the earlier lexing-based exemption five times)). Prose hits the banned words too:
   "axiom", "admit", "extern", "unsafe", "sorry", "syntax", "macro", "elab", "initialize", "IO",
   "simproc", "trace", "plausible". This includes the docstrings of the
   `Proofs/External` laws (S08–S09), which are about the trusted models. Write instead

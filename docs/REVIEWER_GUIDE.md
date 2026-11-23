@@ -35,7 +35,7 @@ latter.
 ## Recommended steps for reviewers
 
 We assume the typical review deals with a PR that covers one plan step for a single function
-(`Wxx` or `Exx`), provides a specification (or its proof, once the specification is signed off), and
+(`Wxx`, `Exx`, or Phase 2 `Mxx`, `Txx`, `Axx`), provides a specification (or its proof, once the specification is signed off), and
 stays near the recommended 500 LOC cap.
 For other kinds of PR use the steps below as guidelines, with your own judgement.
 
@@ -136,6 +136,10 @@ judgement.
   `formal/translation/Rmcp/Funs.lean`, with its current generated name, and that all three CI
   workflows pass on the head commit (translation not stale, Lean build with the
   `scripts/lean-guard.sh` checks, patched tests).
+- If `formal/trusted/translation-pins.txt` changes (a trusted item): does its sha256 equal the `Funs.lean` that
+  `scripts/aeneas-translate.sh` regenerates (and `aeneas-translation.yml` reproduces)? Is each pinned line, read in
+  context, a line where Lean reads the pinned word inside a string literal (no open string or comment before it)? Is
+  every new entry needed (a word the translation really emits)?
 - Read the `#guard_msgs` axiom lists in the spec files. Every axiom outside `propext`,
   `Classical.choice`, and `Quot.sound` must be in the trusted-base section of
   `formal/docs/STATUS.md`. A changed list is a trust change and must be named in the PR footer.
@@ -152,7 +156,9 @@ judgement.
   2026-11-22).
 - Check that the function record and board use the vocabulary of plan Section 6 and do not
   overstate the result. A function is "verified" only when `proof: CHECKED`, `spec: REVIEWED`,
-  `linkage: ORIGINAL`, and its axioms are all in the trusted base.
+  `linkage: ORIGINAL`, and its axioms are all in the trusted base. For a Phase 2 target (`Mxx`,
+  `Txx`, `Axx`), `ORIGINAL` additionally requires `scripts/check-original-linkage.sh` to pass on
+  the head commit (plan Section 19); before S22 lands, a record's `ORIGINAL` is only pending.
 
 Comments that show an overstated status or an unapproved assumption are _blocking_.
 

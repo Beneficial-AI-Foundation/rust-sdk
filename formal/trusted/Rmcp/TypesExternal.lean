@@ -13,10 +13,12 @@ Started at plan step S04a from the template that Aeneas generated
 `f8fb6a7` with the Charon settings of S04a part 2 (derived `Debug` impls excluded), Aeneas
 `nightly-2026.08.20-5d08da4`. Since the D2 fallback (2026-11-23) the translated source is the
 patched copy (patch 01 on origin/main 7caec76), which gives the same translation; the `Source:`
-line numbers below refer to it. Plan steps S08–S09 replaced every placeholder of the template:
-each type is now a `structure` that models the fields of the Rust type; the one field that
-no translated code and no model looks inside (`serde_json`'s boxed `ErrorImpl`) has an
-`opaque` type. This module declares no axiom.
+line numbers below refer to it. Plan steps S08–S09 replaced every placeholder of that (Phase 1)
+template: each type is now a `structure` that models the fields of the Rust type; the one field
+that no translated code and no model looks inside (`serde_json`'s boxed `ErrorImpl`) has an
+`opaque` type. The six external types that the Phase 2 translation (plan step S21) added are
+temporary placeholders over `opaque` carrier types (S21, last section), to be replaced by
+exact models at S26/S27 (plan Section 18). This module declares no axiom.
 
 The `@[rust_type]` names and the source lines in the docstrings are those Aeneas generated.
 Source paths: `/rustc/library/…` is the `rust-src` of the pinned toolchain `nightly-2026-06-01`;
@@ -137,3 +139,73 @@ which zeroizes the value when it goes out of scope, has no counterpart in the va
 structure zeroize.Zeroizing (Z : Type) : Type where
   /-- The wrapped value (the tuple field `.0`). -/
   inner : Z
+
+/-! ## Placeholders of plan step S21
+
+The Phase 2 translation (plan step S21) uses six more external types. Each is a temporary
+placeholder with the generated name and `@[rust_type]` attribute of the template: a `def`
+equal to an `opaque` carrier type `ExtModel.…Placeholder` (the Aeneas `@[rust_type]` attribute
+accepts an inductive type, an axiom or a definition, not an `opaque` constant;
+`Aeneas/Extract/Extract.lean`, `processType`). `opaque` adds no axiom, and nothing about the
+carrier is known beyond its existence. Plan steps S26/S27 replace each one by an exact model
+(plan Section 18). -/
+
+/-- The opaque carrier of the placeholder `core.mem.maybe_uninit.MaybeUninit`. -/
+opaque ExtModel.MaybeUninitPlaceholder (T : Type) : Type
+
+/-- [core::mem::maybe_uninit::MaybeUninit]
+    Source: '/rustc/library/core/src/mem/maybe_uninit.rs', lines 355:0-355:24
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_type "core::mem::maybe_uninit::MaybeUninit"]
+def core.mem.maybe_uninit.MaybeUninit (T : Type) : Type := ExtModel.MaybeUninitPlaceholder T
+
+/-- The opaque carrier of the placeholder `core.net.ip_addr.Ipv4Addr`. -/
+opaque ExtModel.Ipv4AddrPlaceholder : Type
+
+/-- [core::net::ip_addr::Ipv4Addr]
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 74:0-74:19
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_type "core::net::ip_addr::Ipv4Addr"]
+def core.net.ip_addr.Ipv4Addr : Type := ExtModel.Ipv4AddrPlaceholder
+
+/-- The opaque carrier of the placeholder `core.net.ip_addr.Ipv6Addr`. -/
+opaque ExtModel.Ipv6AddrPlaceholder : Type
+
+/-- [core::net::ip_addr::Ipv6Addr]
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 168:0-168:19
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_type "core::net::ip_addr::Ipv6Addr"]
+def core.net.ip_addr.Ipv6Addr : Type := ExtModel.Ipv6AddrPlaceholder
+
+/-- The opaque carrier of the placeholder `core.num.error.ParseIntError`. -/
+opaque ExtModel.ParseIntErrorPlaceholder : Type
+
+/-- [core::num::error::ParseIntError]
+    Source: '/rustc/library/core/src/num/error.rs', lines 74:0-74:24
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_type "core::num::error::ParseIntError"]
+def core.num.error.ParseIntError : Type := ExtModel.ParseIntErrorPlaceholder
+
+/-- The opaque carrier of the placeholder `alloc.sync.Arc`. -/
+opaque ExtModel.ArcPlaceholder (T : Type) : Type
+
+/-- [alloc::sync::Arc]
+    Source: '/rustc/library/alloc/src/sync.rs', lines 269:0-272:1
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_type "alloc::sync::Arc"]
+def alloc.sync.Arc (T : Type) : Type := ExtModel.ArcPlaceholder T
+
+/-- The opaque carrier of the placeholder `serde_json.value.Value`. -/
+opaque ExtModel.SerdeJsonValuePlaceholder : Type
+
+/-- [serde_json::value::Value]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/value/mod.rs', lines 116:0-116:14
+
+Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+@[rust_type "serde_json::value::Value"]
+def serde_json.value.Value : Type := ExtModel.SerdeJsonValuePlaceholder

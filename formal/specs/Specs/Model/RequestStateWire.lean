@@ -19,7 +19,8 @@ order with the composition theorem last. Each is restated as a theorem
 at commit `9bd8144`, removed when they were incorporated (the W-batch incorporation procedure (git history at 223ff12)).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state`, with `overflow-checks=true` and
+features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
+(widened for Phase 2, plan Section 15; the translation of this file's targets is unchanged), with `overflow-checks=true` and
 `debug-assertions=true` (every cargo call gets `--config profile.dev.overflow-checks=true` and
 `--config profile.dev.debug-assertions=true`, plan Section 1), so arithmetic overflow panics,
 which Aeneas models as failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is
