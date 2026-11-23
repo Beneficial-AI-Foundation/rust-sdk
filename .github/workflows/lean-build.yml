@@ -175,8 +175,11 @@ jobs:
       - name: Fetch Mathlib cache
         run: lake exe cache get
 
-      - name: Fetch the Aeneas library
-        run: lake build Aeneas
+      # Unpack the Aeneas release archive (its sha256 is checked by the next step) without
+      # compiling: `lake build Aeneas` recompiled the library from source on the Linux runner,
+      # so the installed build no longer matched the verified archive.
+      - name: Fetch the Aeneas library (release archive)
+        run: lake build aeneas:release
 
       - name: Check the Aeneas Lean-library archive and installed build
         run: ../scripts/lean-guard.sh aeneas-archive
