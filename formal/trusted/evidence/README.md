@@ -46,7 +46,10 @@ request_state_wire.rs`, `codec` = `crates/rmcp/src/model/request_state.rs`.
   flipped tag rejected, case 5's truncated tag rejected by `verify`);
   `wire::hmac_sha256_verify_rejects_wrong_length_tags` (empty, 31-byte and 33-byte tags
   rejected; empty key accepted); `wire::transcripts_match_incremental_hmac`;
-  `codec::rs1_known_answer_is_unchanged`, `codec::rs2_known_answer_matches_wire_specification`.
+  `codec::rs1_known_answer_is_unchanged`, `codec::rs2_known_answer_matches_wire_specification`;
+  `wire::s16_prim_rfc4231_verify_accepts_only_the_exact_tag` (S16: for RFC 4231 cases 1–4, 6,
+  7 only the exact tag is accepted; prefixes, an extension, flipped bytes and the other
+  cases' tags are rejected).
 - **Stated exception (not modelled).** SHA-256 finalisation computes the bit length as a `u64`
   (`sha2-0.11.1/src/block_api.rs` line 66), which overflows (a panic under `overflow-checks`)
   when the hashed input reaches `2^61` bytes: for a message of at least `2^61 − 64` bytes (inner
@@ -82,7 +85,10 @@ request_state_wire.rs`, `codec` = `crates/rmcp/src/model/request_state.rs`.
   `wire::base64url_decode_is_strict`, `wire::base64url_roundtrip` (all 256 prefixes of
   `0..=255`, alphabet and round trip), `wire::b64_len_matches_encoder_output_length`;
   `codec::non_base64_sections_are_invalid_encoding`,
-  `codec::parser_rejects_invalid_tokens_and_unavailable_keys`.
+  `codec::parser_rejects_invalid_tokens_and_unavailable_keys`; added by S16 (their cases are
+  not, in general, proved by `decide` above): `wire::s16_prim_rfc4648_sec10_padded_forms_rejected`,
+  `wire::s16_prim_rfc4648_standard_alphabet_rejected`,
+  `wire::s16_prim_rfc4648_noncanonical_trailing_bits_rejected`.
 - **Not established.** That the crate has no bug outside the tested inputs (the model is the
   RFC 4648 definition; the tests compare the crate with it on the vectors).
 

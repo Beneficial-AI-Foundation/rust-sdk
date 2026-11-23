@@ -23,7 +23,7 @@ case "$out" in /|"$HOME"|"$formal"|"$formal"/*|"$here"|"$here"/*)
   echo "run.sh: refusing scratch dir $out" >&2; exit 2;; esac
 [ -f "$here/rdiff/Cargo.lock" ] || { echo "run.sh: missing $here/rdiff/Cargo.lock" >&2; exit 2; }
 mkdir -p "$out/data" "$out/out" "$out/rdiff/src"
-cp "$here/rdiff/Cargo.toml" "$here/rdiff/Cargo.lock" "$out/rdiff/"
+cp "$here/rdiff/Cargo.toml" "$here/rdiff/Cargo.lock" "$here/rdiff/rust-toolchain.toml" "$out/rdiff/"
 cp "$here/rdiff/src/main.rs" "$out/rdiff/src/"
 { (cd "$out/rdiff" && cargo --version && rustc --version); python3 --version; } \
   | tee "$out/toolchain.txt"

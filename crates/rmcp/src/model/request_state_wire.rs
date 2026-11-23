@@ -908,4 +908,394 @@ mod tests {
             assert_eq!(prim::b64_decode(out.as_bytes()), Some(all[..n].to_vec()));
         }
     }
+
+    // ---- Plan step S16: Section 7 boundary cases and contract test vectors ----
+
+    /// Largest `len` for which `b64_len` does not overflow: `ceil(len / 3) * 4 <= usize::MAX`.
+    fn s16_b64_len_largest() -> usize {
+        usize::MAX / 4 * 3
+    }
+
+    // Plan §7 W01/E02: largest n with no overflow, as the literal for 64-bit targets.
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn s16_b64_len_largest_input_literal_64bit() {
+        assert_eq!(s16_b64_len_largest(), 13_835_058_055_282_163_709);
+        assert_eq!(
+            b64_len(13_835_058_055_282_163_709),
+            18_446_744_073_709_551_612
+        );
+        // n mod 3 = 0, 1, 2 just below the largest input.
+        assert_eq!(
+            b64_len(13_835_058_055_282_163_706),
+            18_446_744_073_709_551_608
+        );
+        assert_eq!(
+            b64_len(13_835_058_055_282_163_707),
+            18_446_744_073_709_551_612
+        );
+        assert_eq!(
+            b64_len(13_835_058_055_282_163_708),
+            18_446_744_073_709_551_612
+        );
+    }
+
+    // Plan §7 W01/E02: on the six largest inputs `b64_len` equals `div_ceil(3) * 4`, and on
+    // five inputs above the largest one `div_ceil(3) * 4` does not fit in `usize`.
+    #[test]
+    fn s16_b64_len_domain_matches_checked_div_ceil() {
+        let largest = s16_b64_len_largest();
+        for n in (largest - 5)..=largest {
+            assert_eq!(n.div_ceil(3).checked_mul(4), Some(b64_len(n)), "n = {n}");
+        }
+        for n in [
+            largest + 1,
+            largest + 2,
+            largest + 3,
+            usize::MAX - 1,
+            usize::MAX,
+        ] {
+            assert_eq!(n.div_ceil(3).checked_mul(4), None, "n = {n}");
+        }
+    }
+
+    // Plan §7 W01 and §3 "W01 ... arithmetic": the first input above the domain overflows
+    // (`full + 4`), a panic under overflow checks (on by default in test builds).
+    #[test]
+    #[cfg(all(target_pointer_width = "64", debug_assertions))]
+    #[should_panic(expected = "attempt to add with overflow")]
+    fn s16_b64_len_overflow_just_above_largest_panics() {
+        let _ = b64_len(std::hint::black_box(13_835_058_055_282_163_710));
+    }
+
+    // Plan §7 W01 and §3: `usize::MAX` overflows in `len / 3 * 4`.
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "attempt to multiply with overflow")]
+    fn s16_b64_len_usize_max_panics() {
+        let _ = b64_len(std::hint::black_box(usize::MAX));
+    }
+
+    // Plan §7 W02: 31, 32, 33 (and the constant they compare against).
+    #[test]
+    fn s16_key_length_ok_31_32_33() {
+        assert_eq!(
+            [31, 32, 33].map(key_length_ok),
+            [false, true, true],
+            "MIN_KEY_LENGTH = {MIN_KEY_LENGTH}"
+        );
+    }
+
+    // Plan §7 W03: 0, 1, 255, 256 bytes, against `str::len` of ASCII and multibyte kids.
+    #[test]
+    fn s16_check_kid_len_0_1_255_256_from_strings() {
+        let cases = [
+            (String::new(), Err(KidError::Empty)),
+            ("k".to_owned(), Ok(())),
+            ("é".to_owned(), Ok(())),
+            ("k".repeat(255), Ok(())),
+            ("k".repeat(256), Err(KidError::TooLong)),
+            // Multibyte UTF-8 crossing 255: 127 x 2 bytes + 1 = 255, 128 x 2 = 256.
+            (format!("k{}", "é".repeat(127)), Ok(())),
+            ("é".repeat(128), Err(KidError::TooLong)),
+        ];
+        for (kid, expected) in cases {
+            assert_eq!(check_kid_len(kid.len()), expected, "len = {}", kid.len());
+        }
+    }
+
+    // Plan §7 W05/W06: dots only, `start = len`, and leading/trailing/consecutive dots.
+    #[test]
+    fn s16_next_dot_component_count_dot_edges() {
+        assert_eq!(next_dot(b".", 0), 0);
+        assert_eq!(next_dot(b".", 1), 1);
+        assert_eq!(next_dot(b"..", 1), 1);
+        assert_eq!(next_dot(b"abc", 3), 3);
+        assert_eq!(next_dot(b".a.", 1), 2);
+        assert_eq!(next_dot(b".a.", 3), 3);
+        let corpus: [&[u8]; 8] = [b"", b".", b"..", b".a", b"a.", b"a..b", b".a.", b"a.b.c"];
+        for s in corpus {
+            assert_eq!(component_count(s), split_dots(s).len(), "{s:?}");
+            assert_eq!(
+                component_count(s),
+                1 + s.iter().filter(|b| **b == b'.').count(),
+                "{s:?}"
+            );
+        }
+    }
+
+    // Plan §7 W07/E11: `rs1`, `rs2`, `rs3`, `rs1x`, empty string, no `.`.
+    #[test]
+    fn s16_version_of_plan_cases() {
+        let cases: [(&[u8], Option<Version>); 12] = [
+            (b"rs1.a.b", Some(Version::V1)),
+            (b"rs2.k.a.b", Some(Version::V2)),
+            (b"rs3.a.b", None),
+            (b"rs1x.a.b", None),
+            (b"rs2x.k.a.b", None),
+            (b"", None),
+            // No `.`: the whole input is the first component.
+            (b"rs1", Some(Version::V1)),
+            (b"rs2", Some(Version::V2)),
+            (b"rs1x", None),
+            (b"abc", None),
+            (b"rs12", None),
+            (b".", None),
+        ];
+        for (s, expected) in cases {
+            assert_eq!(version_of(s), expected, "{s:?}");
+        }
+    }
+
+    // Plan §7 W08/W09: empty components in every position.
+    #[test]
+    fn s16_parse_rs1_rs2_empty_components() {
+        assert_eq!(
+            parse_rs1(b"rs1..t"),
+            Some(Rs1Parts {
+                body: b"",
+                tag: b"t"
+            })
+        );
+        assert_eq!(
+            parse_rs1(b"rs1.b."),
+            Some(Rs1Parts {
+                body: b"b",
+                tag: b""
+            })
+        );
+        assert_eq!(parse_rs1(b".b.t"), None);
+        assert_eq!(
+            parse_rs2(b"rs2..b.t"),
+            Some(Rs2Parts {
+                kid: b"",
+                body: b"b",
+                tag: b"t"
+            })
+        );
+        assert_eq!(
+            parse_rs2(b"rs2.k..t"),
+            Some(Rs2Parts {
+                kid: b"k",
+                body: b"",
+                tag: b"t"
+            })
+        );
+        assert_eq!(
+            parse_rs2(b"rs2.k.b."),
+            Some(Rs2Parts {
+                kid: b"k",
+                body: b"b",
+                tag: b""
+            })
+        );
+        assert_eq!(parse_rs2(b".k.b.t"), None);
+    }
+
+    // Plan §7 W12/W13: expiry 0, negative, i64::MIN/MAX; now = expiry, now = expiry + 1.
+    #[test]
+    fn s16_is_expired_extremes() {
+        let nows = [i64::MIN, i64::MIN + 1, -1, 0, 1, i64::MAX - 1, i64::MAX];
+        for now in nows {
+            // 0 never expires; i64::MAX cannot be exceeded.
+            assert!(!is_expired(0, now), "now = {now}");
+            assert!(!is_expired(i64::MAX, now), "now = {now}");
+            // i64::MIN is expired at every later time.
+            assert_eq!(is_expired(i64::MIN, now), now != i64::MIN, "now = {now}");
+        }
+        for expiry in [i64::MIN, -1_000, -1, 1, 1_000, i64::MAX - 1] {
+            assert!(!is_expired(expiry, expiry), "expiry = {expiry}");
+            assert!(is_expired(expiry, expiry + 1), "expiry = {expiry}");
+            // Through the wire encoding (W12 then W13).
+            let decoded = decode_expiry(expiry.to_be_bytes());
+            assert!(!is_expired(decoded, expiry), "expiry = {expiry}");
+            assert!(is_expired(decoded, expiry + 1), "expiry = {expiry}");
+        }
+    }
+
+    // Plan §7 W14/W15: 7- and 8-byte bodies at the extremes of `now` and of the expiry.
+    #[test]
+    fn s16_open_frame_7_and_8_byte_bodies() {
+        for now in [i64::MIN, 0, i64::MAX] {
+            assert_eq!(open_frame(&[0; 7], now), Err(FrameError::TooShort));
+            assert_eq!(open_frame(&[0xff; 7], now), Err(FrameError::TooShort));
+            // Exactly 8 bytes, expiry 0: never expired, empty payload.
+            assert_eq!(open_frame(&[0; 8], now), Ok(&[][..]));
+        }
+        assert_eq!(open_frame(&frame(i64::MIN, b""), i64::MIN), Ok(&[][..]));
+        assert_eq!(
+            open_frame(&frame(i64::MIN, b""), i64::MIN + 1),
+            Err(FrameError::Expired)
+        );
+        assert_eq!(open_frame(&frame(i64::MAX, b"p"), i64::MAX), Ok(&b"p"[..]));
+        assert_eq!(open_frame(&frame(-1, b""), -1), Ok(&[][..]));
+        assert_eq!(open_frame(&frame(-1, b""), 0), Err(FrameError::Expired));
+        // 9 bytes: a one-byte payload, borrowed from the body itself.
+        let body = frame(0, b"x");
+        let payload = open_frame(&body, 0).unwrap();
+        assert_eq!(payload, b"x");
+        assert!(std::ptr::eq(payload, &body[8..]));
+    }
+
+    /// RFC 4231 Section 4 test cases 1-4, 6 and 7 (key, data, full 32-byte HMAC-SHA256).
+    fn s16_rfc4231_full_cases() -> Vec<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        vec![
+            (
+                vec![0x0b; 20],
+                b"Hi There".to_vec(),
+                hex("b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"),
+            ),
+            (
+                b"Jefe".to_vec(),
+                b"what do ya want for nothing?".to_vec(),
+                hex("5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"),
+            ),
+            (
+                vec![0xaa; 20],
+                vec![0xdd; 50],
+                hex("773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe"),
+            ),
+            (
+                (1..=25).collect(),
+                vec![0xcd; 50],
+                hex("82558a389a443c0ea4cc819899f2083a85f0faa3e578f8077a2e3ff46729665b"),
+            ),
+            (
+                vec![0xaa; 131],
+                b"Test Using Larger Than Block-Size Key - Hash Key First".to_vec(),
+                hex("60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"),
+            ),
+            (
+                vec![0xaa; 131],
+                b"This is a test using a larger than block-size key and a larger than \
+                  block-size data. The key needs to be hashed before being used by the \
+                  HMAC algorithm."
+                    .to_vec(),
+                hex("9b09ffa71b942fcb27635fbcd5b0e944bfdc63644f0713938a7f51535c3a35e2"),
+            ),
+        ]
+    }
+
+    // RFC 4231 Section 4 (cases 1-4, 6, 7) through `prim`: the model
+    // `verify k m t = (t = hmac k m)` rejects every tag other than the exact 32 bytes:
+    // prefixes, extensions, flipped bytes and other cases' tags.
+    #[test]
+    fn s16_prim_rfc4231_verify_accepts_only_the_exact_tag() {
+        let cases = s16_rfc4231_full_cases();
+        for (i, (key, data, expected)) in cases.iter().enumerate() {
+            assert_eq!(expected.len(), TAG_LEN);
+            assert_eq!(prim::hmac_sha256(key, data).to_vec(), *expected, "case {i}");
+            assert!(prim::hmac_sha256_verify(key, data, expected), "case {i}");
+            for n in [0, 1, 16, 31] {
+                assert!(
+                    !prim::hmac_sha256_verify(key, data, &expected[..n]),
+                    "case {i}, prefix {n}"
+                );
+            }
+            let mut longer = expected.clone();
+            longer.push(expected[0]);
+            assert!(!prim::hmac_sha256_verify(key, data, &longer), "case {i}");
+            for byte in [0, TAG_LEN / 2, TAG_LEN - 1] {
+                let mut flipped = expected.clone();
+                flipped[byte] ^= 0x80;
+                assert!(
+                    !prim::hmac_sha256_verify(key, data, &flipped),
+                    "case {i}, byte {byte}"
+                );
+            }
+            for (j, (_, _, other)) in cases.iter().enumerate() {
+                if i != j {
+                    assert!(
+                        !prim::hmac_sha256_verify(key, data, other),
+                        "case {i}, tag {j}"
+                    );
+                }
+            }
+        }
+    }
+
+    // RFC 4648 Section 10 vectors, URL-safe and unpadded: every padded form and every
+    // trailing `=` is rejected; encoding appends to a non-empty `String`.
+    #[test]
+    fn s16_prim_rfc4648_sec10_padded_forms_rejected() {
+        let vectors: [(&[u8], &str, &str); 7] = [
+            (b"", "", ""),
+            (b"f", "Zg", "Zg=="),
+            (b"fo", "Zm8", "Zm8="),
+            (b"foo", "Zm9v", "Zm9v"),
+            (b"foob", "Zm9vYg", "Zm9vYg=="),
+            (b"fooba", "Zm9vYmE", "Zm9vYmE="),
+            (b"foobar", "Zm9vYmFy", "Zm9vYmFy"),
+        ];
+        let mut appended = String::from("x.");
+        for (raw, unpadded, padded) in vectors {
+            prim::b64_encode_into(raw, &mut appended);
+            appended.push('.');
+            assert_eq!(prim::b64_decode(unpadded.as_bytes()), Some(raw.to_vec()));
+            if padded != unpadded {
+                assert_eq!(prim::b64_decode(padded.as_bytes()), None, "{padded}");
+            }
+            for suffix in ["=", "==", "==="] {
+                let s = format!("{unpadded}{suffix}");
+                assert_eq!(prim::b64_decode(s.as_bytes()), None, "{s}");
+            }
+        }
+        assert_eq!(appended, "x..Zg.Zm8.Zm9v.Zm9vYg.Zm9vYmE.Zm9vYmFy.");
+    }
+
+    // RFC 4648 Section 5 versus Section 4: the standard-alphabet symbols `+` and `/` are
+    // rejected in every position, and the URL-safe `-` and `_` take their values 62 and 63.
+    #[test]
+    fn s16_prim_rfc4648_standard_alphabet_rejected() {
+        // 0xfb 0xff is "+/8" in the standard alphabet and "-_8" in the URL-safe one.
+        assert_eq!(prim::b64_decode(b"-_8"), Some(vec![0xfb, 0xff]));
+        assert_eq!(prim::b64_decode(b"+/8"), None);
+        for valid in ["Zm9vYmFy", "Zm9vYmE", "Zm9vYg"] {
+            for i in 0..valid.len() {
+                for bad in ['+', '/'] {
+                    let mut s = valid.to_owned();
+                    s.replace_range(i..i + 1, &bad.to_string());
+                    assert_eq!(prim::b64_decode(s.as_bytes()), None, "{s}");
+                }
+            }
+        }
+    }
+
+    /// The RFC 4648 Section 5 alphabet, in value order.
+    const S16_URL_SAFE_ALPHABET: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+    // RFC 4648 Section 3.5 (canonical encoding): in a final group of 2 symbols the low
+    // 4 bits of the last one must be 0, in a final group of 3 the low 2 bits; exhaustive.
+    #[test]
+    fn s16_prim_rfc4648_noncanonical_trailing_bits_rejected() {
+        for (value, &symbol) in S16_URL_SAFE_ALPHABET.iter().enumerate() {
+            let two = [b'A', symbol];
+            let three = [b'A', b'A', symbol];
+            let decoded_two = prim::b64_decode(&two);
+            let decoded_three = prim::b64_decode(&three);
+            if value % 16 == 0 {
+                assert_eq!(decoded_two, Some(vec![(value >> 4) as u8]), "{two:?}");
+            } else {
+                assert_eq!(decoded_two, None, "{two:?}");
+            }
+            if value % 4 == 0 {
+                assert_eq!(
+                    decoded_three,
+                    Some(vec![0, (value >> 2) as u8]),
+                    "{three:?}"
+                );
+            } else {
+                assert_eq!(decoded_three, None, "{three:?}");
+            }
+            // A full quad has no trailing bits: every symbol is accepted.
+            let four = [b'A', b'A', b'A', symbol];
+            assert_eq!(prim::b64_decode(&four), Some(vec![0, 0, value as u8]));
+        }
+        // Length 1 (mod 4) is impossible for any symbol.
+        for &symbol in S16_URL_SAFE_ALPHABET {
+            assert_eq!(prim::b64_decode(&[symbol]), None);
+            assert_eq!(prim::b64_decode(&[b'A', b'A', b'A', b'A', symbol]), None);
+        }
+    }
 }

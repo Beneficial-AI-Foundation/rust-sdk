@@ -1836,4 +1836,1062 @@ mod tests {
             assert_lines(pinned_cases(), &PINNED);
         }
     }
+
+    // ---- Plan step S16: Section 7 boundary cases (E targets) ----
+    //
+    // The E07, E08, E09, E10 and round-trip tests build their expected tokens and tags from
+    // `URL_SAFE_NO_PAD` and `HmacSha256` directly (not from the code under test). The E09a
+    // test builds its tag with `wire::transcript_v1` and `prim::hmac_sha256`; the E11 loop is
+    // an agreement check against E09/E10, and the E11 named cases are its oracle. Every
+    // opening uses an explicit `now_ms`.
+
+    const S16_K1: [u8; 32] = [0x11; 32];
+    const S16_K2: [u8; 33] = [0x22; 33];
+    const S16_K3: [u8; 40] = [0x33; 40];
+    const S16_KN: [u8; 32] = [0x44; 32];
+
+    /// One opening case: label, codec, token, associated data, `now_ms`, expected result.
+    type S16Case<'a> = (
+        &'a str,
+        &'a RequestStateCodec,
+        String,
+        &'a [u8],
+        i64,
+        String,
+    );
+
+    /// A 255-byte UTF-8 key id made of 127 two-byte characters and one ASCII byte.
+    fn s16_kid_255() -> String {
+        let kid = format!("{}x", "é".repeat(127));
+        assert_eq!(kid.len(), MAX_KID_LEN);
+        kid
+    }
+
+    /// `Ok:<hex>` or the error's `Debug` text, so results can be compared as strings.
+    fn s16_code(result: Result<Vec<u8>, RequestStateError>) -> String {
+        match result {
+            Ok(payload) => {
+                let hex: String = payload.iter().map(|b| format!("{b:02x}")).collect();
+                format!("Ok:{hex}")
+            }
+            Err(e) => format!("{e:?}"),
+        }
+    }
+
+    fn s16_ok(payload: &[u8]) -> String {
+        s16_code(Ok(payload.to_vec()))
+    }
+
+    /// Body = 8-byte big-endian expiry followed by the payload (independent of `wire::frame`).
+    fn s16_body(expiry: i64, payload: &[u8]) -> Vec<u8> {
+        let mut body = expiry.to_be_bytes().to_vec();
+        body.extend_from_slice(payload);
+        body
+    }
+
+    fn s16_tag_v1(key: &[u8], ad: &[u8], body: &[u8]) -> Vec<u8> {
+        let mut mac = HmacSha256::new_from_slice(key).unwrap();
+        mac.update(DOMAIN_V1);
+        mac.update(&(ad.len() as u64).to_be_bytes());
+        mac.update(ad);
+        mac.update(body);
+        mac.finalize().into_bytes().to_vec()
+    }
+
+    fn s16_tag_v2(key: &[u8], kid: &[u8], ad: &[u8], body: &[u8]) -> Vec<u8> {
+        let mut mac = HmacSha256::new_from_slice(key).unwrap();
+        mac.update(DOMAIN_V2);
+        mac.update(&(kid.len() as u64).to_be_bytes());
+        mac.update(kid);
+        mac.update(&(ad.len() as u64).to_be_bytes());
+        mac.update(ad);
+        mac.update(body);
+        mac.finalize().into_bytes().to_vec()
+    }
+
+    fn s16_rs1(key: &[u8], ad: &[u8], body: &[u8]) -> String {
+        format!(
+            "rs1.{}.{}",
+            URL_SAFE_NO_PAD.encode(body),
+            URL_SAFE_NO_PAD.encode(s16_tag_v1(key, ad, body))
+        )
+    }
+
+    fn s16_rs2(kid: &[u8], key: &[u8], ad: &[u8], body: &[u8]) -> String {
+        format!(
+            "rs2.{}.{}.{}",
+            URL_SAFE_NO_PAD.encode(kid),
+            URL_SAFE_NO_PAD.encode(body),
+            URL_SAFE_NO_PAD.encode(s16_tag_v2(key, kid, ad, body))
+        )
+    }
+
+    fn s16_single() -> RequestStateCodec {
+        RequestStateCodec::try_new(S16_K1).unwrap()
+    }
+
+    /// Ring with no rs1 fallbacks.
+    fn s16_ring_no_fallbacks() -> RequestStateCodec {
+        RequestStateCodec::new_with_keyring("n", [("n", S16_KN.to_vec())]).unwrap()
+    }
+
+    /// Ring with rs1 fallbacks `a`, `b`, `c` in this order (`c` is the last one) and a
+    /// fourth key `n` that is not a fallback.
+    fn s16_ring_three_fallbacks() -> RequestStateCodec {
+        RequestStateCodec::new_with_keyring(
+            "n",
+            [
+                ("a", S16_K1.to_vec()),
+                ("b", S16_K2.to_vec()),
+                ("c", S16_K3.to_vec()),
+                ("n", S16_KN.to_vec()),
+            ],
+        )
+        .unwrap()
+        .with_rs1_fallback("a")
+        .unwrap()
+        .with_rs1_fallback("b")
+        .unwrap()
+        .with_rs1_fallback("c")
+        .unwrap()
+    }
+
+    /// rs2 ring holding a multibyte kid and a 255-byte multibyte kid.
+    fn s16_ring_rs2() -> RequestStateCodec {
+        RequestStateCodec::new_with_keyring(
+            "kid-é",
+            [
+                ("kid-é".to_owned(), S16_K1.to_vec()),
+                (s16_kid_255(), S16_K2.to_vec()),
+            ],
+        )
+        .unwrap()
+    }
+
+    // Plan §7 W01/E02: E02 equals W01, including n mod 3 in {0,1,2}, n = 0 and the largest n.
+    #[test]
+    fn s16_e02_b64_len_agrees_with_w01() {
+        let largest = usize::MAX / 4 * 3;
+        let mut inputs: Vec<usize> = (0..300).collect();
+        inputs.extend((largest - 5)..=largest);
+        for n in inputs {
+            assert_eq!(RequestStateCodec::b64_len(n), wire::b64_len(n), "n = {n}");
+            assert_eq!(RequestStateCodec::b64_len(n), n.div_ceil(3) * 4, "n = {n}");
+        }
+    }
+
+    // Plan §7 W02/E03: 31, 32, 33 and E03's `actual` field value.
+    #[test]
+    fn s16_e03_validate_key_length_31_32_33_and_actual() {
+        for len in [0, 1, 31] {
+            let result = RequestStateCodec::validate_key_length(&vec![0; len]);
+            assert!(
+                matches!(
+                    result,
+                    Err(RequestStateError::KeyTooShort {
+                        minimum: 32,
+                        actual
+                    }) if actual == len
+                ),
+                "len = {len}: {result:?}"
+            );
+        }
+        for len in [32, 33, 1024] {
+            let result = RequestStateCodec::validate_key_length(&vec![0; len]);
+            assert!(result.is_ok(), "len = {len}: {result:?}");
+        }
+    }
+
+    // Plan §7 W03/E04: 0, 1, 255, 256 bytes; multibyte UTF-8 crossing 255; the two messages.
+    #[test]
+    fn s16_e04_validate_config_kid_boundaries_and_messages() {
+        let empty = RequestStateCodec::validate_config_kid("");
+        assert!(
+            matches!(empty, Err(RequestStateError::InvalidKeyring(m)) if m == KID_EMPTY_MSG),
+            "{empty:?}"
+        );
+        let accepted = [
+            "k".to_owned(),
+            "é".to_owned(),
+            "k".repeat(255),
+            s16_kid_255(),
+            "é".repeat(127),
+        ];
+        for kid in accepted {
+            let result = RequestStateCodec::validate_config_kid(&kid);
+            assert!(result.is_ok(), "len = {}: {result:?}", kid.len());
+        }
+        // 256 bytes: ASCII, and 128 two-byte characters (128 characters, 256 bytes).
+        for kid in [
+            "k".repeat(256),
+            "é".repeat(128),
+            format!("{}xy", "é".repeat(127)),
+        ] {
+            assert_eq!(kid.len(), 256);
+            let result = RequestStateCodec::validate_config_kid(&kid);
+            let too_long = KID_TOO_LONG_MSG;
+            assert!(
+                matches!(result, Err(RequestStateError::InvalidKeyring(m)) if m == too_long),
+                "{result:?}"
+            );
+        }
+        assert_ne!(KID_EMPTY_MSG, KID_TOO_LONG_MSG);
+    }
+
+    // Plan §7 W12-W15/E01: 0-7 bytes, exactly 8, expiry 0, now before/equal/after, negative.
+    #[test]
+    fn s16_e01_open_authenticated_body_cases() {
+        let open = |body: Vec<u8>, now: i64| {
+            s16_code(RequestStateCodec::open_authenticated_body(body, now))
+        };
+        for len in 0..8 {
+            assert_eq!(open(vec![0; len], 0), "MalformedFormat", "len = {len}");
+            assert_eq!(
+                open(vec![0xff; len], i64::MAX),
+                "MalformedFormat",
+                "len = {len}"
+            );
+        }
+        assert_eq!(open(vec![0; 8], i64::MAX), s16_ok(b""));
+        assert_eq!(open(vec![0; 8], i64::MIN), s16_ok(b""));
+        assert_eq!(open(s16_body(0, b"p"), i64::MAX), s16_ok(b"p"));
+        assert_eq!(open(s16_body(1_000, b"p"), 999), s16_ok(b"p"));
+        assert_eq!(open(s16_body(1_000, b"p"), 1_000), s16_ok(b"p"));
+        assert_eq!(open(s16_body(1_000, b"p"), 1_001), "Expired");
+        assert_eq!(open(s16_body(-5, b"p"), -6), s16_ok(b"p"));
+        assert_eq!(open(s16_body(-5, b"p"), -5), s16_ok(b"p"));
+        assert_eq!(open(s16_body(-5, b"p"), -4), "Expired");
+        assert_eq!(open(s16_body(1, b""), 2), "Expired");
+        assert_eq!(open(s16_body(i64::MIN, b""), i64::MIN + 1), "Expired");
+        assert_eq!(open(s16_body(0, &[0, 255, 46]), 0), s16_ok(&[0, 255, 46]));
+    }
+
+    // Plan §7 E07: empty and nonempty body; delimiters; tag encoding (43 symbols, 32 bytes).
+    #[test]
+    fn s16_e07_seal_rs1_layout() {
+        let bodies: [Vec<u8>; 6] = [
+            Vec::new(),
+            vec![0x2e],
+            vec![0, 0xff],
+            vec![0xfb, 0xff, 0xbf],
+            s16_body(0, b""),
+            s16_body(1_000, b"payload"),
+        ];
+        for body in &bodies {
+            for ad in [&b""[..], b"user:alice|x.y"] {
+                let token = RequestStateCodec::seal_rs1(&S16_K1, ad, body);
+                assert_eq!(token, s16_rs1(&S16_K1, ad, body), "{body:?}");
+                assert_eq!(token.matches('.').count(), 2, "{token}");
+                assert!(!token.contains('='), "{token}");
+                let parts: Vec<&str> = token.split('.').collect();
+                assert_eq!(parts[0], "rs1");
+                assert_eq!(URL_SAFE_NO_PAD.decode(parts[1]).unwrap(), *body);
+                assert_eq!(parts[2].len(), 43, "{token}");
+                assert_eq!(
+                    URL_SAFE_NO_PAD.decode(parts[2]).unwrap(),
+                    s16_tag_v1(&S16_K1, ad, body)
+                );
+            }
+        }
+        // Empty body: "rs1." followed directly by the "." before the tag.
+        assert!(RequestStateCodec::seal_rs1(&S16_K1, b"", b"").starts_with("rs1.."));
+    }
+
+    // Plan §7 E08: empty and nonempty body; delimiters; tag encoding; multibyte kid.
+    #[test]
+    fn s16_e08_seal_rs2_layout() {
+        let kids = ["k".to_owned(), "kid-é".to_owned(), s16_kid_255()];
+        let bodies: [Vec<u8>; 3] = [Vec::new(), s16_body(0, b""), s16_body(-1, b"p.q")];
+        for kid in &kids {
+            for body in &bodies {
+                let ad = b"ad";
+                let token = RequestStateCodec::seal_rs2(kid, &S16_K2, ad, body);
+                assert_eq!(token, s16_rs2(kid.as_bytes(), &S16_K2, ad, body));
+                assert_eq!(token.matches('.').count(), 3, "{token}");
+                assert!(!token.contains('='), "{token}");
+                let parts: Vec<&str> = token.split('.').collect();
+                assert_eq!(parts[0], "rs2");
+                assert_eq!(URL_SAFE_NO_PAD.decode(parts[1]).unwrap(), kid.as_bytes());
+                assert_eq!(URL_SAFE_NO_PAD.decode(parts[2]).unwrap(), *body);
+                assert_eq!(parts[3].len(), 43, "{token}");
+                assert_eq!(
+                    URL_SAFE_NO_PAD.decode(parts[3]).unwrap(),
+                    s16_tag_v2(&S16_K2, kid.as_bytes(), ad, body)
+                );
+            }
+        }
+        // The 255-byte kid encodes to exactly `MAX_ENCODED_KID_LEN` symbols.
+        let token = RequestStateCodec::seal_rs2(&s16_kid_255(), &S16_K2, b"", b"");
+        assert_eq!(token.split('.').nth(1).unwrap().len(), MAX_ENCODED_KID_LEN);
+    }
+
+    // Plan §7 E09 and §3 "E09 - error order": malformed (also on a ring with no fallbacks:
+    // parsing first); ring with no fallbacks (before any decoding); bad Base64 body/tag; MAC
+    // fails; match on the last fallback; expiry; E01.
+    #[test]
+    fn s16_e09_open_rs1_at_error_order() {
+        let single = s16_single();
+        let none = s16_ring_no_fallbacks();
+        let ring = s16_ring_three_fallbacks();
+        let body = s16_body(1_000, b"payload");
+        let ok = s16_rs1(&S16_K1, b"ad", &body);
+        let ok_parts: Vec<&str> = ok.split('.').collect();
+        let cases: Vec<S16Case<'_>> = vec![
+            (
+                "2 parts",
+                &single,
+                "rs1.a".into(),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "4 parts",
+                &single,
+                format!("{ok}.x"),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "no dot",
+                &single,
+                "rs1".into(),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "ring, no fallbacks, 2 parts",
+                &none,
+                "rs1.a".into(),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "ring, no fallbacks, 4 parts",
+                &none,
+                format!("{ok}.x"),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "ring, no fallbacks, no dot",
+                &none,
+                "rs1".into(),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "ring, no fallbacks, bad b64",
+                &none,
+                "rs1.!!!!.!!!!".into(),
+                b"ad",
+                0,
+                "UnknownKeyId".into(),
+            ),
+            (
+                "ring, no fallbacks, ring key",
+                &none,
+                s16_rs1(&S16_KN, b"ad", &body),
+                b"ad",
+                0,
+                "UnknownKeyId".into(),
+            ),
+            (
+                "bad body",
+                &single,
+                format!("rs1.!.{}", ok_parts[2]),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "bad tag",
+                &single,
+                format!("rs1.{}.!!!!", ok_parts[1]),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "padded tag",
+                &single,
+                format!("{ok}="),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "bad body and tag",
+                &single,
+                "rs1.!.!".into(),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "ring bad body",
+                &ring,
+                format!("rs1.!.{}", ok_parts[2]),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "empty tag",
+                &single,
+                format!("rs1.{}.", ok_parts[1]),
+                b"ad",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "empty body and tag",
+                &single,
+                "rs1..".into(),
+                b"ad",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "wrong key",
+                &single,
+                s16_rs1(&S16_K2, b"ad", &body),
+                b"ad",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "wrong ad",
+                &single,
+                ok.clone(),
+                b"other",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "ring, non-fallback key",
+                &ring,
+                s16_rs1(&S16_KN, b"ad", &body),
+                b"ad",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "ring, first fallback",
+                &ring,
+                s16_rs1(&S16_K1, b"ad", &body),
+                b"ad",
+                0,
+                s16_ok(b"payload"),
+            ),
+            (
+                "ring, middle fallback",
+                &ring,
+                s16_rs1(&S16_K2, b"ad", &body),
+                b"ad",
+                0,
+                s16_ok(b"payload"),
+            ),
+            (
+                "ring, last fallback",
+                &ring,
+                s16_rs1(&S16_K3, b"ad", &body),
+                b"ad",
+                0,
+                s16_ok(b"payload"),
+            ),
+            (
+                "now = expiry",
+                &single,
+                ok.clone(),
+                b"ad",
+                1_000,
+                s16_ok(b"payload"),
+            ),
+            (
+                "now = expiry + 1",
+                &single,
+                ok.clone(),
+                b"ad",
+                1_001,
+                "Expired".into(),
+            ),
+            (
+                "now = i64::MIN",
+                &single,
+                ok.clone(),
+                b"ad",
+                i64::MIN,
+                s16_ok(b"payload"),
+            ),
+            (
+                "ring, last fallback, now = expiry",
+                &ring,
+                s16_rs1(&S16_K3, b"ad", &body),
+                b"ad",
+                1_000,
+                s16_ok(b"payload"),
+            ),
+            (
+                "ring, last fallback, expired",
+                &ring,
+                s16_rs1(&S16_K3, b"ad", &body),
+                b"ad",
+                1_001,
+                "Expired".into(),
+            ),
+            (
+                "wrong ad and expired",
+                &single,
+                ok.clone(),
+                b"other",
+                1_001,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "authenticated 7-byte body",
+                &single,
+                s16_rs1(&S16_K1, b"ad", &[0; 7]),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "ring, last fallback, 7-byte body",
+                &ring,
+                s16_rs1(&S16_K3, b"ad", &[0; 7]),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "authenticated 8-byte body",
+                &single,
+                s16_rs1(&S16_K1, b"ad", &[0; 8]),
+                b"ad",
+                i64::MAX,
+                s16_ok(b""),
+            ),
+        ];
+        for (label, codec, token, ad, now, expected) in cases {
+            assert_eq!(
+                s16_code(codec.open_rs1_at(&token, ad, now)),
+                expected,
+                "{label}"
+            );
+        }
+    }
+
+    // Plan §7 E09a: no fallbacks; match on the first, a middle and the last fallback; no match;
+    // duplicate ids; wrong-length tags.
+    #[test]
+    fn s16_e09a_rs1_fallbacks_verify_cases() {
+        let mut keys: HashMap<String, Zeroizing<Vec<u8>>> = HashMap::new();
+        keys.insert("a".into(), Zeroizing::new(S16_K1.to_vec()));
+        keys.insert("b".into(), Zeroizing::new(S16_K2.to_vec()));
+        keys.insert("c".into(), Zeroizing::new(S16_K3.to_vec()));
+        let transcript = wire::transcript_v1(b"ad", &s16_body(0, b"p"));
+        let tag_c = prim::hmac_sha256(&S16_K3, &transcript);
+        let verify = |fallbacks: &[&str], tag: &[u8]| {
+            let fallbacks: Vec<String> = fallbacks.iter().map(|s| s.to_string()).collect();
+            RequestStateCodec::rs1_fallbacks_verify(&keys, &fallbacks, &transcript, tag)
+        };
+        assert!(!verify(&[], &tag_c));
+        assert!(!verify(&["a"], &tag_c));
+        assert!(!verify(&["a", "b"], &tag_c));
+        assert!(verify(&["c"], &tag_c));
+        assert!(verify(&["a", "b", "c"], &tag_c));
+        assert!(verify(&["c", "a", "b"], &tag_c));
+        assert!(verify(&["a", "c", "b"], &tag_c));
+        assert!(verify(&["c", "c"], &tag_c));
+        assert!(!verify(&["a", "a"], &tag_c));
+        assert!(!verify(&["a", "b", "c"], &tag_c[..31]));
+        assert!(!verify(&["a", "b", "c"], &[]));
+        let mut flipped = tag_c;
+        flipped[31] ^= 1;
+        assert!(!verify(&["a", "b", "c"], &flipped));
+    }
+
+    // Plan §7 E10 and §3 "E10 - error order": encoded kid 340/341; decoded kid 0/255; invalid
+    // UTF-8; single-key codec; unknown kid; bad body/tag; MAC fails (including a tag made for
+    // another kid with the same key: W11 binds the kid); expiry; E01.
+    #[test]
+    fn s16_e10_open_rs2_at_error_order() {
+        let single = s16_single();
+        let ring = s16_ring_rs2();
+        // Two kids with the same key: only the kid in the transcript differs.
+        let shared = RequestStateCodec::new_with_keyring(
+            "kid-a",
+            [("kid-a", S16_K1.to_vec()), ("kid-b", S16_K1.to_vec())],
+        )
+        .unwrap();
+        let kid = "kid-é".as_bytes();
+        let kid_255 = s16_kid_255();
+        let body = s16_body(1_000, b"payload");
+        let ok = s16_rs2(kid, &S16_K1, b"ad", &body);
+        let ok_255 = s16_rs2(kid_255.as_bytes(), &S16_K2, b"ad", &body);
+        let p: Vec<&str> = ok.split('.').collect();
+        let with_kid = |encoded_kid: &str| format!("rs2.{encoded_kid}.{}.{}", p[2], p[3]);
+        let a340 = "A".repeat(340);
+        let a341 = "A".repeat(341);
+        let unknown = with_kid(&URL_SAFE_NO_PAD.encode("kid-x"));
+        let token_a = s16_rs2(b"kid-a", &S16_K1, b"ad", &body);
+        let parts_a: Vec<&str> = token_a.split('.').collect();
+        let kid_b_with_tag_a = format!(
+            "rs2.{}.{}.{}",
+            URL_SAFE_NO_PAD.encode("kid-b"),
+            parts_a[2],
+            parts_a[3]
+        );
+        let cases: Vec<S16Case<'_>> = vec![
+            (
+                "3 parts",
+                &ring,
+                "rs2.a.b".into(),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "5 parts",
+                &ring,
+                format!("{ok}.x"),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "no dot",
+                &ring,
+                "rs2".into(),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "encoded kid 341",
+                &ring,
+                with_kid(&a341),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "encoded kid 341, bad body",
+                &ring,
+                format!("rs2.{a341}.!.!"),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "encoded kid 341, single codec",
+                &single,
+                with_kid(&a341),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "encoded kid 340, 255 NUL bytes, unknown",
+                &ring,
+                with_kid(&a340),
+                b"ad",
+                0,
+                "UnknownKeyId".into(),
+            ),
+            (
+                "encoded kid 340, known 255-byte kid",
+                &ring,
+                ok_255.clone(),
+                b"ad",
+                0,
+                s16_ok(b"payload"),
+            ),
+            (
+                "bad kid b64",
+                &ring,
+                with_kid("!!"),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "padded kid",
+                &ring,
+                with_kid("YQ=="),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "kid length 1 mod 4",
+                &ring,
+                with_kid("AAAAA"),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "decoded kid 0 bytes",
+                &ring,
+                with_kid(""),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "decoded kid 0 bytes, single codec",
+                &single,
+                with_kid(""),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "kid 0xff",
+                &ring,
+                with_kid(&URL_SAFE_NO_PAD.encode([0xff])),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "kid truncated multibyte",
+                &ring,
+                with_kid(&URL_SAFE_NO_PAD.encode([b'k', 0xc3])),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "kid 255 x 0xff",
+                &ring,
+                with_kid(&URL_SAFE_NO_PAD.encode([0xff; 255])),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "kid not utf8, single codec",
+                &single,
+                with_kid(&URL_SAFE_NO_PAD.encode([0xff])),
+                b"ad",
+                0,
+                "InvalidKeyId".into(),
+            ),
+            (
+                "single codec",
+                &single,
+                ok.clone(),
+                b"ad",
+                0,
+                "UnknownKeyId".into(),
+            ),
+            (
+                "single codec, bad body",
+                &single,
+                format!("rs2.{}.!.!", p[1]),
+                b"ad",
+                0,
+                "UnknownKeyId".into(),
+            ),
+            (
+                "unknown kid",
+                &ring,
+                unknown.clone(),
+                b"ad",
+                0,
+                "UnknownKeyId".into(),
+            ),
+            (
+                "unknown kid, bad body",
+                &ring,
+                format!("rs2.{}.!.!", URL_SAFE_NO_PAD.encode("kid-x")),
+                b"ad",
+                0,
+                "UnknownKeyId".into(),
+            ),
+            (
+                "bad body",
+                &ring,
+                format!("rs2.{}.!.{}", p[1], p[3]),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "bad tag",
+                &ring,
+                format!("rs2.{}.{}.!!!!", p[1], p[2]),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "padded tag",
+                &ring,
+                format!("{ok}="),
+                b"ad",
+                0,
+                "InvalidEncoding".into(),
+            ),
+            (
+                "empty tag",
+                &ring,
+                format!("rs2.{}.{}.", p[1], p[2]),
+                b"ad",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "wrong key",
+                &ring,
+                s16_rs2(kid, &S16_K2, b"ad", &body),
+                b"ad",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "wrong ad",
+                &ring,
+                ok.clone(),
+                b"other",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "same key, tag made for kid-a, presented with kid-b",
+                &shared,
+                kid_b_with_tag_a,
+                b"ad",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "same key, kid-a token",
+                &shared,
+                s16_rs2(b"kid-a", &S16_K1, b"ad", &body),
+                b"ad",
+                0,
+                s16_ok(b"payload"),
+            ),
+            (
+                "same key, kid-b token",
+                &shared,
+                s16_rs2(b"kid-b", &S16_K1, b"ad", &body),
+                b"ad",
+                0,
+                s16_ok(b"payload"),
+            ),
+            (
+                "tag for another kid and another key",
+                &ring,
+                with_kid(&URL_SAFE_NO_PAD.encode(&kid_255)),
+                b"ad",
+                0,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "now = expiry",
+                &ring,
+                ok.clone(),
+                b"ad",
+                1_000,
+                s16_ok(b"payload"),
+            ),
+            (
+                "now = expiry + 1",
+                &ring,
+                ok.clone(),
+                b"ad",
+                1_001,
+                "Expired".into(),
+            ),
+            (
+                "255-byte kid, now = expiry",
+                &ring,
+                ok_255.clone(),
+                b"ad",
+                1_000,
+                s16_ok(b"payload"),
+            ),
+            (
+                "255-byte kid, expired",
+                &ring,
+                ok_255.clone(),
+                b"ad",
+                1_001,
+                "Expired".into(),
+            ),
+            (
+                "wrong ad and expired",
+                &ring,
+                ok.clone(),
+                b"other",
+                1_001,
+                "IntegrityCheckFailed".into(),
+            ),
+            (
+                "authenticated 7-byte body",
+                &ring,
+                s16_rs2(kid, &S16_K1, b"ad", &[0; 7]),
+                b"ad",
+                0,
+                "MalformedFormat".into(),
+            ),
+            (
+                "authenticated 8-byte body",
+                &ring,
+                s16_rs2(kid, &S16_K1, b"ad", &[0; 8]),
+                b"ad",
+                i64::MIN,
+                s16_ok(b""),
+            ),
+        ];
+        for (label, codec, token, ad, now, expected) in cases {
+            assert_eq!(
+                s16_code(codec.open_rs2_at(&token, ad, now)),
+                expected,
+                "{label}"
+            );
+        }
+        // 340 encoded symbols decode to 255 bytes; 341 cannot be a valid encoding at all.
+        assert_eq!(URL_SAFE_NO_PAD.decode(&a340).unwrap().len(), MAX_KID_LEN);
+        assert!(URL_SAFE_NO_PAD.decode(&a341).is_err());
+        assert_eq!(ok_255.split('.').nth(1).unwrap().len(), MAX_ENCODED_KID_LEN);
+    }
+
+    // Plan §7 W07/E11: `rs1` -> E09, `rs2` -> E10 with the result unchanged; `rs3`, `rs1x`,
+    // empty string and no `.` -> `MalformedFormat`. The loop checks agreement with E09/E10
+    // (computed by the code under test); the named cases after it are the oracle.
+    #[test]
+    fn s16_e11_open_at_dispatch() {
+        let codecs = [
+            s16_single(),
+            s16_ring_no_fallbacks(),
+            s16_ring_three_fallbacks(),
+            s16_ring_rs2(),
+        ];
+        let body = s16_body(1_000, b"payload");
+        let rs1 = s16_rs1(&S16_K1, b"ad", &body);
+        let rs2 = s16_rs2("kid-é".as_bytes(), &S16_K1, b"ad", &body);
+        let corpus = [
+            rs1.clone(),
+            rs2.clone(),
+            format!("{rs1}.x"),
+            format!("{rs2}.x"),
+            "rs1".to_owned(),
+            "rs2".to_owned(),
+            "rs1.!.!".to_owned(),
+            "rs2.!!.!.!".to_owned(),
+            "rs2..AA.AA".to_owned(),
+            rs1.replacen("rs1", "rs3", 1),
+            rs1.replacen("rs1", "rs1x", 1),
+            rs2.replacen("rs2", "rs2x", 1),
+            String::new(),
+            "abc".to_owned(),
+            ".rs1.a.b".to_owned(),
+            "RS1.a.b".to_owned(),
+        ];
+        for codec in &codecs {
+            for token in &corpus {
+                for now in [0, 1_000, 1_001] {
+                    let expected = match wire::version_of(token.as_bytes()) {
+                        Some(wire::Version::V1) => s16_code(codec.open_rs1_at(token, b"ad", now)),
+                        Some(wire::Version::V2) => s16_code(codec.open_rs2_at(token, b"ad", now)),
+                        None => "MalformedFormat".to_owned(),
+                    };
+                    let actual = s16_code(codec.open_at(token, b"ad", now));
+                    assert_eq!(actual, expected, "{token:?} at {now}");
+                }
+            }
+        }
+        // The plan's named cases, explicitly.
+        let single = s16_single();
+        let ring = s16_ring_rs2();
+        for token in ["rs3.a.b", "rs1x.a.b", "rs1x", "", "abc"] {
+            assert_eq!(s16_code(single.open_at(token, b"", 0)), "MalformedFormat");
+            assert_eq!(s16_code(ring.open_at(token, b"", 0)), "MalformedFormat");
+        }
+        assert_eq!(s16_code(single.open_at(&rs1, b"ad", 0)), s16_ok(b"payload"));
+        assert_eq!(s16_code(ring.open_at(&rs2, b"ad", 0)), s16_ok(b"payload"));
+        assert_eq!(s16_code(single.open_at(&rs2, b"ad", 0)), "UnknownKeyId");
+        assert_eq!(s16_code(ring.open_at(&rs1, b"ad", 0)), "UnknownKeyId");
+        // `rs1`/`rs2` with no `.` reach E09/E10 and are rejected there.
+        assert_eq!(s16_code(single.open_at("rs1", b"", 0)), "MalformedFormat");
+        assert_eq!(s16_code(ring.open_at("rs2", b"", 0)), "MalformedFormat");
+    }
+
+    /// (body, a time at which it is not expired) pairs: body lengths 8 and up, expiry 0,
+    /// positive (now before and equal), negative and extreme.
+    fn s16_roundtrip_bodies() -> Vec<(Vec<u8>, i64)> {
+        vec![
+            (vec![0; 8], i64::MAX),
+            (s16_body(0, b"p"), i64::MIN),
+            (s16_body(1_000, b"payload"), 999),
+            (s16_body(1_000, b"payload"), 1_000),
+            (s16_body(-5, &[0, 255, 46]), -5),
+            (s16_body(i64::MIN, b"x"), i64::MIN),
+            (s16_body(i64::MAX, &[0x2e; 100]), i64::MAX),
+        ]
+    }
+
+    // Plan §3 "Round-trip" (S15 `rs1_roundtrip`, `open_at_roundtrip_rs1`): single key.
+    #[test]
+    fn s16_roundtrip_rs1_single_key() {
+        let codec = s16_single();
+        for (body, now) in s16_roundtrip_bodies() {
+            for ad in [&b""[..], b"ad"] {
+                let token = RequestStateCodec::seal_rs1(&S16_K1, ad, &body);
+                let expected = s16_ok(&body[8..]);
+                assert_eq!(s16_code(codec.open_rs1_at(&token, ad, now)), expected);
+                assert_eq!(s16_code(codec.open_at(&token, ad, now)), expected);
+            }
+        }
+    }
+
+    // Plan §3 "Round-trip": rs1 opened by a ring whose fallbacks include the signing key
+    // (first, middle and last fallback).
+    #[test]
+    fn s16_roundtrip_rs1_ring() {
+        let codec = s16_ring_three_fallbacks();
+        let keys: [&[u8]; 3] = [&S16_K1, &S16_K2, &S16_K3];
+        for key in keys {
+            for (body, now) in s16_roundtrip_bodies() {
+                let token = RequestStateCodec::seal_rs1(key, b"ad", &body);
+                let expected = s16_ok(&body[8..]);
+                assert_eq!(s16_code(codec.open_rs1_at(&token, b"ad", now)), expected);
+                assert_eq!(s16_code(codec.open_at(&token, b"ad", now)), expected);
+            }
+        }
+    }
+
+    // Plan §3 "Round-trip" (S15 `rs2_roundtrip`, `open_at_roundtrip_rs2`): valid UTF-8 kid of
+    // 1-255 bytes mapped by the ring to the signing key.
+    #[test]
+    fn s16_roundtrip_rs2() {
+        let ring = s16_ring_rs2();
+        let one_byte = RequestStateCodec::new_with_keyring("k", [("k", S16_K3.to_vec())]).unwrap();
+        let cases = [
+            (&ring, "kid-é".to_owned(), &S16_K1[..]),
+            (&ring, s16_kid_255(), &S16_K2[..]),
+            (&one_byte, "k".to_owned(), &S16_K3[..]),
+        ];
+        for (codec, kid, key) in cases {
+            for (body, now) in s16_roundtrip_bodies() {
+                for ad in [&b""[..], b"ad"] {
+                    let token = RequestStateCodec::seal_rs2(&kid, key, ad, &body);
+                    let expected = s16_ok(&body[8..]);
+                    assert_eq!(s16_code(codec.open_rs2_at(&token, ad, now)), expected);
+                    assert_eq!(s16_code(codec.open_at(&token, ad, now)), expected);
+                }
+            }
+        }
+    }
 }

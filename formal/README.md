@@ -1,7 +1,7 @@
 # Formal verification of the request-state codec
 
-Status: **S03: toolchain only.** The Lean project, the pinned toolchain and the scripts exist;
-there is no translation, specification or proof yet. The plan is
+Status: see [`docs/STATUS.md`](docs/STATUS.md) (per-function status) and
+[`docs/board.yaml`](docs/board.yaml) (plan steps). The plan is
 [`docs/MCP_SDK_Verification_Master_Plan_EN.md`](../docs/MCP_SDK_Verification_Master_Plan_EN.md);
 the day-to-day rules are in [`docs/WORKFLOW_AND_PR_GUIDE.md`](../docs/WORKFLOW_AND_PR_GUIDE.md).
 

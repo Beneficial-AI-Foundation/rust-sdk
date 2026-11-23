@@ -289,7 +289,7 @@ steps:
 
   - id: S16
     day: D2-9
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; 28 boundary/contract tests (evidence/S16.md)
     depends_on: [S04a]   # plan: "S04a onward"
     owner: Review
     files:
@@ -316,7 +316,7 @@ steps:
 
   - id: S18
     day: D9-10
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; fresh clone of 5ea289a passed (evidence/S18.md); run before S17
     depends_on: [S17]
     owner: Review
     files:
