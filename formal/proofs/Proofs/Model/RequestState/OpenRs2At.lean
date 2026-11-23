@@ -24,7 +24,7 @@ order `MalformedFormat`, `InvalidKeyId` (encoded kid too long), `InvalidEncoding
 `InvalidKeyId` (decoded kid length, UTF-8), `UnknownKeyId`, `InvalidEncoding` (body, tag),
 `IntegrityCheckFailed`, then E01 on the decoded body.
 
-Source: "crates/rmcp/src/model/request_state.rs", lines 659–693 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state.rs", lines 659–693 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

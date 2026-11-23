@@ -11,7 +11,7 @@ import Defs.Wire
 
 Whether a key length reaches `MIN_KEY_LENGTH = 32` bytes.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 39 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 39 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

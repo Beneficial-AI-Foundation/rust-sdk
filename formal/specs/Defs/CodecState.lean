@@ -19,11 +19,11 @@ with the external models `ExtModel.b64Decode`, `ExtModel.strOfBytes?` and `ExtMo
 (`trusted/Rmcp/FunsExternal.lean`) and the `Defs.Wire` vocabulary (`components`, `transcriptV1`,
 `transcriptV2`, `bodyExpiry`, `Expired`). The style guide names this file for the codec-state
 invariant ("Specification Definition Guidelines").
-Signed off by the spec owner on 2026-11-23 with the E07–E11 statements (the S05 evidence (git history at 0d75981),
+Signed off by the spec owner on 2026-11-23 with the E07–E11 statements (the S05 evidence (git history at 77d9911),
 "E batch part 2").
 
 Rust source: `crates/rmcp/src/model/request_state.rs` (and `request_state_wire.rs` where named)
-at `adce319`; both files are unchanged at `9e584e2`, and the line numbers below refer to them.
+at `22b9f13`; both files are unchanged at `799683f`, and the line numbers below refer to them.
 -/
 
 namespace Defs.CodecState
@@ -273,7 +273,7 @@ RequestStateError` value `result`, as an equation on `result` itself would.
 The only `Except` values that are not images are `.ok l` with `l.length > Usize.max`; the
 expected results never produce one (their success value is a suffix of a decoded component of the
 token, which is a slice), and an equation with such a value would be unprovable, not weaker. The
-four-case injectivity proof is written out in the S05 evidence (git history at 0d75981) ("E batch part 2",
+four-case injectivity proof is written out in the S05 evidence (git history at 77d9911) ("E batch part 2",
 fix round 2); `Defs` holds no proofs. -/
 def resultBytes (r : core.result.Result (alloc.vec.Vec U8) RequestStateError) :
     Except RequestStateError (List U8) :=

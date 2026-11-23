@@ -11,7 +11,7 @@ External functions of the `rmcp` translation (`Rmcp.Funs` imports this module).
 
 Started at plan step S04a from the template that Aeneas generated
 (`formal/translation/Rmcp/FunsExternal_Template.lean`) for the translation of commit
-`14d2830` with the Charon settings of S04a part 2 (derived `Debug` impls excluded), Aeneas
+`1e701ae` with the Charon settings of S04a part 2 (derived `Debug` impls excluded), Aeneas
 `nightly-2026.08.20-5d08da4`. Plan steps S08 (HMAC and Base64 `prim` functions) and S09
 (standard library, `HashMap`, clock) replaced every placeholder of the template by a
 definition with the generated name and signature, keeping the template's `@[rust_fun]` attribute

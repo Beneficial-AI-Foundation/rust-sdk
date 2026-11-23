@@ -18,7 +18,7 @@ and returns the other three components as subslices.
 
 Same proof as `parse_rs1_spec` (W08) with one more dot.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 165 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 165 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

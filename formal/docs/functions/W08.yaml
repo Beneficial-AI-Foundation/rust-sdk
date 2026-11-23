@@ -1,10 +1,10 @@
 id: W08
 rust_symbol: rmcp::model::request_state_wire::parse_rs1
 source_file: crates/rmcp/src/model/request_state_wire.rs
-source_line: 137  # `pub fn parse_rs1` at adce319
+source_line: 137  # `pub fn parse_rs1` at 22b9f13
 generated_symbol: rmcp.model.request_state_wire.parse_rs1
-translation: LEAN_OK  # Aeneas output compiles at adce319 (S04a part 2)
-spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead defaults; the S05 evidence (git history at 0d75981))
+translation: LEAN_OK  # Aeneas output compiles at 22b9f13 (S04a part 2)
+spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead defaults; the S05 evidence (git history at 77d9911))
 linkage: ORIGINAL
 proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestStateWire/ParseRs1.lean
@@ -12,11 +12,11 @@ spec_file: formal/specs/Specs/Model/RequestStateWire.lean
 theorem: rmcp.model.request_state_wire.parse_rs1_spec
 used_by: [E09]  # targets whose proofs consume this theorem
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file
-evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 0d75981:formal/docs/evidence/<step>.md
+evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 77d9911:formal/docs/evidence/<step>.md
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestStateWire.lean (S05)
 spec_reviews:
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: the S05 evidence (git history at 77d9911)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: no blocking findings, evidence: the S05 evidence (git history at 77d9911)}
 spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-23
 prover: "AI: Claude Code, claude-opus-5-5"  # person, or "AI: <tool>, <model>"; not the AI spec drafter
 reviewer: null

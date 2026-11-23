@@ -15,7 +15,7 @@ Opens an authenticated body: `TooShort` below 8 bytes, `Expired` when W13 holds 
 value of the first 8 bytes, otherwise the bytes after the expiry prefix. The proof uses
 `decode_expiry_spec` and `is_expired_spec` through `step`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 225 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 225 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

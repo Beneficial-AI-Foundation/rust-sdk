@@ -17,7 +17,7 @@ with `VERSION_V1`, then `VERSION_V2` (with `bytes_eq`, W04).
 W05 and W04 are used through `step`. `Proofs.RequestStateWire.components_drop_of_next_dot_post`
 turns the postcondition of `next_dot_spec` into "the prefix is the first component".
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 115 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 115 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

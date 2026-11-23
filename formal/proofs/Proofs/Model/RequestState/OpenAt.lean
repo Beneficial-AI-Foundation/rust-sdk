@@ -19,7 +19,7 @@ is `openRs1` for an `rs1` token, `openRs2` for an `rs2` token and `MalformedForm
 The callees are used through their spec theorems (W07, E09, E10). E11 has no `.`-count premise:
 `count_dot_lt_of_head` derives the `h_count` of E09 and E10 from the first component.
 
-Source: "crates/rmcp/src/model/request_state.rs", lines 559–570 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state.rs", lines 559–570 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

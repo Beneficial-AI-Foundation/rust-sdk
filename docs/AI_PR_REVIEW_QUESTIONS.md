@@ -150,7 +150,7 @@ PR that touches several kinds needs each applicable section.
 | Specification of one target | `formal/specs/Drafts/*.lean`, `formal/specs/Defs/*.lean` | Specification strength and error order; Status records |
 | Proof of one target | `formal/proofs/Proofs/Model/RequestState{,Wire}/*.lean`, its restated theorem in `formal/specs/Specs/Model/*.lean` | Specification strength; Proof maintainability; Validation |
 | Refactor, source change, or Aeneas `rev` bump | `crates/rmcp/src/model/request_state{,_wire}.rs`, `formal/lakefile.toml` | Translation, refactor, and source linkage; Validation |
-| Translation, Charon settings, or patch | `crates/rmcp/Cargo.toml` (`[package.metadata.charon]`), `formal/trusted/patches/`, `formal/translation/**`, the pilot record (git history at 0d75981) | Translation, refactor, and source linkage; External axioms |
+| Translation, Charon settings, or patch | `crates/rmcp/Cargo.toml` (`[package.metadata.charon]`), `formal/trusted/patches/`, `formal/translation/**`, the pilot record (removed from git history on 2026-11-23) | Translation, refactor, and source linkage; External axioms |
 | External model or axiom | `formal/trusted/Rmcp/*External.lean`, `formal/trusted/evidence/`, `formal/proofs/Proofs/External/` (and `formal/proofs/Proofs/Consistency/` if an axiom is added again), trusted base in `formal/docs/STATUS.md` | External axioms and the trust boundary |
 | Transcript, encoding, or round trip | `RequestStateWire/TranscriptV{1,2}.lean`, `SealRs1/SealRs2`, `RequestState/Roundtrip.lean` | Transcripts, encoding, and round trips; External axioms |
 | Rust boundary tests | `mod tests` in `request_state.rs` or `request_state_wire.rs` | Validation; core question 8 |
@@ -516,7 +516,7 @@ assistance for the responsible human reviewer.
 Each entry illustrates a principle above; it is not a finding about the current code. Entries were
 read on 2026-11-22 from the Host/Origin extraction (PR #4, merged as `7caec76`) and from the
 request-state pilot recorded in the [master plan](MCP_SDK_Verification_Master_Plan_EN.md),
-Sections 8–9, and the pilot record (git history at 0d75981). The pilot wrote all its
+Sections 8–9, and the pilot record (removed from git history on 2026-11-23). The pilot wrote all its
 outputs outside the repository, under `/tmp`: run 1 compiled the repository's own `crates/rmcp`
 (except its `e04`/`e04c` attempts, which used scratch sources), and runs 2 and 3 used scratch
 copies. Its results are as recorded there and have not been re-run here. Add newer examples, with
@@ -536,7 +536,7 @@ rejects hand edits. (Translation section; Q5)
 
 **Exit codes do not identify which targets failed.** In the pilot's second run, seven
 out-of-scope bodies failed in Aeneas (`Debug`/`Display` impls, three constructors, and `seal_at`;
-recorded in the pilot record (git history at 0d75981)), while all eleven targets compiled. No exit status
+recorded in the pilot record (removed from git history on 2026-11-23)), while all eleven targets compiled. No exit status
 was recorded; Aeneas generated partial files, and an exit code alone would not say whether a target
 or an out-of-scope body had failed. The plan responded by excluding those items, so Aeneas now
 exits 0 and the translate script treats a nonzero exit, a missing target, or any `sorry` as

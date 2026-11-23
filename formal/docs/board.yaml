@@ -45,7 +45,7 @@ steps:
     day: D1
     state: IN_PROGRESS
     # drafted and agent-reviewed in the working tree (5 rounds); accepted limits and open items
-    # recorded in the S03 evidence (git history at 0d75981); awaiting human sign-off
+    # recorded in the S03 evidence (git history at 77d9911); awaiting human sign-off
     depends_on: [S01]
     owner: Extraction
     files:
@@ -91,7 +91,7 @@ steps:
     day: D1-2
     state: IN_PROGRESS
     # refactor part (PR 1) drafted and agent-reviewed in the working tree; translation part
-    # (PR 2) drafted in the working tree from local commit 14d2830 (derived Debug impls
+    # (PR 2) drafted in the working tree from local commit 1e701ae (derived Debug impls
     # excluded, native-axioms.lock); externals started (unreviewed placeholders); awaiting
     # review and human sign-off (see evidence)
     depends_on: [S03, S04]
@@ -128,7 +128,7 @@ steps:
 
   - id: S06
     day: D2-4
-    state: ACCEPTED  # human approval 2026-11-23; incorporated (the W-batch incorporation procedure (git history at 0d75981))
+    state: ACCEPTED  # human approval 2026-11-23; incorporated (the W-batch incorporation procedure (git history at 77d9911))
     depends_on: [S04a, S05]
     owner: Lean
     files:
@@ -201,7 +201,7 @@ steps:
 
   - id: S10
     day: D4-5
-    state: ACCEPTED  # human approval 2026-11-23; incorporated (the W-batch incorporation procedure (git history at 0d75981))
+    state: ACCEPTED  # human approval 2026-11-23; incorporated (the W-batch incorporation procedure (git history at 77d9911))
     depends_on: [S06]
     owner: Lean
     files:
@@ -215,7 +215,7 @@ steps:
 
   - id: S11
     day: D5-6
-    state: ACCEPTED  # human approval 2026-11-23; E07/E08 proved and incorporated (the S13 evidence (git history at 0d75981))
+    state: ACCEPTED  # human approval 2026-11-23; E07/E08 proved and incorporated (the S13 evidence (git history at 77d9911))
     depends_on: [S07, S08, S09, S10]
     owner: Lean
     files:
@@ -226,7 +226,7 @@ steps:
 
   - id: S12
     day: D5
-    state: ACCEPTED  # human approval 2026-11-23; codec-state predicate CodecValid (Defs/CodecState.lean) signed off and incorporated (the S13 evidence (git history at 0d75981))
+    state: ACCEPTED  # human approval 2026-11-23; codec-state predicate CodecValid (Defs/CodecState.lean) signed off and incorporated (the S13 evidence (git history at 77d9911))
     depends_on: [S05]
     owner: Spec drafter + reviewers + spec owner
     files:
@@ -236,7 +236,7 @@ steps:
 
   - id: S13
     day: D6-8
-    state: ACCEPTED  # human approval 2026-11-23; E09a/E09/E10 proved and incorporated (the S13 evidence (git history at 0d75981))
+    state: ACCEPTED  # human approval 2026-11-23; E09a/E09/E10 proved and incorporated (the S13 evidence (git history at 77d9911))
     depends_on: [S07, S08, S09, S10, S12]
     owner: Lean
     files:
@@ -249,7 +249,7 @@ steps:
 
   - id: S14
     day: D8
-    state: ACCEPTED  # human approval 2026-11-23; E11 proved and incorporated (the S13 evidence (git history at 0d75981))
+    state: ACCEPTED  # human approval 2026-11-23; E11 proved and incorporated (the S13 evidence (git history at 77d9911))
     depends_on: [S10, S13]
     owner: Lean
     files:
@@ -259,7 +259,7 @@ steps:
 
   - id: S15
     day: D8-9
-    state: ACCEPTED  # human approval 2026-11-23; round trips proved and incorporated (the S15 evidence (git history at 0d75981))
+    state: ACCEPTED  # human approval 2026-11-23; round trips proved and incorporated (the S15 evidence (git history at 77d9911))
     depends_on: [S11, S13, S14]
     owner: Lean
     files:
@@ -270,7 +270,7 @@ steps:
 
   - id: S16
     day: D2-9
-    state: ACCEPTED  # human approval 2026-11-23; 28 boundary/contract tests (the S16 evidence (git history at 0d75981))
+    state: ACCEPTED  # human approval 2026-11-23; 28 boundary/contract tests (the S16 evidence (git history at 77d9911))
     depends_on: [S04a]   # plan: "S04a onward"
     owner: Review
     files:
@@ -295,7 +295,7 @@ steps:
 
   - id: S18
     day: D9-10
-    state: ACCEPTED  # human approval 2026-11-23; fresh clone of 5ea289a passed (the S18 evidence (git history at 0d75981)); run before S17
+    state: ACCEPTED  # human approval 2026-11-23; fresh clone of 7c9c68b passed (the S18 evidence (git history at 77d9911)); run before S17
     depends_on: [S17]
     owner: Review
     files:
@@ -306,7 +306,7 @@ steps:
 
   - id: S19
     day: D10
-    state: ACCEPTED  # human approval 2026-11-23; final report (the S19 evidence (git history at 0d75981), STATUS \"Results\")
+    state: ACCEPTED  # human approval 2026-11-23; final report (the S19 evidence (git history at 77d9911), STATUS \"Results\")
     depends_on: []   # plan: "board state; no success required"; S19 is mandatory
     owner: Lead + human owner
     files:

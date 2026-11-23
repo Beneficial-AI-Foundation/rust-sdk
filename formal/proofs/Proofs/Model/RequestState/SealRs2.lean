@@ -20,7 +20,7 @@ import Proofs.Model.RequestState.Common
 Builds the `rs2` token `"rs2." ++ b64 kid ++ "." ++ b64 body ++ "." ++ b64 tag`, where `tag` is
 the HMAC SHA-256 of the W11 transcript of `kid`, `associated_data` and `body` under `key`.
 
-Source: "crates/rmcp/src/model/request_state.rs", lines 585–605 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state.rs", lines 585–605 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

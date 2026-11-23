@@ -14,7 +14,7 @@ Index of the first `.` at or after `start`, or `s.len()` if there is none.
 The loop invariant says that the index has not moved below `start` and that no `.` lies in
 `[start, i)`; the measure is `s.len() - i`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 80 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 80 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

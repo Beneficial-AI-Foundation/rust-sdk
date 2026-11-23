@@ -32,8 +32,8 @@ scripts/                   aeneas-install.sh, apply-patches.sh, aeneas-translate
                            lean-guard.sh, lean_guard.py, lean-axiom-audit.lean (CI guard)
 formal/
   lakefile.toml            pins Aeneas (single source of truth for the toolchain)
-  docs/                    STATUS.md, board.yaml, functions/, evidence/, blockers/, the pilot record (git history at 0d75981),
-                           the pilot record (git history at 0d75981) (copied pilot artifacts, never built)
+  docs/                    STATUS.md, board.yaml, functions/, evidence/, blockers/, the pilot record (removed from git history on 2026-11-23),
+                           the pilot record (removed from git history on 2026-11-23) (copied pilot artifacts, never built)
   trusted/                 patches/, Rmcp/{Types,Funs}External.lean, evidence/   READ ALL OF IT
                            aeneas-bundle.sha256 (digests of the Aeneas release assets),
                            axioms.lock (trusted axioms), native-axioms.lock (accepted
@@ -228,7 +228,7 @@ The build gate (human decision, S03): every `[[lean_lib]]` in `formal/lakefile.t
 project's modules, including `sorry`, and runs the `#guard_msgs` checks. `lake build --wfail` is
 not used: the pinned Aeneas Lean library has four `sorry` warnings
 (`Aeneas/Std/Slice.lean:363,586`, `Aeneas/Std/StringIter.lean:12,15`) that Lake replays on every
-build, so `--wfail` can never pass (the S03 evidence (git history at 0d75981)). The gate can return to
+build, so `--wfail` can never pass (the S03 evidence (git history at 77d9911)). The gate can return to
 `--wfail` once an Aeneas bump removes them. Because a file can switch `warningAsError` off, hide
 messages, add declarations without a kernel check, or run code during the build,
 `scripts/lean-guard.sh` adds these checks (implemented in `scripts/lean_guard.py`, run with

@@ -16,7 +16,7 @@ import Proofs.Model.RequestState.Common
 `key_length_ok_spec` through `step`, and `Proofs.RequestState.val_MIN_KEY_LENGTH` for the value
 of the generated constant `RequestStateCodec::MIN_KEY_LENGTH`.
 
-Source: "crates/rmcp/src/model/request_state.rs", line 704 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state.rs", line 704 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

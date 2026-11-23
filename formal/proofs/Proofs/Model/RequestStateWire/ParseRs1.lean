@@ -20,7 +20,7 @@ W04–W06 are used through `step`. With three components both dots exist, so nei
 returns `s.len()`; `Proofs.RequestStateWire.components_drop_of_next_dot_post` gives the
 components one dot at a time, and `components_eq_singleton_of_length_eq_one` the last one.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 137 at local commit `adce319`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 137 at local commit `22b9f13`
 (the translation base; not yet a pinned fork commit).
 -/
 

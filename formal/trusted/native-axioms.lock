@@ -36,14 +36,14 @@
 # U32.numBits, UScalarTy.numBits]; decide` proves each with [propext] only (U32.max is
 # @[irreducible], which is why plain `decide` fails). An upstream Aeneas `toStr` that
 # discharges the side condition that way, and a rev bump, would remove them (open item,
-# the S04a evidence (git history at 0d75981)).
+# the S04a evidence (git history at 77d9911)).
 #
 # Updating: regenerate the translation, run `lake build` with Rmcp in the audited roots and
 # `scripts/lean-guard.sh axioms`; the failure message prints the line to add for each
 # used unlisted axiom. Reviewers check that each line belongs to a string literal of the generated
 # code (the literal is printed by the audit) and that the translation diff explains the change.
 #
-# Translation of commit 14d2830 with the S04a part 2 Charon settings (derived Debug impls
+# Translation of commit 1e701ae with the S04a part 2 Charon settings (derived Debug impls
 # excluded): the five string literals of the target code.
 rmcp.model.request_state.KID_EMPTY_MSG._native.decide.ax_1 Rmcp.Funs sha256:9c9408a5bfa250bca3832132c712f03553820fb787bcd0f0e1e2df65735154c5
 rmcp.model.request_state.KID_TOO_LONG_MSG._native.decide.ax_1 Rmcp.Funs sha256:96dd8f3bcfe92233ac2a6959d92756e64db8864fd009a254daceaa55cf3e8ec6
