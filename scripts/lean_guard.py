@@ -456,12 +456,12 @@ RULE_AXIOM = ("axiom (outside trusted/)", word("axiom"))
 # for the trait structures of Rmcp.Types (`core.hash.BuildHasher`, `zeroize.Zeroize`, ...);
 # `open` declares nothing. lean-axiom-audit.lean checks the same on the build output (no
 # constant of a trusted module in the namespace `rmcp`, no alias added by a trusted module).
-TRUSTED_ID = re.compile(r"(?:«[^»\n]*»|[^\W\d][\w'!?]*)(?:\.(?:«[^»\n]*»|[^\W\d][\w'!?]*))*")
-TRUSTED_ID_COMP = re.compile(r"«[^»\n]*»|[^.«]+")
-TRUSTED_OPEN_OK = re.compile(r"^open rmcp$", re.M)
+EXT_ID = re.compile(r"(?:«[^»\n]*»|[^\W\d][\w'!?]*)(?:\.(?:«[^»\n]*»|[^\W\d][\w'!?]*))*")
+EXT_ID_COMP = re.compile(r"«[^»\n]*»|[^.«]+")
+EXT_OPEN_OK = re.compile(r"^open rmcp$", re.M)
 
 
-def trusted_code(text):
+def external_code(text):
     """TEXT with comments (`--` to the end of the line; `/- -/` nested, docstrings included),
     string literals (also raw `r"…"`, `r#"…"#`, interpolated) and character literals replaced
     by spaces; newlines are kept, so line numbers stay."""
@@ -517,13 +517,13 @@ def trusted_code(text):
     return "".join(out)
 
 
-def trusted_ns_errors(rel, text):
+def external_ns_errors(rel, text):
     """Hits of the trusted/ rule (see TRUSTED_ID) in TEXT, as error strings."""
-    code = TRUSTED_OPEN_OK.sub(lambda m: " " * len(m.group(0)), trusted_code(text))
+    code = EXT_OPEN_OK.sub(lambda m: " " * len(m.group(0)), external_code(text))
     errs = []
-    for m in TRUSTED_ID.finditer(code):
+    for m in EXT_ID.finditer(code):
         tok = m.group(0)
-        comps = TRUSTED_ID_COMP.findall(tok)
+        comps = EXT_ID_COMP.findall(tok)
         if comps and comps[0] == "_root_":
             comps = comps[1:]
         first = comps[0].strip("«»") if comps else ""
@@ -625,7 +625,7 @@ def check_sources(formal):
             if not template and not rel.startswith("trusted/"):
                 rules.append(RULE_AXIOM)
             if rel.startswith("trusted/"):
-                errs += trusted_ns_errors(rel, text)
+                errs += external_ns_errors(rel, text)
             for name, rx in rules:
                 for m in rx.finditer(text):
                     errs.append(f"{rel}:{lineno(text, m.start())}: banned: {name}")
