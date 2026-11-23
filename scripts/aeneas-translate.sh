@@ -334,7 +334,7 @@ log "manifests: no [profile], [patch], [replace] or cargo-features"
 # `cargo tree` writes <work>/Cargo.lock (the copy has none); every later cargo call uses it
 # with --locked.
 [[ ! -e "$WORK/Cargo.lock" ]] || die "$WORK/Cargo.lock exists before resolution (apply-patches.sh never copies one)"
-tree="$(cargo tree "${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" -e normal --prefix none --format '{p}' \
+tree="$(cargo tree --color never "${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" -e normal --prefix none --format '{p}' \
   | sed -e 's/ (\*)$//' -e 's/ (proc-macro)$//' | sort -u)"
 foreign="$(awk -v root="rmcp" '$1 != root && / \(/' <<<"$tree")"
 if [[ -n "$foreign" ]]; then
@@ -344,7 +344,7 @@ fi
 # The same source check over build and dev dependencies too: cargo test (patched-tests.yml)
 # also builds the dev-dependencies, so none of them may come from a path, git or other
 # registry either (review of PR #9).
-alltree="$(cargo tree "${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" -e normal,build,dev --prefix none \
+alltree="$(cargo tree --color never "${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" -e normal,build,dev --prefix none \
   --format '{p}' | sed -e 's/ (\*)$//' -e 's/ (proc-macro)$//' | sort -u)"
 foreign="$(awk -v root="rmcp" '$1 != root && / \(/' <<<"$alltree")"
 if [[ -n "$foreign" ]]; then
