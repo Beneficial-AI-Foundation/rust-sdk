@@ -344,8 +344,9 @@ Defects found in the plan, documents and tooling, with their state:
     review. Found at S19. **Fixed** at S19 acceptance: each of these files now starts with a dated
     "Outcome" line (accepted, commit); the original status text is kept as history.
 12. The plan (S04a, Section 5), the guides and `docs/VERIFICATION.md` name three CI workflows;
-    only `.github/workflows/lean-build.yml` exists. `aeneas-translation.yml` and `patched-tests.yml`
-    were never written. Found at S19. **Open** (S04a part 2, S17).
+    only `.github/workflows/lean-build.yml` existed. Found at S19. **Fixed** (2026-11-23):
+    `aeneas-translation.yml` and `patched-tests.yml` written, reviewed and checked locally
+    (`evidence/CI-workflows.md`); they have not run on GitHub yet (S17).
 
 Items 1–3 are in the plan text the specifications were checked against, not in the Rust code.
 
@@ -357,10 +358,14 @@ Human decisions and actions:
   result is about local commit `14d2830` (source) / `aaf997d` (proofs). If it is not landed, the
   D2 fallback (refactor as a translation patch, every target `PATCHED`) applies.
 - **S01–S04a acceptance**: `IN_PROGRESS` on the board; S02 lacks `CLAUDE.md` and its own review.
-- **CI has never run on GitHub**: `.github/workflows/lean-build.yml` needs a push; the
-  translation and patched-tests workflows of S04a (`aeneas-translation.yml`,
-  `patched-tests.yml`) do not exist yet. S17 (each CI check shown to fail once on a throwaway
-  branch) is `NOT_STARTED`.
+- **CI has never run on GitHub**: the three workflows (`lean-build.yml`,
+  `aeneas-translation.yml`, `patched-tests.yml`) need a push; the last two were checked only
+  locally on macOS (`evidence/CI-workflows.md`). S17 (each CI check shown to fail once on a
+  throwaway branch) is `NOT_STARTED`.
+- **`docs/VERIFICATION.md` Section 9 vs the CI workflows** (the guide is kept verbatim; human
+  decision pending): it gives generic trigger paths including `Cargo.lock` (not committed here),
+  runs the patched tests "with `register_tool`" (no patches and no Charon `rustc_args` here), and
+  describes `lean-build` as `lake build --wfail` (deviation (1) above).
 - **Pilot artifacts** (`formal/docs/pilot/`): copied logs contain absolute local paths with the
   macOS username; total size about 1.2 MB. A human decides before any push.
 - **Mathlib oleans** fetched by `lake exe cache get` are not digest-checked (scope decision).
