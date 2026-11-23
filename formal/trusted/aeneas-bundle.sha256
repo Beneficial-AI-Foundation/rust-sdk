@@ -1,0 +1,13 @@
+# Expected sha256 of the Aeneas release assets, keyed by <tag>/<asset> (sha256sum format).
+# scripts/aeneas-install.sh checks the release bundle against this file and
+# scripts/lean-guard.sh checks the Lean-library archive that Lake downloads; both fail on a
+# mismatch or a missing entry. Changing the Aeneas `rev` in formal/lakefile.toml means adding
+# the new tag's entries here in the same PR (docs/WORKFLOW_AND_PR_GUIDE.md, "Pinned toolchain").
+# Source: the digests GitHub publishes for the release
+# (gh api repos/AeneasVerif/aeneas/releases/tags/<tag> --jq '.assets[] | .digest + "  " + .name').
+8291c8304951b91fe0cb322db038fcbdc18e63b8ba3a5dfbc1712592fe9f7fd0  nightly-2026.08.20-5d08da4/aeneas-macos-aarch64.tar.gz
+a47c3f7affc11e58f734ce618b81e2d0024c19bae23e00b372317307c92dd2d0  nightly-2026.08.20-5d08da4/aeneas-linux-x86_64.tar.gz
+7e08799b35799135e398fb552910ebb325f99a16cea7f0390acbe0b2dd85268b  nightly-2026.08.20-5d08da4/aeneas-linux-aarch64.tar.gz
+ede5f3050c8e390fd5c640f80b9af55e42c7c322b352439f472191fdc65c3f20  nightly-2026.08.20-5d08da4/lean-build-aeneas-arm64-apple-darwin24.6.0.tar.gz
+ab9f39005724f637c8ce3e12808ac3ebead8b2cdb8858883943f7ac5dca0bc73  nightly-2026.08.20-5d08da4/lean-build-aeneas-x86_64-unknown-linux-gnu.tar.gz
+ce2c57c50da814a52b5a8a47f77d5195117881a0b8f9cc03f4cfc026d3579b67  nightly-2026.08.20-5d08da4/lean-build-aeneas-aarch64-unknown-linux-gnu.tar.gz

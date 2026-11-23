@@ -1,0 +1,159 @@
+# Translation is not stale (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 5, "CI";
+# docs/VERIFICATION.md, Section 9).
+#
+# Installs the pinned Aeneas bundle with scripts/aeneas-install.sh, regenerates the translation
+# with scripts/aeneas-translate.sh, and fails if the working tree then differs from the commit
+# (`git status --porcelain`, untracked files included; the *External_Template.lean files Aeneas
+# writes next to Funs.lean are git-ignored, so they are not compared). This catches a Rust
+# change, a patch, a Charon setting or an Aeneas bump committed without regenerating
+# formal/translation/, and any hand edit to the generated files. Every other check (pinned
+# rustc -vV and Charon channel, pinned dependency versions and crates.io sources, build.rs
+# sha256, [package.metadata.charon] keys and recorded Charon options, every target present in
+# Funs.lean, no `sorry`, refused CARGO_*/RUSTUP_*/RUSTFLAGS/... variables) is inside the
+# scripts, so this workflow sets no variable that scripts/aeneas-translate.sh refuses (only
+# RUST_NIGHTLY, read by its own consistency step) and uses no
+# Rust setup action (dtolnay/rust-toolchain and Swatinem/rust-cache export CARGO_* variables
+# that scripts/aeneas-translate.sh refuses); the runner's preinstalled rustup is used.
+#
+# Cargo.lock is not committed (plan Section 4): this job resolves and checks its own Cargo.lock
+# (scripts/aeneas-translate.sh; Charon's cargo build then runs with --locked on it), and so does
+# patched-tests.yml (`aeneas-translate.sh --check-deps`, then `cargo test --locked`). The pinned
+# crates and all sources are identical by check; unpinned transitive crates could differ between
+# the two jobs. A committed verification lockfile shared by both is a human decision
+# (formal/docs/STATUS.md, "Open items").
+#
+# Residual risk: the job runs the PR's own scripts and the build scripts / proc macros of the
+# crates.io dependencies in the same job as the check, so a PR that changes scripts/ is checked by
+# its own scripts; review of scripts/ is the barrier (as for lean-build.yml).
+name: Aeneas translation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'crates/rmcp/src/**'
+      - 'crates/rmcp/Cargo.toml'
+      - 'crates/rmcp/build.rs'
+      - 'Cargo.toml'
+      - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
+      - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
+      - '**/.cargo/config.toml'   # must still run the check that refuses it
+      - 'formal/trusted/patches/**'
+      - 'formal/trusted/Rmcp/**'
+      - 'formal/trusted/aeneas-bundle.sha256'
+      - 'formal/translation/**'
+      - 'formal/lakefile.toml'
+      - 'formal/lean-toolchain'
+      - 'scripts/aeneas-install.sh'
+      - 'scripts/aeneas-translate.sh'
+      - 'scripts/apply-patches.sh'
+      - 'scripts/llbc-dir-guard.sh'
+      - '.github/workflows/aeneas-translation.yml'
+  pull_request:
+    paths:
+      - 'crates/rmcp/src/**'
+      - 'crates/rmcp/Cargo.toml'
+      - 'crates/rmcp/build.rs'
+      - 'Cargo.toml'
+      - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
+      - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
+      - '**/.cargo/config.toml'   # must still run the check that refuses it
+      - 'formal/trusted/patches/**'
+      - 'formal/trusted/Rmcp/**'
+      - 'formal/trusted/aeneas-bundle.sha256'
+      - 'formal/translation/**'
+      - 'formal/lakefile.toml'
+      - 'formal/lean-toolchain'
+      - 'scripts/aeneas-install.sh'
+      - 'scripts/aeneas-translate.sh'
+      - 'scripts/apply-patches.sh'
+      - 'scripts/llbc-dir-guard.sh'
+      - '.github/workflows/aeneas-translation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aeneas-translation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # elan v4.4.0, linux x86_64 release asset; same pin as lean-build.yml. scripts/aeneas-install.sh
+  # requires elan (it installs the Lean toolchain named by the bundle and copies it to
+  # formal/lean-toolchain, which the diff check below then compares).
+  ELAN_URL: https://github.com/leanprover/elan/releases/download/v4.4.0/elan-x86_64-unknown-linux-gnu.tar.gz
+  ELAN_SHA256: 0e8250aa2be86c7af929ade68db617af9edc8b9ccf6eaf5ece228250d0d032e2
+  # The Rust channel of the pinned bundle's rust-toolchain, used only as a cache path here; it
+  # must equal the channel hard-coded next to RUSTC_VV_PINNED in scripts/aeneas-translate.sh
+  # (checked by the first step), and is updated with the Aeneas rev.
+  RUST_NIGHTLY: nightly-2026-06-01
+
+jobs:
+  translate:
+    name: translation is not stale
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        # Explicit `bash` runs each step with `bash -eo pipefail`.
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check RUST_NIGHTLY against scripts/aeneas-translate.sh
+        run: |
+          set -euo pipefail
+          grep -Fq "[[ \"\$RUST_CHANNEL\" == \"$RUST_NIGHTLY\" ]]" scripts/aeneas-translate.sh \
+            || { echo "::error::RUST_NIGHTLY ($RUST_NIGHTLY) is not the channel pinned in scripts/aeneas-translate.sh"; exit 1; }
+
+      # The pinned elan binary (not elan-init.sh, which installs the latest elan); no default
+      # toolchain: aeneas-install.sh installs the one the bundle names.
+      - name: Install elan
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          curl -sSfL --retry 3 -o "$tmp/elan.tar.gz" "$ELAN_URL"
+          echo "$ELAN_SHA256  $tmp/elan.tar.gz" | sha256sum -c -
+          tar -xzf "$tmp/elan.tar.gz" -C "$tmp"
+          "$tmp/elan-init" -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      # .aeneas/<tag> and the nightly, keyed on the files that pin them (the tag is the `rev` of
+      # the aeneas requirement in formal/lakefile.toml; the bundle digest is committed in
+      # formal/trusted/aeneas-bundle.sha256). aeneas-install.sh accepts a restored bundle only if
+      # its stamp records the committed digest, and checks `aeneas -version`; the restored nightly
+      # is checked by aeneas-translate.sh (`rustc -vV` must be the pinned commit).
+      - name: Cache Aeneas bundle and Rust nightly
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .aeneas
+            ~/.rustup/toolchains/${{ env.RUST_NIGHTLY }}-x86_64-unknown-linux-gnu
+            ~/.rustup/update-hashes/${{ env.RUST_NIGHTLY }}-x86_64-unknown-linux-gnu
+          key: aeneas-${{ runner.os }}-${{ env.RUST_NIGHTLY }}-${{ hashFiles('formal/lakefile.toml', 'formal/trusted/aeneas-bundle.sha256') }}
+
+      - name: Install the pinned Aeneas bundle and toolchains
+        run: scripts/aeneas-install.sh
+
+      - name: Regenerate the translation
+        run: scripts/aeneas-translate.sh
+
+      # Any difference from the commit fails: a modified, deleted or new (not git-ignored) file
+      # anywhere in the working tree, in particular under formal/translation/ and
+      # formal/lean-toolchain.
+      - name: Check that nothing differs from the commit
+        run: |
+          set -euo pipefail
+          changes="$(git status --porcelain --untracked-files=all)"
+          if [[ -n "$changes" ]]; then
+            echo "::error::the committed translation is stale or was edited by hand: run scripts/aeneas-translate.sh and commit the result"
+            printf '%s\n' "$changes"
+            git --no-pager diff --stat
+            git --no-pager diff > "$RUNNER_TEMP/translation.diff"
+            head -n 500 "$RUNNER_TEMP/translation.diff"
+            exit 1
+          fi
+          echo "formal/translation/ reproduced exactly; working tree clean"

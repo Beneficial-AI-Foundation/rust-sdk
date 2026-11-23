@@ -1,0 +1,4 @@
+# Pins the toolchain of the differential check (S18 finding F4); run.sh copies this file
+# next to the copied rdiff/ so cargo in the scratch directory picks it up.
+[toolchain]
+channel = "1.96"

@@ -29,3 +29,18 @@ __pycache__/
 #.idea/
 node_modules/
 .DS_Store
+
+# Formal verification (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 5)
+.aeneas/
+.llbc/
+formal/.lake/
+formal/translation/Rmcp/*External_Template.lean
+
+# The differential check builds with --locked from this lock file (formal/trusted/evidence/README.md)
+!formal/trusted/evidence/differential/rdiff/Cargo.lock
+# Generated aggregate-import files (recreated by a tool such as mk_all); not part of any library
+/formal/Proofs.lean
+/formal/Specs.lean
+
+# Local Claude Code agent setup (roles, skill, run logs); not part of the repository
+.claude/

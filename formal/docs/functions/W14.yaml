@@ -1,0 +1,25 @@
+id: W14
+rust_symbol: rmcp::model::request_state_wire::open_frame
+source_file: crates/rmcp/src/model/request_state_wire.rs  # in the patched copy (patch 01 on origin/main 7caec76); line numbers refer to it
+source_line: 225  # `pub fn open_frame` in the patched copy (same line at 9bd8144)
+generated_symbol: rmcp.model.request_state_wire.open_frame
+translation: LEAN_OK  # Aeneas output compiles at 9bd8144 (S04a part 2)
+spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead defaults; the S05 evidence (git history at 223ff12))
+linkage: patch-01  # patch 01 (formal/trusted/patches/01-request-state-wire.patch), D2 fallback 2026-11-23
+proof: CHECKED
+proof_file: formal/proofs/Proofs/Model/RequestStateWire/OpenFrame.lean
+spec_file: formal/specs/Specs/Model/RequestStateWire.lean
+theorem: rmcp.model.request_state_wire.open_frame_spec
+used_by: [E01]  # targets whose proofs consume this theorem; also consumed by frame_roundtrip (not an ID)
+axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file
+evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 223ff12:formal/docs/evidence/<step>.md
+spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestStateWire.lean (S05)
+spec_reviews:
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: the S05 evidence (git history at 223ff12)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: no blocking findings, evidence: the S05 evidence (git history at 223ff12)}
+spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-23
+prover: "AI: Claude Code, claude-opus-5-5"  # person, or "AI: <tool>, <model>"; not the AI spec drafter
+reviewer: null
+# Copied from the specification column of plan Section 2 for convenience.
+behaviour: |-  # derived copy of plan §2.1/§2.2; informational, not a specification
+  `len < 8` → `TooShort`; W13 on W12 of the first 8 bytes → `Expired`; otherwise `Ok(body[8..])`

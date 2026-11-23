@@ -1,0 +1,142 @@
+# Patched copy passes the crate's tests (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 5,
+# "CI"; docs/VERIFICATION.md, Section 9).
+#
+# Installs the pinned nightly, then runs `scripts/aeneas-translate.sh --check-deps`: it copies the
+# workspace into .llbc/work/, applies formal/trusted/patches/*.patch with scripts/apply-patches.sh
+# and runs the same dependency checks as the translation (same code: refused CARGO_*/RUSTFLAGS/...
+# variables, pinned `rustc -vV`, no cargo configuration file, no [profile]/[patch]/[replace]/
+# cargo-features, every dependency from crates.io, PINNED_DEPS versions, build.rs sha256), leaving
+# the checked resolution in .llbc/work/Cargo.lock. It then runs the crate's library tests in the
+# translated feature configuration on the copy, on exactly that resolution:
+#   cargo test --locked --no-default-features --features request-state --lib   (in .llbc/work/crates/rmcp)
+# With no patches this is the plain test suite; it becomes evidence that the patches (part of
+# the trusted base) preserve behaviour if the D2 fallback is used. Since 2026-11-23 it is (human
+# decision): this job is the evidence for formal/trusted/patches/01-request-state-wire.patch,
+# whose tests (byte identity, codec constants, RFC 4231/4648 vectors, S16 boundary cases) exist
+# only in the patched copy. Same trigger paths as aeneas-translation.yml.
+#
+# Cargo.lock is not committed (plan Section 4) and apply-patches.sh never copies one, so this job
+# and aeneas-translation.yml each resolve and check their own Cargo.lock: the pinned crates and
+# all sources are identical by check, but unpinned transitive crates could differ between the two
+# jobs (e.g. a crates.io release between the runs). A committed verification lockfile shared by
+# both jobs would close this; that is a human decision (formal/docs/STATUS.md, "Open items").
+#
+# Residual risk: the job runs the PR's own scripts and the build scripts / proc macros of the
+# crates.io dependencies in the same job as the check, so a PR that changes scripts/ is checked by
+# its own scripts; review of scripts/ is the barrier (as for lean-build.yml).
+name: Patched tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'crates/rmcp/src/**'
+      - 'crates/rmcp/Cargo.toml'
+      - 'crates/rmcp/build.rs'
+      - 'Cargo.toml'
+      - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
+      - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
+      - '**/.cargo/config.toml'   # must still run the check that refuses it
+      - 'formal/trusted/patches/**'
+      - 'formal/trusted/Rmcp/**'
+      - 'formal/trusted/aeneas-bundle.sha256'
+      - 'formal/translation/**'
+      - 'formal/lakefile.toml'
+      - 'formal/lean-toolchain'
+      - 'scripts/aeneas-install.sh'
+      - 'scripts/aeneas-translate.sh'
+      - 'scripts/apply-patches.sh'
+      - 'scripts/llbc-dir-guard.sh'
+      - '.github/workflows/patched-tests.yml'
+  pull_request:
+    paths:
+      - 'crates/rmcp/src/**'
+      - 'crates/rmcp/Cargo.toml'
+      - 'crates/rmcp/build.rs'
+      - 'Cargo.toml'
+      - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
+      - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
+      - '**/.cargo/config.toml'   # must still run the check that refuses it
+      - 'formal/trusted/patches/**'
+      - 'formal/trusted/Rmcp/**'
+      - 'formal/trusted/aeneas-bundle.sha256'
+      - 'formal/translation/**'
+      - 'formal/lakefile.toml'
+      - 'formal/lean-toolchain'
+      - 'scripts/aeneas-install.sh'
+      - 'scripts/aeneas-translate.sh'
+      - 'scripts/apply-patches.sh'
+      - 'scripts/llbc-dir-guard.sh'
+      - '.github/workflows/patched-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: patched-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The Rust channel of the pinned Aeneas bundle (the nightly the translation is built with).
+  # It must equal the channel hard-coded next to RUSTC_VV_PINNED in scripts/aeneas-translate.sh
+  # (checked by the first step), and is updated with the Aeneas rev. RUSTUP_TOOLCHAIN selects
+  # it for every rustup proxy, over the rust-toolchain.toml copied into .llbc/work/.
+  RUST_NIGHTLY: nightly-2026-06-01
+  RUSTUP_TOOLCHAIN: nightly-2026-06-01
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: crate tests on the patched copy
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        # Explicit `bash` runs each step with `bash -eo pipefail`.
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check RUST_NIGHTLY against scripts/aeneas-translate.sh
+        run: |
+          set -euo pipefail
+          [[ "$RUSTUP_TOOLCHAIN" == "$RUST_NIGHTLY" ]] \
+            || { echo "::error::RUSTUP_TOOLCHAIN ($RUSTUP_TOOLCHAIN) differs from RUST_NIGHTLY ($RUST_NIGHTLY)"; exit 1; }
+          grep -Fq "[[ \"\$RUST_CHANNEL\" == \"$RUST_NIGHTLY\" ]]" scripts/aeneas-translate.sh \
+            || { echo "::error::RUST_NIGHTLY ($RUST_NIGHTLY) is not the channel pinned in scripts/aeneas-translate.sh"; exit 1; }
+
+      - name: Cache Rust nightly
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.rustup/toolchains/${{ env.RUST_NIGHTLY }}-x86_64-unknown-linux-gnu
+            ~/.rustup/update-hashes/${{ env.RUST_NIGHTLY }}-x86_64-unknown-linux-gnu
+          key: rust-${{ runner.os }}-${{ env.RUST_NIGHTLY }}-minimal
+
+      - name: Install the pinned nightly
+        run: |
+          set -euo pipefail
+          rustup toolchain install "$RUST_NIGHTLY" --profile minimal
+          rustc -vV
+          cargo -V
+
+      # Copies the workspace, applies the translation patches and checks the resolved
+      # dependencies (stops before Charon; needs no Aeneas bundle).
+      - name: Copy the workspace, apply the translation patches, check the dependencies
+        run: scripts/aeneas-translate.sh --check-deps
+
+      - name: Run the crate's library tests on the patched copy
+        working-directory: .llbc/work/crates/rmcp
+        # --locked: exactly the resolution checked above (cargo fails if .llbc/work/Cargo.lock
+        # would change). CARGO_HOME: the isolated home of the check (no configuration file; only
+        # links to the registry and git caches). Same profile settings as the translation
+        # (scripts/aeneas-translate.sh); the host of ubuntu-latest is x86_64-unknown-linux-gnu,
+        # the translated target.
+        env:
+          CARGO_HOME: ${{ github.workspace }}/.llbc/cargo-home
+        run: >-
+          cargo test --locked --no-default-features --features request-state --lib
+          --config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true
