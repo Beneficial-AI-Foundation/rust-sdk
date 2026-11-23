@@ -328,7 +328,7 @@ steps:
 
   - id: S19
     day: D10
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; final report (evidence/S19.md, STATUS \"Results\")
     depends_on: []   # plan: "board state; no success required"; S19 is mandatory
     owner: Lead + human owner
     files:
