@@ -13,15 +13,15 @@ Statements of the codec functions of `RequestStateCodec` (plan Section 2.2), in 
 order, each restated as a theorem `Theorems.request_state.RequestStateCodec.<function>` proved by
 the spec theorem in `Proofs/Model/RequestState/` and followed by
 the assumptions its proof depends on, checked by `#print axioms` under `#guard_msgs`. The
-statements were signed off by the spec owner on 2026-11-23 (the S05 evidence (git history at 77d9911)); their signed-off
-text is in `specs/Drafts/RequestState.lean` at commit `22b9f13`.
+statements were signed off by the spec owner on 2026-11-23 (the S05 evidence (git history at 01bdc9b)); their signed-off
+text is in `specs/Drafts/RequestState.lean` at commit `46cfb02`.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 features `--no-default-features --features request-state`, with `overflow-checks=true` and
 `debug-assertions=true` (plan Section 1), so arithmetic overflow panics, which Aeneas models as
-failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is local commit `22b9f13`
+failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is local commit `46cfb02`
 (S04a part 2), not yet a pinned fork commit. Line numbers refer to `request_state.rs` at
-`22b9f13`.
+`46cfb02`.
 
 Definitions used: `Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLength`, `maxKidLen`,
 `b64Len`, `dot`, `components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`),
@@ -51,7 +51,7 @@ E10 reaches none (all in `trusted/native-axioms.lock`).
 Statements here, in Rust source order: E11 (line 559), E07 (572), E08 (585), E09 (607),
 E09a (644), E10 (659) (S11, S13, S14), then E01 (695), E03 (704), E04 (714), E02 (725) (S07).
 The E07–E11 and E09a statements were signed off by the spec owner on 2026-11-23 after three
-review rounds (the S05 evidence (git history at 77d9911), "E batch part 2"); their signed-off text was in
+review rounds (the S05 evidence (git history at 01bdc9b), "E batch part 2"); their signed-off text was in
 `specs/Drafts/RequestState.lean`, removed at incorporation.
 
 Composition theorems last (S15, proofs in `Proofs/Model/RequestState/Roundtrip.lean`):
@@ -59,7 +59,7 @@ Composition theorems last (S15, proofs in `Proofs/Model/RequestState/Roundtrip.l
 sealing terminates, that some `Str` holds the token's bytes, and that opening any such `Str`
 returns `Ok (body[8..])`, under the plan Section 3 round-trip conditions and the seal statements'
 own size premises. Signed off by the spec owner on 2026-11-23 after two review rounds
-(the S15 evidence (git history at 77d9911)). The rs1 ones reach `VERSION_V1._native.decide.ax_1` and
+(the S15 evidence (git history at 01bdc9b)). The rs1 ones reach `VERSION_V1._native.decide.ax_1` and
 `RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`; `rs2_roundtrip` reaches
 `VERSION_V2._native.decide.ax_1`; `open_at_roundtrip_rs2` reaches both `VERSION_V2…` and `…ax_3`.
 -/

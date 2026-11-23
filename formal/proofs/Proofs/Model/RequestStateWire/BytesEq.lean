@@ -13,7 +13,7 @@ Byte-slice equality: a length check, then a loop comparing the bytes in order.
 
 The loop invariant says that the bytes before the index agree.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 65 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 65 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

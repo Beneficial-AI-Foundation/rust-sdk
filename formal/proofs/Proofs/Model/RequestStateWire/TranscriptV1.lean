@@ -16,7 +16,7 @@ associated data, the associated data, then the body, by four `Vec::extend_from_s
 Uses `Proofs.RequestStateWire.extend_from_slice_spec` through `step`; the length prefix is
 `be64` of the exact length by `val_to_slice_to_be_bytes` and `val_cast_U64`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 183 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 183 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

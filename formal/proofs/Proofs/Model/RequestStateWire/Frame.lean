@@ -15,7 +15,7 @@ Builds an authenticated body: the 8 big-endian bytes of `expiry as u64`, then th
 The round trip composes `frame_spec` with `open_frame_spec` (W14), using
 `Proofs.RequestStateWire.bodyExpiry_frameBytes`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 239 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 239 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

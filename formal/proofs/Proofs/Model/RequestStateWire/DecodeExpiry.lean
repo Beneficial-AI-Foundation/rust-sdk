@@ -14,7 +14,7 @@ import Defs.Wire
 The proof computes the value of the Aeneas `BitVec.fromLEBytes` and relates the big-endian
 reading to `Defs.Wire.beNat`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 205 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 205 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

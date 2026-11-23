@@ -3,9 +3,9 @@
 Plan: [`docs/MCP_SDK_Verification_Master_Plan_EN.md`][plan].
 Task state: [`board.yaml`](board.yaml) (authoritative). Per-function records:
 [`functions/`](functions/). Step evidence: [`evidence/`](evidence/); this report's evidence:
-the S19 evidence (git history at 77d9911).
+the S19 evidence (git history at 01bdc9b).
 
-Last updated 2026-11-23: S19 final status report, written at local commit `bdae198` (branch
+Last updated 2026-11-23: S19 final status report, written at local commit `1640c77` (branch
 `docs/verification-guides`, not pushed). S19 itself awaits acceptance by the human owner.
 
 Board at this report: S05–S16 and S18 `ACCEPTED` (human approval 2026-11-23); S01, S02, S03, S04
@@ -21,11 +21,11 @@ wording, each forced by a recorded fact: the SDK commit is a local commit, not a
 the trusted base. No target is open, so the last sentence names the excluded functions and
 non-targets instead.
 
-> At SDK commit `1e701ae599d71a15edfdff6d3cff3379ee830b43` (a **local commit** on branch
+> At SDK commit `9b030c6d1f5955dfa588d75fe6fb3bdbf903444f` (a **local commit** on branch
 > `docs/verification-guides`; **not yet a pinned fork commit**, because the refactor PR has not
-> landed in the fork; the non-test source of both target files is unchanged up to `bdae198`),
+> landed in the fork; the non-test source of both target files is unchanged up to `1640c77`),
 > translated for `x86_64-unknown-linux-gnu` with `--no-default-features --features request-state`
-> (and the Charon settings committed at `22b9f13`), the following public request-state wire
+> (and the Charon settings committed at `46cfb02`), the following public request-state wire
 > functions and existing codec functions are verified against the Aeneas translation
 > (`nightly-2026.08.20-5d08da4`): W01 `b64_len`, W02 `key_length_ok`, W03 `check_kid_len`,
 > W04 `bytes_eq`, W05 `next_dot`, W06 `component_count`, W07 `version_of`, W08 `parse_rs1`,
@@ -55,7 +55,7 @@ a claim about a fork commit only when the refactor lands and the pinned commit i
 under "Excluded functions" below. Not targets: 4 translatable wrappers.
 
 Restated theorems (`theorem Theorems.…`, each proved by the spec theorem it restates and guarded
-by `#guard_msgs in` + `#print axioms`), counted at `bdae198`:
+by `#guard_msgs in` + `#print axioms`), counted at `1640c77`:
 
 | Spec file | Theorems | Content |
 |---|---|---|
@@ -72,16 +72,16 @@ by `#guard_msgs in` + `#print axioms`), counted at `bdae198`:
 | Base commit | `0e2396f73a88617141b31f645de6f1171ed5f993` |
 | SHA-256 of `request_state.rs` at base | `41e69cad…b416` (full value: plan Section 1) |
 | Pinned commit | **not yet**: the refactor PR (S04a part 1) has not landed in the fork |
-| Verified Rust source | local commit `1e701ae` (refactor); non-test lines unchanged at `bdae198` |
-| Translation | committed at `22b9f13` (from `1e701ae` + Charon settings); unchanged since |
-| Aeneas | release tag `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 77d9911)) |
+| Verified Rust source | local commit `9b030c6` (refactor); non-test lines unchanged at `1640c77` |
+| Translation | committed at `46cfb02` (from `9b030c6` + Charon settings); unchanged since |
+| Aeneas | release tag `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 01bdc9b)) |
 
-SHA-256 of the target files at `1e701ae`: `request_state.rs` `a09f02e3…f076`,
+SHA-256 of the target files at `9b030c6`: `request_state.rs` `a09f02e3…f076`,
 `request_state_wire.rs` `96f433d7…c357`. Since then the files changed only by the S16 test
-insertions inside `mod tests` (`721d40f`; `git diff -U0 1e701ae bdae198` shows two insertion-only
+insertions inside `mod tests` (`317ace2`; `git diff -U0 9b030c6 1640c77` shows two insertion-only
 hunks, after line 735 resp. 280), and `crates/rmcp/Cargo.toml` only in comments and the
-derived-`Debug` `exclude` entries (`22b9f13`, `7a16376`). The committed translation was reproduced
-byte for byte on a fresh clone at `7c9c68b` (the S18 evidence (git history at 77d9911)).
+derived-`Debug` `exclude` entries (`46cfb02`, `baf1762`). The committed translation was reproduced
+byte for byte on a fresh clone at `2cb8d58` (the S18 evidence (git history at 01bdc9b)).
 
 Target files (both compile only with the `request-state` feature):
 - `crates/rmcp/src/model/request_state_wire.rs` (new, public; added by the S04a refactor)
@@ -143,7 +143,7 @@ Only the named human spec owner may set `spec: REVIEWED`, and only a human may m
 
 ## Per-function status
 
-Mirrors `formal/docs/functions/*.yaml` (the records are authoritative), checked at `bdae198`:
+Mirrors `formal/docs/functions/*.yaml` (the records are authoritative), checked at `1640c77`:
 every record has `translation: LEAN_OK`, `spec: REVIEWED`, `spec_owner: "Hoang Le Truong"`,
 `linkage: ORIGINAL`, `proof: CHECKED`.
 
@@ -215,7 +215,7 @@ directly, with no seal wrapper verified; the codec-state invariant is permanentl
 
 ## Trusted base
 
-Checked at `bdae198` by `scripts/lean-guard.sh axioms` (exit 0; 2110 constants in 46 project
+Checked at `1640c77` by `scripts/lean-guard.sh axioms` (exit 0; 2110 constants in 46 project
 modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
 
 - **Trusted axioms: 0.** `formal/trusted/axioms.lock` has no entry; the `RmcpExternal` roots
@@ -319,11 +319,11 @@ Defects found in the plan, documents and tooling, with their state:
    tokens starting with `rs1`/`rs2`). Found in the S13 spec rounds, decision (j). **Fixed** (plan
    §3).
 4. The differential check's `rdiff/Cargo.lock` was git-ignored, but `run.sh` builds `--locked`, so
-   a fresh clone could not run it. **Fixed** in `799683f` (lock tracked).
+   a fresh clone could not run it. **Fixed** in `b4cf8d9` (lock tracked).
 5. The differential check was built with whatever Rust toolchain rustup selected. Found at S18
-   (F4). **Fixed**: `rdiff/rust-toolchain.toml` pins Rust 1.96 (`bdae198`).
+   (F4). **Fixed**: `rdiff/rust-toolchain.toml` pins Rust 1.96 (`1640c77`).
 6. `formal/README.md` status line was stale ("S03: toolchain only"). Found at S18 (F1).
-   **Fixed** in `bdae198`.
+   **Fixed** in `1640c77`.
 7. The macOS Aeneas release bundle links `/nix/store` libraries, so its binaries do not start on
    a plain Mac. Found at S03. **Worked around** (`DYLD_FALLBACK_LIBRARY_PATH=/usr/lib`); not
    reported upstream.
@@ -346,7 +346,7 @@ Defects found in the plan, documents and tooling, with their state:
 12. The plan (S04a, Section 5), the guides and `docs/VERIFICATION.md` name three CI workflows;
     only `.github/workflows/lean-build.yml` existed. Found at S19. **Fixed** (2026-11-23):
     `aeneas-translation.yml` and `patched-tests.yml` written, reviewed and checked locally
-    (the CI-workflows evidence (git history at 77d9911)); they have not run on GitHub yet (S17).
+    (the CI-workflows evidence (git history at 01bdc9b)); they have not run on GitHub yet (S17).
 
 Items 1–3 are in the plan text the specifications were checked against, not in the Rust code.
 
@@ -355,12 +355,12 @@ Items 1–3 are in the plan text the specifications were checked against, not in
 Human decisions and actions:
 - **Owners and budget**: project owner and budget TBD (blocks S01 acceptance and the D2 gate).
 - **Refactor PR (S04a part 1)**: not landed in the fork; no pinned commit. Until it lands, every
-  result is about local commit `1e701ae` (source) / `bdae198` (proofs). If it is not landed, the
+  result is about local commit `9b030c6` (source) / `1640c77` (proofs). If it is not landed, the
   D2 fallback (refactor as a translation patch, every target `PATCHED`) applies.
 - **S01–S04a acceptance**: `IN_PROGRESS` on the board; S02 lacks `CLAUDE.md` and its own review.
 - **CI has never run on GitHub**: the three workflows (`lean-build.yml`,
   `aeneas-translation.yml`, `patched-tests.yml`) need a push; the last two were checked only
-  locally on macOS (the CI-workflows evidence (git history at 77d9911)). S17 (each CI check shown to fail once on a
+  locally on macOS (the CI-workflows evidence (git history at 01bdc9b)). S17 (each CI check shown to fail once on a
   throwaway branch) is `NOT_STARTED`.
 - **`docs/VERIFICATION.md` Section 9 vs the CI workflows** (the guide is kept verbatim; human
   decision pending): it gives generic trigger paths including `Cargo.lock` (not committed here),
@@ -368,23 +368,23 @@ Human decisions and actions:
   describes `lean-build` as `lake build --wfail` (deviation (1) above).
 - **Pilot artifacts and per-step evidence**: removed from the working tree on 2026-11-23 (human
   decision), together with the W-batch procedure; they remain in git history (last at commit
-  `77d9911`: `formal/docs/evidence/`, `formal/docs/review/`). The pilot record (`formal/docs/pilot/`,
+  `01bdc9b`: `formal/docs/evidence/`, `formal/docs/review/`). The pilot record (`formal/docs/pilot/`,
   `formal/docs/pilot.md`, whose logs contained local paths) was removed from git history on
   2026-11-23 (human decision).
 - **Mathlib oleans** fetched by `lake exe cache get` are not digest-checked (scope decision).
 - **Upstream Aeneas `toStr` issue** (`Aeneas/Std/String.lean`): to be filed by a human; after a
   fix and a rev bump, `native-axioms.lock` can be emptied.
 
-Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evidence (git history at 77d9911)):
+Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evidence (git history at 01bdc9b)):
 - S03 X4: `Specs` imports `Proofs`, so a global instance or notation in `proofs/` could change a
-  spec statement's meaning; no structural fix decided. At `bdae198` a text search finds no
+  spec statement's meaning; no structural fix decided. At `1640c77` a text search finds no
   `instance`, `notation` or infix declaration in `proofs/` or `trusted/` (the two `Decidable`
   instances are in `specs/Defs/`).
 - S03 R5a-1: the word bans and allowlists of `lean-guard.sh sources` can be bypassed by gluing a
   banned token to a preceding literal or `)`.
 - S03 R5a-2: `axioms.lock` locks referenced constants by name only (moot while it is empty).
 - S08–S09 (R3a-1, R3a-2): nothing enforces that `RmcpExternal` imports only Aeneas and
-  `Rmcp.Types` (at `bdae198` it does: `import Aeneas`, `import Rmcp.Types`), and global
+  `Rmcp.Types` (at `1640c77` it does: `import Aeneas`, `import Rmcp.Types`), and global
   `notation`/`instance` in `trusted/` is not banned; a root-level name in `trusted/` could make a
   generated name ambiguous. Reviewers check these by hand.
 - External models are not covered by any lock: a hash lock over the declarations of
@@ -394,10 +394,10 @@ Documents:
 - `docs/VERIFICATION.md` differs from the project's design in eight documented places (build
   gate, `#guard_msgs` form, generated root module, reading `proofs/`, `globs`, native-code
   axioms, externals as definitions (amended), `theorem Theorems.…` instead of `recall`).
-- Docs-sync round 3 (2026-11-22) left ten wording items open; at `bdae198` items (7) base64
+- Docs-sync round 3 (2026-11-22) left ten wording items open; at `1640c77` items (7) base64
   `0.23.x` and (8) `b64_decode` no longer appear in the guides; the others were not re-checked.
 - The guides do not describe the `sources` attribute and `#`-command allowlists or the
-  `lean-guard.sh fresh` step (text search at `bdae198`).
+  `lean-guard.sh fresh` step (text search at `1640c77`).
 
 Deferred proof and record polish (phase C, plan Section 12; no statement change):
 - Phase B proofs use flexible tactics (`simp`, `simp_all`, `step*`, `scalar_tac`, `nlinarith`,
@@ -412,7 +412,7 @@ Deferred scope:
 - Negative round trips (tampered token or other key → `IntegrityCheckFailed`): provable only
   under a no-collision premise on the opaque HMAC model (S15, decided 2026-11-23: deferred).
 - Specifications for `open`, `open_with`, `new`, `try_new`; the remaining plan Section 12 items.
-  Next-sprint scope: the S19 evidence (git history at 77d9911).
+  Next-sprint scope: the S19 evidence (git history at 01bdc9b).
 
 ## Incident
 
@@ -420,7 +420,7 @@ During the S03 fix-round-3 tests, an agent's test run started `rsync -a --delete
 its destination; it ran for about three minutes before it was killed. Every unlink failed and
 no deletion was found afterwards. The output-directory check now refuses `/`, a second guard
 runs before `rsync --delete`, `RMCP_LLBC_DIR` is guarded (fix round 4, V3), and the agent role
-files (`.claude/agents/*.md`, "Safety") restrict destructive commands to scratch directories.
-Details: the S03 evidence (git history at 77d9911), "U6: output directory".
+files (`.claude/agents/*.md`, local only since 2026-11-23, "Safety") restrict destructive commands to scratch directories.
+Details: the S03 evidence (git history at 01bdc9b), "U6: output directory".
 
 [plan]: ../../docs/MCP_SDK_Verification_Master_Plan_EN.md

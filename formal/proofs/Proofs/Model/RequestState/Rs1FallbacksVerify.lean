@@ -17,7 +17,7 @@ Tries every rs1 fallback key id in order: looks the id up in the key table (`exp
 panics on an unknown id), verifies the tag over the transcript under that key, and ORs the
 results, with no early exit. The result is `true` iff some fallback key verifies the tag.
 
-Source: "crates/rmcp/src/model/request_state.rs", line 644 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state.rs", line 644 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 
 Proof: `loop.spec_decr_nat` with the invariant that the accumulator is `Rs1Verifies` on the

@@ -11,7 +11,7 @@ import Defs.Wire
 
 An expiry is reached when it is nonzero and `now_ms` is strictly after it (signed comparison).
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 210 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 210 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

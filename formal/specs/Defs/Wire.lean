@@ -13,9 +13,9 @@ Section 2.1) are written in: the `.`-components of a token, the version tags and
 separators as byte lists, big-endian encoding and decoding of 64-bit values, the two MAC
 transcripts, the frame layout and the expiry predicate.
 
-Rust source: `crates/rmcp/src/model/request_state_wire.rs` at local commit `1e701ae`; line
+Rust source: `crates/rmcp/src/model/request_state_wire.rs` at local commit `9b030c6`; line
 numbers below refer to that file. The translation the drafts are checked against was generated
-from `1e701ae` plus the working-tree Charon excludes of the seven derived `Debug` impls
+from `9b030c6` plus the working-tree Charon excludes of the seven derived `Debug` impls
 (`crates/rmcp/Cargo.toml`); `formal/translation/` is untracked and not yet a pinned fork commit
 (S04a not landed). Every definition is stated on
 mathematical objects (`List U8`, `Nat`, `Int`) and does not refer to the translated code.

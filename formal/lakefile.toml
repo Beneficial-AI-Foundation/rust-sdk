@@ -11,7 +11,7 @@ name = "rmcp_formal"
 # `declaration uses 'sorry'`) fails the build. `lake build --wfail` cannot be the gate
 # with this Aeneas rev: it also fails on the four `sorry` warnings that Lake replays
 # from the Aeneas library itself (Aeneas/Std/Slice.lean:363,586 and
-# Aeneas/Std/StringIter.lean:12,15); see the S03 evidence (git history at 77d9911).
+# Aeneas/Std/StringIter.lean:12,15); see the S03 evidence (git history at 01bdc9b).
 # scripts/lean-guard.sh (scripts/lean_guard.py) parses this file and fails CI unless it
 # has exactly the five libraries below, with these srcDirs and roots, each with exactly
 # the keys name/srcDir/roots/leanOptions and `leanOptions = { warningAsError = true }`,
@@ -20,7 +20,7 @@ name = "rmcp_formal"
 # `Rmcp` and `RmcpExternal` are not default targets; `lake build Rmcp RmcpExternal`
 # builds them. Since the audit-scope decision (2026-11-23) the unused placeholder
 # externals no longer block adding them: with both here, `lake build` and the
-# `sources`, `build-log` and `axioms` checks pass (the S03 evidence (git history at 77d9911), D1).
+# `sources`, `build-log` and `axioms` checks pass (the S03 evidence (git history at 01bdc9b), D1).
 # Adding them is the lead's decision; until then `lake build` builds only the
 # hand-maintained roots, and Rmcp is audited only once a Defs/Proofs/Specs module
 # imports Rmcp.Funs (S06).

@@ -41,3 +41,6 @@ formal/translation/Rmcp/*External_Template.lean
 # Generated aggregate-import files (recreated by a tool such as mk_all); not part of any library
 /formal/Proofs.lean
 /formal/Specs.lean
+
+# Local Claude Code agent setup (roles, skill, run logs); not part of the repository
+.claude/

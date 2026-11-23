@@ -15,16 +15,16 @@ order with the composition theorem last. Each is restated as a theorem
 `Theorems.request_state_wire.<function>`, proved by the spec theorem in
 `Proofs/Model/RequestStateWire/`, and followed by the assumptions its proof depends on, checked by
 `#print axioms` under `#guard_msgs`. The statements were signed off by the spec owner on
-2026-11-23 (the S05 evidence (git history at 77d9911)); their signed-off text is in `specs/Drafts/RequestStateWire.lean`
-at commit `22b9f13`, removed when they were incorporated (the W-batch incorporation procedure (git history at 77d9911)).
+2026-11-23 (the S05 evidence (git history at 01bdc9b)); their signed-off text is in `specs/Drafts/RequestStateWire.lean`
+at commit `46cfb02`, removed when they were incorporated (the W-batch incorporation procedure (git history at 01bdc9b)).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 features `--no-default-features --features request-state`, with `overflow-checks=true` and
 `debug-assertions=true` (every cargo call gets `--config profile.dev.overflow-checks=true` and
 `--config profile.dev.debug-assertions=true`, plan Section 1), so arithmetic overflow panics,
 which Aeneas models as failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is
-local commit `22b9f13` (S04a part 2), not yet a pinned fork commit. Line numbers refer to
-`request_state_wire.rs` at `22b9f13`.
+local commit `46cfb02` (S04a part 2), not yet a pinned fork commit. Line numbers refer to
+`request_state_wire.rs` at `46cfb02`.
 
 Definitions used: `Defs.Wire` (`b64Len`, `minKeyLength`, `maxKidLen`, `dot`, `components`,
 `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`, `beNat`, `toInt64`, `Expired`,

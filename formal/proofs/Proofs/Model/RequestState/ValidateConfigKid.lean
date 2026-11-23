@@ -16,7 +16,7 @@ import Proofs.Model.RequestState.Common
 Checks the byte length of a configured key id: `0` gives `InvalidKeyring(KID_EMPTY_MSG)`, more
 than `MAX_KID_LEN = 255` gives `InvalidKeyring(KID_TOO_LONG_MSG)`, otherwise `Ok(())`.
 
-Source: "crates/rmcp/src/model/request_state.rs", line 714 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state.rs", line 714 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

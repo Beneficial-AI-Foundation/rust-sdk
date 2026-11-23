@@ -41,7 +41,7 @@
 #       3. Every .lean file under formal/ except formal/.lake/ and formal/specs/Drafts/ fails
 #          on the rules of lean_guard.py (check_sources; the full lists, and how the list of
 #          code-running forms was derived from the pinned toolchain and packages, are in
-#          the S03 evidence (git history at 77d9911), fix round 5): banned whole tokens (WORDS_ALL:
+#          the S03 evidence (git history at 01bdc9b), fix round 5): banned whole tokens (WORDS_ALL:
 #          sorry, admit, native_decide, unsafe, implemented_by, extern, ...; META_WORDS:
 #          every keyword whose elaborator or macro runs code at elaboration time, such as
 #          run_cmd, run_tac, by_elab, include_str, elab, macro, syntax, initialize,

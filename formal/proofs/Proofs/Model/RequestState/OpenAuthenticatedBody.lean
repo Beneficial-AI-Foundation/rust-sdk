@@ -15,7 +15,7 @@ and maps its errors (`TooShort` to `MalformedFormat`, `Expired` to `Expired`); o
 copies the payload into a new vector. The proof uses the W14 theorem `open_frame_spec` through
 `step`, without unfolding the W function.
 
-Source: "crates/rmcp/src/model/request_state.rs", line 695 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state.rs", line 695 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

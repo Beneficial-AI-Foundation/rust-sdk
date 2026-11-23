@@ -12,7 +12,7 @@ import Defs.Wire
 Checks a key-id length: `0` is `Empty`, more than `MAX_KID_LEN = 255` is `TooLong`,
 otherwise `Ok`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 54 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 54 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

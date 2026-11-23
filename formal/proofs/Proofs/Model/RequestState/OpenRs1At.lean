@@ -23,7 +23,7 @@ Opens an `rs1` token: parses it into body and tag (W08), rejects a keyring codec
 fallback ids, decodes body and tag from Base64, verifies the tag over the W10 transcript (single
 key directly, keyring through `rs1_fallbacks_verify`, E09a), then opens the body (E01).
 
-Source: "crates/rmcp/src/model/request_state.rs", line 607 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state.rs", line 607 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 
 Proof: one case per check in Rust order, each closed against the matching branch of

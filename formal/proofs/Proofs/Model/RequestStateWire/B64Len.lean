@@ -12,7 +12,7 @@ import Defs.Wire
 Length of the unpadded Base64url encoding rounded up to whole quads: `4 * ceil(len / 3)`,
 computed as `len / 3 * 4`, plus 4 when `len % 3 ≠ 0`. Stated on the no-overflow domain.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 33 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 33 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 

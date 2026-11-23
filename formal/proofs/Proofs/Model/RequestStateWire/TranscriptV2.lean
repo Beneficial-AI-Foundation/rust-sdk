@@ -16,7 +16,7 @@ the big-endian length of the associated data, the associated data, then the body
 
 Same proof as `transcript_v1_spec` (W10) with two more appended slices.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 193 at local commit `22b9f13`
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 193 at local commit `46cfb02`
 (the translation base; not yet a pinned fork commit).
 -/
 
