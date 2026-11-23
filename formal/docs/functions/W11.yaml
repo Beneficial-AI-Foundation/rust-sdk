@@ -12,9 +12,11 @@ spec_file: formal/specs/Specs/Model/RequestStateWire.lean
 theorem: null
 used_by: [E08, E10]  # targets whose proofs consume this theorem
 axioms: []                      # as printed by `#print axioms` in the spec file
-evidence: [formal/docs/evidence/S01.md]  # records created at S01
-spec_drafted_by: null           # person, or "AI: <tool>, <model>"
-spec_reviews: []                # independent agent reviews (tool, model, verdict)
+evidence: [formal/docs/evidence/S01.md, formal/docs/evidence/S05.md]  # records created at S01; S05 spec drafts
+spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestStateWire.lean (S05)
+spec_reviews:
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
 spec_owner: null                # human who signed off the spec
 prover: null                    # person, or "AI: <tool>, <model>"; not the AI spec drafter
 reviewer: null

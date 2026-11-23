@@ -1,0 +1,41 @@
+# Native-code axiom lock (human decision 2026-11-22; formal/README.md, "Trusted base").
+#
+# Native-code axioms are those whose name has a `_native` component (declared by
+# `decide +native` and `native_decide` as `<decl>._native.decide.ax_<n>`) or Lean.trustCompiler.
+# They trust the Lean compiler and native code, not only the kernel, so they are a trust item
+# of their own, classified separately from the axioms of formal/trusted/axioms.lock, as in the
+# SPQR project (scripts/AuditHeadline.lean, `isNativeAxiom`).
+#
+# The pinned Aeneas `toStr (s : String) (h : s.toByteArray.size ≤ U32.max := by decide +native)`
+# (Aeneas/Std/String.lean) declares one for every string literal of the translation. Only these
+# may be listed here: `scripts/lean-guard.sh axioms` rejects any native-code axiom whose
+# statement is not exactly `decide ("<literal>".toByteArray.size ≤ Aeneas.Std.U32.max) = true`
+# (no universe parameters), even if it is listed.
+#
+# One line per native-code axiom reached by the audited roots:
+# `<full name> <declaring module> sha256:<hex>`, where <hex> is the sha256 of the canonical
+# statement printed by scripts/lean-axiom-audit.lean (the same structural hashing as
+# axioms.lock). `scripts/lean-guard.sh axioms` fails on a reached native-code axiom that is
+# not listed, on a changed statement or module, and on a stale entry (its module is in the
+# audited import closure but the axiom is not reached). Entries for Rmcp.Types/Rmcp.Funs that
+# the default-target roots do not reach are reported as not checked; entries naming any other
+# module fail.
+#
+# These axioms state true facts that the kernel can also check: `simp only [U32.max,
+# U32.numBits, UScalarTy.numBits]; decide` proves each with [propext] only (U32.max is
+# @[irreducible], which is why plain `decide` fails). An upstream Aeneas `toStr` that
+# discharges the side condition that way, and a rev bump, would remove them (open item,
+# formal/docs/evidence/S04a.md).
+#
+# Updating: regenerate the translation, run `lake build` with Rmcp in the audited roots and
+# `scripts/lean-guard.sh axioms`; the failure message prints the line to add for each
+# unlisted axiom. Reviewers check that each line belongs to a string literal of the generated
+# code (the literal is printed by the audit) and that the translation diff explains the change.
+#
+# Translation of commit 14d2830 with the S04a part 2 Charon settings (derived Debug impls
+# excluded): the five string literals of the target code.
+rmcp.model.request_state.KID_EMPTY_MSG._native.decide.ax_1 Rmcp.Funs sha256:9c9408a5bfa250bca3832132c712f03553820fb787bcd0f0e1e2df65735154c5
+rmcp.model.request_state.KID_TOO_LONG_MSG._native.decide.ax_1 Rmcp.Funs sha256:96dd8f3bcfe92233ac2a6959d92756e64db8864fd009a254daceaa55cf3e8ec6
+rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3 Rmcp.Funs sha256:f0a588d6b2ab00071bc9c2ad4830539895924c2d6ac0bfc215f487d3f1ebd294
+rmcp.model.request_state.VERSION_V1._native.decide.ax_1 Rmcp.Funs sha256:266bab2962c0e0d527821af399f4bab7acc43d6380dc474bf84d61f34fed919b
+rmcp.model.request_state.VERSION_V2._native.decide.ax_1 Rmcp.Funs sha256:58b654cc9f1a61279efa70278732198a04dc9c493a3edf2b0c96cbaabb759e50

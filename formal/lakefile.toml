@@ -17,9 +17,9 @@ name = "rmcp_formal"
 # the keys name/srcDir/roots/leanOptions and `leanOptions = { warningAsError = true }`,
 # and no other package-level key than name, defaultTargets, require and lean_lib; it also
 # fails if a lakefile.lean exists or a source file switches the option off.
-# `Rmcp` and `RmcpExternal` join the default targets at S04a, when the
-# generated translation and the hand-written externals exist. Until then
-# `lake build` builds only the hand-maintained roots.
+# `Rmcp` and `RmcpExternal` join the default targets once the externals are
+# modelled and locked (S08–S09); `lake build Rmcp RmcpExternal` builds them.
+# Until then `lake build` builds only the hand-maintained roots.
 defaultTargets = ["Defs", "Proofs", "Specs"]
 
 [[require]]

@@ -52,7 +52,10 @@
 #          `debug.` options, `set_option linter.<name> false` (except in formal/translation/,
 #          where Aeneas emits it) and `axiom` outside formal/trusted/ (and the unbuilt
 #          Aeneas *_Template.lean files). Comments and docstrings count. Symlinks under
-#          formal/ (outside .lake/) fail.
+#          formal/ (outside .lake/) fail. In formal/trusted/ only, after comments, string and
+#          character literals are blanked: any identifier whose first component is `rmcp`
+#          (also `_root_.rmcp`, `«rmcp»`) and the keyword `export` fail; the only exception
+#          is a line that is exactly `open rmcp` (lean_guard.py, trusted_ns_errors).
 #
 #   scripts/lean-guard.sh build-log FILE
 #       FILE is the output of `lake build` (`set -o pipefail; lake build 2>&1 | tee FILE`).
@@ -80,7 +83,22 @@
 #       e.g. with debug.skipKernelTC, and altered .olean files). Finally the axioms declared
 #       in the roots of RmcpExternal must be exactly those of formal/trusted/axioms.lock,
 #       each with the sha256 of its canonical statement recorded there (lean_guard.py
-#       axiom-lock).
+#       axiom-lock). Native-code axioms (a `_native` name component, from `decide +native` /
+#       `native_decide`, or Lean.trustCompiler; human decision 2026-11-22, as in the SPQR
+#       project) are a separate trust class: the audit accepts one that a project constant
+#       depends on only if its statement is the Aeneas `toStr` side condition of a string
+#       literal, `decide ("...".toByteArray.size <= Aeneas.Std.U32.max) = true`, lists them
+#       separately, and lean_guard.py native-lock requires each to be in
+#       formal/trusted/native-axioms.lock with the sha256 of its canonical statement; both
+#       require the declaring module (of a reached axiom and of every lock entry) to be
+#       Rmcp.Types or Rmcp.Funs; a lock entry whose module is in the audited import closure
+#       but that is not reached there is stale and fails. The audit also fails if a root of
+#       RmcpExternal declares a constant in the namespace `rmcp` or adds an alias (`export`).
+#       Only the roots of the default targets are audited: until Rmcp and RmcpExternal join
+#       defaultTargets (S08-S09), the trusted-module checks, axioms.lock and the native lock
+#       are not enforced on them (native-lock entries for Rmcp.Types/Funs are reported as not
+#       checked; any axioms.lock entry fails until RmcpExternal is reached), even if
+#       their .olean files exist from an explicit `lake build Rmcp RmcpExternal`.
 #
 #   scripts/lean-guard.sh aeneas-archive
 #       Checks every Aeneas Lean-library release archive that Lake downloaded
@@ -136,15 +154,17 @@ guard_axioms() {
   (cd "$F" && env -u LD_LIBRARY_PATH -u LD_PRELOAD -u DYLD_LIBRARY_PATH -u DYLD_INSERT_LIBRARIES \
       -u DYLD_FALLBACK_LIBRARY_PATH LEAN_SYSROOT="$sysroot" LEAN_PATH="$sysroot/lib/lean:$lp" \
       "$sysroot/bin/lean" --run "$ROOT/scripts/lean-axiom-audit.lean" "$libdir" "$trusted" \
-      "$tmp/axioms.txt" $roots) || rc=$?
+      "$tmp/axioms.txt" "$tmp/native.txt" $roots) || rc=$?
   if [[ $rc -eq 0 ]]; then
-    if [[ -f "$tmp/axioms.txt" ]]; then
+    if [[ -f "$tmp/axioms.txt" && -f "$tmp/native.txt" ]]; then
+      # Both locks are compared (and reported) even if the first comparison fails.
       py axiom-lock "$F/trusted/axioms.lock" "$tmp/axioms.txt" || rc=$?
+      py native-lock "$F/trusted/native-axioms.lock" "$tmp/native.txt" || rc=$?
     else
-      printf '[lean-guard] error: the audit wrote no trusted-axiom list\n' >&2; rc=1
+      printf '[lean-guard] error: the audit wrote no trusted-axiom or native-axiom list\n' >&2; rc=1
     fi
   fi
-  rm -f "$tmp/axioms.txt"; rmdir "$tmp"
+  rm -f "$tmp/axioms.txt" "$tmp/native.txt"; rmdir "$tmp"
   return "$rc"
 }
 

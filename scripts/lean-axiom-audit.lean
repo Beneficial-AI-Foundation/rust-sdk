@@ -11,9 +11,9 @@ import Lake.Build.Trace
 # Axiom audit and kernel replay of the built Lean project
 
 Run by `scripts/lean-guard.sh axioms` after `lake build`, as
-`lean --run scripts/lean-axiom-audit.lean <libdir> <trusted> <axout> <root>...` with the
-toolchain's own `lean` binary (not `lake env`; `LEAN_PATH` = toolchain library, package
-libraries, project build, and no dynamic-loader variables, set by `lean-guard.sh`):
+`lean --run scripts/lean-axiom-audit.lean <libdir> <trusted> <axout> <nativeout> <root>...`
+with the toolchain's own `lean` binary (not `lake env`; `LEAN_PATH` = toolchain library,
+package libraries, project build, and no dynamic-loader variables, set by `lean-guard.sh`):
 
 - `<libdir>`: the project's own build directory (`formal/.lake/build/lib/lean`);
 - `<trusted>`: comma-separated modules whose axioms are trusted (the roots of the
@@ -22,7 +22,28 @@ libraries, project build, and no dynamic-loader variables, set by `lean-guard.sh
   `<name> TAB <canonical statement>` (see `canonical`), sorted by name; `lean-guard.sh` then
   compares them with the committed lock `formal/trusted/axioms.lock` (`lean_guard.py
   axiom-lock`);
+- `<nativeout>`: file the audit writes the native-code axioms to (see "Native-code axioms"
+  below): one line `module TAB <name>` per module of the import closure, then one line
+  `native TAB <name> TAB <declaring module> TAB <canonical statement>` per native-code axiom
+  reached; `lean-guard.sh` compares them with the committed lock
+  `formal/trusted/native-axioms.lock` (`lean_guard.py native-lock`);
 - `<root>...`: the library roots to audit (their `.olean` must be under `<libdir>`).
+
+Native-code axioms (human decision 2026-11-22, as in the SPQR project's
+`scripts/AuditHeadline.lean`): an axiom whose name has a `_native` component (what
+`decide +native` and `native_decide` declare, `<decl>._native.decide.ax_<n>`) or that is
+`Lean.trustCompiler` trusts the Lean compiler and native code, not only the kernel. Such
+axioms are a separately classified trust item. The pinned Aeneas `toStr (s : String)
+(h : s.toByteArray.size ≤ U32.max := by decide +native)` leaves one for every string literal
+of the translation. The audit accepts a native-code axiom that a project constant depends on
+only if (a) it has no universe parameters and its statement is exactly the `toStr` side
+condition of one string literal, `decide ("…".toByteArray.size ≤ Aeneas.Std.U32.max) = true`
+(see `toStrSideCondition`), (b) it is declared in a root of the generated `Rmcp` library
+(`Rmcp.Types` or `Rmcp.Funs`, see `rmcpRoots`; so a hand-written `Aeneas.Std.toStr "x"` in
+`Proofs`, `Specs`, `Defs` or a trusted module fails), and (c) `lean_guard.py native-lock` then
+finds it in `formal/trusted/native-axioms.lock` with the same module and statement hash. Any
+other native-code axiom fails the audit, whether or not it is listed. A native-code axiom
+declared in a trusted module is classified as native, not as trusted (and fails by (b)).
 
 It imports the roots with `loadExts := false` (only the constant tables of the `.olean` files
 are read; no environment extension, initializer or other code of an imported module runs) and
@@ -38,10 +59,12 @@ this project that the roots reach). It exits with 1 if
    against forged build output (a forged trace passes it); check 4 rejects forged output
    the kernel does not accept, but nothing here proves it was compiled from these sources;
 3. a constant declared in a project module depends on an axiom other than `propext`,
-   `Classical.choice`, `Quot.sound` and the axioms declared in the trusted modules (collected
-   transitively through types and values, as `#print axioms` does, but without the per-module
-   cache stored in the `.olean` files); this includes `sorryAx` and `Lean.ofReduceBool`
-   (`native_decide`, `decide +native`);
+   `Classical.choice`, `Quot.sound`, the axioms declared in the trusted modules and the
+   native-code axioms that have the `toStr` form (collected transitively through types and
+   values, as `#print axioms` does, but without the per-module cache stored in the `.olean`
+   files); this includes `sorryAx` and `Lean.ofReduceBool`; or it depends on a native-code
+   axiom whose statement is not the `toStr` side condition of a string literal or that is not
+   declared in `Rmcp.Types`/`Rmcp.Funs`;
 4. the kernel rejects a project constant when all of them are replayed
    (`Lean.Environment.replay`, as `leanchecker` does) into a base environment imported from
    the non-project modules that project modules import. This catches declarations added
@@ -50,7 +73,15 @@ this project that the roots reach). It exits with 1 if
    (otherwise those constants would be in the base and not replayed). `replay` checks
    constructors and recursors against those the kernel generates for the replayed inductive
    types, and skips `unsafe` and `partial` constants; a safe constant cannot use one (the
-   kernel would reject it as an unknown constant), and their number is printed.
+   kernel would reject it as an unknown constant), and their number is printed;
+5. a trusted module (`<trusted>`) declares a constant whose name, with a private prefix
+   removed, has the first component `rmcp` (every constant of the module's constant table, so
+   also auxiliary and realized ones such as `rmcp.x.eq_1` or `rmcp.x_def`), or adds any alias
+   (the `export` command; read from the module's entries of `Lean.aliasExtension`, which the
+   import fills also with `loadExts := false`). The generated `Rmcp.Funs` works inside
+   `namespace rmcp` and names the externals and Aeneas library functions unqualified, so such a
+   name would take precedence over the one the generated code means. `lean_guard.py sources`
+   checks the same on the source text. Checks 1, 2 and 5 run before 3, and 3 before 4.
 -/
 
 open Lean
@@ -147,15 +178,56 @@ partial def canonical : Expr → String
   | .mdata _ e => canonical e
   | .proj s i e => s!"(J {s.toString (escape := true)} {i} {canonical e})"
 
+/-- Native-code axioms, as `isNativeAxiom` of the SPQR project's `scripts/AuditHeadline.lean`:
+`Lean.trustCompiler`, or a name with a `_native` component (`<decl>._native.decide.ax_<n>`,
+declared by `decide +native` and `native_decide`). -/
+def isNativeAxiom (n : Name) : Bool :=
+  n == `Lean.trustCompiler || n.components.contains `_native
+
+/-- The statement that `decide +native` proves for the side condition of the pinned Aeneas
+`toStr (s : String) (h : s.toByteArray.size ≤ U32.max := by decide +native)` on the string
+literal `s`: `@Eq.{1} Bool (@decide (@LE.le.{0} Nat instLENat n Aeneas.Std.U32.max)
+(Nat.decLe n Aeneas.Std.U32.max)) true` with `n = ByteArray.size (String.toByteArray s)`.
+`Aeneas.Std.U32.max` is named with a single backtick: this script does not import Aeneas. -/
+def toStrSideCondition (s : String) : Expr :=
+  let n := mkApp (mkConst ``ByteArray.size) (mkApp (mkConst ``String.toByteArray) (mkStrLit s))
+  let max := mkConst `Aeneas.Std.U32.max
+  let le := mkApp4 (mkConst ``LE.le [Level.zero]) (mkConst ``Nat) (mkConst ``instLENat) n max
+  mkApp3 (mkConst ``Eq [Level.one]) (mkConst ``Bool)
+    (mkApp2 (mkConst ``Decidable.decide) le (mkApp2 (mkConst ``Nat.decLe) n max))
+    (mkConst ``Bool.true)
+
+/-- `some s` if `ci` is an axiom without universe parameters whose statement is exactly
+`toStrSideCondition s` (compared by `canonical` text, so up to metadata only); else `none`. -/
+def toStrLiteral? (ci : ConstantInfo) : Option String := do
+  let .axiomInfo v := ci | none
+  guard v.levelParams.isEmpty
+  let #[_, d, _] := v.type.getAppArgs | none
+  let #[p, _] := d.getAppArgs | none
+  let #[_, _, n, _] := p.getAppArgs | none
+  let #[b] := n.getAppArgs | none
+  let #[.lit (.strVal s)] := b.getAppArgs | none
+  guard (canonical v.type == canonical (toStrSideCondition s))
+  return s
+
+/-- Whether `n` (with a private prefix `_private.<module>.0.` removed) is `rmcp` or below it. -/
+def inRmcpNamespace (n : Name) : Bool :=
+  n.getRoot == `rmcp || (privateToUserName n).getRoot == `rmcp
+
 end AxiomAudit
 
 /-- Top-level names of this project's modules (the five libraries of plan Section 5). -/
 def projectRoots : List Name := [`Rmcp, `Defs, `Proofs, `Specs]
 
+/-- The roots of the generated `Rmcp` library: the only modules whose native-code axioms
+(Aeneas `toStr` side conditions of string literals) are accepted. -/
+def rmcpRoots : List Name := [`Rmcp.Types, `Rmcp.Funs]
+
 open AxiomAudit in
 def main (args : List String) : IO UInt32 := do
-  let libDir :: trustedArg :: axOut :: roots@(_ :: _) := args
-    | IO.eprintln "usage: lean --run lean-axiom-audit.lean <libdir> <trusted|-> <axout> <root>..."
+  let libDir :: trustedArg :: axOut :: nativeOut :: roots@(_ :: _) := args
+    | IO.eprintln "usage: lean --run lean-axiom-audit.lean <libdir> <trusted|-> <axout> \
+        <nativeout> <root>..."
       return 2
   initSearchPath (← findSysroot)
   let trusted : List Name :=
@@ -209,6 +281,26 @@ def main (args : List String) : IO UInt32 := do
   for t in trusted do
     unless names.contains t do
       IO.eprintln s!"[axiom-audit] note: trusted module {t} is not reached from the roots"
+  -- Check 5: nothing in the trusted modules is named in the namespace `rmcp` (constants, also
+  -- private, auxiliary and realized ones), and they add no alias (`export`).
+  let mut nsBad : Array String := #[]
+  for (c, _) in env.constants.toList do
+    if let some idx := env.getModuleIdxFor? c then
+      if trustedIdx.contains idx.toNat && inRmcpNamespace c then
+        nsBad := nsBad.push s!"{names[idx.toNat]!}: constant {c} is in the namespace rmcp"
+  for i in trustedIdx.toArray.qsort (· < ·) do
+    let entries := PersistentEnvExtension.getModuleEntries
+      (aliasExtension : PersistentEnvExtension AliasEntry AliasEntry (List AliasEntry × AliasState))
+      env i
+    for (a, e) in entries do
+      nsBad := nsBad.push s!"{names[i]!}: alias {a} → {e} (`export`; none is allowed in a \
+        trusted module{if inRmcpNamespace a then ", and this one is in the namespace rmcp" else ""})"
+  unless nsBad.isEmpty do
+    for s in nsBad.qsort (· < ·) do IO.eprintln s!"[axiom-audit] {s}"
+    IO.eprintln s!"[axiom-audit] error: {nsBad.size} name(s) of a trusted module in the namespace \
+      rmcp or added as an alias (the generated Rmcp.Funs works inside `namespace rmcp`, so such a \
+      name would take precedence over the one the generated code means)"
+    return 1
   -- Allowed axioms: Lean's three standard axioms and those declared in trusted modules.
   let mut allowed : NameSet := ({} : NameSet).insert ``propext |>.insert ``Classical.choice
     |>.insert ``Quot.sound
@@ -220,25 +312,53 @@ def main (args : List String) : IO UInt32 := do
       if ours.contains idx.toNat then
         consts := consts.push c
         newConsts := newConsts.insert c ci
-        if trustedIdx.contains idx.toNat && ci matches .axiomInfo _ then
+        if trustedIdx.contains idx.toNat && ci matches .axiomInfo _ && !isNativeAxiom c then
           allowed := allowed.insert c
           let lps := " ".intercalate (ci.levelParams.map (·.toString (escape := true)))
           trustedAx := trustedAx.push
             s!"{c.toString (escape := true)}\t(U [{lps}] {canonical ci.type})"
   let sorted := consts.qsort Name.lt
-  let check : M (Array (Name × Array Name)) :=
-    sorted.foldlM (init := #[]) fun acc c => do
+  let modOf (c : Name) : Name := match env.getModuleIdxFor? c with
+    | some i => names[i.toNat]!
+    | none => Name.anonymous
+  -- Native-code axioms reached by project constants, classified separately (see the module
+  -- docstring): accepted here only in the `toStr` form, then checked against the lock.
+  let check : M (Array (Name × Array Name) × NameSet) :=
+    sorted.foldlM (init := (#[], {})) fun (acc, natives) c => do
       let axs := (← axiomsOf c).toArray.qsort Name.lt
       let extra := axs.filter (!allowed.contains ·)
-      return if extra.isEmpty then acc else acc.push (c, extra)
-  let bad : Array (Name × Array Name) := (check.run env).run' {}
+      let natives := (extra.filter isNativeAxiom).foldl (·.insert ·) natives
+      let extra := extra.filter (!isNativeAxiom ·)
+      return (if extra.isEmpty then acc else acc.push (c, extra), natives)
+  let (bad, natives) := (check.run env).run' {}
   for (c, extra) in bad do
-    let m : Name := match env.getModuleIdxFor? c with
-      | some i => names[i.toNat]!
-      | none => Name.anonymous
-    IO.eprintln s!"[axiom-audit] {m}: {c} depends on {extra.toList}"
+    IO.eprintln s!"[axiom-audit] {modOf c}: {c} depends on {extra.toList}"
   unless bad.isEmpty do
     IO.eprintln s!"[axiom-audit] error: {bad.size} constant(s) depend on disallowed axioms"
+    return 1
+  let natives := natives.toArray.qsort Name.lt
+  let mut nativeLines : Array String := #[]
+  let mut nativeShown : Array String := #[]
+  let mut nativeBad : Array Name := #[]
+  for n in natives do
+    match env.find? n >>= toStrLiteral? with
+    | some s =>
+      if rmcpRoots.contains (modOf n) then
+        nativeLines := nativeLines.push s!"native\t{n.toString (escape := true)}\t\
+          {(modOf n).toString (escape := true)}\t(U [] {canonical (env.find? n).get!.type})"
+        nativeShown := nativeShown.push s!"{n} ({modOf n}): toStr side condition of {s.quote}"
+      else
+        nativeBad := nativeBad.push n
+        IO.eprintln s!"[axiom-audit] {modOf n}: native-code axiom {n} has the toStr form but is \
+          declared outside the generated modules {rmcpRoots}; only those may be locked"
+    | none =>
+      nativeBad := nativeBad.push n
+      IO.eprintln s!"[axiom-audit] {modOf n}: native-code axiom {n} is not the Aeneas toStr \
+        side condition `decide (\"…\".toByteArray.size ≤ Aeneas.Std.U32.max) = true` of a \
+        string literal; only those may be locked (formal/trusted/native-axioms.lock)"
+  unless nativeBad.isEmpty do
+    IO.eprintln s!"[axiom-audit] error: {nativeBad.size} native-code axiom(s) of another form or \
+      declared outside {rmcpRoots}"
     return 1
   -- Kernel replay. Base: the non-project modules imported by project modules (and their
   -- closure, which must not reach a project module).
@@ -261,8 +381,13 @@ def main (args : List String) : IO UInt32 := do
     IO.eprintln "[axiom-audit] error: the kernel rejects a project constant on replay"
     return 1
   IO.FS.writeFile axOut (String.join ((trustedAx.qsort (· < ·)).toList.map (· ++ "\n")))
+  let modLines := names.toList.map fun m => s!"module\t{m.toString (escape := true)}\n"
+  IO.FS.writeFile nativeOut (String.join (modLines ++ nativeLines.toList.map (· ++ "\n")))
   IO.println s!"[axiom-audit] {sorted.size} constant(s) in {ours.size} project module(s): \
-    no axiom outside {allowed.toList}"
+    no axiom outside {allowed.toList} and the native-code axioms below"
+  IO.println s!"[axiom-audit] native-code axioms reached (Aeneas toStr side conditions, \
+    checked next against native-axioms.lock): {natives.size}"
+  for l in nativeShown do IO.println s!"[axiom-audit]   {l}"
   IO.println s!"[axiom-audit] kernel replay of {sorted.size - skipped} constant(s) onto \
     {baseImports.size} dependency import(s): accepted ({skipped} unsafe/partial skipped)"
   return 0

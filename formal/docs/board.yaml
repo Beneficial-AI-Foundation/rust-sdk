@@ -98,7 +98,9 @@ steps:
     day: D1-2
     state: IN_PROGRESS
     # refactor part (PR 1) drafted and agent-reviewed in the working tree; translation part
-    # (PR 2) not started; awaiting human sign-off (see evidence)
+    # (PR 2) drafted in the working tree from local commit 14d2830 (derived Debug impls
+    # excluded, native-axioms.lock); externals started (unreviewed placeholders); awaiting
+    # review and human sign-off (see evidence)
     depends_on: [S03, S04]
     owner: Extraction + reviewer
     files:
@@ -118,7 +120,8 @@ steps:
 
   - id: S05
     day: D2
-    state: NOT_STARTED
+    state: IN_PROGRESS
+    # drafts + 2 agent reviews (round 1: no blocking); awaiting spec owner sign-off
     depends_on: [S01]
     owner: Spec drafter (mcp-spec or a person) + independent agent reviewers + spec owner
     files:

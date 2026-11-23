@@ -136,6 +136,7 @@ not yet checked.
 | `new_with_keyring` | B13: Aeneas internal error | `exclude` |
 | `with_rs1_signing`, `with_rs1_fallback` | B4: "no bottoms in the value" | `exclude` |
 | `Debug`/`Display` for `RequestStateError`, `Debug` for `RequestStateCodec` | B13: Aeneas type assertion and internal error | `exclude` |
+| derived `Debug` for `KidError`, `Version`, `FrameError`, `Rs1Parts`, `Rs2Parts`, `SealMode`, `SealOptions` | not a blocker: depend on the Aeneas axiom `Aeneas.Std.core.fmt.Formatter` and native-code string axioms; no target uses them (human decision 2026-11-22, S04a part 2, working tree) | `exclude` |
 | `seal_json`, `seal_json_with`, `open_json`, `open_json_with`, `Error` for `RequestStateError` | B9: `serde` signatures; `Error::source` not modelled | `exclude` |
 | crates `serde`, `serde_core` (crate-level) | B9: `serde` is out of scope; only the excluded JSON wrappers use it | `exclude` |
 
@@ -145,7 +146,7 @@ directly, with no seal wrapper verified; the codec-state invariant is permanentl
 
 ## Trusted base
 
-The toolchain (Charon, Aeneas, Lean, Mathlib) is installed and pinned since S03 (`formal/docs/evidence/S03.md`). The Charon `exclude`/`opaque` settings are present in the working tree (S03), awaiting human sign-off. No axiom, external model or patch exists yet: every contract below is **planned, not yet written (S08–S09)** unless noted.
+The toolchain (Charon, Aeneas, Lean, Mathlib) is installed and pinned since S03 (`formal/docs/evidence/S03.md`). The Charon `exclude`/`opaque` settings are present in the working tree (S03, extended at S04a part 2), awaiting human sign-off. No patch and no reviewed axiom or external model exists: `formal/trusted/Rmcp/` holds 41 unreviewed placeholder axioms (7 opaque types, 34 bare `Result` function/value axioms) started from the Aeneas templates at S04a part 2, not built by default (`Rmcp`/`RmcpExternal` are not default targets) and not in `axioms.lock`; every contract below is **planned, not yet written (S08–S09)** unless noted (inventory: [`evidence/S04a.md`](evidence/S04a.md)).
 
 **Tools:** Charon and Aeneas (`nightly-2026.08.20-5d08da4`), Lean's kernel.
 **Configuration:** the translated configuration above.
@@ -176,7 +177,14 @@ the working tree (S03), awaiting human sign-off:
 Marking an item opaque only makes Charon keep its signature; the contracts it needs are the
 planned axioms and models in the table above.
 
-Axioms in force: none.
+Axioms in force: none accepted. Native-code axioms (separate trust class, human decision
+2026-11-22): the five `toStr` side conditions of the string literals in target code
+(`VERSION_V1`, `VERSION_V2`, `KID_EMPTY_MSG`, `KID_TOO_LONG_MSG`, the `expect` message of
+`rs1_fallbacks_verify`), listed with statement hashes in `formal/trusted/native-axioms.lock`
+(working tree, awaiting review); the `axioms` audit accepts no other native-code axiom (none
+declared outside `Rmcp.Types`/`Rmcp.Funs`), and enforces the lock once `Rmcp` is a default
+target (S08–S09). Each
+has a kernel proof, so an upstream Aeneas `toStr` fix would remove them (open item).
 
 ## Bugs found
 
@@ -184,6 +192,34 @@ None recorded.
 
 ## Open items
 
+- `docs/VERIFICATION.md` (the Aeneas process guide, added 2026-11-22 verbatim) differs from this
+  project's decided design in six places, kept as documented deviations: (1) it uses
+  `lake build --wfail`; the project uses `warningAsError` per library plus the lean-guard checks
+  (human decision: the pinned Aeneas library replays 4 `sorry` warnings); (2) its spec-file
+  example uses `#guard_msgs (whitespace := lax, substring := true)`; the guard accepts only a bare
+  `#guard_msgs in` before `#print axioms`; (3) it lists a generated `translation/<Crate>.lean`
+  root module; Aeneas generates none and the `Rmcp` roots are `Rmcp.Types`, `Rmcp.Funs`; (4) it
+  says `proofs/` need not be read; after S03 reviewers must read proofs for metaprogramming;
+  (5) it gives every `[[lean_lib]]` a `globs` list; the project uses explicit `roots` only, and
+  the guard allows exactly the keys `name`, `srcDir`, `roots`, `leanOptions` per library;
+  (6) it allows no native-code axiom (`native_decide`/`bv_decide` never in a final proof); the
+  project accepts the Aeneas `toStr` side conditions of string literals declared in
+  `Rmcp.Types`/`Rmcp.Funs` and locked in `formal/trusted/native-axioms.lock` (human decision
+  2026-11-22), and no other.
+- S08–S09 (externals rewrite), open by human decision 2026-11-23 (S04a review R3a-1, R3a-2):
+  (1) a shadowing `rmcp.<x>` declared in a project module that a trusted root imports passes all
+  gates — enforce plan Section 5's rule that `RmcpExternal` imports only Aeneas and `Rmcp.Types`;
+  (2) global `notation`/`infix` or a high-priority `instance` in `trusted/` can redirect generated
+  code — ban them in `trusted/` or review them explicitly; (3) the `trusted/` text check does not
+  lex `«…»` names (audit check 5 is authoritative). See `formal/README.md` "Trusted base".
+- S08–S09 (externals rewrite): a root-level name declared in `trusted/` (e.g. `def toStr`) could
+  make a name in the generated code ambiguous with an opened Aeneas name (Lean then picks the
+  candidate that elaborates); not checked mechanically — reviewers check root-level names of the
+  rewritten externals against names the generated code uses.
+- Upstream: file an Aeneas issue for `toStr` (`Aeneas/Std/String.lean`), whose `decide +native`
+  side condition has a kernel proof (`simp only [U32.max, U32.numBits, UScalarTy.numBits];
+  decide`); after a fix and rev bump, `formal/trusted/native-axioms.lock` can be emptied. To be
+  filed by a human.
 - Resolved: plan discrepancy (W01/E02 dependencies). Plan Section 2.2 "Built on" listed W01
   for E07/E08, but `seal_rs1` and `seal_rs2` call the codec's own `Self::b64_len` (E02; base
   `0e2396f` lines 589 and 606–608), and the S04a refactor keeps that. Plan Section 2.2 now lists
@@ -202,6 +238,15 @@ None recorded.
 - The pilot artifacts total about 1.2 MB; a human accepts the size.
 - Lean-model domain notes for W06/W08/W09 and W10/W11/W15 (plan Section 3) are to be decided by
   the spec owner at S05.
+- S05: `formal/specs/Defs.lean` imports the draft modules `Defs.Wire` and `Defs.RequestState`
+  for drafting (lead decision); the spec owner signs them off, or they are removed from the root,
+  before S05 lands (workflow guide, "Library roots"). See [`evidence/S05.md`](evidence/S05.md).
+- S05 (a): E09–E11 and the round trips cannot discharge the W10/W11 `h_len` or W06/W08/W09
+  `h_count` premises (`b64Decode` opaque and unbounded); those E specs need their own domain
+  premise. See [`evidence/S05.md`](evidence/S05.md), "For later steps".
+- S05 (b), for S08: a URL-safe alphabet law for `b64` (no `.` in the output) with Rust test
+  vectors, needed by S15 to apply W08/W09 to sealed tokens. See
+  [`evidence/S05.md`](evidence/S05.md), "For later steps".
 - S03 R5a-1 (final review): the word bans, the `#`-command allowlist and the attribute allowlist
   of `lean-guard.sh sources` can be bypassed by gluing a banned token to a preceding literal or
   `)`; fix not applied in Phase A (human decision 2026-11-22). See
@@ -213,11 +258,13 @@ None recorded.
   instances and notation (`Specs` imports `Proofs`): re-elaborate the spec statements in job
   `check` without `Proofs`, or ban global instances and notation in `proofs/`. See
   [`evidence/S03.md`](evidence/S03.md), "Open items".
-- S04a part 2: the translation fails the axiom audit through the derived `Debug` impls of the
-  wire types (`_native.decide.ax_*` axioms via `toStr`, and the Aeneas axiom
-  `Aeneas.Std.core.fmt.Formatter`). The human decides; excluding the impls or making them opaque
-  in the Charon settings is a trust-base change. See [`evidence/S03.md`](evidence/S03.md) (V1)
-  and [`evidence/S04a.md`](evidence/S04a.md).
+- S04a part 2 (working tree, awaiting review and human sign-off): the derived `Debug` impls are
+  excluded per human decision (2026-11-22), which removes the `Aeneas.Std.core.fmt.Formatter`
+  dependency; the native string-literal axioms of target code are handled via
+  `formal/trusted/native-axioms.lock` (SPQR-style named baseline, checked by the `axioms`
+  audit). Open: an upstream Aeneas `toStr` fix (kernel proof of the side condition) and rev bump
+  to remove the five native axioms; the 41 placeholder externals (S08–S09) before `Rmcp` and
+  `RmcpExternal` can become default targets. See [`evidence/S04a.md`](evidence/S04a.md).
 - Docs-sync round 3: ten items left open by human decision (2026-11-22): (1) the claim that
   proofs need no trust review contradicts the X4 limit (plan Section 4, `WORKFLOW_AND_PR_GUIDE.md`,
   `REVIEWER_GUIDE.md`); (2) plan header and Section 9 say no blocker is open, despite the

@@ -74,6 +74,15 @@ exclude = [
   "rmcp::model::request_state::{impl core::fmt::Debug for rmcp::model::request_state::RequestStateError}",
   "rmcp::model::request_state::{impl core::fmt::Display for rmcp::model::request_state::RequestStateError}",
   "rmcp::model::request_state::{impl core::fmt::Debug for rmcp::model::request_state::RequestStateCodec}",
+  # Derived Debug; depends on the Aeneas axiom Aeneas.Std.core.fmt.Formatter and native-decide
+  # string axioms; not used by any target (human decision 2026-11-22).
+  "rmcp::model::request_state::{impl core::fmt::Debug for rmcp::model::request_state::SealOptions}",
+  "rmcp::model::request_state::{impl core::fmt::Debug for rmcp::model::request_state::SealMode}",
+  "rmcp::model::request_state_wire::{impl core::fmt::Debug for rmcp::model::request_state_wire::KidError}",
+  "rmcp::model::request_state_wire::{impl core::fmt::Debug for rmcp::model::request_state_wire::Version}",
+  "rmcp::model::request_state_wire::{impl core::fmt::Debug for rmcp::model::request_state_wire::Rs1Parts}",
+  "rmcp::model::request_state_wire::{impl core::fmt::Debug for rmcp::model::request_state_wire::Rs2Parts}",
+  "rmcp::model::request_state_wire::{impl core::fmt::Debug for rmcp::model::request_state_wire::FrameError}",
 ]
 opaque = [
   # Wraps HMAC and base64 Engine types that cannot be translated (B1, B3); no Rust model. Axioms: Section 4.

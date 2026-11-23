@@ -13,6 +13,12 @@
   lean_guard.py axiom-lock LOCK GOT the trusted axioms written by lean-axiom-audit.lean (GOT)
                                     are exactly those of LOCK, with the same statement hashes
                                     (see check_axiom_lock).
+  lean_guard.py native-lock LOCK GOT
+                                    the native-code axioms written by lean-axiom-audit.lean
+                                    (GOT) are those of LOCK (formal/trusted/native-axioms.lock),
+                                    each an Aeneas toStr side condition declared in
+                                    Rmcp.Types or Rmcp.Funs, with the locked module and
+                                    statement hash (see check_native_lock).
   lean_guard.py build-log FILE      every `warning:`/`error:` line of the `lake build` log is
                                     one of the four recorded Aeneas-library lines.
   lean_guard.py archive PKG ARCHIVE PKG/.lake/build and the Lake release ARCHIVE hold the same
@@ -431,6 +437,103 @@ def attr_names(content):
 
 
 RULE_AXIOM = ("axiom (outside trusted/)", word("axiom"))
+
+
+# trusted/ only: no name in the namespace `rmcp`, and no `export`. The generated Rmcp.Funs
+# works inside `namespace rmcp` and refers to Aeneas library names (`toStr`, ...) and to the
+# externals unqualified; the externals are declared at root level (as in the templates, e.g.
+# `model.request_state_wire.prim.hmac_sha256`, although translation.json lists the Lean name
+# `rmcp.model...`), so an `rmcp.<x>` declared in trusted/ (or an alias `rmcp.<x>` added by
+# `export` inside `namespace rmcp`) would silently take precedence over the library name or
+# the external that the generated code means. The rule is on tokens, not on declaration
+# forms: after comments (`--`, nested `/- -/`, docstrings), string literals and character
+# literals are blanked (trusted_code), every identifier token whose first component is
+# `rmcp` (also after `_root_.`, and quoted as `«rmcp»`, or a quoted first component starting
+# with `rmcp.`) fails, and so does the keyword `export`. The one exception is a line that is
+# exactly `open rmcp` (TRUSTED_OPEN_OK): FunsExternal.lean needs it, from the Aeneas template,
+# for the trait structures of Rmcp.Types (`core.hash.BuildHasher`, `zeroize.Zeroize`, ...);
+# `open` declares nothing. lean-axiom-audit.lean checks the same on the build output (no
+# constant of a trusted module in the namespace `rmcp`, no alias added by a trusted module).
+TRUSTED_ID = re.compile(r"(?:«[^»\n]*»|[^\W\d][\w'!?]*)(?:\.(?:«[^»\n]*»|[^\W\d][\w'!?]*))*")
+TRUSTED_ID_COMP = re.compile(r"«[^»\n]*»|[^.«]+")
+TRUSTED_OPEN_OK = re.compile(r"^open rmcp$", re.M)
+
+
+def trusted_code(text):
+    """TEXT with comments (`--` to the end of the line; `/- -/` nested, docstrings included),
+    string literals (also raw `r"…"`, `r#"…"#`, interpolated) and character literals replaced
+    by spaces; newlines are kept, so line numbers stay."""
+    out, i, n = list(text), 0, len(text)
+
+    def blank(a, b):
+        for k in range(a, min(b, n)):
+            if out[k] != "\n":
+                out[k] = " "
+
+    idch = re.compile(r"[\w'!?]")
+    while i < n:
+        c = text[i]
+        if text.startswith("/-", i):
+            depth, j = 1, i + 2
+            while j < n and depth:
+                if text.startswith("/-", j):
+                    depth, j = depth + 1, j + 2
+                elif text.startswith("-/", j):
+                    depth, j = depth - 1, j + 2
+                else:
+                    j += 1
+            blank(i, j)
+            i = j
+        elif text.startswith("--", i):
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            blank(i, j)
+            i = j
+        elif c == "r" and (i == 0 or not idch.match(text[i - 1])) and \
+                re.match(r'r#*"', text[i:i + 300]):
+            hashes = re.match(r'r(#*)"', text[i:]).group(1)
+            close = '"' + hashes
+            j = text.find(close, i + 2 + len(hashes))
+            j = n if j < 0 else j + len(close)
+            blank(i, j)
+            i = j
+        elif c == '"':
+            j = i + 1
+            while j < n and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            blank(i, j + 1)
+            i = j + 1
+        elif c == "'" and (i == 0 or not idch.match(text[i - 1])):
+            m = re.match(r"'(?:\\(?:x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|.)|[^\\'\n])'", text[i:])
+            if m:
+                blank(i, i + m.end())
+                i += m.end()
+            else:
+                i += 1
+        else:
+            i += 1
+    return "".join(out)
+
+
+def trusted_ns_errors(rel, text):
+    """Hits of the trusted/ rule (see TRUSTED_ID) in TEXT, as error strings."""
+    code = TRUSTED_OPEN_OK.sub(lambda m: " " * len(m.group(0)), trusted_code(text))
+    errs = []
+    for m in TRUSTED_ID.finditer(code):
+        tok = m.group(0)
+        comps = TRUSTED_ID_COMP.findall(tok)
+        if comps and comps[0] == "_root_":
+            comps = comps[1:]
+        first = comps[0].strip("«»") if comps else ""
+        if first == "rmcp" or first.startswith("rmcp."):
+            errs.append(f"{rel}:{lineno(code, m.start())}: banned: identifier {tok} in the namespace "
+                        "rmcp (trusted/; only the line `open rmcp` is allowed)")
+        elif tok == "export":
+            errs.append(f"{rel}:{lineno(code, m.start())}: banned: export (trusted/; an alias "
+                        "could shadow a name the generated code means)")
+    return errs
+
+
 GUARD = re.compile(r"#guard_msgs(?![A-Za-z0-9_'!?])")
 # The only accepted form, in specs/Specs.lean and specs/Specs/: `#guard_msgs in` (no option:
 # `(drop …)` would swallow messages, `(error)` etc. would let info pass) followed, on the same
@@ -519,6 +622,8 @@ def check_sources(formal):
                 rules.append(RULE_LINTER)
             if not template and not rel.startswith("trusted/"):
                 rules.append(RULE_AXIOM)
+            if rel.startswith("trusted/"):
+                errs += trusted_ns_errors(rel, text)
             for name, rx in rules:
                 for m in rx.finditer(text):
                     errs.append(f"{rel}:{lineno(text, m.start())}: banned: {name}")
@@ -709,7 +814,105 @@ def check_axiom_lock(lock, got):
     print(f"[lean-guard] trusted axioms: {len(have)}, matching {os.path.basename(lock)}")
 
 
+# ---------------------------------------------------------------------------------------
+# native-code axiom lock
+
+# The roots of the generated library (LIBS, pinned in the lakefile check): the only modules
+# whose native-code axioms may be locked.
+RMCP_ROOTS = tuple(LIBS["Rmcp"][1])
+NATIVE_LOCK_LINE = re.compile(r"(\S+) (\S+) sha256:([0-9a-f]{64})")
+# Canonical statement (lean-axiom-audit.lean, `canonical`, wrapped as `(U [] …)`) of the
+# Aeneas toStr side condition `decide (LIT.toByteArray.size ≤ Aeneas.Std.U32.max) = true`;
+# @SIZE@ stands for the term `ByteArray.size (String.toByteArray LIT)`. The audit checks the
+# same form on the Expr (`toStrSideCondition`); this repeats the check on its output.
+TOSTR_FORM = ("(U [] (A (A (A (C Eq (s 0)) (C Bool)) (A (A (C Decidable.decide) "
+              "(A (A (A (A (C LE.le 0) (C Nat)) (C instLENat)) @SIZE@) (C Aeneas.Std.U32.max))) "
+              "(A (A (C Nat.decLe) @SIZE@) (C Aeneas.Std.U32.max)))) (C Bool.true)))")
+STR_LIT = re.compile(r'\(T ("(?:[^"\\]|\\.)*")\)')
+
+
+def is_tostr_form(stmt):
+    m = STR_LIT.search(stmt)
+    if not m:
+        return False
+    size = f"(A (C ByteArray.size) (A (C String.toByteArray) (T {m.group(1)})))"
+    return stmt == TOSTR_FORM.replace("@SIZE@", size)
+
+
+def check_native_lock(lock, got):
+    """Native-code axioms (human decision 2026-11-22, as in the SPQR project; see
+    lean-axiom-audit.lean, "Native-code axioms"). LOCK (formal/trusted/native-axioms.lock):
+    lines `<axiom name> <declaring module> sha256:<hex>`, `#` comments and blank lines ignored.
+    GOT (written by lean-axiom-audit.lean): `module TAB <name>` for every module of the audited
+    import closure, and `native TAB <name> TAB <module> TAB <canonical statement>` for every
+    native-code axiom a project constant depends on. Fails if a reached native axiom is not in
+    the lock, if its statement hash or module differs, if its statement is not the toStr form
+    (TOSTR_FORM), if a reached axiom or a lock entry is declared in a module other than the
+    roots of the generated Rmcp library (RMCP_ROOTS: Rmcp.Types, Rmcp.Funs; so a hand-written
+    `Aeneas.Std.toStr "x"` in Proofs, Specs, Defs or trusted/ fails even if listed), or if a
+    lock entry whose module is in the closure is not reached (stale). Entries for an Rmcp root
+    that is not in the closure (Rmcp is not a default target) are only reported."""
+    want, errs = {}, []
+    with open(lock, encoding="utf-8") as f:
+        for i, line in enumerate(f, 1):
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            m = NATIVE_LOCK_LINE.fullmatch(s)
+            if not m or m.group(1) in want:
+                errs.append(f"{lock}:{i}: not `<name> <module> sha256:<64 hex>` or a duplicate name: {s}")
+                continue
+            want[m.group(1)] = (m.group(2), m.group(3))
+            if m.group(2) not in RMCP_ROOTS:
+                errs.append(f"{lock}:{i}: module {m.group(2)} is not a root of the generated Rmcp "
+                            f"library ({', '.join(RMCP_ROOTS)}); only their native-code axioms "
+                            "may be locked")
+    modules, have = set(), {}
+    with open(got, encoding="utf-8") as f:
+        for line in f.read().splitlines():
+            parts = line.split("\t")
+            if len(parts) == 2 and parts[0] == "module":
+                modules.add(parts[1])
+            elif len(parts) == 4 and parts[0] == "native" and parts[1] not in have:
+                _, name, mod, stmt = parts
+                if not is_tostr_form(stmt):
+                    errs.append(f"native-code axiom {name} ({mod}) is not an Aeneas toStr side "
+                                "condition of a string literal; it cannot be locked")
+                if mod not in RMCP_ROOTS:
+                    errs.append(f"native-code axiom {name} is declared in {mod}, not in a root of "
+                                f"the generated Rmcp library ({', '.join(RMCP_ROOTS)}); it cannot "
+                                "be locked")
+                have[name] = (mod, sha(stmt.encode("utf-8")))
+            else:
+                errs.append(f"{got}: malformed line {line!r}")
+    base = os.path.basename(lock)
+    for n in sorted(set(have) - set(want)):
+        errs.append(f"native-code axiom {n} is not in {base} "
+                    f"(after review, add the line: {n} {have[n][0]} sha256:{have[n][1]})")
+    unchecked = []
+    for n in sorted(set(want) - set(have)):
+        if want[n][0] in modules:
+            errs.append(f"{base} lists {n} ({want[n][0]}), which is not a native-code axiom "
+                        "reached by the audited roots (stale entry)")
+        elif want[n][0] in RMCP_ROOTS:
+            unchecked.append(n)
+    for n in sorted(set(want) & set(have)):
+        if want[n] != have[n]:
+            errs.append(f"native-code axiom {n}: module/statement hash {have[n][0]} {have[n][1]} "
+                        f"differs from the lock ({want[n][0]} {want[n][1]})")
+    if errs:
+        fail(errs + [f"native-code axioms differ from formal/trusted/{base}"])
+    for n in sorted(have):
+        print(f"[lean-guard] native-code axiom {n} ({have[n][0]}): toStr side condition, locked")
+    if unchecked:
+        mods = sorted({want[n][0] for n in unchecked})
+        print(f"[lean-guard] note: {len(unchecked)} entr(y/ies) of {base} not checked: "
+              f"module(s) {', '.join(mods)} not reached from the roots")
+    print(f"[lean-guard] native-code axioms: {len(have)} reached, matching {base}")
+
+
 COMMANDS = {"fresh": (check_fresh, 1), "axiom-lock": (check_axiom_lock, 2),
+            "native-lock": (check_native_lock, 2),
             "lakefile": (check_lakefile, 1), "sources": (check_sources, 1),
             "build-log": (check_build_log, 1), "archive": (check_archive, 2),
             "roots": (audit_roots, 1), "leanpath": (lean_path, 1),
