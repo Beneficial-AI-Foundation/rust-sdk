@@ -80,8 +80,8 @@ budget are allocated.
 ## Per-function status
 
 Mirrors `formal/docs/functions/*.yaml` (the records are authoritative). Updated 2026-11-23 at
-the incorporation of W01–W15, `frame_roundtrip`, E01–E04 and the S08–S09 external-model laws
-(human approval 2026-11-23): their proofs
+the incorporation of W01–W15, `frame_roundtrip`, E01–E04, E07–E11, E09a and the S08–S09
+external-model laws (human approval 2026-11-23): their proofs
 are in `Proofs`, their statements in `specs/Specs/Model/`.
 
 | ID | Rust symbol | translation | spec | linkage | proof |
@@ -105,16 +105,16 @@ are in `Proofs`, their statements in `specs/Specs/Model/`.
 | E02 | `RequestStateCodec::b64_len` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
 | E03 | `RequestStateCodec::validate_key_length` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
 | E04 | `RequestStateCodec::validate_config_kid` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E07 | `RequestStateCodec::seal_rs1` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
-| E08 | `RequestStateCodec::seal_rs2` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
-| E09 | `RequestStateCodec::open_rs1_at` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
-| E09a | `RequestStateCodec::rs1_fallbacks_verify` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
-| E10 | `RequestStateCodec::open_rs2_at` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
-| E11 | `RequestStateCodec::open_at` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
+| E07 | `RequestStateCodec::seal_rs1` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E08 | `RequestStateCodec::seal_rs2` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E09 | `RequestStateCodec::open_rs1_at` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E09a | `RequestStateCodec::rs1_fallbacks_verify` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E10 | `RequestStateCodec::open_rs2_at` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E11 | `RequestStateCodec::open_at` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
 
-Total: 25 records (W01–W15, E01–E04, E07–E11, E09a). Proved and incorporated: W01–W15 and
-E01–E04 (plus the composition theorem `frame_roundtrip`); the laws of the external models
-(S08–S09) are in `Specs.External`.
+Total: 25 records (W01–W15, E01–E04, E07–E11, E09a). All 25 proved and incorporated (plus the
+composition theorem `frame_roundtrip`); the laws of the external models (S08–S09) are in
+`Specs.External`. Open: the round-trip theorems (S15).
 
 **E05 and E06 are unassigned.** They belonged to `mac_v1`/`mac_v2`, which the S04a refactor
 deletes (plan Section 2.2 and 2.3). The IDs are not renumbered, so the guides' references stay

@@ -152,7 +152,9 @@ library, clock.
 
 - `Defs/Wire.lean`: `splitOn` components, `be64`, transcripts, framing and expiry.
 - `Defs/RequestState.lean`: codec outputs and error predicates.
-- `Defs/CodecState.lean`: the codec-state invariant enforced by the constructors.
+- `Defs/CodecState.lean`: the codec-state predicate `CodecValid` enforced by the keyring
+  constructors (single-key codecs unconstrained; key ids pairwise distinct), its clauses, key
+  lookup, and the expected results of the opening functions E09–E11.
 
 Rules for definitions in `Defs`:
 
@@ -212,7 +214,7 @@ Concise natural language description of the spec, including its arithmetic domai
 width where relevant. -/
 @[step]
 theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
-    (associated_data : Slice U8) (now_ms : I64) (h : self.Valid) :
+    (associated_data : Slice U8) (now_ms : I64) (h : CodecFallbacksKnown self) :
     open_rs1_at self sealed associated_data now_ms ⦃ (result : Result (Vec U8) Error) =>
       post_condition_1 ∧
       post_condition_2 ⦄ := by
@@ -254,8 +256,11 @@ never built.
   semantics.
 - Write a target-width assumption as a named hypothesis (e.g. `(h64 : System.Platform.numBits =
   64)`), used only where the claim depends on it.
-- Take the codec-state invariant as a single hypothesis `(h : self.Valid)` using the definition in
-  `Defs/CodecState.lean`, rather than restating its clauses.
+- Take the codec-state invariant as a hypothesis built from the definitions in
+  `Defs/CodecState.lean`, and only the clauses the function needs: `CodecFallbacksKnown self` for
+  E09/E11, `FallbacksKnown keys rs1_fallbacks` for E09a, none for E10 (spec-owner decision
+  2026-11-23). Composition theorems may take the whole predicate `CodecValid self`, which implies
+  each clause. Do not restate a clause inline.
 
 ## Composition Theorems
 

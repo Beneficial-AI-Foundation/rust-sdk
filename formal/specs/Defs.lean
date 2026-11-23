@@ -6,6 +6,7 @@ Authors: Hoang Le Truong
 import Aeneas
 import Defs.Wire
 import Defs.RequestState
+import Defs.CodecState
 
 /-!
 # Defs
@@ -13,6 +14,7 @@ import Defs.RequestState
 Root of the `Defs` library: definitions used by the spec statements (plan Section 5).
 Maintained by hand (docs/WORKFLOW_AND_PR_GUIDE.md, "Library roots").
 
-Imports `Defs.Wire` and `Defs.RequestState`, whose definitions the spec owner signed off at S05
-(2026-11-23; `docs/evidence/S05.md`), as the workflow guide's "Library roots" requires.
+Imports `Defs.Wire`, `Defs.RequestState` and `Defs.CodecState`, whose definitions the spec owner
+signed off at S05 (2026-11-23; `docs/evidence/S05.md`), as the workflow guide's "Library roots"
+requires.
 -/

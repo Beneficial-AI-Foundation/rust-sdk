@@ -38,3 +38,6 @@ formal/translation/Rmcp/*External_Template.lean
 
 # The differential check builds with --locked from this lock file (formal/trusted/evidence/README.md)
 !formal/trusted/evidence/differential/rdiff/Cargo.lock
+# Generated aggregate-import files (recreated by a tool such as mk_all); not part of any library
+/formal/Proofs.lean
+/formal/Specs.lean

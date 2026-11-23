@@ -229,48 +229,49 @@ steps:
 
   - id: S11
     day: D5-6
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; E07/E08 proved and incorporated (evidence/S13.md)
     depends_on: [S07, S08, S09, S10]
     owner: Lean
     files:
       - formal/proofs/Proofs/Model/RequestState/SealRs1.lean
       - formal/proofs/Proofs/Model/RequestState/SealRs2.lean
-      - formal/docs/evidence/S11.md   # per plan §7
+      - formal/docs/evidence/S13.md   # shared evidence of S11–S14
     acceptance: >-
       E07/E08 output-format theorems checked on the no-overflow domain.
 
   - id: S12
     day: D5
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; codec-state predicate CodecValid (Defs/CodecState.lean) signed off and incorporated (evidence/S13.md)
     depends_on: [S05]
     owner: Spec drafter + reviewers + spec owner
     files:
       - formal/specs/Defs/CodecState.lean
-      - formal/docs/evidence/S12.md   # per plan §7
+      - formal/docs/evidence/S13.md   # shared evidence of S11–S14
     acceptance: >-
       Codec-state invariant reviewed against the constructors.
 
   - id: S13
     day: D6-8
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; E09a/E09/E10 proved and incorporated (evidence/S13.md)
     depends_on: [S07, S08, S09, S10, S12]
     owner: Lean
     files:
       - formal/proofs/Proofs/Model/RequestState/Rs1FallbacksVerify.lean
       - formal/proofs/Proofs/Model/RequestState/OpenRs1At.lean
       - formal/proofs/Proofs/Model/RequestState/OpenRs2At.lean
+      - formal/proofs/Proofs/External/Iter.lean   # slice-iterator `next` helper used by E09a
       - formal/docs/evidence/S13.md   # per plan §7
     acceptance: >-
       E09a, E09, E10 checked with full error order.
 
   - id: S14
     day: D8
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; E11 proved and incorporated (evidence/S13.md)
     depends_on: [S10, S13]
     owner: Lean
     files:
       - formal/proofs/Proofs/Model/RequestState/OpenAt.lean
-      - formal/docs/evidence/S14.md   # per plan §7
+      - formal/docs/evidence/S13.md   # shared evidence of S11–S14
     acceptance: >-
       E11 dispatch theorem checked.
 

@@ -24,7 +24,10 @@ failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is local comm
 `adce319`.
 
 Definitions used: `Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLength`, `maxKidLen`,
-`b64Len`) and `Defs.RequestState` (`StrIs`, `kidEmptyMsg`, `kidTooLongMsg`).
+`b64Len`, `dot`, `components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`),
+`Defs.RequestState` (`StrIs`, `kidEmptyMsg`, `kidTooLongMsg`) and `Defs.CodecState` (`KeyTable`,
+`FallbacksKnown`, `CodecFallbacksKnown`, `Rs1Verifies`, `openRs1`, `openRs2`, `openAt`,
+`resultBytes`).
 
 External models used (S08–S09, `trusted/Rmcp/FunsExternal.lean`): E04 uses the model of
 `core.str.Str.len` (the byte length of the `Str`). E04 also depends on the native-code
@@ -32,13 +35,189 @@ assumptions `KID_EMPTY_MSG._native.decide.ax_1` and `KID_TOO_LONG_MSG._native.de
 the pinned Aeneas `toStr` declares for the two message literals of the translation (listed in
 `trusted/native-axioms.lock`; any statement about `validate_config_kid` reaches them).
 
-Statements here: E01, E03, E04 and E02 (S07), in Rust source order (lines 695, 704, 714, 725).
-E07–E11 and E09a are added in Rust source order once proved.
+External models used by E07–E11 and E09a: `ExtModel.utf8`, `ExtModel.b64`, `ExtModel.b64Decode`,
+`ExtModel.hmacSha256`, `ExtModel.maxStringBytes`, `ExtModel.strOfBytes?`. Stated exceptions (plan
+Section 4, rows "HMAC" and "Standard library"): HMAC SHA-256 always succeeds in the model, while
+its `u64` bit-length counter overflows (a panic under overflow-checks) for a message of at least
+`2^61 - 64` bytes or a key of at least `2^61` bytes; allocation failure is not modelled, and the
+transcript `Vec` is modelled up to `Usize.max` bytes where Rust panics above `isize::MAX`. For
+such inputs a statement promises a result where the Rust code panics. The E07/E08 premises
+`h_len`/`h_cap` are the no-overflow domains of the debug-build semantics. E07 and E08 reach the
+locked native-code assumptions `VERSION_V1._native.decide.ax_1` and
+`VERSION_V2._native.decide.ax_1`;
+E09, E09a and E11 reach `RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`;
+E10 reaches none (all in `trusted/native-axioms.lock`).
+
+Statements here, in Rust source order: E11 (line 559), E07 (572), E08 (585), E09 (607),
+E09a (644), E10 (659) (S11, S13, S14), then E01 (695), E03 (704), E04 (714), E02 (725) (S07).
+The E07–E11 and E09a statements were signed off by the spec owner on 2026-11-23 after three
+review rounds (`evidence/S05.md`, "E batch part 2"); their signed-off text was in
+`specs/Drafts/RequestState.lean`, removed at incorporation.
 -/
 
 open Aeneas Aeneas.Std Result
 open Defs.Wire
 open rmcp.model.request_state  -- for `RequestStateError`; theorems named in full
+open Defs.CodecState (KeyTable FallbacksKnown CodecFallbacksKnown Rs1Verifies openRs1 openRs2
+  openAt resultBytes)
+
+open rmcp.model.request_state.RequestStateCodec (open_at) in
+/-- E11 `open_at`: dispatches on the first `.`-component of the token, `"rs1"` to E09 and
+`"rs2"` to E10, anything else to `MalformedFormat`; the result is exactly `openAt`. -/
+theorem Theorems.request_state.RequestStateCodec.open_at
+    (self : RequestStateCodec) (sealed : Str) (associated_data : Slice Std.U8)
+    (now_ms : Std.I64)
+    (h_len1 : ∀ b t body, components (sealed : Slice Std.U8).val = [versionV1, b, t] →
+      ExtModel.b64Decode b = some body →
+      (transcriptV1 associated_data.val body).length ≤ Usize.max)
+    (h_len2 : ∀ k b t kid body, components (sealed : Slice Std.U8).val = [versionV2, k, b, t] →
+      ExtModel.b64Decode k = some kid → ExtModel.b64Decode b = some body →
+      (transcriptV2 kid associated_data.val body).length ≤ Usize.max)
+    (h_fallbacks : (components (sealed : Slice Std.U8).val).head? = some versionV1 →
+      CodecFallbacksKnown self) :
+    open_at self sealed associated_data now_ms ⦃ (result :
+        core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+      -- lines 565–568; `openAt` (Defs.CodecState) dispatches on `(components _).head?`
+      resultBytes result = openAt self (sealed : Slice Std.U8).val associated_data.val
+        now_ms.val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_at_spec self sealed associated_data now_ms
+    h_len1 h_len2 h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_at' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_at
+
+/-- E07 `seal_rs1`: the token `"rs1." ++ b64 body ++ "." ++ b64 tag` as UTF-8 bytes, where `tag`
+is the HMAC SHA-256 of `transcriptV1 associated_data body` under `key`. -/
+theorem Theorems.request_state.RequestStateCodec.seal_rs1 (key : Slice Std.U8)
+    (associated_data : Slice Std.U8)
+    (body : Slice Std.U8)
+    (h_len : (transcriptV1 associated_data.val body.val).length ≤ Usize.max)
+    (h_cap : versionV1.length + 2 + b64Len body.val.length + b64Len 32 ≤
+      ExtModel.maxStringBytes) :
+    rmcp.model.request_state.RequestStateCodec.seal_rs1 key associated_data body ⦃
+      (result : String) =>
+      -- lines 577–582: "rs1", '.', b64(body), '.', b64(tag); tag from line 573
+      ExtModel.utf8 result =
+        versionV1 ++ [dot] ++ ExtModel.b64 body.val ++ [dot] ++
+          ExtModel.b64 (ExtModel.hmacSha256 key.val
+            (transcriptV1 associated_data.val body.val)).val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_rs1_spec key associated_data body h_len h_cap
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal_rs1' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ VERSION_V1._native.decide.ax_1]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal_rs1
+
+/-- E08 `seal_rs2`: the token `"rs2." ++ b64 kid ++ "." ++ b64 body ++ "." ++ b64 tag` as UTF-8
+bytes, where `tag` is the HMAC SHA-256 of `transcriptV2 kid associated_data body` under `key`;
+any kid is accepted. -/
+theorem Theorems.request_state.RequestStateCodec.seal_rs2 (kid : Str) (key : Slice Std.U8)
+    (associated_data : Slice Std.U8)
+    (body : Slice Std.U8)
+    (h_len : (transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val).length ≤
+      Usize.max)
+    (h_cap : versionV2.length + 3 + b64Len (kid : Slice Std.U8).val.length +
+      b64Len body.val.length + b64Len 32 ≤ ExtModel.maxStringBytes) :
+    rmcp.model.request_state.RequestStateCodec.seal_rs2 kid key associated_data body ⦃
+      (result : String) =>
+      -- lines 597–604: "rs2", '.', b64(kid), '.', b64(body), '.', b64(tag); tag from 586–589
+      ExtModel.utf8 result =
+        versionV2 ++ [dot] ++ ExtModel.b64 (kid : Slice Std.U8).val ++ [dot] ++
+          ExtModel.b64 body.val ++ [dot] ++
+          ExtModel.b64 (ExtModel.hmacSha256 key.val
+            (transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val)).val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_rs2_spec kid key associated_data body h_len
+    h_cap
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal_rs2' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ VERSION_V2._native.decide.ax_1]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal_rs2
+
+/-- E09 `open_rs1_at`: the result is exactly `openRs1` (the error order of plan Section 3, then
+E01 on the authenticated body). -/
+theorem Theorems.request_state.RequestStateCodec.open_rs1_at (self : RequestStateCodec)
+    (sealed : Str) (associated_data : Slice Std.U8) (now_ms : Std.I64)
+    (h_count : (sealed : Slice Std.U8).val.count dot < Usize.max)
+    (h_len : ∀ b t body, components (sealed : Slice Std.U8).val = [versionV1, b, t] →
+      ExtModel.b64Decode b = some body →
+      (transcriptV1 associated_data.val body).length ≤ Usize.max)
+    (h_fallbacks : CodecFallbacksKnown self) :
+    rmcp.model.request_state.RequestStateCodec.open_rs1_at self sealed associated_data now_ms ⦃
+        (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+      -- lines 613–640, in the order of plan Section 3 (see `Defs.CodecState.openRs1`)
+      resultBytes result = openRs1 self (sealed : Slice Std.U8).val associated_data.val
+        now_ms.val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_rs1_at_spec self sealed associated_data now_ms
+    h_count h_len h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_rs1_at' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_rs1_at
+
+/-- E09a `rs1_fallbacks_verify`: `true` iff some rs1 fallback key verifies the tag over the
+transcript (`Rs1Verifies`). -/
+theorem Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify (keys : KeyTable)
+    (rs1_fallbacks : Slice String) (transcript : Slice Std.U8) (tag : Slice Std.U8)
+    (h_known : FallbacksKnown keys rs1_fallbacks.val) :
+    rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify keys rs1_fallbacks transcript
+        tag ⦃ (result : Bool) =>
+      -- lines 650–656: `verified |= hmac_sha256_verify(key, transcript, tag)` over all ids
+      result = decide (Rs1Verifies keys rs1_fallbacks.val transcript.val tag.val) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_spec keys rs1_fallbacks
+    transcript tag h_known
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify
+
+/-- E10 `open_rs2_at`: the result is exactly `openRs2` (the error order of plan Section 3, then
+E01 on the decoded body), for every codec. -/
+theorem Theorems.request_state.RequestStateCodec.open_rs2_at (self : RequestStateCodec)
+    (sealed : Str)
+    (associated_data : Slice Std.U8) (now_ms : Std.I64)
+    (h_count : (sealed : Slice Std.U8).val.count dot < Usize.max)
+    (h_len : ∀ k b t kid body, components (sealed : Slice Std.U8).val = [versionV2, k, b, t] →
+      ExtModel.b64Decode k = some kid → ExtModel.b64Decode b = some body →
+      (transcriptV2 kid associated_data.val body).length ≤ Usize.max) :
+    rmcp.model.request_state.RequestStateCodec.open_rs2_at self sealed associated_data
+        now_ms ⦃ (result :
+        core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+      -- lines 665–692, in the order of plan Section 3 (see `Defs.CodecState.openRs2`)
+      resultBytes result = openRs2 self (sealed : Slice Std.U8).val associated_data.val
+        now_ms.val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_rs2_at_spec self sealed associated_data now_ms
+    h_count h_len
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_rs2_at' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_rs2_at
 
 /-- E01 `open_authenticated_body`: `MalformedFormat` below 8 bytes, otherwise `Expired` if the
 body's expiry has passed, otherwise `Ok` of the bytes after the first 8. -/
