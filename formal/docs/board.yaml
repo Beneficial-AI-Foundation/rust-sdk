@@ -416,7 +416,7 @@ steps:
 
   - id: S26
     day: D3-4
-    state: NOT_STARTED
+    state: IN_PROGRESS  # models + laws signed off by the spec owner and proved 2026-11-23; awaits human acceptance
     depends_on: [S21]
     owner: Extraction + reviewers + spec owner
     files:
@@ -428,11 +428,11 @@ steps:
       - formal/specs/Specs/External.lean
       - formal/trusted/evidence/README.md
     acceptance: >-
-      Models (strings, Arc, Option, Result, slices) are definitions; laws proved; signed off.
+      Models (strings, Arc, Option, Result, slices) are definitions; laws reviewed by >= 2 agents, signed off and proved.
 
   - id: S27
     day: D3-5
-    state: NOT_STARTED
+    state: IN_PROGRESS  # models + laws signed off and proved 2026-11-23 (parseI64 law after S24); awaits human acceptance
     depends_on: [S21, S24]
     owner: Extraction + reviewers + spec owner
     files:
@@ -441,11 +441,9 @@ steps:
       - formal/proofs/Proofs/External/Net.lean
       - formal/proofs/Proofs/External/IntParse.lean
       - formal/specs/Specs/External.lean
-      - formal/trusted/evidence/differential/net/
-      - formal/trusted/evidence/differential/intparse/
       - formal/trusted/evidence/README.md
     acceptance: >-
-      core::net and integer-parsing models; exhaustive IPv4 and sampled IPv6 differential pass; integer-parse tests pass; parseI64 law proved; no placeholder left; signed off.
+      core::net and integer-parsing models; laws reviewed by >= 2 agents, signed off and proved; the parseI64 law after S24; no placeholder left. The differential tests were dropped (human decision 2026-11-23; plan Section 18 amendment).
 
   - id: S28
     day: D3-5

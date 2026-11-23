@@ -87,7 +87,8 @@ declaration with `set_option ... in`. Use multiples of **200000** as the standar
 
 ### Formatting
 
-- Limit all lines to 100 characters.
+- Limit all lines to 100 characters. Exempt: header lines copied verbatim from the Aeneas templates
+  (`/-- [<rust name>]:`, `Name pattern: [...]`) and Markdown table rows, which cannot be wrapped.
 - In multi-line comments, wrap only when necessary: use as much of the 100-character limit as
   possible before breaking.
 - List imports immediately after the file header, without empty lines.
@@ -120,14 +121,17 @@ directions are fixed:
 
 `formal/trusted/Rmcp/FunsExternal.lean` and `TypesExternal.lean` declare everything Aeneas does not
 translate (plan Section 4). Organise `FunsExternal.lean` in sections: HMAC, Base64, standard
-library, clock.
+library, clock, and the Phase 2 sections (strings and `Arc`; `Option`, `Result`, slices and ranges;
+integer parsing; IP addresses).
 
 - No `axiom` in `trusted/` (human decision 2026-11-23). Each external function is a `def` with
-  the generated name and signature, and each external type a `structure`, keeping the
+  the generated name and signature, and each external type a `structure` (or an `inductive` where
+  Rust has a union or enum, e.g. `MaybeUninit`, `IntErrorKind`), keeping the
   template's `@[rust_fun]` or `@[rust_type]` attribute where it has one (the template gives none
   to the opaque `rmcp` functions, `prim` and `now_ms`); never a bare `Result` axiom. What a
   model cannot compute is an `opaque` constant in the namespace `ExtModel` (`hmacSha256`,
-  `sipHash13`, `nowMs`, `SerdeJsonErrorImpl`), and the external returns `ok` of it. Laws about
+  `sipHash13`, `nowMs`, `SerdeJsonErrorImpl`); a function external returns `ok` of it, and an
+  external type may be defined as one (`SerdeJsonValue`, since S26/S27). Laws about
   the models (for example the Base64 round trip) are theorems in
   `formal/proofs/Proofs/External/`.
 - Each model describes its primitive on its own terms, never by referring to a target function.

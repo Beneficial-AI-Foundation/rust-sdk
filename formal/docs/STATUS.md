@@ -255,7 +255,7 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
   41 placeholder externals of S04a part 2 are replaced by definitions (functions) and structures
   (types) with the generated names; what cannot be computed is one of exactly four `opaque`
   constants: `ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs`,
-  `ExtModel.SerdeJsonErrorImpl`. They add no axiom and do not appear in `#print axioms` or the
+  `ExtModel.SerdeJsonErrorImpl` (Phase 1; S26/S27 add a fifth, see below). They add no axiom and do not appear in `#print axioms` or the
   locks: a change to a model is caught only by review of `formal/trusted/`. Their 72 laws are
   proved (`Proofs/External/`) and restated in `Specs/External.lean`.
 - **Translation pin** (S21, human decision 2026-11-23): `formal/trusted/translation-pins.txt` records
@@ -265,11 +265,22 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
   `Funs.lean` excuses whatever stands at the pinned line; only the byte-for-byte regeneration of
   `aeneas-translation.yml` and review (each pinned line read in context) catch that. A legitimate
   re-translation must update it in a reviewed PR.
-- **Phase 2 placeholders** (S21, temporary; human decisions 2026-11-23): 26 external functions as
-  `opaque` constants and 6 external types as `@[rust_type] def`s over abstract `opaque`
-  `ExtModel.*Placeholder` carriers (`formal/trusted/Rmcp/{FunsExternal,TypesExternal}.lean`, last
-  sections). They add no axiom and assert nothing; no proof may use them; S26/S27 replace each by
-  an exact model (plan Section 18). 30 more Aeneas `toStr` native-code axioms are reached (T05–T08,
+- **Phase 2 external models** (S26/S27, 2026-11-23; reviewed, signed off by the spec owner,
+  laws proved): the 26 S21 placeholders are definitions transcribed from `core`/`alloc` of
+  nightly-2026-06-01 (strings and `Arc`; `Option`, `Result`, slices, ranges; `i64::from_str`;
+  `Ipv4Addr`/`Ipv6Addr` predicates), and 5 of the 6 placeholder types are structures or
+  inductives (`Ipv4Addr` over 4 octets, `Ipv6Addr` over 8 segments where Rust stores 16 octets,
+  `ParseIntError` with all six `IntErrorKind` variants, `Arc` holding its value, `MaybeUninit`);
+  the sixth, `serde_json::Value`, is defined as the abstract `opaque` type
+  `ExtModel.SerdeJsonValue` (Phase 2 targets only move values). Helpers: `ExtModel.IntErrorKind`,
+  `decDigit?`, `i64DigitLoop`, `i64FromAscii`, `sliceEq`, `sliceEqSameLength`, `beNat`, `ipv4Nats`,
+  `ipv6Nats`. Stated exceptions are in each docstring (e.g. `Arc` equality has no pointer fast
+  path). 43 laws (AI-drafted; review round 1: two agents, no blocking finding; signed off by the spec
+  owner 2026-11-23; proved and restated in `Specs/External.lean`, axioms at most `propext`,
+  `Classical.choice`, `Quot.sound`). Sources and evidence: `formal/trusted/evidence/README.md`; the
+  differential tests of plan Section 18 were not built (stage 3 dropped by human decision,
+  2026-11-23; plan Section 18 amendment), so fidelity rests on the cited source, review and the
+  proved laws (stage 6). 30 more Aeneas `toStr` native-code axioms are reached (T05–T08,
   H2) but used by no `Defs`/`Proofs`/`Specs` constant yet, so not locked until S29.
 - **Codec-state hypothesis** (accepted at S12): `Defs/CodecState.lean` defines `CodecValid`
   (keyring clauses; single-key codecs unconstrained; pairwise distinct key ids),
@@ -298,6 +309,9 @@ External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
 | Clock (`now_ms`, opaque) | `ok nowMs`, `opaque ExtModel.nowMs` | accepted (S09) |
 | `serde_json::Error` (type) | structure, `opaque ExtModel.SerdeJsonErrorImpl` | accepted (S09) |
 | Codec state | `Defs.CodecState` hypotheses (above) | accepted (S12) |
+| Phase 2: strings, `Arc`, `Option`, `Result`, slices, ranges | definitions (S26) | signed off 2026-11-23; 22 laws proved |
+| Phase 2: `i64::from_str`, `Ipv4Addr`/`Ipv6Addr` | definitions, structures (S27) | signed off 2026-11-23; 21 laws proved |
+| `serde_json::Value` (type) | `opaque ExtModel.SerdeJsonValue` (S27) | signed off 2026-11-23 (no law: only moved) |
 
 Details:
 - HMAC: both functions always succeed. Stated exception: the SHA-256 bit-length `u64` counter
@@ -409,7 +423,7 @@ pilot is not the project's translation, which is S21.
 |---|---|---|
 | H1 | One translated configuration with the widened feature list `request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth` | Accepted |
 | H2 | 30 more Aeneas `toStr` native-code axioms for T05–T08, locked in `native-axioms.lock` at S29 | Accepted |
-| H3 | Boundary tests from upstream tests and differential programs; a test-only patch 02 only for an uncovered case, recorded (if created) as a further deviation from `docs/VERIFICATION.md` §4 under "Documents" | Accepted |
+| H3 | Boundary tests from upstream tests and differential programs (the latter dropped 2026-11-23, plan Section 18 amendment); a test-only patch 02 only for an uncovered case, recorded (if created) as a further deviation from `docs/VERIFICATION.md` §4 under "Documents" | Accepted |
 | H4 | `opaque` entry for the type `rmcp::transport::auth::AuthorizationManager` | Accepted |
 | H5 | Project owner and budget | **Open**: TBD (human, 2026-11-23); spec owner named: Hoang Le Truong |
 

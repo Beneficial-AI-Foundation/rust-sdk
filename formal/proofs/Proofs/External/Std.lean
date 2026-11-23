@@ -13,6 +13,10 @@ Spec theorems for the models in `formal/trusted/Rmcp/FunsExternal.lean` (section
 library and Clock). Each covers success and, where the model can fail, the failure. Names follow
 the style guide: the full generated name of the external with `_spec`; equation lemmas for
 functions that take a trait instance whose behaviour is not fixed (`map_err`, `clone`, ...).
+
+Section "Phase 2: slices and ranges" proves the signed-off laws of plan steps S26/S27 for
+`slice::first`, `<[T; N] as SlicePattern>::as_slice`, `[T] == [U; N]`, `slice::strip_suffix`
+and `RangeInclusive::contains`.
 -/
 
 open Aeneas Aeneas.Std Result
@@ -405,3 +409,250 @@ variable named `now_ms` is not covered): the clock is one
 opaque constant `ExtModel.nowMs`, which makes every reader pure, so a statement about it could
 relate readings in a way the Rust code does not guarantee (review rule, `formal/README.md`,
 "Trusted base"). Statements about opening use `open_at` with an explicit time. -/
+
+/-! ## Phase 2: slices and ranges -/
+
+open rmcp
+
+/-- **Spec theorem for `slice::first`**: the first element, `None` for the empty slice. -/
+@[step]
+theorem core.slice.Slice.first_spec {T : Type} (self : Slice T) :
+    core.slice.Slice.first self ⦃ (result : Option T) => result = self.val.head? ⦄ := by
+  unfold core.slice.Slice.first
+  split <;> rename_i h <;> simp [h]
+
+/-- **Spec theorem for `<[T; N] as SlicePattern>::as_slice`**: the same elements. -/
+@[step]
+theorem Array.Insts.CoreSliceSlicePattern.as_slice_spec {T : Type} {N : Usize}
+    (self : Array T N) :
+    Array.Insts.CoreSliceSlicePattern.as_slice self ⦃ (result : Slice T) =>
+      result.val = self.val ⦄ := by
+  simp [Array.Insts.CoreSliceSlicePattern.as_slice, Array.to_slice]
+
+namespace Proofs.External.Slice
+
+/-- `ExtModel.sliceEqSameLength` on lists of equal length, for an instance whose `ne` decides
+the negation of `R` on their elements: element-wise relatedness. -/
+theorem sliceEqSameLength_spec {T U : Type} (inst : core.cmp.PartialEq T U) (R : T → U → Prop)
+    (l : List T) (r : List U) (hlen : l.length = r.length)
+    (h_ne : ∀ a ∈ l, ∀ b ∈ r, inst.ne a b ⦃ (d : Bool) => (d = true ↔ ¬ R a b) ⦄) :
+    ExtModel.sliceEqSameLength inst l r ⦃ (result : Bool) =>
+      (result = true ↔ List.Forall₂ R l r) ⦄ := by
+  induction l generalizing r with
+  | nil =>
+    cases r with
+    | nil => simp [ExtModel.sliceEqSameLength]
+    | cons _ _ => simp at hlen
+  | cons a l ih =>
+    cases r with
+    | nil => simp at hlen
+    | cons b r =>
+      obtain ⟨d, hd, hP⟩ := WP.spec_imp_exists (h_ne a (by simp) b (by simp))
+      simp only [ExtModel.sliceEqSameLength, hd, bind_tc_ok, List.forall₂_cons]
+      cases d with
+      | true => simp_all
+      | false =>
+        have hR : R a b := by simpa using hP
+        simp only [Bool.false_eq_true, ↓reduceIte, hR, true_and]
+        exact ih r (by simpa using hlen) (fun x hx y hy => h_ne x (by simp [hx]) y (by simp [hy]))
+
+end Proofs.External.Slice
+
+/-- **Spec theorem for `[T] == [U; N]`**, for an instance whose `ne` decides the negation of a
+relation `R` on the elements compared: the result is `true` exactly when the slice and the
+array have the same length and are related element-wise. -/
+theorem Slice.Insts.CoreCmpPartialEqArray.eq_spec {T : Type} {U : Type} {N : Usize}
+    (cmpPartialEqInst : core.cmp.PartialEq T U) (self : Slice T) (other : Array U N)
+    (R : T → U → Prop)
+    (h_ne : ∀ a ∈ self.val, ∀ b ∈ other.val,
+      cmpPartialEqInst.ne a b ⦃ (d : Bool) => (d = true ↔ ¬ R a b) ⦄) :
+    Slice.Insts.CoreCmpPartialEqArray.eq cmpPartialEqInst self other ⦃ (result : Bool) =>
+      (result = true ↔ List.Forall₂ R self.val other.val) ⦄ := by
+  unfold Slice.Insts.CoreCmpPartialEqArray.eq
+  split
+  · rename_i h
+    apply Proofs.External.Slice.sliceEqSameLength_spec _ _ _ _ _ h_ne
+    rw [h, other.property]
+  · rename_i h
+    have hl : self.val.length ≠ other.val.length := by rw [other.property]; exact h
+    simp only [WP.spec_ok, Bool.false_eq_true, false_iff]
+    exact fun hf => hl hf.length_eq
+
+/-- **Spec theorem for `[u16] == [u16; N]`** at the instance of the translation
+(`core.cmp.PartialEqU16`): list equality of the elements. -/
+@[step]
+theorem Slice.Insts.CoreCmpPartialEqArray.eq_u16_spec {N : Usize}
+    (self : Slice U16) (other : Array U16 N) :
+    Slice.Insts.CoreCmpPartialEqArray.eq core.cmp.PartialEqU16 self other ⦃ (result : Bool) =>
+      (result = true ↔ self.val = other.val) ⦄ := by
+  have h := Slice.Insts.CoreCmpPartialEqArray.eq_spec core.cmp.PartialEqU16 self other (· = ·)
+    (fun a _ b _ => by simp)
+  rw [List.forall₂_eq_eq_eq] at h
+  exact h
+
+/-- **Spec theorem for `slice::strip_suffix`**, for every pattern instance and every element
+instance whose `ne` decides the negation of a relation `R` on the elements compared. -/
+theorem core.slice.Slice.strip_suffix_spec {T : Type} {P : Type}
+    (SlicePatternInst : core.slice.SlicePattern P T) (cmpPartialEqInst : core.cmp.PartialEq T T)
+    (self : Slice T) (suffix : P) (suf : Slice T) (R : T → T → Prop)
+    (h_suf : SlicePatternInst.as_slice suffix = ok suf)
+    (h_ne : ∀ a ∈ self.val, ∀ b ∈ suf.val,
+      cmpPartialEqInst.ne a b ⦃ (d : Bool) => (d = true ↔ ¬ R a b) ⦄) :
+    core.slice.Slice.strip_suffix SlicePatternInst cmpPartialEqInst self suffix
+      ⦃ (result : Option (Slice T)) =>
+        match result with
+        | some head => ∃ tail, self.val = head.val ++ tail ∧ List.Forall₂ R tail suf.val
+        | none =>
+          ¬ ∃ head tail, self.val = head ++ tail ∧ List.Forall₂ R tail suf.val ⦄ := by
+  unfold core.slice.Slice.strip_suffix
+  simp only [h_suf, bind_tc_ok]
+  split
+  · rename_i hle
+    have hle' : suf.val.length ≤ self.val.length := by
+      have := hle; simp only [UScalar.le_equiv, Slice.len_val] at this; exact this
+    obtain ⟨mid, hmid, hmv, -⟩ := WP.spec_imp_exists (Usize.sub_spec hle)
+    have hsl : ∀ s : Slice T, s.length = s.val.length := fun _ => rfl
+    simp only [Slice.len_val, hsl] at hmv
+    have hmle : mid.val ≤ self.length := by rw [hmv, hsl]; omega
+    have hdrop : (self.val.drop mid.val).length = suf.val.length := by
+      rw [List.length_drop, hmv]; omega
+    obtain ⟨⟨head, tail⟩, hsp, hP⟩ :=
+      WP.spec_imp_exists (core.slice.Slice.split_at.spec self mid hmle)
+    simp only [WP.uncurry'_pair] at hP
+    obtain ⟨-, -, hhead, htail⟩ := hP
+    have hdrop' : tail.val.length = suf.val.length := by rw [htail]; exact hdrop
+    rw [hmid, bind_tc_ok, hsp, bind_tc_ok]
+    show (do
+      let b ← ExtModel.sliceEq cmpPartialEqInst tail.val suf.val
+      if b then ok (some head) else ok none) ⦃ (result : Option (Slice T)) =>
+        match result with
+        | some head => ∃ tail, self.val = head.val ++ tail ∧ List.Forall₂ R tail suf.val
+        | none =>
+          ¬ ∃ head tail, self.val = head ++ tail ∧ List.Forall₂ R tail suf.val ⦄
+    rw [ExtModel.sliceEq, if_pos hdrop']
+    obtain ⟨b, hb, hbP⟩ := WP.spec_imp_exists (Proofs.External.Slice.sliceEqSameLength_spec
+      cmpPartialEqInst R _ _ hdrop'
+      (fun x hx y hy => h_ne x (by rw [htail] at hx; exact List.mem_of_mem_drop hx) y hy))
+    rw [hb, bind_tc_ok]
+    cases b with
+    | true =>
+      simp only [↓reduceIte, WP.spec_ok]
+      refine ⟨tail.val, ?_, hbP.1 rfl⟩
+      rw [hhead, htail, List.take_append_drop]
+    | false =>
+      simp only [Bool.false_eq_true, ↓reduceIte, WP.spec_ok]
+      rintro ⟨h', t', hs, hf⟩
+      have hlen := congrArg List.length hs
+      rw [List.length_append, hf.length_eq] at hlen
+      have ht' : t' = tail.val := by
+        have hk : self.val.length - suf.val.length = h'.length := by omega
+        rw [htail, hmv, hk, hs, List.drop_left]
+      rw [ht'] at hf
+      exact Bool.false_ne_true (hbP.2 hf)
+  · rename_i hlt
+    have hlt' : self.val.length < suf.val.length := by
+      have := hlt; simp only [UScalar.le_equiv, Slice.len_val] at this
+      exact Nat.lt_of_not_le this
+    simp only [WP.spec_ok]
+    rintro ⟨head, tail, hs, hf⟩
+    have := congrArg List.length hs
+    rw [List.length_append, hf.length_eq] at this
+    omega
+
+/-- `slice::strip_suffix` with a pattern whose `as_slice` does not return: its failure or
+divergence propagates. -/
+theorem core.slice.Slice.strip_suffix_fail {T : Type} {P : Type}
+    (SlicePatternInst : core.slice.SlicePattern P T) (cmpPartialEqInst : core.cmp.PartialEq T T)
+    (self : Slice T) (suffix : P) :
+    (∀ e, SlicePatternInst.as_slice suffix = fail e →
+      core.slice.Slice.strip_suffix SlicePatternInst cmpPartialEqInst self suffix = fail e) ∧
+    (SlicePatternInst.as_slice suffix = div →
+      core.slice.Slice.strip_suffix SlicePatternInst cmpPartialEqInst self suffix = div) := by
+  constructor
+  · intro e h
+    rw [core.slice.Slice.strip_suffix, h]
+    rfl
+  · intro h
+    rw [core.slice.Slice.strip_suffix, h]
+    rfl
+
+/-- **Spec theorem for `[u8]::strip_suffix(&[c])`** at the instances of the translation (the
+pattern `[u8; 1]`, `core.cmp.PartialEqU8`): `Some head` with `self = head ++ [c]` when the last
+byte is `c`, otherwise `None`. -/
+@[step]
+theorem core.slice.Slice.strip_suffix_u8_single_spec (self : Slice U8) (c : U8) :
+    core.slice.Slice.strip_suffix (Array.Insts.CoreSliceSlicePattern U8 1#usize)
+        core.cmp.PartialEqU8 self (Array.make 1#usize [c])
+      ⦃ (result : Option (Slice U8)) =>
+        match result with
+        | some head => self.val = head.val ++ [c]
+        | none => self.val.getLast? ≠ some c ⦄ := by
+  have h := core.slice.Slice.strip_suffix_spec (Array.Insts.CoreSliceSlicePattern U8 1#usize)
+    core.cmp.PartialEqU8 self (Array.make 1#usize [c]) (Array.to_slice (Array.make 1#usize [c]))
+    (· = ·) rfl (fun a _ b _ => by simp)
+  apply WP.spec_mono h
+  intro result hr
+  cases result with
+  | some head =>
+    obtain ⟨tail, hs, hf⟩ := hr
+    rw [List.forall₂_eq_eq_eq] at hf
+    rw [hs, hf]
+    rfl
+  | none =>
+    intro hl
+    apply hr
+    refine ⟨self.val.dropLast, [c], ?_, ?_⟩
+    · exact (List.dropLast_append_getLast? c hl).symm
+    · rw [List.forall₂_eq_eq_eq]
+      rfl
+
+/-- **Spec theorem for `RangeInclusive<u8>::contains`** at the instances of the translation
+(`core.cmp.PartialOrdU8`): `start ≤ item ≤ end` for a range that is not exhausted,
+`start ≤ item < end` for an exhausted one; never fails. -/
+@[step]
+theorem core.ops.range.RangeInclusive.contains_u8_spec
+    (self : core.ops.range.RangeInclusive U8) (item : U8) :
+    core.ops.range.RangeInclusive.contains core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
+        core.cmp.PartialOrdU8 self item ⦃ (result : Bool) =>
+      (result = true ↔ self.start.val ≤ item.val ∧
+        (if self.exhausted then item.val < self.«end».val
+         else item.val ≤ self.«end».val)) ⦄ := by
+  unfold core.ops.range.RangeInclusive.contains
+  cases hx : self.exhausted <;> by_cases h1 : self.start.val ≤ item.val <;>
+    simp [core.cmp.impls.PartialOrdU8.le, core.cmp.impls.PartialOrdU8.lt, h1]
+
+/-- **`(a..=b).contains(&x)` for `u8`**: `a ≤ x ≤ b`. -/
+theorem core.ops.range.RangeInclusive.new_contains_u8_spec (a b item : U8) :
+    (do
+      let r ← core.ops.range.RangeInclusive.new a b
+      core.ops.range.RangeInclusive.contains core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
+        core.cmp.PartialOrdU8 r item) ⦃ (result : Bool) =>
+      (result = true ↔ a.val ≤ item.val ∧ item.val ≤ b.val) ⦄ := by
+  rw [core.ops.range.RangeInclusive.new, bind_tc_ok]
+  exact core.ops.range.RangeInclusive.contains_u8_spec ⟨a, b, false⟩ item
+
+/-- `RangeInclusive::contains`, for every instance: `start <= item` is evaluated first; if it
+fails or diverges that propagates, if it is `false` the result is `false` without a second
+call, and if it is `true` the result is `item < end` (exhausted) or `item <= end` (not
+exhausted), including its failure. -/
+theorem core.ops.range.RangeInclusive.contains_eq {Idx : Type} {U : Type}
+    (cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
+    (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U)
+    (cmpPartialOrdInst2 : core.cmp.PartialOrd U Idx)
+    (self : core.ops.range.RangeInclusive Idx) (item : U) :
+    (∀ e, cmpPartialOrdInst1.le self.start item = fail e →
+      core.ops.range.RangeInclusive.contains cmpPartialOrdInst cmpPartialOrdInst1
+        cmpPartialOrdInst2 self item = fail e) ∧
+    (cmpPartialOrdInst1.le self.start item = div →
+      core.ops.range.RangeInclusive.contains cmpPartialOrdInst cmpPartialOrdInst1
+        cmpPartialOrdInst2 self item = div) ∧
+    (cmpPartialOrdInst1.le self.start item = ok false →
+      core.ops.range.RangeInclusive.contains cmpPartialOrdInst cmpPartialOrdInst1
+        cmpPartialOrdInst2 self item = ok false) ∧
+    (cmpPartialOrdInst1.le self.start item = ok true →
+      core.ops.range.RangeInclusive.contains cmpPartialOrdInst cmpPartialOrdInst1
+        cmpPartialOrdInst2 self item =
+        if self.exhausted then cmpPartialOrdInst2.lt item self.«end»
+        else cmpPartialOrdInst2.le item self.«end») := by
+  refine ⟨fun e h => ?_, fun h => ?_, fun h => ?_, fun h => ?_⟩ <;>
+    rw [core.ops.range.RangeInclusive.contains, h] <;> rfl

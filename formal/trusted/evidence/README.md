@@ -1,4 +1,4 @@
-# Evidence for the external models (plan steps S08–S09)
+# Evidence for the external models (plan steps S08–S09, S26–S27)
 
 `formal/trusted/Rmcp/TypesExternal.lean` and `FunsExternal.lean` model every external of the
 translation, i.e. every type and function that Charon did not translate: those of other crates
@@ -15,6 +15,7 @@ cannot compute is an `opaque` constant, which adds no axiom (`#print axioms` doe
 | `ExtModel.sipHash13 : U64 → U64 → List U8 → U64` | SipHash-1-3 of `DefaultHasher` | no statement depends on hash values (`HashMap::get` is modelled without hashing) |
 | `ExtModel.nowMs : I64` | the clock reading of `now_ms` | not a function of anything the model has |
 | `ExtModel.SerdeJsonErrorImpl : Type` | the boxed content of `serde_json::Error` | never created or inspected |
+| `ExtModel.SerdeJsonValue : Type` | `serde_json::Value` (Phase 2, S26/S27) | the translated code only moves values of this type |
 
 This follows the human decision of 2026-11-23 to convert every placeholder axiom into a
 definition (plan Section 4). Because there is no axiom, the consistency models of the earlier
@@ -230,10 +231,164 @@ Tests: every keyring test of `codec` goes through `Zeroizing::deref` (`two_key_r
   opening use `open_at` with an explicit `now` (also in `formal/docs/STATUS.md`).
 - **Tests.** `codec::within_ttl_opens`, `codec::past_ttl_is_expired` (through `open`).
 
+## Phase 2 externals (plan steps S26–S27)
+
+The Phase 2 translation (plan step S21) added 26 external functions and 6 external types,
+first as `opaque` placeholders that asserted nothing. S26/S27 (stage 1) replaced each by the
+model below (plan Section 18); all are definitions, `structure`s or inductive types, and the only
+new `opaque` constant is the carrier `ExtModel.SerdeJsonValue`. Sources are `rust-src` of the
+pinned toolchain `nightly-2026-06-01` (read in
+`~/.rustup/toolchains/nightly-2026-06-01-aarch64-apple-darwin/lib/rustlib/src/rust/library/`).
+The model laws (plan Section 18, "Evidence" column): 43 statements, signed off by the spec owner on
+2026-11-23, proved (`formal/proofs/Proofs/External/{String,Option,Std,IntParse,Net}.lean`) and
+restated in `formal/specs/Specs/External.lean` (Phase 2 part). **The differential programs of plan
+Section 18 were not built: stage 3 was dropped by human decision on 2026-11-23.** The
+reproducible evidence for these models is the cited `core`/`alloc` source and (after stage 6)
+the proved laws. The spot checks below are unrecorded scratch runs, with no committed harness or
+command; they are not reproducible evidence. Phase 2 adds no Rust test to the SDK (human
+decision H3, plan Section 19); the existing upstream tests per target are mapped at S34.
+
+New trusted helper definitions (namespace `ExtModel`, in `formal/trusted/Rmcp/`, part of the
+trust base like the models that use them): `IntErrorKind` (the six variants of
+`core::num::IntErrorKind`), `decDigit?` (value of an ASCII decimal digit), `i64DigitLoop` (the
+digit loop of `from_ascii_radix`, radix 10), `i64FromAscii` (sign handling and the loop),
+`sliceEq` and `sliceEqSameLength` (element-wise slice equality through `PartialEq`), `beNat`
+(big-endian value of a digit list in a base), `ipv4Nats` and `ipv6Nats` (the octets or segments
+of an address as natural numbers). The opaque carrier `SerdeJsonValue` is listed above.
+
+### Strings and `Arc`
+
+| External | Model | Source (`rust-src`) |
+|---|---|---|
+| `str` `PartialEq::eq` | byte-list equality (any `Str`) | `core/src/str/traits.rs` 29–31; `core/src/slice/cmp.rs` 14–29 |
+| `String` `Deref<str>` | the UTF-8 bytes (the model of `String::as_bytes`) | `alloc/src/string.rs` 2835–2837 |
+| `Arc<T>` (type) | `{data : T}` (reference counts, pointer and allocator not modelled) | `alloc/src/sync.rs` 269–276, `ArcInner` 388–397 |
+| `Arc` `Deref` | projection `data` | `alloc/src/sync.rs` 2443–2445 |
+| `Arc` `PartialEq::eq` | `data == data` through `T`'s instance | `alloc/src/sync.rs` 3580–3582, 3529–3533 |
+
+- **Stated exception.** For `T: Eq`, Rust's `Arc` equality is `ptr::eq(..) || **self ==
+  **other` (`sync.rs` 3548–3552). The model has no pointers and always compares the values; the
+  two agree whenever `T`'s equality is reflexive and does not fail; `Eq` asks for reflexivity
+  (`core/src/cmp.rs` 280–289; `MarkerEq`, `alloc/src/rc.rs` 2615–2617); `str`, the only
+  instance, has both.
+- **Planned evidence.** Laws in `Proofs/External/String.lean` (stage 2); the Phase 1 string tests
+  above (`String` models) cover `as_bytes`, which `Deref<str>` reuses.
+
+### `Option`, `Result`, slices, ranges, `MaybeUninit`
+
+| External | Model | Source (`rust-src`) |
+|---|---|---|
+| `Option::or_else` | `Some x ↦ Some x`, `None ↦ f()` via `FnOnce` | `core/src/option.rs` 1644–1655 |
+| `Option` `PartialEq::eq` | case split, `Some l, Some r ↦ l == r` | `core/src/option.rs` 2440–2449 |
+| `Result::ok` | `Ok x ↦ Some x`, `Err _ ↦ None` | `core/src/result.rs` 708–717 |
+| `slice::first` | head or `None` | `core/src/slice/mod.rs` 155–157 |
+| `slice::strip_suffix` | `as_slice`, `split_at(len − n)`, `tail == suffix` | `core/src/slice/mod.rs` 2719–2733 |
+| `[T] == [U; N]` | `false` unless length `N`, else element-wise `ne` loop | `core/src/array/equality.rs` 48–53, 10–12, 143–145; `core/src/slice/mod.rs` 851–861 (`as_array`); `core/src/slice/cmp.rs` 125–140 |
+| `SlicePattern::as_slice` for `[T; N]` | the same elements as a slice | `core/src/slice/mod.rs` 5678–5680 |
+| `RangeInclusive::contains` | `start <= item`, then `item <= end` (`item < end` if exhausted), short-circuit | `core/src/ops/range.rs` 522–528, 868–882, 1124–1137 |
+| `MaybeUninit<T>` (type) | `uninit` or `value v` (the two union fields) | `core/src/mem/maybe_uninit.rs` 355–358 |
+
+- **Stated exceptions.** The `BytewiseEq` specializations of slice and array equality
+  (`slice/cmp.rs` 146–160, `array/equality.rs` 152–158) compare bytes instead of calling `ne`;
+  for the types they apply to (`u8`, `u16` here) `ne` is the negation of byte equality and does
+  not fail, so the result is the same. `MaybeUninit` is mentioned by no generated definition (it
+  occurs in the LLBC, in the signature of `Box::new_uninit`); a partly initialised value is not
+  modelled.
+- **Spot check (2026-11-23; an unrecorded scratch run with no committed harness or command,
+  not reproducible evidence; Lean `#eval` against `rustc +nightly-2026-06-01`, identical
+  results):** `strip_suffix(&[13u8])` of `[1, 2, 13]`, `[1, 2]` and `[]`; `[u8] ==
+  [u8; 2]` with equal and unequal lengths; `(64..=127).contains` at `127` (fresh, and exhausted
+  by iteration in Rust / `exhausted = true` in Lean) and at `63`.
+- **Planned evidence.** Laws in `Proofs/External/Option.lean` (`Option`, `Result`) and
+  `Proofs/External/Std.lean` (slices, ranges), stage 2.
+
+### Integer parsing (`str::parse`, `i64::from_str`, `ParseIntError`)
+
+- **Model.** `str::parse` calls the `FromStr` instance (`core/src/str/mod.rs` 2765–2767).
+  `i64::from_str(src) = from_str_radix(src, 10)` (`core/src/num/mod.rs` 1626–1628) `=
+  from_ascii_radix(src.as_bytes(), 10)` (1677–1679), transcribed as `ExtModel.i64FromAscii`
+  and `ExtModel.i64DigitLoop` (lines 1756–1844): `""` is `Empty`; a lone `+` or `-` is
+  `InvalidDigit`; one leading `+`/`-` sets the sign; each further byte must be `0`–`9`
+  (`char::to_digit(10)`, `core/src/char/methods.rs` 402–424), else `InvalidDigit`; a value
+  leaving `[-2^63, 2^63)` is `PosOverflow` (positive) or `NegOverflow` (negative), the first
+  error from the left winning and a bad digit before an overflow at the same position (checked
+  loop, 1815–1841; the unchecked loop for at most 15 digits, 1791–1814, cannot overflow).
+  `ParseIntError` is `{kind}` (`core/src/num/error.rs` 74–76) and `IntErrorKind` has its six
+  variants (93–129). Never panics (radix 10 passes the radix check).
+- **Spot check (2026-11-23; an unrecorded scratch run with no committed harness or command,
+  not reproducible evidence; the Lean models evaluated with `#eval` and the same inputs run
+  through `str::parse::<i64>` compiled by `rustc +nightly-2026-06-01`; identical results):**
+  `""` Empty; `"+"`, `"-"`, `"+-1"`, `"--1"`, `" 1"`, `"1 "`, `"٣"` InvalidDigit; `"007"` 7;
+  `"-0"` 0; `i64::MAX`, `i64::MIN` accepted; one past each PosOverflow/NegOverflow;
+  `"99999999999999999999a"` PosOverflow; `"1a99999999999999999999"` and
+  `"922337203685477580a"` InvalidDigit. Two independent reviewers (S26/S27 review round 1) also
+  ran scratch comparisons against `rustc +nightly-2026-06-01` with 0 mismatches over 200,026
+  inputs, equally unrecorded.
+- **Not built (stage 3 dropped, 2026-11-23).** Planned was a differential
+  test against `i64::from_str` over a corpus (signs, empty, `+`/`-` alone, leading zeros, both
+  bounds and one past each, non-ASCII digits, whitespace) plus 10^6 random strings over
+  `[+\-0-9a ]`. The law `model = Defs.parseI64` (`Proofs/External/IntParse.lean`) is deferred
+  until after plan step S24, which defines `Defs.parseI64`; the stage-2 drafts state laws about
+  the model only.
+
+### IP addresses (`Ipv4Addr`, `Ipv6Addr`)
+
+| External | Model | Source (`core/src/net/ip_addr.rs`) |
+|---|---|---|
+| `Ipv4Addr` (type) | `{addrOctets : Array U8 4}` | 74–76 (`octets: [u8; 4]`) |
+| `Ipv6Addr` (type) | `{addrSegments : Array U16 8}` (stated change of representation) | 168–170 (`octets: [u8; 16]`); `segments` 1495–1510 |
+| `Ipv4Addr::octets` | the octets | 668–670 |
+| `Ipv4Addr::is_unspecified` | big-endian value `= 0` | 728–730 |
+| `Ipv4Addr::is_loopback` | `octets[0] == 127` | 750–752 |
+| `Ipv4Addr::is_private` | `[10, ..]`, `[172, 16..=31, ..]`, `[192, 168, ..]` | 781–788 |
+| `Ipv4Addr::is_link_local` | `[169, 254, ..]` | 809–811 |
+| `Ipv4Addr::is_multicast` | `224 <= octets[0] <= 239` | 1010–1012 |
+| `Ipv4Addr::is_broadcast` | big-endian value `= 0xffffffff` | 1032–1034, `BROADCAST` 652 |
+| `From<u32> for Ipv4Addr` | big-endian bytes (`from_bits`, `to_be_bytes`) | 1288–1290, 608–610 |
+| `Ipv6Addr::segments` | the segments | 1495–1510 |
+| `Ipv6Addr::is_unspecified` | value `= 0` (`::`) | 1558–1560, `UNSPECIFIED` 1479 |
+| `Ipv6Addr::is_loopback` | value `= 1` (`::1`) | 1582–1584, `LOCALHOST` 1462 |
+| `Ipv6Addr::is_multicast` | `segments[0] & 0xff00 == 0xff00` | 1942–1944 |
+
+- **Stated deviation.** Rust stores an `Ipv6Addr` as 16 octets; the model stores the 8 segments
+  `segments()` computes from them (a bijection), as plan Section 18 specifies. The translated
+  code reads an address only through the four `Ipv6Addr` functions above, so no result depends
+  on the representation. The field names `addrOctets`/`addrSegments` avoid the generated names
+  of the methods `octets`/`segments`.
+- **Spot check (2026-11-23; an unrecorded scratch run with no committed harness or command,
+  not reproducible evidence; Lean `#eval` against the same calls compiled by
+  `rustc +nightly-2026-06-01`, identical results):** `From<u32>` of `0x7f000001` gives
+  `[127, 0, 0, 1]`; the six IPv4 predicates on `127.0.0.1`, `0.0.0.0`, `255.255.255.255`,
+  `10.0.0.1`, `172.16.0.1`, `172.32.0.1`, `192.168.1.1`, `169.254.1.1`, `224.0.0.1`,
+  `239.0.0.0`, `240.0.0.0`; the three IPv6 predicates on `::1`, `::`, `ff02::1`, `feff::`,
+  `::1:0`. Two independent reviewers (S26/S27 review round 1) also ran scratch comparisons
+  against `rustc +nightly-2026-06-01` with 0 mismatches (IPv4: 100,586 addresses; IPv6: 100,011
+  addresses), equally unrecorded.
+- **Not built (stage 3 dropped, 2026-11-23).** Planned was: IPv4 exhaustive
+  over all 2^32 addresses for every predicate, `octets` and `from`; IPv6 every listed prefix
+  boundary plus 10^6 random addresses; a Cargo program on the pinned nightly and a compiled Lean
+  executable in a separate Lake project, comparing per-function digests (plan Section 18, with
+  its fallback to an exhaustive Lean proof if the runtime exceeds a few hours).
+
+### Opaque value (`serde_json::Value`)
+
+- **Model.** `def serde_json.value.Value := ExtModel.SerdeJsonValue`, an `opaque` type
+  (`serde_json-1.0.154/src/value/mod.rs` 116–176, `pub enum Value`). The targets only move values
+  (`ErrorData.data : Option Value`); no model creates, inspects or compares one. No evidence is
+  needed beyond that observation (plan Section 18).
+
 ## Spec statements and proofs
 
-The facts later proofs need are stated in `formal/specs/Drafts/External.lean` (72 statements,
-success and failure cases) and proved in `formal/proofs/Proofs/External/` (`Base64.lean`,
-`String.lean`, `Prim.lean`, `Std.lean`); `formal/specs/Drafts/Staged/External.lean` restates
-them with `recall` and checks their axioms (each at most `propext`, `Classical.choice`,
-`Quot.sound`).
+Phase 1: the facts later proofs needed (72 statements, success and failure cases) are proved in
+`formal/proofs/Proofs/External/` (`Base64.lean`, `String.lean`, `Prim.lean`, `Std.lean`);
+`formal/specs/Specs/External.lean` restates them as theorems `Theorems.External.*` and checks
+their axioms with `#print axioms` (each at most `propext`, `Classical.choice`, `Quot.sound`).
+Their draft file (`formal/specs/Drafts/External.lean` at the time) was never committed: the
+statements entered git already incorporated, in commit `af41799` (`git show
+af41799:formal/specs/Specs/External.lean`).
+
+Phase 2: 43 statements, drafted by an AI agent (Claude Code `mcp-spec`, `claude-opus-5-5`), reviewed
+(round 1: two agents, no blocking finding), signed off by the spec owner on 2026-11-23, proved by
+separate `mcp-lean` agents and restated in `formal/specs/Specs/External.lean`; the draft file
+(uncommitted) was removed at incorporation. Each law depends on at most `propext`,
+`Classical.choice` and `Quot.sound`.

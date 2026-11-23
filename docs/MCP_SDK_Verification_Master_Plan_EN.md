@@ -231,7 +231,7 @@ For rs1, the opening codec is either the same single key or a ring whose `rs1_fa
 
 Aeneas translates only the crate. Every function it calls from outside (std functions the Aeneas library does not model, the `prim` functions, `now_ms`) is declared by hand in `formal/trusted/Rmcp/FunsExternal.lean` (types in `TypesExternal.lean`), starting from the generated `*External_Template.lean` files. Each contract describes a primitive on its own terms; no contract may assume that a target function (W or E) is correct.
 
-**Decision (human, 2026-11-23): no axioms in the trusted base.** Every external is a Lean definition (functions) or `structure` (types) with the generated name and signature; what a model cannot compute is an `opaque` constant, which adds no axiom (`#print axioms` does not list it). The four opaque constants are `ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs` and the type `ExtModel.SerdeJsonErrorImpl`. The laws the earlier design stated as axioms (Base64 round trip, `HashMap::get`) are theorems in `formal/proofs/Proofs/External/`. What remains trusted is that each definition describes its Rust function, with the stated exceptions in its docstring (evidence: `formal/trusted/evidence/README.md`).
+**Decision (human, 2026-11-23): no axioms in the trusted base.** Every external is a Lean definition (functions) or `structure` (types) with the generated name and signature; what a model cannot compute is an `opaque` constant, which adds no axiom (`#print axioms` does not list it). The four opaque constants (five since S26/S27, which adds the abstract type `ExtModel.SerdeJsonValue`) are `ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs` and the type `ExtModel.SerdeJsonErrorImpl`. The laws the earlier design stated as axioms (Base64 round trip, `HashMap::get`) are theorems in `formal/proofs/Proofs/External/`. What remains trusted is that each definition describes its Rust function, with the stated exceptions in its docstring (evidence: `formal/trusted/evidence/README.md`).
 
 | Contract | Model | Not established |
 |---|---|---|
@@ -1106,7 +1106,7 @@ Section 3's meaning of a spec applies unchanged: `f x ⦃ r => P r ⦄` says tha
 
 **M01–M05 (generic messages).** `JsonRpcMessage<Req, Resp, Not>` is generic. The specs are stated for all type parameters and need no premise. `serde_json::Value` appears only inside `ErrorData` and is never inspected (an opaque type, Section 18).
 
-**M06 (integer parsing).** `Defs.parseI64` is written from Rust's documented grammar for `i64::from_str` (`core::num`, radix 10): an optional single `+` or `-`, then at least one ASCII digit, and nothing else. Leading zeros are allowed. `"+"`, `"-"`, `""`, whitespace and non-ASCII digits are rejected. Values outside `[-2^63, 2^63 - 1]` are rejected. The model of `i64::from_str` in `trusted/` is a separate definition; a proved law (`Proofs/External/IntParse.lean`) states that it equals `Defs.parseI64`, and the differential test of Section 18 checks it against `std`.
+**M06 (integer parsing).** `Defs.parseI64` is written from Rust's documented grammar for `i64::from_str` (`core::num`, radix 10): an optional single `+` or `-`, then at least one ASCII digit, and nothing else. Leading zeros are allowed. `"+"`, `"-"`, `""`, whitespace and non-ASCII digits are rejected. Values outside `[-2^63, 2^63 - 1]` are rejected. The model of `i64::from_str` in `trusted/` is a separate definition; a proved law (`Proofs/External/IntParse.lean`) states that it equals `Defs.parseI64` (after S24; until then the laws are about the model only, human decision 2026-11-23). The differential test once planned against `std` was dropped (Section 18, amendment).
 
 **M07 (correlation).** Derived `PartialEq` on `NumberOrString` compares `Arc<str>` by contents (the `Arc` model's equality is value equality). The code is asymmetric, and the spec must state it (no comment or test says whether this is intended): `Number 1` matches `String "1"`, but `String "1"` does not match `Number 1`.
 
@@ -1122,7 +1122,7 @@ Section 3's meaning of a spec applies unchanged: `f x ⦃ r => P r ⦄` says tha
 
 **A01–A03 (addresses).**
 - The specs are stated on octet and segment lists, with `Defs.Net.inPrefix` defined from first principles, not with the `std` predicates.
-- The `std` predicates are models (Section 18), so each theorem rests on the models matching `core::net` at the pinned nightly. That is why the IPv4 models are tested exhaustively.
+- The `std` predicates are models (Section 18), so each theorem rests on the models matching `core::net` at the pinned nightly. The differential tests planned for this were dropped (Section 18, amendment).
 - `::` and `::1` are excluded from the IPv4-compatible case of A01 (they fall through to A03's loopback/unspecified clauses).
 - `::0.0.0.2` embeds `0.0.0.2`, which A02 rejects through `0/8`.
 - The 6to4 case takes segments `b`, `c`, not `g`, `h`.
@@ -1130,6 +1130,8 @@ Section 3's meaning of a spec applies unchanged: `f x ⦃ r => P r ⦄` says tha
 ## 18. External models for Phase 2 (trusted-base delta)
 
 The human decision of 2026-11-23 stands: **no `axiom` in `trusted/`**. Each new external is a Lean definition, `structure` or `opaque` constant with the generated name and signature, its Rust source cited by file and line, and its stated exceptions in its docstring (Section 4, "Rules"). The S21 translation PR adds them as temporary `opaque` placeholders (each `Result` type needs an `Inhabited` instance). They add no axiom, but they assert nothing about the function, the situation Section 4 forbids for finished models. Proofs that do not call them (M08, T01–T03) are unaffected. S26/S27 replace each placeholder with an exact model before any proof that calls it starts, and no placeholder survives S27.
+
+**Amendment (human decision 2026-11-23, S26/S27):** the differential tests of this section (stage 3) were dropped. The models' fidelity rests on the cited `core`/`alloc` source of the pinned nightly, read by two independent reviewers, and on the proved laws (stage 6); unrecorded scratch comparisons against `rustc` found no mismatch but are not reproducible evidence. The IPv4 models are therefore not tested exhaustively; S32 proves A01–A03 through the model laws (`Proofs/External/Net.lean`), which characterise every predicate on all inputs.
 
 | Group | Externals (generated names) | Model | Evidence |
 |---|---|---|---|
@@ -1157,7 +1159,7 @@ Pilot result: all 35 `Funs.lean` definitions (the 25 targets and their helpers) 
 
 **Tests (human decision H3).** M06/M07 are `pub(crate)` and T01–T08, A01–A03 are private, so their unit tests would have to live in their modules. M01–M05 and M08–M14 are `pub`, but an integration test under `crates/rmcp/tests/` is also an SDK `*.rs` file. Either way, new Rust tests would change the SDK sources. Phase 2 therefore relies on:
 - the existing upstream tests, mapped per target at S34 (for example the nine `bounded_sse_stream_*` tests for T01–T03, `test_standard_notification_check` for T05/T06, the allowed-origin port tests in `tower.rs` such as `explicit_port_parses_as_exact`, and the metadata-URL tests in `auth.rs` such as `metadata_url_checks_bracketed_ipv6_literals`, which reach A02/A03 only indirectly);
-- the differential programs of Section 18.
+- the differential programs of Section 18 (**dropped**, human decision 2026-11-23; for the M06 and A01–A03 boundary cases of Section 22 the proved model laws and the target theorems take their place; S34 records that no executable test exercises them, or the owner asks for patch 02).
 
 If the owner wants boundary tests beyond those, they go into a **test-only** translation patch `02-phase2-tests.patch`: only `#[cfg(test)]` code, which the translated `--lib` build does not compile. The linkage check runs on the unpatched source, so patch 02 cannot affect any `ORIGINAL` claim. `patched-tests.yml` runs them.
 
@@ -1246,7 +1248,7 @@ Days are working days of a two-week sprint, relative to S20. Dependencies govern
 | S24 | D2–3 | S20 | `Defs/JsonRpc.lean`, `Defs/IntParse.lean`, `Defs/Methods.lean`, `formal/specs/Drafts/` | `mcp-spec` + ≥ 2 `mcp-review` + spec owner — M01–M14, T04–T08, C03, C05 and the Section 16.1 joint lemmas statements signed off |
 | S25 | D2–4 | S20 | `Defs/Sse.lean`, `Defs/Net.lean`, `formal/specs/Drafts/` | Same — T01–T03, A01–A03, C01, C02, C04 signed off |
 | S26 | D3–4 | S21 | `FunsExternal.lean`, `TypesExternal.lean` (strings, `Arc`, Option, Result, slices), `Proofs/External/{String,Std,Option}.lean`, `Specs/External.lean`, `evidence/README.md` | Extraction + reviewers + spec owner — models are definitions; laws proved; signed off |
-| S27 | D3–5 | S21, S24 | Same files (`core::net`, integer parsing), `Proofs/External/{Net,IntParse}.lean`, `evidence/differential/{net,intparse}/` | Extraction + reviewers + spec owner — exhaustive IPv4 and sampled IPv6 differential pass; integer-parse corpus and random tests pass; `parseI64` law proved; signed off |
+| S27 | D3–5 | S21, S24 | Same files (`core::net`, integer parsing), `Proofs/External/{Net,IntParse}.lean` | Extraction + reviewers + spec owner — models and laws reviewed by ≥ 2 agents and signed off; laws proved; the `parseI64` law after S24 (human decisions 2026-11-23: the differential tests were dropped, Section 18 amendment) |
 | S28 | D3–5 | S24, S26 | batch 1 proof files; `Specs/Model.lean`, `Specs/Model/Task.lean` | Lean — M01–M05, M08–M14, C03 and the Section 16.1 joint lemmas checked and restated |
 | S29 | D4–6 | S24, S26, H2 | batch 2 proof files; `Specs/Transport/AsyncRw.lean`, `…/Tower.lean`; `native-axioms.lock` | Lean — T04–T08, C05 checked; 30 lock entries; `#guard_msgs` lists show them |
 | S30 | D5–6 | S27, S28 | `Model/NumberOrString.lean`; `Specs/Model.lean` | Lean — M06, M07 checked |
@@ -1282,7 +1284,7 @@ All 25 verified, plus C01–C05, is the goal.
 |---|---|---|
 | H1 | **Accepted 2026-11-23 (human).** One translated configuration with the widened feature list (Section 15), instead of a second configuration | Adopt: the Phase 1 output is byte-identical under it, and one configuration keeps one CI path |
 | H2 | **Accepted 2026-11-23 (human).** Accept 30 more `toStr` native-code axioms (same class, locked, kernel-provable) for T05–T08 | Accept; alternative: replace T05–T08 with reserves (T08 calls T07), and C05 goes too |
-| H3 | **Accepted 2026-11-23 (human)**, as recommended. Boundary tests: existing upstream tests plus differential programs only, or also a test-only patch 02. A test-only patch is a process exception: VERIFICATION.md §4 defines translation patches as behaviour-preserving edits that make an item translate | Upstream + differential first; patch 02 only for a case S34 finds uncovered; if created, the exception is recorded in `formal/docs/STATUS.md`, "Documents", as a further deviation from VERIFICATION.md (which is kept verbatim) |
+| H3 | **Accepted 2026-11-23 (human)**, as recommended; the differential programs were later dropped (2026-11-23, Section 18 amendment). Boundary tests: existing upstream tests plus differential programs only, or also a test-only patch 02. A test-only patch is a process exception: VERIFICATION.md §4 defines translation patches as behaviour-preserving edits that make an item translate | Upstream + differential first; patch 02 only for a case S34 finds uncovered; if created, the exception is recorded in `formal/docs/STATUS.md`, "Documents", as a further deviation from VERIFICATION.md (which is kept verbatim) |
 | H4 | **Accepted 2026-11-23 (human).** The `opaque` entry for the `AuthorizationManager` type (Section 15) | Accept: the type is not used by A01–A03 and does not appear in the generated files |
 | H5 | **Open (TBD, human 2026-11-23).** Project owner and budget for Phase 2 (and the open Phase 1 S01). The Phase 2 spec owner is Hoang Le Truong (named 2026-11-23) | — |
 

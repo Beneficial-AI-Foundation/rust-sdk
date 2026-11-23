@@ -473,7 +473,8 @@ model) is declared by hand in `formal/trusted/Rmcp/FunsExternal.lean` (types in
   opaque value: `def hmac_sha256 k m := ok (hmacSha256 k m)` with `opaque hmacSha256`.
 - **No axioms in `trusted/`** (human decision 2026-11-23). Every external is a definition or a
   `structure`; what cannot be computed is an `opaque` constant (`hmacSha256`, `sipHash13`,
-  `nowMs`, `SerdeJsonErrorImpl`), which adds no axiom. Laws such as `b64Decode (b64 x) = some x`
+  `nowMs`, `SerdeJsonErrorImpl`, and since S26/S27 the abstract type `SerdeJsonValue`), which adds
+  no axiom. Laws such as `b64Decode (b64 x) = some x`
   are theorems in `formal/proofs/Proofs/External/`, and `trusted/axioms.lock` stays empty. Adding
   an axiom again is a human decision.
 - **No axioms on merged types.** Do not axiomatise a function whose Lean type merges distinct Rust

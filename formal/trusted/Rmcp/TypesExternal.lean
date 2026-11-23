@@ -16,9 +16,14 @@ patched copy (patch 01 on origin/main 7caec76), which gives the same translation
 line numbers below refer to it. Plan steps S08–S09 replaced every placeholder of that (Phase 1)
 template: each type is now a `structure` that models the fields of the Rust type; the one field
 that no translated code and no model looks inside (`serde_json`'s boxed `ErrorImpl`) has an
-`opaque` type. The six external types that the Phase 2 translation (plan step S21) added are
-temporary placeholders over `opaque` carrier types (S21, last section), to be replaced by
-exact models at S26/S27 (plan Section 18). This module declares no axiom.
+`opaque` type. The six external types that the Phase 2 translation (plan step S21) added were
+temporary placeholders over `opaque` carrier types; plan steps S26/S27 replaced them (last
+section, plan Section 18): `MaybeUninit` is an inductive type of its two union fields,
+`Ipv4Addr` a structure of its four octets, `Ipv6Addr` a structure of its eight segments (a
+stated change of representation), `ParseIntError` a structure of its error kind, and `Arc` a
+structure holding its value; `serde_json::Value`, whose values the translated code only moves,
+is a definition over the `opaque` carrier `ExtModel.SerdeJsonValue`. This module declares no
+axiom.
 
 The `@[rust_type]` names and the source lines in the docstrings are those Aeneas generated.
 Source paths: `/rustc/library/…` is the `rust-src` of the pinned toolchain `nightly-2026-06-01`;
@@ -140,72 +145,117 @@ structure zeroize.Zeroizing (Z : Type) : Type where
   /-- The wrapped value (the tuple field `.0`). -/
   inner : Z
 
-/-! ## Placeholders of plan step S21
+/-! ## Types of the Phase 2 translation (plan steps S21, S26/S27)
 
-The Phase 2 translation (plan step S21) uses six more external types. Each is a temporary
-placeholder with the generated name and `@[rust_type]` attribute of the template: a `def`
-equal to an `opaque` carrier type `ExtModel.…Placeholder` (the Aeneas `@[rust_type]` attribute
-accepts an inductive type, an axiom or a definition, not an `opaque` constant;
-`Aeneas/Extract/Extract.lean`, `processType`). `opaque` adds no axiom, and nothing about the
-carrier is known beyond its existence. Plan steps S26/S27 replace each one by an exact model
-(plan Section 18). -/
-
-/-- The opaque carrier of the placeholder `core.mem.maybe_uninit.MaybeUninit`. -/
-opaque ExtModel.MaybeUninitPlaceholder (T : Type) : Type
+The six external types that the Phase 2 translation (plan step S21) uses. Plan steps S26/S27
+replaced the S21 placeholders by the models below (plan Section 18). Five are exact models of
+the Rust type; `serde_json::Value` is an abstract type over an `opaque` carrier, because the
+translated code only moves its values. -/
 
 /-- [core::mem::maybe_uninit::MaybeUninit]
     Source: '/rustc/library/core/src/mem/maybe_uninit.rs', lines 355:0-355:24
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model: the two fields of the Rust union** `pub union MaybeUninit<T> { uninit: (), value:
+ManuallyDrop<T> }` (`maybe_uninit.rs` lines 355–358), as a choice between "no value" and an
+initialised value. Why the type is here: it occurs only in the LLBC, in the signature of
+`alloc::boxed::Box::new_uninit`, which Charon extracted as a dependency; Aeneas therefore
+declares it in the template, but no generated Lean definition and no model mentions it.
+Not modelled: a partly initialised value (the union's bytes may be partly written), which no
+translated code observes. -/
 @[rust_type "core::mem::maybe_uninit::MaybeUninit"]
-def core.mem.maybe_uninit.MaybeUninit (T : Type) : Type := ExtModel.MaybeUninitPlaceholder T
-
-/-- The opaque carrier of the placeholder `core.net.ip_addr.Ipv4Addr`. -/
-opaque ExtModel.Ipv4AddrPlaceholder : Type
+inductive core.mem.maybe_uninit.MaybeUninit (T : Type) : Type where
+  /-- No value has been written (the field `uninit`). -/
+  | uninit : core.mem.maybe_uninit.MaybeUninit T
+  /-- An initialised value (the field `value`; `ManuallyDrop<T>` is a transparent wrapper). -/
+  | value (v : T) : core.mem.maybe_uninit.MaybeUninit T
 
 /-- [core::net::ip_addr::Ipv4Addr]
     Source: '/rustc/library/core/src/net/ip_addr.rs', lines 74:0-74:19
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model: the one field of the Rust struct** `pub struct Ipv4Addr { octets: [u8; 4] }`
+(`ip_addr.rs` lines 74–76), the four octets in network order (the first octet is the leftmost
+in dotted notation). The field is named `addrOctets` because the generated name of the method
+`Ipv4Addr::octets` is `core.net.ip_addr.Ipv4Addr.octets`, which a field `octets` would
+take. -/
 @[rust_type "core::net::ip_addr::Ipv4Addr"]
-def core.net.ip_addr.Ipv4Addr : Type := ExtModel.Ipv4AddrPlaceholder
-
-/-- The opaque carrier of the placeholder `core.net.ip_addr.Ipv6Addr`. -/
-opaque ExtModel.Ipv6AddrPlaceholder : Type
+structure core.net.ip_addr.Ipv4Addr : Type where
+  /-- The four octets, most significant first. -/
+  addrOctets : Std.Array Std.U8 4#usize
 
 /-- [core::net::ip_addr::Ipv6Addr]
     Source: '/rustc/library/core/src/net/ip_addr.rs', lines 168:0-168:19
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model: the eight 16-bit segments.** The Rust struct is `pub struct Ipv6Addr { octets: [u8;
+16] }` (`ip_addr.rs` lines 168–170). Stated deviation of representation (plan Section 18): the
+model stores the segments that `Ipv6Addr::segments` computes from the octets (lines 1495–1510:
+segment `i` is the big-endian `u16` of octets `2i` and `2i + 1`). That map is a bijection
+between `[u8; 16]` and `[u16; 8]`, and the translated code reads an address only through
+`segments`, `is_loopback`, `is_unspecified` and `is_multicast`, whose models
+(`Rmcp.FunsExternal`) are stated on the segments, so no result of a translated function
+depends on the choice. The field is named `addrSegments` because a field `segments` would take
+the generated name of the method `Ipv6Addr::segments`. -/
 @[rust_type "core::net::ip_addr::Ipv6Addr"]
-def core.net.ip_addr.Ipv6Addr : Type := ExtModel.Ipv6AddrPlaceholder
+structure core.net.ip_addr.Ipv6Addr : Type where
+  /-- The eight segments, most significant first. -/
+  addrSegments : Std.Array Std.U16 8#usize
 
-/-- The opaque carrier of the placeholder `core.num.error.ParseIntError`. -/
-opaque ExtModel.ParseIntErrorPlaceholder : Type
+/-- The kinds of integer parsing error: Rust's `pub enum IntErrorKind` (`core/src/num/error.rs`
+lines 93–129, `#[non_exhaustive]`), all six variants in source order. `i64::from_str` produces
+only `Empty`, `InvalidDigit`, `PosOverflow` and `NegOverflow` (`core/src/num/mod.rs`, lines
+1756–1844). A helper type of the model of `ParseIntError`: Aeneas did not need the Rust type, so
+it has no generated name. -/
+inductive ExtModel.IntErrorKind : Type where
+  /-- The input is empty. -/
+  | Empty
+  /-- A byte that is not a decimal digit, or a sign alone or not in first position. -/
+  | InvalidDigit
+  /-- The value is above the maximum of the target type. -/
+  | PosOverflow
+  /-- The value is below the minimum of the target type. -/
+  | NegOverflow
+  /-- The value is zero, for a nonzero target type. -/
+  | Zero
+  /-- The value is not a power of two (conversion to an alignment). -/
+  | NotAPowerOfTwo
 
 /-- [core::num::error::ParseIntError]
     Source: '/rustc/library/core/src/num/error.rs', lines 74:0-74:24
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model: the one field of the Rust struct** `pub struct ParseIntError { pub(super) kind:
+IntErrorKind }` (`error.rs` lines 74–76), with `IntErrorKind` as `ExtModel.IntErrorKind`. -/
 @[rust_type "core::num::error::ParseIntError"]
-def core.num.error.ParseIntError : Type := ExtModel.ParseIntErrorPlaceholder
-
-/-- The opaque carrier of the placeholder `alloc.sync.Arc`. -/
-opaque ExtModel.ArcPlaceholder (T : Type) : Type
+structure core.num.error.ParseIntError : Type where
+  /-- The kind of the error (`ParseIntError::kind`, lines 136–138). -/
+  kind : ExtModel.IntErrorKind
 
 /-- [alloc::sync::Arc]
     Source: '/rustc/library/alloc/src/sync.rs', lines 269:0-272:1
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model: a structure holding the shared value.** The Rust struct (`sync.rs` lines 269–276)
+holds a pointer to an `ArcInner<T> { strong, weak, data: T }` (lines 388–397) and the
+allocator. The value model keeps `data` only: the reference counts, the pointer identity and the
+allocator (only `Global`, a unit struct, occurs) are not modelled. The translated code never
+mutates the shared value, so sharing is not observable in it. One stated consequence, in the
+model of `PartialEq` (`Rmcp.FunsExternal`): the pointer-equality shortcut of Rust's `Arc`
+equality for `T: Eq` is not represented. -/
 @[rust_type "alloc::sync::Arc"]
-def alloc.sync.Arc (T : Type) : Type := ExtModel.ArcPlaceholder T
+structure alloc.sync.Arc (T : Type) : Type where
+  /-- The shared value (the field `data` of `ArcInner`). -/
+  data : T
 
-/-- The opaque carrier of the placeholder `serde_json.value.Value`. -/
-opaque ExtModel.SerdeJsonValuePlaceholder : Type
+/-- The carrier of `serde_json.value.Value`: a JSON value (`serde_json-1.0.154/src/value/mod.rs`,
+`pub enum Value`, lines 116–176). **Opaque**: no translated function and no external model
+creates, inspects or compares one; the targets only move values of this type (the field `data :
+Option Value` of `ErrorData`). -/
+opaque ExtModel.SerdeJsonValue : Type
 
 /-- [serde_json::value::Value]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/value/mod.rs', lines 116:0-116:14
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model: an abstract type** (plan Section 18, "Opaque values"), the `opaque` carrier
+`ExtModel.SerdeJsonValue`. Faithful for the translated code, which only moves values of this
+type; a statement can say that a value is passed through unchanged and nothing more. The
+`@[rust_type]` attribute needs a definition, not an `opaque` constant (Aeneas
+`Aeneas/Extract/Extract.lean`, `processType`), hence the `def` over the carrier. -/
 @[rust_type "serde_json::value::Value"]
-def serde_json.value.Value : Type := ExtModel.SerdeJsonValuePlaceholder
+def serde_json.value.Value : Type := ExtModel.SerdeJsonValue

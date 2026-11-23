@@ -22,6 +22,9 @@ import Proofs.Model.RequestStateWire.OpenFrame
 import Proofs.Model.RequestStateWire.Frame
 import Proofs.External.Base64
 import Proofs.External.String
+import Proofs.External.Option
+import Proofs.External.Net
+import Proofs.External.IntParse
 import Proofs.External.Prim
 import Proofs.External.Std
 import Proofs.External.Iter

@@ -3,7 +3,7 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.FunsExternal
+import Rmcp.Funs
 import Proofs.External.Base64
 
 /-!
@@ -14,6 +14,10 @@ Lemmas about `ExtModel.utf8` (the bytes of a Lean `String`) and `ExtModel.strOfB
 (`formal/trusted/Rmcp/FunsExternal.lean`): they are inverse to each other, `utf8` is additive and
 counts `utf8ByteSize` bytes, ASCII text has one byte per character, and the Aeneas `toStr` of a
 literal has the bytes `utf8` gives.
+
+Section "Phase 2: strings and `Arc`" proves the signed-off laws of plan steps S26/S27 for
+`<str as PartialEq>::eq`, `<String as Deref>::deref` and `Arc` (`deref`, `eq`). It needs
+`Rmcp.Funs` for the instance `Str.Insts.CoreCmpPartialEqStr`.
 -/
 
 open Aeneas Aeneas.Std
@@ -182,3 +186,66 @@ theorem maxStringBytes_le_usize_max : maxStringBytes ≤ Usize.max := by
   rcases System.Platform.numBits_eq with h | h <;> simp [h]
 
 end Proofs.External.Utf8
+
+/-! ## Phase 2: strings and `Arc` -/
+
+open Result
+open rmcp ExtModel Proofs.External.Utf8
+
+/-- **Spec theorem for `<str as PartialEq>::eq`**: byte-list equality, for every `Str`. -/
+@[step]
+theorem Str.Insts.CoreCmpPartialEqStr.eq_spec (self : Str) (other : Str) :
+    Str.Insts.CoreCmpPartialEqStr.eq self other ⦃ (result : Bool) =>
+      (result = true ↔ self.val = other.val) ⦄ := by
+  simp [Str.Insts.CoreCmpPartialEqStr.eq]
+
+/-- **Spec theorem for `<String as Deref<Target = str>>::deref`**: the UTF-8 bytes of the
+string. The precondition holds for every Rust `String` (at most `isize::MAX` bytes); see
+`deref_fail`. -/
+@[step]
+theorem alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec
+    (self : String) (h : self.utf8ByteSize ≤ Usize.max) :
+    alloc.string.String.Insts.CoreOpsDerefDerefStr.deref self ⦃ (result : Str) =>
+      result.val = utf8 self ⦄ := by
+  rw [← length_utf8] at h
+  simp only [alloc.string.String.Insts.CoreOpsDerefDerefStr.deref, alloc.string.String.as_bytes,
+    dif_pos h]
+  exact (WP.spec_ok (p := fun result : Str => result.val = utf8 self) _).2 rfl
+
+/-- `<String as Deref>::deref` on a Lean `String` longer than `Usize.max` bytes (no Rust
+`String` is): `fail maximumSizeExceeded`. -/
+theorem alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_fail
+    (self : String) (h : Usize.max < self.utf8ByteSize) :
+    alloc.string.String.Insts.CoreOpsDerefDerefStr.deref self = fail Error.maximumSizeExceeded := by
+  rw [← length_utf8] at h
+  simp only [alloc.string.String.Insts.CoreOpsDerefDerefStr.deref, alloc.string.String.as_bytes,
+    dif_neg (Nat.not_le.2 h)]
+  rfl
+
+/-- **Spec theorem for `<Arc<T> as Deref>::deref`**: the shared value, for every `T` and every
+allocator type `A`. -/
+@[step]
+theorem alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec {T : Type} (A : Type)
+    (self : alloc.sync.Arc T) :
+    alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref A self ⦃ (result : T) =>
+      result = self.data ⦄ := by
+  simp [alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref]
+
+/-- `<Arc<T> as PartialEq>::eq` is the equality of the instance of `T` on the shared values,
+for every instance, including its failure. -/
+theorem alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq {T : Type} (A : Type)
+    (corecmpPartialEqInst : core.cmp.PartialEq T T) (self : alloc.sync.Arc T)
+    (other : alloc.sync.Arc T) :
+    alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq A corecmpPartialEqInst self other =
+      corecmpPartialEqInst.eq self.data other.data := by
+  rfl
+
+/-- **Spec theorem for `<Arc<str> as PartialEq>::eq`** at the instance of the translation:
+equality of the bytes of the shared strings. -/
+@[step]
+theorem alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec (A : Type)
+    (self : alloc.sync.Arc Str) (other : alloc.sync.Arc Str) :
+    alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq A Str.Insts.CoreCmpPartialEqStr self other
+      ⦃ (result : Bool) => (result = true ↔ self.data.val = other.data.val) ⦄ := by
+  rw [alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq]
+  exact Str.Insts.CoreCmpPartialEqStr.eq_spec self.data other.data

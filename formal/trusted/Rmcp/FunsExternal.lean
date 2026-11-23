@@ -22,9 +22,14 @@ four `prim` functions and `RequestStateCodec::now_ms`, have none in the template
 declares no axiom.** The two things the models cannot compute are `opaque` constants, which
 add no axiom: the HMAC-SHA256 reference function `ExtModel.hmacSha256` and the clock reading
 `ExtModel.nowMs` (and, for the unused hasher, `ExtModel.sipHash13`). The 26 external functions
-that the Phase 2 translation (plan step S21) added are temporary `opaque` placeholders (S21,
-last section) that assert nothing; plan steps S26/S27 replace them by exact models (plan
-Section 18). The conventions below apply to the models, not to these placeholders.
+that the Phase 2 translation (plan step S21) added were temporary `opaque` placeholders; plan
+steps S26/S27 replaced them by definitions (sections "Phase 2", plan Section 18): string and
+`Arc` equality and deref; `Option::or_else`, `Option` equality, `Result::ok`, `slice::first`,
+`slice::strip_suffix`, slice-array equality, `SlicePattern::as_slice` of arrays and
+`RangeInclusive::contains`, each the `core` body transcribed; `str::parse` and
+`i64::from_str` (Rust's radix-10 grammar and error kinds); and the `Ipv4Addr`/`Ipv6Addr`
+functions transcribed from `core/src/net/ip_addr.rs`. None of them needs an `opaque` constant.
+The conventions below apply to all models.
 
 Ordering note (S21): the generated external `core.result.Result.ok` shadows Aeneas' `ok` for
 every declaration after it in the namespace `core.result.Result` (and for proofs that open it), so
@@ -46,9 +51,9 @@ panics, with the exceptions stated in its docstring. Two conventions apply throu
   model means "returns, or aborts or panics for memory reasons".
 * **`Str`.** The Aeneas `Str` is `Slice U8` and admits byte sequences that are not UTF-8,
   while a Rust `&str` is always UTF-8. Functions that only read the bytes (`str::len`,
-  `str::as_bytes`) are modelled on all of `Str`; `String::push_str`, which builds a `String`
-  from the bytes, returns `fail undef` outside the Rust domain (a non-UTF-8 `&str` is undefined
-  behaviour in Rust).
+  `str::as_bytes`, `str` equality, `i64::from_str`) are modelled on all of `Str`;
+  `String::push_str`, which builds a `String` from the bytes, returns `fail undef` outside the
+  Rust domain (a non-UTF-8 `&str` is undefined behaviour in Rust).
 * **Size convention.** A `Slice` or `String` of the model may be up to `Usize.max` bytes long,
   more than any machine can hold. The models make no claim about inputs of at least `2^61`
   bytes (2 EiB): such an input cannot exist in a running process on the translated target
@@ -713,239 +718,484 @@ are pure in the model; no spec statement may mention the functions
 def model.request_state.RequestStateCodec.now_ms : Result Std.I64 :=
   ok ExtModel.nowMs
 
-/-! ## Placeholders of plan step S21
+/-! ## Phase 2: strings and `Arc`
 
-The Phase 2 translation (plan step S21) calls 26 more external functions. Each is a temporary
-`opaque` constant with the generated name, signature and `@[rust_fun]` attribute of the
-template (in template order). `opaque` adds no axiom; its required `Inhabited` instance is
-Aeneas' `Result_Inhabited` (`fail panic`), which is never unfolded, so no statement about
-the Rust behaviour follows. Plan steps S26/S27 replace each one by an exact model (plan
-Section 18). -/
-
-/-- [core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T]}::eq]:
-    Source: '/rustc/library/core/src/array/equality.rs', lines 48:4-48:40
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq"]
-opaque Slice.Insts.CoreCmpPartialEqArray.eq
-  {T : Type} {U : Type} {N : Std.Usize} (cmpPartialEqInst : core.cmp.PartialEq
-  T U) :
-  Slice T → Array U N → Result Bool
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 668:4-668:41
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets"]
-opaque core.net.ip_addr.Ipv4Addr.octets
-  : core.net.ip_addr.Ipv4Addr → Result (Array Std.U8 4#usize)
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 728:4-728:46
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun
-  "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified"]
-opaque core.net.ip_addr.Ipv4Addr.is_unspecified
-  : core.net.ip_addr.Ipv4Addr → Result Bool
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 750:4-750:43
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback"]
-opaque core.net.ip_addr.Ipv4Addr.is_loopback
-  : core.net.ip_addr.Ipv4Addr → Result Bool
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 781:4-781:42
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private"]
-opaque core.net.ip_addr.Ipv4Addr.is_private
-  : core.net.ip_addr.Ipv4Addr → Result Bool
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 809:4-809:45
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local"]
-opaque core.net.ip_addr.Ipv4Addr.is_link_local
-  : core.net.ip_addr.Ipv4Addr → Result Bool
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1010:4-1010:44
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast"]
-opaque core.net.ip_addr.Ipv4Addr.is_multicast
-  : core.net.ip_addr.Ipv4Addr → Result Bool
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1032:4-1032:44
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast"]
-opaque core.net.ip_addr.Ipv4Addr.is_broadcast
-  : core.net.ip_addr.Ipv4Addr → Result Bool
-
-/-- [core::net::ip_addr::{impl core::convert::From<u32> for core::net::ip_addr::Ipv4Addr}::from]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1288:4-1288:32
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun
-  "core::net::ip_addr::{core::convert::From<core::net::ip_addr::Ipv4Addr, u32>}::from"]
-opaque core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from
-  : Std.U32 → Result core.net.ip_addr.Ipv4Addr
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1495:4-1495:44
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments"]
-opaque core.net.ip_addr.Ipv6Addr.segments
-  : core.net.ip_addr.Ipv6Addr → Result (Array Std.U16 8#usize)
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1558:4-1558:46
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun
-  "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified"]
-opaque core.net.ip_addr.Ipv6Addr.is_unspecified
-  : core.net.ip_addr.Ipv6Addr → Result Bool
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1582:4-1582:43
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback"]
-opaque core.net.ip_addr.Ipv6Addr.is_loopback
-  : core.net.ip_addr.Ipv6Addr → Result Bool
-
-/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast]:
-    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1942:4-1942:44
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast"]
-opaque core.net.ip_addr.Ipv6Addr.is_multicast
-  : core.net.ip_addr.Ipv6Addr → Result Bool
-
-/-- [core::num::{impl core::str::traits::FromStr<core::num::error::ParseIntError> for i64}::from_str]:
-    Source: '/rustc/library/core/src/num/mod.rs', lines 1626:12-1626:68
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun
-  "core::num::{core::str::traits::FromStr<i64, core::num::error::ParseIntError>}::from_str"]
-opaque I64.Insts.CoreStrTraitsFromStrParseIntError.from_str
-  : Str → Result (core.result.Result Std.I64 core.num.error.ParseIntError)
-
-/-- [core::ops::range::{core::ops::range::RangeInclusive<Idx>}::contains]:
-    Source: '/rustc/library/core/src/ops/range.rs', lines 522:4-525:44
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun
-  "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::contains"]
-opaque core.ops.range.RangeInclusive.contains
-  {Idx : Type} {U : Type} (cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
-  (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U) (cmpPartialOrdInst2 :
-  core.cmp.PartialOrd U Idx) :
-  core.ops.range.RangeInclusive Idx → U → Result Bool
-
-/-- [core::option::{core::option::Option<T>}::or_else]:
-    Source: '/rustc/library/core/src/option.rs', lines 1644:4-1649:28
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::option::{core::option::Option<@T>}::or_else"]
-opaque core.option.Option.or_else
-  {T : Type} {F : Type} (opsfunctionFnOnceFTupleOptionInst :
-  core.ops.function.FnOnce F Unit (Option T)) :
-  Option T → F → Result (Option T)
-
-/-- [core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq]:
-    Source: '/rustc/library/core/src/option.rs', lines 2440:4-2440:38
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun
-  "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq"]
-opaque core.option.Option.Insts.CoreCmpPartialEqOption.eq
-  {T : Type} (cmpPartialEqInst : core.cmp.PartialEq T T) :
-  Option T → Option T → Result Bool
-
-/-- [core::result::{core::result::Result<T, E>}::ok]:
-    Source: '/rustc/library/core/src/result.rs', lines 708:4-711:28
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::result::{core::result::Result<@T, @E>}::ok"]
-opaque core.result.Result.ok
-  {T : Type} {E : Type} : core.result.Result T E → Result (Option T)
-
-/-- [core::slice::{[T]}::first]:
-    Source: '/rustc/library/core/src/slice/mod.rs', lines 155:4-155:43
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::slice::{[@T]}::first"]
-opaque core.slice.Slice.first {T : Type} : Slice T → Result (Option T)
-
-/-- [core::slice::{[T]}::strip_suffix]:
-    Source: '/rustc/library/core/src/slice/mod.rs', lines 2719:4-2721:21
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::slice::{[@T]}::strip_suffix"]
-opaque core.slice.Slice.strip_suffix
-  {T : Type} {P : Type} (SlicePatternInst : core.slice.SlicePattern P T)
-  (cmpPartialEqInst : core.cmp.PartialEq T T) :
-  Slice T → P → Result (Option (Slice T))
-
-/-- [core::slice::{impl core::slice::SlicePattern<T> for [T; N]}::as_slice]:
-    Source: '/rustc/library/core/src/slice/mod.rs', lines 5678:4-5678:39
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::slice::{core::slice::SlicePattern<[@T; @N], @T>}::as_slice"]
-opaque Array.Insts.CoreSliceSlicePattern.as_slice
-  {T : Type} {N : Std.Usize} : Array T N → Result (Slice T)
-
-/-- [core::str::{str}::parse]:
-    Source: '/rustc/library/core/src/str/mod.rs', lines 2765:4-2765:56
-
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
-@[rust_fun "core::str::{str}::parse"]
-opaque core.str.Str.parse
-  {F : Type} {Clause0_Err : Type} (traitsFromStrInst : core.str.traits.FromStr
-  F Clause0_Err) :
-  Str → Result (core.result.Result F Clause0_Err)
+Plan steps S26/S27 replaced the 26 placeholders of plan step S21 by the models of this and the
+following sections (plan Section 18). -/
 
 /-- [core::str::traits::{impl core::cmp::PartialEq<str> for str}::eq]:
     Source: '/rustc/library/core/src/str/traits.rs', lines 29:4-29:37
+    Name pattern: [core::str::traits::{core::cmp::PartialEq<str, str>}::eq]
+    Visibility: public
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model:** byte-list equality (`self.as_bytes() == other.as_bytes()`, lines 29–31; slice
+equality of `u8`: equal lengths and equal bytes, `core/src/slice/cmp.rs` lines 14–29), for every
+`Str`. -/
 @[rust_fun "core::str::traits::{core::cmp::PartialEq<str, str>}::eq"]
-opaque Str.Insts.CoreCmpPartialEqStr.eq : Str → Str → Result Bool
+def Str.Insts.CoreCmpPartialEqStr.eq (self : Str) (other : Str) : Result Bool :=
+  ok (decide (self.val = other.val))
 
 /-- [alloc::string::{impl core::ops::deref::Deref<str> for alloc::string::String}::deref]:
     Source: '/rustc/library/alloc/src/string.rs', lines 2835:4-2835:27
+    Name pattern: [alloc::string::{core::ops::deref::Deref<alloc::string::String, str>}::deref]
+    Visibility: public
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model:** the UTF-8 bytes of the string, the identity on bytes (`self.as_str()`, lines
+2835–2837; `String::as_str` is `str::from_utf8_unchecked(self.vec.as_slice())`), defined as the
+model of `String::as_bytes`, which returns the same bytes: `fail maximumSizeExceeded` only for a
+Lean `String` longer than `Usize.max` bytes, which no Rust `String` is. -/
 @[rust_fun
   "alloc::string::{core::ops::deref::Deref<alloc::string::String, str>}::deref"]
-opaque alloc.string.String.Insts.CoreOpsDerefDerefStr.deref
-  : String → Result Str
+def alloc.string.String.Insts.CoreOpsDerefDerefStr.deref (self : String) : Result Str :=
+  alloc.string.String.as_bytes self
 
 /-- [alloc::sync::{impl core::ops::deref::Deref<T> for alloc::sync::Arc<T>}::deref]:
     Source: '/rustc/library/alloc/src/sync.rs', lines 2443:4-2443:25
+    Name pattern: [alloc::sync::{core::ops::deref::Deref<alloc::sync::Arc<@T>, @T>}::deref]
+    Visibility: public
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model:** the shared value, a projection (`&self.inner().data`, lines 2443–2445). The
+allocator parameter `A` is not used. -/
 @[rust_fun
   "alloc::sync::{core::ops::deref::Deref<alloc::sync::Arc<@T>, @T>}::deref"]
-opaque alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref
-  {T : Type} (A : Type) : alloc.sync.Arc T → Result T
+def alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref {T : Type} (_A : Type)
+    (self : alloc.sync.Arc T) : Result T :=
+  ok self.data
 
 /-- [alloc::sync::{impl core::cmp::PartialEq<alloc::sync::Arc<T>> for alloc::sync::Arc<T>}::eq]:
     Source: '/rustc/library/alloc/src/sync.rs', lines 3580:4-3580:43
+    Name pattern: [alloc::sync::{core::cmp::PartialEq<alloc::sync::Arc<@T>, alloc::sync::Arc<@T>>}::eq]
+    Visibility: public
 
-Placeholder (S21); replaced by an exact model at S26/S27 (plan Section 18); asserts nothing. -/
+**Model:** value equality, through the instance of `T` (its failure propagates): `**self ==
+**other`, the generic `ArcEqIdent::eq` (lines 3580–3582, 3529–3533).
+Stated exception: for `T: Eq` Rust specializes to `ptr::eq(self, other) || **self == **other`
+(lines 3548–3552). The model has no pointers, so it always compares the values. The two agree
+whenever the equality of `T` is reflexive and does not fail; `Eq` asks for reflexivity
+(`core/src/cmp.rs` lines 280–289; `MarkerEq`, `alloc/src/rc.rs` lines 2615–2617), not for the
+absence of failure. The only instance in the translation, `T = str`, is byte equality, which has
+both. -/
 @[rust_fun
   "alloc::sync::{core::cmp::PartialEq<alloc::sync::Arc<@T>, alloc::sync::Arc<@T>>}::eq"]
-opaque alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq
-  {T : Type} (A : Type) (corecmpPartialEqInst : core.cmp.PartialEq T T) :
-  alloc.sync.Arc T → alloc.sync.Arc T → Result Bool
+def alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq {T : Type} (_A : Type)
+    (corecmpPartialEqInst : core.cmp.PartialEq T T) (self : alloc.sync.Arc T)
+    (other : alloc.sync.Arc T) : Result Bool :=
+  corecmpPartialEqInst.eq self.data other.data
+
+/-! ## Phase 2: `Option`, `Result`, slices and ranges -/
+
+/-- [core::option::{core::option::Option<T>}::or_else]:
+    Source: '/rustc/library/core/src/option.rs', lines 1644:4-1649:28
+    Name pattern: [core::option::{core::option::Option<@T>}::or_else]
+    Visibility: public
+
+**Model:** `Some x ↦ Some x`; `None ↦ f()`, calling the closure through its `FnOnce`
+instance, whose failure propagates (lines 1644–1655). -/
+@[rust_fun "core::option::{core::option::Option<@T>}::or_else"]
+def core.option.Option.or_else {T : Type} {F : Type}
+    (opsfunctionFnOnceFTupleOptionInst : core.ops.function.FnOnce F Unit (Option T))
+    (self : Option T) (f : F) : Result (Option T) :=
+  match self with
+  | some x => ok (some x)
+  | none => opsfunctionFnOnceFTupleOptionInst.call_once f ()
+
+/-- [core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq]:
+    Source: '/rustc/library/core/src/option.rs', lines 2440:4-2440:38
+    Name pattern: [core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq]
+    Visibility: public
+
+**Model:** `(Some l, Some r) ↦ l == r` through the instance of `T` (its failure propagates);
+`(None, None) ↦ true`; otherwise `false` (lines 2440–2449). -/
+@[rust_fun
+  "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq"]
+def core.option.Option.Insts.CoreCmpPartialEqOption.eq {T : Type}
+    (cmpPartialEqInst : core.cmp.PartialEq T T) (self : Option T) (other : Option T) :
+    Result Bool :=
+  match self, other with
+  | some l, some r => cmpPartialEqInst.eq l r
+  | some _, none => ok false
+  | none, some _ => ok false
+  | none, none => ok true
+
+/-- [core::result::{core::result::Result<T, E>}::ok]:
+    Source: '/rustc/library/core/src/result.rs', lines 708:4-711:28
+    Name pattern: [core::result::{core::result::Result<@T, @E>}::ok]
+    Visibility: public
+
+**Model:** `Ok x ↦ Some x`, `Err _ ↦ None` (lines 708–717). Inside its own namespace `ok`
+names this definition, hence `Aeneas.Std.Result.ok` (module docstring, ordering note). -/
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::ok"]
+def core.result.Result.ok {T : Type} {E : Type} (self : core.result.Result T E) :
+    Result (Option T) :=
+  match self with
+  | core.result.Result.Ok x => Aeneas.Std.Result.ok (some x)
+  | core.result.Result.Err _ => Aeneas.Std.Result.ok none
+
+/-- [core::slice::{[T]}::first]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 155:4-155:43
+    Name pattern: [core::slice::{[@T]}::first]
+    Visibility: public
+
+**Model:** the first element, `None` for the empty slice
+(`if let [first, ..] = self { Some(first) } else { None }`, lines 155–157). -/
+@[rust_fun "core::slice::{[@T]}::first"]
+def core.slice.Slice.first {T : Type} (self : Slice T) : Result (Option T) :=
+  match self.val with
+  | first :: _ => ok (some first)
+  | [] => ok none
+
+/-- Slice equality for slices of equal length (`SlicePartialEq::equal_same_length`,
+`core/src/slice/cmp.rs` lines 125–140): compares the elements left to right with `ne` of the
+instance (`*lhs.add(idx) != *rhs.add(idx)`) and returns `false` at the first pair for which `ne`
+holds, `true` at the end; a failure of `ne` propagates. Rust specializes the loop to a byte
+comparison for `BytewiseEq` types (lines 146–160; such as `u8`, `u16`), whose `ne` is the
+negation of byte equality and does not fail, so the result is the same. On lists of different
+lengths it compares the common prefix; the callers below check the lengths first. -/
+def ExtModel.sliceEqSameLength {T U : Type} (inst : core.cmp.PartialEq T U) :
+    List T → List U → Result Bool
+  | a :: l, b :: r => do
+    let d ← inst.ne a b
+    if d then ok false else ExtModel.sliceEqSameLength inst l r
+  | _, _ => ok true
+
+/-- Slice equality `[T] == [U]` (`impl PartialEq<[U]> for [T]`, `core/src/slice/cmp.rs` lines
+14–29): `false` if the lengths differ, otherwise `ExtModel.sliceEqSameLength`. -/
+def ExtModel.sliceEq {T U : Type} (inst : core.cmp.PartialEq T U) (l : List T) (r : List U) :
+    Result Bool :=
+  if l.length = r.length then ExtModel.sliceEqSameLength inst l r else ok false
+
+/-- [core::slice::{[T]}::strip_suffix]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 2719:4-2721:21
+    Name pattern: [core::slice::{[@T]}::strip_suffix]
+    Visibility: public
+
+**Model:** the Rust body transcribed (lines 2719–2733): take the suffix as a slice through the
+`SlicePattern` instance; if `n = suffix.len() ≤ len = self.len()`, split `self` at `len - n`
+(`core.slice.Slice.split_at` of the Aeneas library) and return `Some head` if the tail equals
+the suffix (`ExtModel.sliceEq`, i.e. `tail == suffix`); otherwise `None`. Failures of
+`as_slice` and of the element equality propagate; the subtraction and the split do not fail
+since `n ≤ len`. -/
+@[rust_fun "core::slice::{[@T]}::strip_suffix"]
+def core.slice.Slice.strip_suffix {T : Type} {P : Type}
+    (SlicePatternInst : core.slice.SlicePattern P T) (cmpPartialEqInst : core.cmp.PartialEq T T)
+    (self : Slice T) (suffix : P) : Result (Option (Slice T)) := do
+  let suffix ← SlicePatternInst.as_slice suffix
+  let len := Slice.len self
+  let n := Slice.len suffix
+  if n ≤ len then
+    let mid ← len - n
+    let (head, tail) ← core.slice.Slice.split_at self mid
+    let b ← ExtModel.sliceEq cmpPartialEqInst tail.val suffix.val
+    if b then ok (some head) else ok none
+  else ok none
+
+/-- [core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T]}::eq]:
+    Source: '/rustc/library/core/src/array/equality.rs', lines 48:4-48:40
+    Name pattern: [core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq]
+    Visibility: public
+
+**Model:** `false` unless the slice has length `N` (`self.as_array::<N>()` is `None`,
+`core/src/slice/mod.rs` lines 851–861); otherwise array equality `[T; N] == [U; N]`
+(lines 48–53, then lines 10–12 and `SpecArrayEq::spec_eq`, lines 143–145: `a[..] == b[..]`),
+which is slice equality of two slices of length `N` (`ExtModel.sliceEqSameLength`). The
+`BytewiseEq` specialization of `spec_eq` (lines 152–158) gives the same result, as for slices
+(see `ExtModel.sliceEqSameLength`). -/
+@[rust_fun "core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq"]
+def Slice.Insts.CoreCmpPartialEqArray.eq {T : Type} {U : Type} {N : Std.Usize}
+    (cmpPartialEqInst : core.cmp.PartialEq T U) (self : Slice T) (other : Array U N) :
+    Result Bool :=
+  if self.val.length = N.val then ExtModel.sliceEqSameLength cmpPartialEqInst self.val other.val
+  else ok false
+
+/-- [core::slice::{impl core::slice::SlicePattern<T> for [T; N]}::as_slice]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 5678:4-5678:39
+    Name pattern: [core::slice::{core::slice::SlicePattern<[@T; @N], @T>}::as_slice]
+    Visibility: public
+
+**Model:** the same elements as a slice (`self`, an unsizing coercion, lines 5678–5680;
+`Array.to_slice` of the Aeneas library). -/
+@[rust_fun "core::slice::{core::slice::SlicePattern<[@T; @N], @T>}::as_slice"]
+def Array.Insts.CoreSliceSlicePattern.as_slice {T : Type} {N : Std.Usize} (self : Array T N) :
+    Result (Slice T) :=
+  ok (Aeneas.Std.Array.to_slice self)
+
+/-- [core::ops::range::{core::ops::range::RangeInclusive<Idx>}::contains]:
+    Source: '/rustc/library/core/src/ops/range.rs', lines 522:4-525:44
+    Name pattern: [core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::contains]
+    Visibility: public
+
+**Model:** `start <= item && item <= end`, or `item < end` when the range is exhausted, with
+`&&` short-circuiting and failures of the comparisons propagating. `contains` calls
+`RangeBounds::contains` (lines 522–528), which is `(match start_bound { Included(s) => s <=
+item, .. }) && (match end_bound { Included(e) => item <= e, Excluded(e) => item < e, .. })`
+(lines 868–882); for `RangeInclusive` the start bound is `Included(start)` and the end bound is
+`Excluded(end)` if `exhausted`, else `Included(end)` (lines 1124–1137). `start <= item` is `le`
+of the instance `Idx: PartialOrd<U>`, `item <= end` and `item < end` are `le` and `lt` of
+`U: PartialOrd<Idx>`; the instance `Idx: PartialOrd<Idx>` is not called. -/
+@[rust_fun
+  "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::contains"]
+def core.ops.range.RangeInclusive.contains {Idx : Type} {U : Type}
+    (_cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
+    (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U)
+    (cmpPartialOrdInst2 : core.cmp.PartialOrd U Idx)
+    (self : core.ops.range.RangeInclusive Idx) (item : U) : Result Bool := do
+  let lower ← cmpPartialOrdInst1.le self.start item
+  if lower then
+    if self.exhausted then cmpPartialOrdInst2.lt item self.«end»
+    else cmpPartialOrdInst2.le item self.«end»
+  else ok false
+
+/-! ## Phase 2: integer parsing -/
+
+/-- The value of an ASCII decimal digit, `none` for every other byte: `(*c as char)
+.to_digit(10)` (`core/src/char/methods.rs` lines 402–424, `to_digit`: `'0'`–`'9'` only for
+radix 10; a byte cast to `char` is `U+0000`–`U+00FF`, so no other byte is a digit). -/
+def ExtModel.decDigit? (c : Std.U8) : Option Nat :=
+  if 48 ≤ c.val ∧ c.val ≤ 57 then some (c.val - 48) else none
+
+/-- The digit loop of `i64::from_ascii_radix` for radix 10 (`core/src/num/mod.rs` lines
+1791–1843): from the accumulated value `acc`, read the digits left to right; a byte that is not
+a digit is `InvalidDigit`; otherwise the next value is `acc * 10 + d` (positive) or
+`acc * 10 - d` (negative), and a value outside `[-2^63, 2^63)` is `PosOverflow` (positive) or
+`NegOverflow` (negative). This is the checked loop of the source (lines 1815–1841): at each
+digit the digit is checked before the overflow of `checked_mul`, then `checked_add` or
+`checked_sub` is checked, and for an accumulated value of the right sign the next value is out
+of range exactly when the multiplication or the addition overflows. For at most 15 digits Rust
+runs an unchecked loop instead (lines 1791–1814; `can_not_overflow`, lines 1569–1571:
+`digits.len() <= 2 * 8 - 1`), whose values lie in range, so the checks above never fire there
+either. -/
+def ExtModel.i64DigitLoop (positive : Bool) (acc : Int) :
+    List Std.U8 → Except ExtModel.IntErrorKind Int
+  | [] => .ok acc
+  | c :: rest =>
+    match ExtModel.decDigit? c with
+    | none => .error .InvalidDigit
+    | some d =>
+      let next : Int := if positive then acc * 10 + d else acc * 10 - d
+      if -2 ^ 63 ≤ next ∧ next < 2 ^ 63 then ExtModel.i64DigitLoop positive next rest
+      else .error (if positive then .PosOverflow else .NegOverflow)
+
+/-- `i64::from_ascii_radix(src, 10)` (`core/src/num/mod.rs` lines 1756–1844), as an integer or
+an error kind: empty input is `Empty`; a single `+` or `-` is `InvalidDigit`; a leading `+` or
+`-` is removed and sets the sign (the type is signed); then `ExtModel.i64DigitLoop` from `0`. -/
+def ExtModel.i64FromAscii (src : List Std.U8) : Except ExtModel.IntErrorKind Int :=
+  match src with
+  | [] => .error .Empty
+  | [c] =>
+    if c.val = 43 ∨ c.val = 45 then .error .InvalidDigit
+    else ExtModel.i64DigitLoop true 0 [c]
+  | c :: rest =>
+    if c.val = 43 then ExtModel.i64DigitLoop true 0 rest
+    else if c.val = 45 then ExtModel.i64DigitLoop false 0 rest
+    else ExtModel.i64DigitLoop true 0 (c :: rest)
+
+/-- [core::num::{impl core::str::traits::FromStr<core::num::error::ParseIntError> for i64}::from_str]:
+    Source: '/rustc/library/core/src/num/mod.rs', lines 1626:12-1626:68
+    Name pattern: [core::num::{core::str::traits::FromStr<i64, core::num::error::ParseIntError>}::from_str]
+    Visibility: public
+
+**Model:** `Ok v` where `ExtModel.i64FromAscii` gives the integer `v`, `Err { kind }` where it
+gives the error kind. Rust: `from_str(src) = i64::from_str_radix(src, 10)` (lines 1626–1628),
+which is `i64::from_ascii_radix(src.as_bytes(), 10)` (lines 1677–1679); radix 10 passes the
+radix check, so this never panics. Grammar: an optional single `+` or `-`, then at least one
+ASCII digit and nothing else; leading zeros are allowed; whitespace, `_` and non-ASCII digits
+are `InvalidDigit`; error kinds as reported by Rust (`Empty`, `InvalidDigit`, `PosOverflow`,
+`NegOverflow`; the first error met from the left wins, a non-digit before an overflow at the
+same position). The model reads only the bytes, as Rust does, so it is defined on every `Str`.
+The integer `v` lies in `[-2^63, 2^63)` (checked by the loop), so it is the value of the
+`I64` built from it. -/
+@[rust_fun
+  "core::num::{core::str::traits::FromStr<i64, core::num::error::ParseIntError>}::from_str"]
+def I64.Insts.CoreStrTraitsFromStrParseIntError.from_str (src : Str) :
+    Result (core.result.Result Std.I64 core.num.error.ParseIntError) :=
+  match ExtModel.i64FromAscii src.val with
+  | .ok v => ok (core.result.Result.Ok ⟨BitVec.ofInt 64 v⟩)
+  | .error kind => ok (core.result.Result.Err { kind })
+
+/-- [core::str::{str}::parse]:
+    Source: '/rustc/library/core/src/str/mod.rs', lines 2765:4-2765:56
+    Name pattern: [core::str::{str}::parse]
+    Visibility: public
+
+**Model:** dispatches to the `FromStr` instance (`FromStr::from_str(self)`, lines 2765–2767);
+its failure propagates. -/
+@[rust_fun "core::str::{str}::parse"]
+def core.str.Str.parse {F : Type} {Clause0_Err : Type}
+    (traitsFromStrInst : core.str.traits.FromStr F Clause0_Err) (self : Str) :
+    Result (core.result.Result F Clause0_Err) :=
+  traitsFromStrInst.from_str self
+
+/-! ## Phase 2: IP addresses
+
+Transcribed from `library/core/src/net/ip_addr.rs` of the pinned toolchain. An `Ipv4Addr` is
+its four octets and an `Ipv6Addr` its eight segments (`Rmcp.TypesExternal`); every function
+below is total and never panics, like its Rust source. -/
+
+/-- The number whose big-endian digits in base `b` are `l` (most significant first):
+`u32::from_be_bytes` for four octets with `b = 256`, and `u128::from_be_bytes` of the sixteen
+octets of an IPv6 address for its eight segments with `b = 65536`. -/
+def ExtModel.beNat (b : Nat) (l : List Nat) : Nat :=
+  l.foldl (fun acc d => acc * b + d) 0
+
+/-- The octets of an IPv4 address as natural numbers, most significant first. -/
+def ExtModel.ipv4Nats (a : core.net.ip_addr.Ipv4Addr) : List Nat :=
+  a.addrOctets.val.map (fun o => o.val)
+
+/-- The segments of an IPv6 address as natural numbers, most significant first. -/
+def ExtModel.ipv6Nats (a : core.net.ip_addr.Ipv6Addr) : List Nat :=
+  a.addrSegments.val.map (fun s => s.val)
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 668:4-668:41
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets]
+    Visibility: public
+
+**Model:** the four octets (`self.octets`, lines 668–670). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets"]
+def core.net.ip_addr.Ipv4Addr.octets (self : core.net.ip_addr.Ipv4Addr) :
+    Result (Array Std.U8 4#usize) :=
+  ok self.addrOctets
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 728:4-728:46
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified]
+    Visibility: public
+
+**Model:** `u32::from_be_bytes(self.octets) == 0` (lines 728–730), i.e. `0.0.0.0`. -/
+@[rust_fun
+  "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified"]
+def core.net.ip_addr.Ipv4Addr.is_unspecified (self : core.net.ip_addr.Ipv4Addr) :
+    Result Bool :=
+  ok (decide (ExtModel.beNat 256 (ExtModel.ipv4Nats self) = 0))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 750:4-750:43
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback]
+    Visibility: public
+
+**Model:** `self.octets()[0] == 127` (lines 750–752), i.e. `127.0.0.0/8`. The index is in
+bounds (four octets); the default of `getD` is never used. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback"]
+def core.net.ip_addr.Ipv4Addr.is_loopback (self : core.net.ip_addr.Ipv4Addr) : Result Bool :=
+  ok (decide ((ExtModel.ipv4Nats self).getD 0 0 = 127))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 781:4-781:42
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private]
+    Visibility: public
+
+**Model:** the match of lines 781–788: `[10, ..]`, `[172, b, ..]` with `16 ≤ b ≤ 31`, and
+`[192, 168, ..]` are private (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`); everything else
+is not. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private"]
+def core.net.ip_addr.Ipv4Addr.is_private (self : core.net.ip_addr.Ipv4Addr) : Result Bool :=
+  match ExtModel.ipv4Nats self with
+  | 10 :: _ => ok true
+  | 172 :: b :: _ => ok (decide (b ≥ 16 ∧ b ≤ 31))
+  | 192 :: 168 :: _ => ok true
+  | _ => ok false
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 809:4-809:45
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local]
+    Visibility: public
+
+**Model:** `matches!(self.octets(), [169, 254, ..])` (lines 809–811), i.e. `169.254.0.0/16`. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local"]
+def core.net.ip_addr.Ipv4Addr.is_link_local (self : core.net.ip_addr.Ipv4Addr) :
+    Result Bool :=
+  match ExtModel.ipv4Nats self with
+  | 169 :: 254 :: _ => ok true
+  | _ => ok false
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1010:4-1010:44
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast]
+    Visibility: public
+
+**Model:** `self.octets()[0] >= 224 && self.octets()[0] <= 239` (lines 1010–1012), i.e.
+`224.0.0.0/4`. The default of `getD` is never used (four octets). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast"]
+def core.net.ip_addr.Ipv4Addr.is_multicast (self : core.net.ip_addr.Ipv4Addr) :
+    Result Bool :=
+  ok (decide ((ExtModel.ipv4Nats self).getD 0 0 ≥ 224 ∧
+    (ExtModel.ipv4Nats self).getD 0 0 ≤ 239))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1032:4-1032:44
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast]
+    Visibility: public
+
+**Model:** `u32::from_be_bytes(self.octets()) == u32::from_be_bytes(Self::BROADCAST.octets())`
+(lines 1032–1034), with `BROADCAST = 255.255.255.255` (line 652). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast"]
+def core.net.ip_addr.Ipv4Addr.is_broadcast (self : core.net.ip_addr.Ipv4Addr) :
+    Result Bool :=
+  ok (decide (ExtModel.beNat 256 (ExtModel.ipv4Nats self) =
+    ExtModel.beNat 256 [255, 255, 255, 255]))
+
+/-- [core::net::ip_addr::{impl core::convert::From<u32> for core::net::ip_addr::Ipv4Addr}::from]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1288:4-1288:32
+    Name pattern: [core::net::ip_addr::{core::convert::From<core::net::ip_addr::Ipv4Addr, u32>}::from]
+    Visibility: public
+
+**Model:** the big-endian bytes of `ip` as octets: `Ipv4Addr::from_bits(ip)` (lines 1288–1290),
+which is `Ipv4Addr { octets: bits.to_be_bytes() }` (lines 608–610), so the first octet is
+`ip / 2^24` and the last `ip mod 256` (`ExtModel.byte` takes the value modulo 256). -/
+@[rust_fun
+  "core::net::ip_addr::{core::convert::From<core::net::ip_addr::Ipv4Addr, u32>}::from"]
+def core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from (ip : Std.U32) :
+    Result core.net.ip_addr.Ipv4Addr :=
+  ok { addrOctets := ⟨[ExtModel.byte (ip.val / 2 ^ 24), ExtModel.byte (ip.val / 2 ^ 16),
+                   ExtModel.byte (ip.val / 2 ^ 8), ExtModel.byte ip.val], by simp⟩ }
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1495:4-1495:44
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments]
+    Visibility: public
+
+**Model:** the eight segments, which the model stores (lines 1495–1510 compute them from the
+sixteen octets as big-endian `u16` values; see `core.net.ip_addr.Ipv6Addr`). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments"]
+def core.net.ip_addr.Ipv6Addr.segments (self : core.net.ip_addr.Ipv6Addr) :
+    Result (Array Std.U16 8#usize) :=
+  ok self.addrSegments
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1558:4-1558:46
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified]
+    Visibility: public
+
+**Model:** `u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED
+.octets())` (lines 1558–1560), with `UNSPECIFIED = ::` (line 1479), i.e. all segments zero. The
+`u128` of the octets is `ExtModel.beNat 65536` of the segments. -/
+@[rust_fun
+  "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified"]
+def core.net.ip_addr.Ipv6Addr.is_unspecified (self : core.net.ip_addr.Ipv6Addr) :
+    Result Bool :=
+  ok (decide (ExtModel.beNat 65536 (ExtModel.ipv6Nats self) =
+    ExtModel.beNat 65536 [0, 0, 0, 0, 0, 0, 0, 0]))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1582:4-1582:43
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback]
+    Visibility: public
+
+**Model:** `u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST
+.octets())` (lines 1582–1584), with `LOCALHOST = ::1` (line 1462). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback"]
+def core.net.ip_addr.Ipv6Addr.is_loopback (self : core.net.ip_addr.Ipv6Addr) : Result Bool :=
+  ok (decide (ExtModel.beNat 65536 (ExtModel.ipv6Nats self) =
+    ExtModel.beNat 65536 [0, 0, 0, 0, 0, 0, 0, 1]))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1942:4-1942:44
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast]
+    Visibility: public
+
+**Model:** `(self.segments()[0] & 0xff00) == 0xff00` (lines 1942–1944), i.e. `ff00::/8`. The
+default of `getD` is never used (eight segments). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast"]
+def core.net.ip_addr.Ipv6Addr.is_multicast (self : core.net.ip_addr.Ipv6Addr) :
+    Result Bool :=
+  ok (decide ((self.addrSegments.val.getD 0 0#u16 &&& 0xff00#u16) = 0xff00#u16))

@@ -430,8 +430,9 @@ into a definition) it declares **no axiom**: each external type is a
 `structure`, each external function a definition with the generated name and signature
 (keeping the template's `@[rust_type]` or `@[rust_fun]` attribute where it has one; the five
 opaque `rmcp` functions, the `prim` functions and `now_ms`, have none), and what a model cannot
-compute is one of four `opaque` constants
-(`ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs`, `ExtModel.SerdeJsonErrorImpl`),
+compute is one of five `opaque` constants
+(`ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs`, `ExtModel.SerdeJsonErrorImpl`, and since
+S26/S27 `ExtModel.SerdeJsonValue`, the `serde_json::Value` type that Phase 2 targets only move),
 which add no axiom; `axioms.lock` stays empty. What an auditor trusts is that each definition
 describes its Rust function, with the exceptions stated in its docstring
 (`trusted/evidence/README.md` cites the source and tests of each). These models do not appear in
@@ -471,7 +472,7 @@ code without any `rmcp` name. Reviewers of `trusted/` check imports, notation an
 until this is enforced. The exclusions and opaque items are those of plan Section 2.3 and
 Section 9 (S04a part 2 adds the derived `Debug` impls to `exclude`, human decision
 2026-11-22). The trusted-base section of `docs/STATUS.md` is authoritative (current counts: 0
-trusted axioms, 5 locked native-code axioms, 4 `opaque` constants).
+trusted axioms, 5 locked native-code axioms, 5 `opaque` constants since S26/S27).
 
 ### Tools
 
