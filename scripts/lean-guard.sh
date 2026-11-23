@@ -73,32 +73,48 @@
 #       package libraries, project build (in that order), and no dynamic-loader variables.
 #       The audit imports the roots of the default-target libraries without running any
 #       imported code (loadExts := false) and fails if a project .olean is stale (its Lake
-#       trace records another source hash than the current source's), if a constant
-#       declared in a project module depends on an axiom other than propext,
-#       Classical.choice, Quot.sound and the axioms declared in the roots of RmcpExternal
+#       trace records another source hash than the current source's), if the constants
+#       declared in project modules reach (one order-independent walk over all of them,
+#       through types, values and whole inductive blocks; a superset of `#print axioms`) an
+#       axiom other than propext, Classical.choice, Quot.sound, the native-code axioms below
+#       and the axioms declared in the roots of RmcpExternal
 #       (catches sorryAx, also inherited from the Aeneas library or hidden from the build
 #       log, and Lean.ofReduceBool), or if the kernel rejects a project constant when all of
 #       them are replayed (Lean.Environment.replay, as leanchecker does) onto the
 #       non-project modules they import (catches declarations added without a kernel check,
-#       e.g. with debug.skipKernelTC, and altered .olean files). Finally the axioms declared
-#       in the roots of RmcpExternal must be exactly those of formal/trusted/axioms.lock,
-#       each with the sha256 of its canonical statement recorded there (lean_guard.py
-#       axiom-lock). Native-code axioms (a `_native` name component, from `decide +native` /
+#       e.g. with debug.skipKernelTC, and altered .olean files). Finally the locks, with the
+#       audit scope of the human decision 2026-11-23 (axioms.lock; the lead applied the same
+#       rule to the native lock): an axiom is `used` if it is reachable from some constant
+#       declared in a Defs, Proofs or Specs module (every constant, including private
+#       helpers, instances and auxiliary declarations), transitively through any constant
+#       (also the generated Rmcp.Types/Rmcp.Funs definitions), computed by the same walk
+#       from those constants only. Every used axiom
+#       declared in the roots of RmcpExternal must be in formal/trusted/axioms.lock with the
+#       sha256 of its canonical statement; a lock entry must name a declared axiom (else
+#       stale), with the same hash; declared but unused axioms are listed and need no entry,
+#       and an entry for one is reported as unused (allowed) (lean_guard.py axiom-lock).
+#       So the statement of a declared but unlocked axiom that is not used (today all 41
+#       placeholders) can change or vanish without this check failing, in any PR; only the
+#       source diff of trusted/ and the informational list show it.
+#       Native-code axioms (a `_native` name component, from `decide +native` /
 #       `native_decide`, or Lean.trustCompiler; human decision 2026-11-22, as in the SPQR
-#       project) are a separate trust class: the audit accepts one that a project constant
-#       depends on only if its statement is the Aeneas `toStr` side condition of a string
+#       project) are a separate trust class: the audit accepts one that the same walk
+#       reaches only if its statement is the Aeneas `toStr` side condition of a string
 #       literal, `decide ("...".toByteArray.size <= Aeneas.Std.U32.max) = true`, lists them
-#       separately, and lean_guard.py native-lock requires each to be in
-#       formal/trusted/native-axioms.lock with the sha256 of its canonical statement; both
-#       require the declaring module (of a reached axiom and of every lock entry) to be
-#       Rmcp.Types or Rmcp.Funs; a lock entry whose module is in the audited import closure
-#       but that is not reached there is stale and fails. The audit also fails if a root of
-#       RmcpExternal declares a constant in the namespace `rmcp` or adds an alias (`export`).
-#       Only the roots of the default targets are audited: until Rmcp and RmcpExternal join
-#       defaultTargets (S08-S09), the trusted-module checks, axioms.lock and the native lock
-#       are not enforced on them (native-lock entries for Rmcp.Types/Funs are reported as not
-#       checked; any axioms.lock entry fails until RmcpExternal is reached), even if
-#       their .olean files exist from an explicit `lake build Rmcp RmcpExternal`.
+#       separately, and lean_guard.py native-lock requires each used one (same scope) to be
+#       in formal/trusted/native-axioms.lock with the sha256 of its canonical statement; both
+#       require the declaring module (of every reached axiom, used or not, and of every lock
+#       entry) to be Rmcp.Types or Rmcp.Funs; a lock entry whose module is in the audited
+#       import closure but that is not reached there is stale and fails; an entry for a
+#       reached but unused one is reported as unused (allowed). The audit also fails if a
+#       root of RmcpExternal declares a constant in the namespace `rmcp` or adds an alias
+#       (`export`). Only the import closure of the default-target roots is audited: until a
+#       Defs/Proofs/Specs module imports Rmcp.Funs (S06) or Rmcp and RmcpExternal join
+#       defaultTargets (a lakefile change by the lead), the trusted-module checks,
+#       axioms.lock and the native lock are not enforced on them (native-lock entries for
+#       Rmcp.Types/Funs are reported as not checked; any axioms.lock entry fails as stale
+#       until RmcpExternal is reached), even if their .olean files exist from an explicit
+#       `lake build Rmcp RmcpExternal`.
 #
 #   scripts/lean-guard.sh aeneas-archive
 #       Checks every Aeneas Lean-library release archive that Lake downloaded

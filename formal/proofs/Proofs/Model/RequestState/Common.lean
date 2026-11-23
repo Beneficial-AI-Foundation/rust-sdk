@@ -1,0 +1,41 @@
+/-
+Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Hoang Le Truong
+-/
+import Rmcp.Funs
+import Defs.Wire
+import Defs.RequestState
+import Proofs.External.String
+
+/-!
+# Shared helpers for the `request_state` codec proofs (E batch)
+
+Facts about generated value constants of `request_state.rs`, used by several E proofs, and the
+UTF-8 content of Aeneas string literals. Unfolding a generated value constant (not a W function)
+is allowed by the lead decision recorded in `formal/docs/evidence/S05.md`.
+-/
+
+open Aeneas Aeneas.Std Result
+
+namespace Proofs.RequestState
+
+/-- `RequestStateCodec::MIN_KEY_LENGTH` (request_state.rs line 270, `= wire::MIN_KEY_LENGTH`,
+request_state_wire.rs line 19, `= 32`) has the value `Defs.Wire.minKeyLength`. -/
+theorem val_MIN_KEY_LENGTH :
+    rmcp.model.request_state.RequestStateCodec.MIN_KEY_LENGTH.val = Defs.Wire.minKeyLength := by
+  simp [rmcp.model.request_state.RequestStateCodec.MIN_KEY_LENGTH,
+    rmcp.model.request_state_wire.MIN_KEY_LENGTH, Defs.Wire.minKeyLength]
+
+/-- The Aeneas `toStr` of a literal holds exactly the UTF-8 bytes of the literal. -/
+theorem strIs_toStr (s : String) (h : s.toByteArray.size ≤ U32.max) :
+    Defs.RequestState.StrIs (toStr s h) s := by
+  unfold Defs.RequestState.StrIs
+  rw [Proofs.External.Utf8.toStr_val, Proofs.External.Utf8.utf8_eq,
+    Proofs.External.Utf8.byteArray_toList, List.map_map]
+  apply List.map_congr_left
+  intro x _
+  simp only [Function.comp_apply, Proofs.External.Base64.byte_val]
+  exact Nat.mod_eq_of_lt (UInt8.toNat_lt x)
+
+end Proofs.RequestState

@@ -85,11 +85,11 @@ exclude = [
   "rmcp::model::request_state_wire::{impl core::fmt::Debug for rmcp::model::request_state_wire::FrameError}",
 ]
 opaque = [
-  # Wraps HMAC and base64 Engine types that cannot be translated (B1, B3); no Rust model. Axioms: Section 4.
+  # Wraps HMAC and base64 Engine types that cannot be translated (B1, B3); no Rust model to patch in; Lean models: Section 4.
   "rmcp::model::request_state_wire::prim",
-  # Reads the system clock (I/O); no Rust model. Used only by non-target wrappers.
+  # Reads the system clock (I/O); no Rust model to patch in; Lean model: Section 4. Used only by non-target wrappers.
   "rmcp::model::request_state::_::now_ms",
-  # External crates: only signatures are needed; behaviour reaches targets only through `prim`.
+  # External crates: only signatures are needed; Lean models: Section 4.
   "zeroize", "base64", "hmac", "sha2", "thiserror", "chrono", "serde_json",
 ]
 

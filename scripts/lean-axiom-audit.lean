@@ -18,15 +18,16 @@ package libraries, project build, and no dynamic-loader variables, set by `lean-
 - `<libdir>`: the project's own build directory (`formal/.lake/build/lib/lean`);
 - `<trusted>`: comma-separated modules whose axioms are trusted (the roots of the
   `RmcpExternal` library), or `-` for none;
-- `<axout>`: file the audit writes the trusted axioms to, one line per axiom,
-  `<name> TAB <canonical statement>` (see `canonical`), sorted by name; `lean-guard.sh` then
-  compares them with the committed lock `formal/trusted/axioms.lock` (`lean_guard.py
-  axiom-lock`);
+- `<axout>`: file the audit writes the trusted axioms to (every axiom declared in a trusted
+  module of the import closure), one line per axiom,
+  `<used|unused> TAB <name> TAB <canonical statement>` (see `canonical` and "Audit scope"
+  below), sorted by name; `lean-guard.sh` then compares them with the committed lock
+  `formal/trusted/axioms.lock` (`lean_guard.py axiom-lock`);
 - `<nativeout>`: file the audit writes the native-code axioms to (see "Native-code axioms"
   below): one line `module TAB <name>` per module of the import closure, then one line
-  `native TAB <name> TAB <declaring module> TAB <canonical statement>` per native-code axiom
-  reached; `lean-guard.sh` compares them with the committed lock
-  `formal/trusted/native-axioms.lock` (`lean_guard.py native-lock`);
+  `native TAB <used|unused> TAB <name> TAB <declaring module> TAB <canonical statement>` per
+  native-code axiom reached by any project constant; `lean-guard.sh` compares them with the
+  committed lock `formal/trusted/native-axioms.lock` (`lean_guard.py native-lock`);
 - `<root>...`: the library roots to audit (their `.olean` must be under `<libdir>`).
 
 Native-code axioms (human decision 2026-11-22, as in the SPQR project's
@@ -40,10 +41,40 @@ only if (a) it has no universe parameters and its statement is exactly the `toSt
 condition of one string literal, `decide ("…".toByteArray.size ≤ Aeneas.Std.U32.max) = true`
 (see `toStrSideCondition`), (b) it is declared in a root of the generated `Rmcp` library
 (`Rmcp.Types` or `Rmcp.Funs`, see `rmcpRoots`; so a hand-written `Aeneas.Std.toStr "x"` in
-`Proofs`, `Specs`, `Defs` or a trusted module fails), and (c) `lean_guard.py native-lock` then
-finds it in `formal/trusted/native-axioms.lock` with the same module and statement hash. Any
-other native-code axiom fails the audit, whether or not it is listed. A native-code axiom
-declared in a trusted module is classified as native, not as trusted (and fails by (b)).
+`Proofs`, `Specs`, `Defs` or a trusted module fails), and (c) if it is `used` (see "Audit
+scope" below), `lean_guard.py native-lock` then finds it in `formal/trusted/native-axioms.lock`
+with the same module and statement hash. Any native-code axiom reachable from any project
+constant (by `reachableAxioms`, see "Audit scope") that fails (a) or (b) fails the audit,
+whether or not it is listed or `used`. A native-code axiom declared in a trusted module is
+classified as native, not as trusted (and fails by (b)).
+
+Audit scope (human decision 2026-11-23 for `axioms.lock`; the lead applied the same rule to
+`native-axioms.lock`): an axiom is `used` if it is reachable from some constant declared in a
+module of the `Defs`, `Proofs` or `Specs` library (a module named `Defs`, `Proofs`, `Specs`
+or below them, see `specRoots`; every constant of such a module counts, including private
+helpers, instances and auxiliary declarations), transitively through any constant, including
+the generated `Rmcp.Types`/`Rmcp.Funs` definitions and the externals; otherwise `unused`.
+Reachability is computed by `reachableAxioms` (one walk with a single visited set, no
+per-constant cache, whole inductive blocks), so the `used` set does not depend on the order
+of the constants and contains every axiom `#print axioms` reports for those constants
+(an over-approximation: it can contain more, for example an axiom that only another type of
+a mutual block mentions). `#print axioms` (`Lean.collectAxioms`) itself can miss an axiom: the
+per-module result it stores in the `.olean` files is computed with one cache for the whole
+module, which keeps, for a constant entered while its inductive/constructor cycle is open,
+the incomplete set computed then; this happens on any such cycle, a non-mutual inductive type
+and its constructors as well as a mutual block (`#print axioms` of the constructor
+`rmcp.model.request_state.Keys.Single` omits the `HashMap` and `RandomState` axioms that `Keys`
+reports). The walk keeps no such cache.
+Both locks need to cover only the `used` axioms (`lean_guard.py` reports the `unused` ones
+and accepts a lock entry for a declared but `unused` axiom). So importing `Rmcp.Funs` into a
+proof module does not require locking the externals that no theorem depends on. The scope
+applies to the locks only: checks 1 to 5 below, and the `toStr`-form and `Rmcp`-module
+restrictions on native-code axioms, cover every project constant (including all of
+`Rmcp.Types`/`Rmcp.Funs`) and every native-code axiom that the same walk reaches from all
+project constants (the set `all` of check 3). Consequence: the statement of a declared
+trusted axiom that is not locked and not `used` (today all 41 placeholder externals) can
+change, or the axiom can vanish, without the audit failing, also in an ordinary PR; only the
+source diff of `trusted/` and the informational list printed by `lean_guard.py` show it.
 
 It imports the roots with `loadExts := false` (only the constant tables of the `.olean` files
 are read; no environment extension, initializer or other code of an imported module runs) and
@@ -58,13 +89,18 @@ this project that the roots reach). It exits with 1 if
    (the source changed after the last successful build). This guards local runs. It is no check
    against forged build output (a forged trace passes it); check 4 rejects forged output
    the kernel does not accept, but nothing here proves it was compiled from these sources;
-3. a constant declared in a project module depends on an axiom other than `propext`,
+3. the set `all` of the axioms reachable from all constants declared in project modules
+   (`reachableAxioms` over every project constant at once: one walk, independent of the order
+   of the constants, a superset of what `#print axioms` reports for each of them; not the
+   per-module cache stored in the `.olean` files) contains an axiom other than `propext`,
    `Classical.choice`, `Quot.sound`, the axioms declared in the trusted modules and the
-   native-code axioms that have the `toStr` form (collected transitively through types and
-   values, as `#print axioms` does, but without the per-module cache stored in the `.olean`
-   files); this includes `sorryAx` and `Lean.ofReduceBool`; or it depends on a native-code
-   axiom whose statement is not the `toStr` side condition of a string literal or that is not
-   declared in `Rmcp.Types`/`Rmcp.Funs`;
+   native-code axioms; this includes `sorryAx` and `Lean.ofReduceBool`; or `all` contains a
+   native-code axiom whose statement is not the `toStr` side condition of a string literal or
+   that is not declared in `Rmcp.Types`/`Rmcp.Funs` (the native-code axioms classified and
+   compared with the lock are exactly those of `all`). The memoised `axiomsOf` is used only to
+   name, in the error messages, the constants that depend on a disallowed axiom as
+   `#print axioms` collects; an axiom in `all` that none of them names is reported as reached
+   only through the wider edges of the walk, and both counts are printed;
 4. the kernel rejects a project constant when all of them are replayed
    (`Lean.Environment.replay`, as `leanchecker` does) into a base environment imported from
    the non-project modules that project modules import. This catches declarations added
@@ -91,7 +127,10 @@ namespace AxiomAudit
 abbrev M := ReaderT Environment (StateM (NameMap NameSet))
 
 /-- Axioms `c` depends on, memoised. A constant on a cycle (inductive and constructors)
-sees an empty set for itself while it is being computed, as in `Lean.collectAxioms`. -/
+sees an empty set for itself while it is being computed, as in `Lean.collectAxioms`, so the
+cached set of a constant entered while its cycle is open can be incomplete and depends on the
+order of the calls. Used only to name constants in the error messages of check 3 (which is
+decided by `reachableAxioms`). -/
 partial def axiomsOf (c : Name) : M NameSet := do
   if let some s := (← get).find? c then return s
   modify (·.insert c {})
@@ -111,6 +150,43 @@ partial def axiomsOf (c : Name) : M NameSet := do
     | none => pure {}
   modify (·.insert c s)
   return s
+
+/-- Every axiom reachable from the constants `starts`, by one depth-first walk with a single
+visited set and no per-constant result cache, so the result does not depend on the order in
+which constants are visited (unlike `axiomsOf`, and unlike `Lean.collectAxioms` behind
+`#print axioms`, whose cached result for a constant reached on a cycle can be incomplete). The
+same cases as `axiomsOf`, widened to whole inductive blocks: types and values of definitions,
+theorems and opaque constants; the type of an axiom (and the axiom itself); for an inductive
+type its type, its constructors, the other types of its (mutual) block and its recursor; for a
+constructor its type and its inductive type; for a recursor its type and the types of its
+block. The result is therefore a superset of what `#print axioms` reports for each start
+(an over-approximation; it can include an axiom of a constructor or recursor of a block that
+the start does not mention). Used for check 3 and the native-code axioms (from all project
+constants) and for the audit scope (`used`, from the `Defs`/`Proofs`/`Specs` constants). -/
+def reachableAxioms (env : Environment) (starts : Array Name) : NameSet := Id.run do
+  let mut visited : NameSet := {}
+  let mut axs : NameSet := {}
+  let mut stack : Array Name := starts
+  while !stack.isEmpty do
+    let c := stack.back!
+    stack := stack.pop
+    if visited.contains c then continue
+    visited := visited.insert c
+    let next : Array Name := match env.find? c with
+      | some (.axiomInfo v)  => v.type.getUsedConstants
+      | some (.defnInfo v)   => v.type.getUsedConstants ++ v.value.getUsedConstants
+      | some (.thmInfo v)    => v.type.getUsedConstants ++ v.value.getUsedConstants
+      | some (.opaqueInfo v) => v.type.getUsedConstants ++ v.value.getUsedConstants
+      | some (.quotInfo _)   => #[]
+      | some (.ctorInfo v)   => v.type.getUsedConstants.push v.induct
+      | some (.recInfo v)    => v.type.getUsedConstants ++ v.all.toArray
+      | some (.inductInfo v) =>
+          (v.type.getUsedConstants ++ v.ctors.toArray ++ v.all.toArray).push (mkRecName c)
+      | none => #[]
+    if env.find? c matches some (.axiomInfo _) then axs := axs.insert c
+    for d in next do
+      unless visited.contains d do stack := stack.push d
+  return axs
 
 /-- Whether `p` lies under the directory `dir`, both canonicalised (symlinks resolved). -/
 def underDir (dir : String) (p : System.FilePath) : IO Bool := do
@@ -223,6 +299,10 @@ def projectRoots : List Name := [`Rmcp, `Defs, `Proofs, `Specs]
 (Aeneas `toStr` side conditions of string literals) are accepted. -/
 def rmcpRoots : List Name := [`Rmcp.Types, `Rmcp.Funs]
 
+/-- Top-level names of the modules of the `Defs`, `Proofs` and `Specs` libraries: the axioms
+that their constants depend on are the ones the locks must cover (audit scope). -/
+def specRoots : List Name := [`Defs, `Proofs, `Specs]
+
 open AxiomAudit in
 def main (args : List String) : IO UInt32 := do
   let libDir :: trustedArg :: axOut :: nativeOut :: roots@(_ :: _) := args
@@ -305,7 +385,7 @@ def main (args : List String) : IO UInt32 := do
   let mut allowed : NameSet := ({} : NameSet).insert ``propext |>.insert ``Classical.choice
     |>.insert ``Quot.sound
   let mut consts : Array Name := #[]
-  let mut trustedAx : Array String := #[]
+  let mut trustedAx : Array (Name × String) := #[]
   let mut newConsts : Std.HashMap Name ConstantInfo := {}
   for (c, ci) in env.constants.toList do
     if let some idx := env.getModuleIdxFor? c then
@@ -316,27 +396,44 @@ def main (args : List String) : IO UInt32 := do
           allowed := allowed.insert c
           let lps := " ".intercalate (ci.levelParams.map (·.toString (escape := true)))
           trustedAx := trustedAx.push
-            s!"{c.toString (escape := true)}\t(U [{lps}] {canonical ci.type})"
+            (c, s!"{c.toString (escape := true)}\t(U [{lps}] {canonical ci.type})")
   let sorted := consts.qsort Name.lt
   let modOf (c : Name) : Name := match env.getModuleIdxFor? c with
     | some i => names[i.toNat]!
     | none => Name.anonymous
-  -- Native-code axioms reached by project constants, classified separately (see the module
-  -- docstring): accepted here only in the `toStr` form, then checked against the lock.
-  let check : M (Array (Name × Array Name) × NameSet) :=
-    sorted.foldlM (init := (#[], {})) fun (acc, natives) c => do
-      let axs := (← axiomsOf c).toArray.qsort Name.lt
-      let extra := axs.filter (!allowed.contains ·)
-      let natives := (extra.filter isNativeAxiom).foldl (·.insert ·) natives
-      let extra := extra.filter (!isNativeAxiom ·)
-      return (if extra.isEmpty then acc else acc.push (c, extra), natives)
-  let (bad, natives) := (check.run env).run' {}
-  for (c, extra) in bad do
-    IO.eprintln s!"[axiom-audit] {modOf c}: {c} depends on {extra.toList}"
-  unless bad.isEmpty do
-    IO.eprintln s!"[axiom-audit] error: {bad.size} constant(s) depend on disallowed axioms"
+  -- Check 3: `all` = every axiom reachable from any project constant (one walk, see
+  -- `reachableAxioms`; independent of the order of the constants). It decides check 3 and
+  -- which native-code axioms are classified (accepted only in the `toStr` form, then checked
+  -- against the lock). The memoised `axiomsOf` only names, in the messages, the constants
+  -- that depend on a disallowed axiom.
+  let all := reachableAxioms env sorted
+  let disallowed := (all.toArray.filter fun a => !allowed.contains a && !isNativeAxiom a).qsort
+    Name.lt
+  unless disallowed.isEmpty do
+    let perConst : M (Array (Name × Array Name)) :=
+      sorted.foldlM (init := #[]) fun acc c => do
+        let extra := (← axiomsOf c).toArray.qsort Name.lt
+          |>.filter fun a => !allowed.contains a && !isNativeAxiom a
+        return if extra.isEmpty then acc else acc.push (c, extra)
+    let bad : Array (Name × Array Name) := (perConst.run env).run' {}
+    for (c, extra) in bad do
+      IO.eprintln s!"[axiom-audit] {modOf c}: {c} depends on {extra.toList}"
+    let named : NameSet := bad.foldl (fun s (_, e) => e.foldl (·.insert ·) s) {}
+    let walkOnly := disallowed.filter (!named.contains ·)
+    unless walkOnly.isEmpty do
+      IO.eprintln s!"[axiom-audit] project constants reach the disallowed axiom(s) \
+        {walkOnly.toList} only through the wider edges of the walk (another type, constructor or \
+        recursor of an inductive block that a constant mentions), which `#print axioms` does \
+        not follow"
+    IO.eprintln s!"[axiom-audit] error: {disallowed.size} disallowed axiom(s) reached by project \
+      constants ({bad.size} constant(s) depend on one as `#print axioms` collects; \
+      {walkOnly.size} axiom(s) reached only through the wider edges of the walk)"
     return 1
-  let natives := natives.toArray.qsort Name.lt
+  -- `used`: the axioms reachable from the constants declared in a `Defs`/`Proofs`/`Specs`
+  -- module (audit scope, human decision 2026-11-23; see the module docstring), by the same walk.
+  let used := reachableAxioms env (sorted.filter fun c => specRoots.contains (modOf c).getRoot)
+  let usage (n : Name) : String := if used.contains n then "used" else "unused"
+  let natives := (all.toArray.filter isNativeAxiom).qsort Name.lt
   let mut nativeLines : Array String := #[]
   let mut nativeShown : Array String := #[]
   let mut nativeBad : Array Name := #[]
@@ -344,9 +441,10 @@ def main (args : List String) : IO UInt32 := do
     match env.find? n >>= toStrLiteral? with
     | some s =>
       if rmcpRoots.contains (modOf n) then
-        nativeLines := nativeLines.push s!"native\t{n.toString (escape := true)}\t\
+        nativeLines := nativeLines.push s!"native\t{usage n}\t{n.toString (escape := true)}\t\
           {(modOf n).toString (escape := true)}\t(U [] {canonical (env.find? n).get!.type})"
-        nativeShown := nativeShown.push s!"{n} ({modOf n}): toStr side condition of {s.quote}"
+        nativeShown := nativeShown.push s!"{n} ({modOf n}, {usage n}): toStr side condition of \
+          {s.quote}"
       else
         nativeBad := nativeBad.push n
         IO.eprintln s!"[axiom-audit] {modOf n}: native-code axiom {n} has the toStr form but is \
@@ -380,13 +478,21 @@ def main (args : List String) : IO UInt32 := do
     IO.eprintln s!"[axiom-audit] kernel replay: {e}"
     IO.eprintln "[axiom-audit] error: the kernel rejects a project constant on replay"
     return 1
-  IO.FS.writeFile axOut (String.join ((trustedAx.qsort (· < ·)).toList.map (· ++ "\n")))
+  let axLines := (trustedAx.qsort (fun a b => a.2 < b.2)).toList.map fun (c, l) =>
+    s!"{usage c}\t{l}\n"
+  IO.FS.writeFile axOut (String.join axLines)
   let modLines := names.toList.map fun m => s!"module\t{m.toString (escape := true)}\n"
   IO.FS.writeFile nativeOut (String.join (modLines ++ nativeLines.toList.map (· ++ "\n")))
   IO.println s!"[axiom-audit] {sorted.size} constant(s) in {ours.size} project module(s): \
-    no axiom outside {allowed.toList} and the native-code axioms below"
+    no axiom outside [propext, Classical.choice, Quot.sound], the {trustedAx.size} trusted \
+    axiom(s) of the RmcpExternal roots and the native-code axioms below"
+  let usedTrusted := trustedAx.filter (used.contains ·.1)
+  IO.println s!"[axiom-audit] trusted axioms (roots of RmcpExternal) in the closure: \
+    {trustedAx.size}, of which {usedTrusted.size} used by a constant of {specRoots} \
+    (checked next against axioms.lock)"
   IO.println s!"[axiom-audit] native-code axioms reached (Aeneas toStr side conditions, \
-    checked next against native-axioms.lock): {natives.size}"
+    checked next against native-axioms.lock): {natives.size}, of which \
+    {(natives.filter used.contains).size} used by a constant of {specRoots}"
   for l in nativeShown do IO.println s!"[axiom-audit]   {l}"
   IO.println s!"[axiom-audit] kernel replay of {sorted.size - skipped} constant(s) onto \
     {baseImports.size} dependency import(s): accepted ({skipped} unsafe/partial skipped)"

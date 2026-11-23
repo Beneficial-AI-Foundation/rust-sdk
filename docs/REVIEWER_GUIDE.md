@@ -52,23 +52,29 @@ particular:
 You can spend less effort on proof details when the PR introduces a `sorry`-free proof. You cannot
 skip the statement check.
 
-For external models and axioms in `formal/trusted/Rmcp/`, inspect the cited sources (RFC, crate
+For external models in `formal/trusted/Rmcp/` (definitions, structures and `opaque` constants;
+no axiom since S08–S09, human decision 2026-11-23), inspect the cited sources (RFC, crate
 documentation, pinned crate source) to make sure they are legitimate and that the formulation was
-correctly transcribed. Check that:
+correctly transcribed. `#print axioms`, the `#guard_msgs` lists and `axioms.lock` do not show
+these models, so this review is the only check of a changed model. Check that:
 
-- each axiom is listed in the trusted-base section of `formal/docs/STATUS.md`, and the Rust test
-  vectors cited for it exist and pass;
+- each definition, structure and `opaque` constant is listed in the trusted-base section of
+  `formal/docs/STATUS.md`, and the Rust test vectors cited for it in
+  `formal/trusted/evidence/README.md` exist and pass;
+- its docstring cites the Rust source it encodes (file and lines at the pinned version) and
+  states its exceptions;
 - no external is a bare `Result` axiom (`axiom f : … → Result T`); it is an exact model or `ok` of
   an opaque value;
-- no axiom is stated about a function whose Lean type merges distinct Rust types;
-- the axiom group has a consistency model in `formal/proofs/Proofs/Consistency/`;
-- the axiom does not refer to a target function.
+- no model is stated about a function whose Lean type merges distinct Rust types;
+- the model does not refer to a target function;
+- `trusted/` declares no `axiom`; an axiom added again needs a human decision and a consistency
+  model in `formal/proofs/Proofs/Consistency/`.
 
 For a translation patch in `formal/trusted/patches/`, check that its header states the change, why
 it is needed, and why the behaviour is unchanged; that it is minimal, with one concern; and that
 `patched-tests.yml` passes. For a new `exclude` entry, check that no target depends on the item;
 for a new `opaque` entry, check that the item truly cannot be translated and has no useful Rust
-model, since it adds an axiom.
+model, since it adds an external model to the trusted base.
 
 Comments about correctness are _blocking_.
 
@@ -131,6 +137,8 @@ judgement.
 - Read the `#guard_msgs` axiom lists in the spec files. Every axiom outside `propext`,
   `Classical.choice`, and `Quot.sound` must be in the trusted-base section of
   `formal/docs/STATUS.md`. A changed list is a trust change and must be named in the PR footer.
+  The lists do not show the external models; a diff of `formal/trusted/` is a trust change
+  too, and a proof may use a model only once S08/S09 are signed off.
 - Check that the hand-written Lean (`proofs/`, `specs/`, `trusted/`) has no metaprogramming:
   no `run_cmd`, `run_tac`, `#eval`, `elab`, `macro`, `syntax`, `initialize`, `addDecl`,
   `modifyEnv`, `simproc`, metaprogram attributes (`tactic`, `init`, `delab`, ...) or the like,

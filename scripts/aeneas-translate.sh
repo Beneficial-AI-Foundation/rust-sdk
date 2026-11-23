@@ -72,11 +72,17 @@ CARGO_ARGS=("${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" --lib)
 # nothing). Any change to it must be reviewed and this digest updated.
 BUILD_RS_SHA256="31b905abf91292bab290271e993e347e06a1944e6305f742f69dbd01e6b89349"
 
-# Dependency versions the axioms of plan Section 4 rely on (resolved at S03).
+# Dependency versions the external models of plan Section 4 rely on: hmac, sha2, base64
+# resolved at S03; digest, zeroize, chrono, serde_json added at S08-S09, whose models cite their
+# sources (formal/trusted/evidence/README.md).
 PINNED_DEPS=(
   "hmac 0.13.0"
   "sha2 0.11.1"
   "base64 0.23.1"
+  "digest 0.11.3"
+  "zeroize 1.9.2"
+  "chrono 0.4.45"
+  "serde_json 1.0.154"
 )
 
 # Lean names of the targets (plan Section 2): each needs a `def` in Funs.lean.

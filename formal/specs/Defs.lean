@@ -13,8 +13,6 @@ import Defs.RequestState
 Root of the `Defs` library: definitions used by the spec statements (plan Section 5).
 Maintained by hand (docs/WORKFLOW_AND_PR_GUIDE.md, "Library roots").
 
-The root currently imports the S05 draft modules `Defs.Wire` and `Defs.RequestState` so that
-the drafts under `formal/specs/Drafts/` can be checked against them (lead decision at S05).
-Their definitions are not yet signed off: before this lands, the spec owner signs them off or
-they are removed from this root (workflow guide, "Library roots").
+Imports `Defs.Wire` and `Defs.RequestState`, whose definitions the spec owner signed off at S05
+(2026-11-23; `docs/evidence/S05.md`), as the workflow guide's "Library roots" requires.
 -/

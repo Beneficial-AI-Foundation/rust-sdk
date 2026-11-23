@@ -1,16 +1,34 @@
 # Trusted-axiom lock (plan Section 4; formal/README.md, "Trusted base").
 #
 # One line per axiom declared in the roots of the RmcpExternal library
-# (Rmcp.TypesExternal, Rmcp.FunsExternal): `<full name> sha256:<hex>`, where <hex> is the
-# sha256 of the axiom's canonical statement as printed by scripts/lean-axiom-audit.lean
+# (Rmcp.TypesExternal, Rmcp.FunsExternal) that is used: `<full name> sha256:<hex>`, where <hex>
+# is the sha256 of the axiom's canonical statement as printed by scripts/lean-axiom-audit.lean
 # (structural: constants by full name with universe levels, de Bruijn indices, binder info;
 # binder names and metadata dropped; independent of notation and pretty-printer options).
-# `scripts/lean-guard.sh axioms` fails unless the axioms in the build output are exactly the
-# names below, each with this statement hash, so a forged RmcpExternal .olean cannot keep a
-# reviewed axiom's name with another statement.
+# Audit scope (human decision 2026-11-23): an axiom is used if it is reachable from some
+# constant declared in a module of the Defs, Proofs or Specs library (every constant of such a
+# module, including private helpers, instances and auxiliary declarations), transitively
+# through any constant (including the generated Rmcp.Types/Rmcp.Funs definitions); the audit
+# computes this with one order-independent walk, a superset of what `#print axioms` reports
+# for those constants. `scripts/lean-guard.sh axioms`
+# fails if a used axiom is not listed, if a listed axiom is no longer declared (stale), or if
+# a declared axiom's statement hash differs from its line, so a forged RmcpExternal .olean
+# cannot keep a reviewed axiom's name with another statement. Declared axioms that are not
+# used need no line (they are listed for information); a line for a declared but unused axiom
+# is reported as "unused (allowed)", so a reviewed model can be locked before a theorem uses it.
+# Consequence: the statement of a declared axiom that has no line here and is not used (before
+# S08-S09, all 41 placeholder externals) can change, or the axiom can vanish, without CI
+# failing, in an ordinary PR as in a forged artifact; only the source diff of trusted/ and the
+# guard's informational list show it, so review of trusted/ is the barrier for such axioms.
 #
 # Updating: in the same PR that adds or changes the axiom (with its justification docstring
 # and backing Rust tests, docs/WORKFLOW_AND_PR_GUIDE.md "External functions and axioms"), run
 # `lake build` and `scripts/lean-guard.sh axioms`; the failure message prints the line to add
-# for each axiom not in the lock. Reviewers check that every line here belongs to a reviewed
-# axiom of that PR. Empty at S03: there are no axioms yet (S08-S09 add them).
+# for each used axiom not in the lock. Reviewers check that every line here belongs to a
+# reviewed axiom of that PR (this covers the locked axioms only, see above).
+#
+# Empty: since S08-S09 the RmcpExternal roots declare no axiom. Human decision (2026-11-23):
+# every external is a definition or structure, and what a model cannot compute is an `opaque`
+# constant (ExtModel.hmacSha256, ExtModel.sipHash13, ExtModel.nowMs,
+# ExtModel.SerdeJsonErrorImpl), which adds no axiom (plan Section 4). Adding an axiom again
+# needs a human decision and a line here.

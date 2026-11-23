@@ -115,7 +115,9 @@ refer to.
 6. **Audit the trust base on base and head.** Compare the `#guard_msgs` axiom lists in
    `formal/specs/Specs/**` between base and head, and the diff of `formal/trusted/`. Expected
    builtin axioms are `propext`, `Classical.choice`, and `Quot.sound`. Every other axiom must be in
-   the trusted-base section of `formal/docs/STATUS.md`; anything else, including `sorryAx` or the
+   the trusted-base section of `formal/docs/STATUS.md` (`trusted/` declares none since S08–S09;
+   the external models are definitions and `opaque` constants, which these lists do not show, so
+   audit them through the diff of `formal/trusted/`); anything else, including `sorryAx` or the
    axioms added by `native_decide`/`bv_decide`, is a trust change to report under question 6. Check
    that the `#guard_msgs` checks themselves were not loosened: each must be a bare
    `#guard_msgs in` before one `#print axioms` line, with the complete axiom list in its docstring
@@ -149,7 +151,7 @@ PR that touches several kinds needs each applicable section.
 | Proof of one target | `formal/proofs/Proofs/Model/RequestState{,Wire}/*.lean`, its `recall` entry in `formal/specs/Specs/Model/*.lean` | Specification strength; Proof maintainability; Validation |
 | Refactor, source change, or Aeneas `rev` bump | `crates/rmcp/src/model/request_state{,_wire}.rs`, `formal/lakefile.toml` | Translation, refactor, and source linkage; Validation |
 | Translation, Charon settings, or patch | `crates/rmcp/Cargo.toml` (`[package.metadata.charon]`), `formal/trusted/patches/`, `formal/translation/**`, `formal/docs/pilot.md` | Translation, refactor, and source linkage; External axioms |
-| External model or axiom | `formal/trusted/Rmcp/*External.lean`, `formal/trusted/evidence/`, `formal/proofs/Proofs/Consistency/`, trusted base in `formal/docs/STATUS.md` | External axioms and the trust boundary |
+| External model or axiom | `formal/trusted/Rmcp/*External.lean`, `formal/trusted/evidence/`, `formal/proofs/Proofs/External/` (and `formal/proofs/Proofs/Consistency/` if an axiom is added again), trusted base in `formal/docs/STATUS.md` | External axioms and the trust boundary |
 | Transcript, encoding, or round trip | `RequestStateWire/TranscriptV{1,2}.lean`, `SealRs1/SealRs2`, `RequestState/Roundtrip.lean` | Transcripts, encoding, and round trips; External axioms |
 | Rust boundary tests | `mod tests` in `request_state.rs` or `request_state_wire.rs` | Validation; core question 8 |
 | Status and evidence only | `formal/docs/board.yaml`, `functions/*.yaml`, `evidence/`, `blockers/`, `STATUS.md` | Status records and evidence |
@@ -261,7 +263,8 @@ Historical examples for each question are listed in the [appendix](#appendix-his
 - Are new `exclude` or `opaque` entries in `[package.metadata.charon]` justified by a comment, and
   are their verification consequences visible? An excluded item must be outside the target
   closure; an opaque item is a last resort (it cannot be translated and has no useful Rust model)
-  and becomes an external that needs an axiom.
+  and becomes an external that needs a reviewed model in `formal/trusted/` (a definition or `ok`
+  of an `opaque` constant; no axiom since S08–S09).
 - Does a proposed change to the Rust, a patch, or a Charon setting actually match the intended
   Rust behaviour, or is the problem in a theorem's premises or in a library model? Check the source
   before changing translation inputs to make a proof work.
@@ -280,8 +283,9 @@ Historical examples for each question are listed in the [appendix](#appendix-his
   `hmacSha256 k m`, and `prim.hmac_sha256_verify k m t` holds iff `t = hmacSha256 k m` as byte
   lists? Does `verify` reject short or long tags?
 - Does the Base64 model match the `URL_SAFE_NO_PAD` engine, rejecting padding and non-canonical
-  trailing bits? Is the law `b64_decode (b64 x) = some x` the only round-trip assumed, or does a proof
-  also rely on the converse, which does not hold for non-canonical input?
+  trailing bits? Its laws (`b64Decode (b64 x) = some x`, `b64Decode s = some y ↔ b64 y = s`,
+  alphabet, length) are theorems in `formal/proofs/Proofs/External/Base64.lean`, not
+  assumptions; does a proof rely on any Base64 fact that is not one of them?
 - Do the W06–W09 specifications, stated with `List.splitOn '.'`, agree with `str::split('.')` on
   the empty string, a string with no `.`, leading and trailing dots, and consecutive dots? Do
   E09–E11's part counts follow from them?
@@ -291,13 +295,15 @@ Historical examples for each question are listed in the [appendix](#appendix-his
 - Is the codec-state invariant no stronger than what the constructors enforce? Constructor
   correctness is out of scope, so every clause of the invariant must be checkable against the
   constructor source.
-- Is every remaining axiom listed in the trusted-base section of `formal/docs/STATUS.md` with its
-  justification, and does its docstring repeat it? Prefer definitions or hypotheses over axioms.
-- Does each axiom group have a consistency model in `formal/proofs/Proofs/Consistency/` that
-  proves every axiom of the group?
-- Are the dependency versions the axioms rely on (`hmac`, `sha2`, `base64`) pinned in
-  `scripts/aeneas-translate.sh`, and do they match the crate documentation cited?
-- Is each axiom checked against concrete vectors from the real crates (RFC 4231 for HMAC, known
+- Is each definition, structure and `opaque` constant of `formal/trusted/` listed in the
+  trusted-base section of `formal/docs/STATUS.md` with its justification, and does its docstring
+  repeat it (Rust source by file and line, stated exceptions)? Does `trusted/` declare no
+  `axiom` (human decision 2026-11-23)? An axiom added again needs a human decision and a
+  consistency model in `formal/proofs/Proofs/Consistency/` that proves every axiom of its group.
+- Are the dependency versions the models rely on pinned in `scripts/aeneas-translate.sh`
+  (`hmac`, `sha2`, `base64`; `digest`, `zeroize`, `chrono`, `serde_json` are cited but not yet
+  pinned, plan Section 4), and do they match the crate source cited?
+- Is each model checked against concrete vectors from the real crates (RFC 4231 for HMAC, known
   Base64url values, split behaviour) in `mod tests`, and listed in
   `formal/trusted/evidence/README.md`? These tests catch a mismatched model; they are not a
   consistency proof, and the review should not describe them as one.

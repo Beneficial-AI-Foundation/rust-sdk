@@ -3,7 +3,7 @@ rust_symbol: rmcp::model::request_state::RequestStateCodec::rs1_fallbacks_verify
 source_file: crates/rmcp/src/model/request_state.rs
 source_line: null  # function added by the S04a refactor
 generated_symbol: null          # filled in at S04a
-translation: NOT_TRIED
+translation: LEAN_OK  # Aeneas output compiles at adce319 (S04a part 2)
 spec: DRAFT
 linkage: ORIGINAL
 proof: OPEN

@@ -4,7 +4,7 @@ Plan: [`docs/MCP_SDK_Verification_Master_Plan_EN.md`](../../docs/MCP_SDK_Verific
 Task state: [`board.yaml`](board.yaml) (authoritative). Per-function records:
 [`functions/`](functions/). Step evidence: [`evidence/`](evidence/).
 
-Last updated 2026-11-22 (Phase A final records pass; S01, S02, S03, S04, S04a in progress). Nothing in this file has been accepted by a human yet.
+Last updated 2026-11-23 (Phase A final records pass; S01, S02, S03, S04, S04a in progress; S08/S09 external models drafted, under review). Nothing in this file has been accepted by a human yet.
 
 ## Source baseline
 
@@ -41,7 +41,7 @@ The proofs hold only for this configuration.
 Aeneas handles pure, sequential, safe Rust well, and the request-state codec is mostly that:
 framing, parsing, length checks and byte transcripts. The parts that are not (HMAC and Base64
 crate internals, the system clock, `serde` JSON wrappers, formatting impls) are either behind
-four opaque primitives with axioms (plan Section 4) or excluded (plan Section 2.3). The
+four opaque primitives with hand-written models (plan Section 4) or excluded (plan Section 2.3). The
 verification concentrates on the byte logic underneath them.
 
 **Objective.** Implementation-linked correctness of the request-state codec — framing,
@@ -67,7 +67,7 @@ Claims apply to the pinned commit and configuration only, not to upstream releas
 | Role | Name |
 |---|---|
 | Project owner | TBD — to be named by a human (S01 cannot be accepted until a human names them) |
-| Spec owner(s) | TBD — to be named by a human (S01 cannot be accepted until a human names them) |
+| Spec owner(s) | Hoang Le Truong (named 2026-11-23; signed off the S05 statements W01–W15, `frame_roundtrip`, E01–E04) |
 | Budget (people, time, compute) | TBD — to be named by a human (S01 cannot be accepted until a human names them) |
 
 Only the named human spec owner may set `spec: REVIEWED`, and only a human may move a task to
@@ -79,39 +79,42 @@ budget are allocated.
 
 ## Per-function status
 
-All values are the S01 initial values. Line numbers for E targets are at the base commit and
-are refreshed at the S04a pinned commit; W targets and E09a do not exist until S04a.
+Mirrors `formal/docs/functions/*.yaml` (the records are authoritative). Updated 2026-11-23 at
+the incorporation of W01–W15, `frame_roundtrip`, E01–E04 and the S08–S09 external-model laws
+(human approval 2026-11-23): their proofs
+are in `Proofs`, their statements in `specs/Specs/Model/`.
 
 | ID | Rust symbol | translation | spec | linkage | proof |
 |---|---|---|---|---|---|
-| W01 | `request_state_wire::b64_len` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W02 | `request_state_wire::key_length_ok` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W03 | `request_state_wire::check_kid_len` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W04 | `request_state_wire::bytes_eq` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W05 | `request_state_wire::next_dot` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W06 | `request_state_wire::component_count` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W07 | `request_state_wire::version_of` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W08 | `request_state_wire::parse_rs1` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W09 | `request_state_wire::parse_rs2` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W10 | `request_state_wire::transcript_v1` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W11 | `request_state_wire::transcript_v2` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W12 | `request_state_wire::decode_expiry` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W13 | `request_state_wire::is_expired` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W14 | `request_state_wire::open_frame` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| W15 | `request_state_wire::frame` | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E01 | `RequestStateCodec::open_authenticated_body` (l. 722) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E02 | `RequestStateCodec::b64_len` (l. 780) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E03 | `RequestStateCodec::validate_key_length` (l. 755) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E04 | `RequestStateCodec::validate_config_kid` (l. 765) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E07 | `RequestStateCodec::seal_rs1` (l. 584) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E08 | `RequestStateCodec::seal_rs2` (l. 599) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E09 | `RequestStateCodec::open_rs1_at` (l. 620) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E09a | `RequestStateCodec::rs1_fallbacks_verify` (private helper) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E10 | `RequestStateCodec::open_rs2_at` (l. 676) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
-| E11 | `RequestStateCodec::open_at` (l. 571) | NOT_TRIED | DRAFT | ORIGINAL | OPEN |
+| W01 | `request_state_wire::b64_len` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W02 | `request_state_wire::key_length_ok` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W03 | `request_state_wire::check_kid_len` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W04 | `request_state_wire::bytes_eq` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W05 | `request_state_wire::next_dot` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W06 | `request_state_wire::component_count` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W07 | `request_state_wire::version_of` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W08 | `request_state_wire::parse_rs1` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W09 | `request_state_wire::parse_rs2` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W10 | `request_state_wire::transcript_v1` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W11 | `request_state_wire::transcript_v2` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W12 | `request_state_wire::decode_expiry` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W13 | `request_state_wire::is_expired` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W14 | `request_state_wire::open_frame` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W15 | `request_state_wire::frame` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E01 | `RequestStateCodec::open_authenticated_body` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E02 | `RequestStateCodec::b64_len` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E03 | `RequestStateCodec::validate_key_length` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E04 | `RequestStateCodec::validate_config_kid` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| E07 | `RequestStateCodec::seal_rs1` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
+| E08 | `RequestStateCodec::seal_rs2` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
+| E09 | `RequestStateCodec::open_rs1_at` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
+| E09a | `RequestStateCodec::rs1_fallbacks_verify` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
+| E10 | `RequestStateCodec::open_rs2_at` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
+| E11 | `RequestStateCodec::open_at` | LEAN_OK | DRAFT | ORIGINAL | OPEN |
 
-Total: 25 records (W01–W15, E01–E04, E07–E11, E09a). No specification has been drafted yet;
-`spec: DRAFT` is the initial value of the status vocabulary, not a drafted statement.
+Total: 25 records (W01–W15, E01–E04, E07–E11, E09a). Proved and incorporated: W01–W15 and
+E01–E04 (plus the composition theorem `frame_roundtrip`); the laws of the external models
+(S08–S09) are in `Specs.External`.
 
 **E05 and E06 are unassigned.** They belonged to `mac_v1`/`mac_v2`, which the S04a refactor
 deletes (plan Section 2.2 and 2.3). The IDs are not renumbered, so the guides' references stay
@@ -146,7 +149,7 @@ directly, with no seal wrapper verified; the codec-state invariant is permanentl
 
 ## Trusted base
 
-The toolchain (Charon, Aeneas, Lean, Mathlib) is installed and pinned since S03 (`formal/docs/evidence/S03.md`). The Charon `exclude`/`opaque` settings are present in the working tree (S03, extended at S04a part 2), awaiting human sign-off. No patch and no reviewed axiom or external model exists: `formal/trusted/Rmcp/` holds 41 unreviewed placeholder axioms (7 opaque types, 34 bare `Result` function/value axioms) started from the Aeneas templates at S04a part 2, not built by default (`Rmcp`/`RmcpExternal` are not default targets) and not in `axioms.lock`; every contract below is **planned, not yet written (S08–S09)** unless noted (inventory: [`evidence/S04a.md`](evidence/S04a.md)).
+The toolchain (Charon, Aeneas, Lean, Mathlib) is installed and pinned since S03 (`formal/docs/evidence/S03.md`). The Charon `exclude`/`opaque` settings are present in the working tree (S03, extended at S04a part 2), awaiting human sign-off. No patch exists. **Decision (human, 2026-11-23): all externals become definitions; no trusted axiom remains.** At S08–S09 the 41 placeholder axioms that S04a part 2 started from the Aeneas templates (7 opaque types, 34 bare `Result` function/value axioms; inventory: [`evidence/S04a.md`](evidence/S04a.md)) are replaced by definitions (functions) and structures (types) with the generated names and signatures; what cannot be computed is one of four `opaque` constants, which add no axiom. The models are drafted and under review, not yet signed off or landed ([`evidence/S08.md`](evidence/S08.md), [`evidence/S09.md`](evidence/S09.md)); `axioms.lock` stays empty.
 
 **Tools:** Charon and Aeneas (`nightly-2026.08.20-5d08da4`), Lean's kernel.
 **Configuration:** the translated configuration above.
@@ -154,36 +157,61 @@ The toolchain (Charon, Aeneas, Lean, Mathlib) is installed and pinned since S03 
 **Exclusions:** the table above (Charon `exclude`, present in the working tree (S03), awaiting
 human sign-off).
 
-Planned external contracts (plan Section 4), to live in `formal/trusted/Rmcp/FunsExternal.lean`
-and `TypesExternal.lean`:
+External contracts (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
+`TypesExternal.lean`; sources and tests per model in `formal/trusted/evidence/README.md`:
 
-| Contract | Planned model (summary of plan Section 4) | Status |
+| Contract | Model (no axiom) | Status |
 |---|---|---|
-| HMAC (`prim.hmac_sha256`, `prim.hmac_sha256_verify`) | opaque `hmacSha256`; both functions always succeed | planned, not yet written (S08–S09) |
-| Base64url, no padding (`prim.b64_encode_into`, `prim.b64_decode`) | opaque `b64`, `b64Decode`; law `b64Decode (b64 x) = some x` | planned, not yet written (S08–S09) |
-| Standard library | value semantics; hand-written models as definitions where possible; one `HashMap::get` law | planned, not yet written (S08–S09) |
-| Clock (`now_ms`, opaque) | opaque `ok` value; no target depends on it | planned, not yet written (S08–S09) |
+| HMAC (`prim.hmac_sha256`, `prim.hmac_sha256_verify`) | `ok (hmacSha256 k m)`, `ok (t = hmacSha256 k m)`, with `opaque ExtModel.hmacSha256`; both always succeed. Stated exception: SHA-256 bit-length `u64` overflow (`sha2-0.11.1/src/block_api.rs` line 66) for a message of at least `2^61 − 64` bytes or a key of at least `2^61` bytes, outside the size convention (inputs of at least `2^61` bytes; the `x86_64` address space is at most `2^57` bytes), not modelled | drafted, under review (S08) |
+| Base64url, no padding (`prim.b64_encode_into`, `prim.b64_decode`) | definitions `ExtModel.b64`, `ExtModel.b64Decode` (strict); round trip, canonicity, alphabet (no `.`), length laws proved (`Proofs/External/Base64.lean`); differential check vs `base64 0.23.1` | drafted, under review (S08) |
+| Standard library | definitions: `Borrow::borrow` (blanket), `Option::ok_or`, `Option` `Default`, `Result::is_err`, `Result::map_err`, `&[T]` `Default`, `str::len`, `str::as_bytes`, `String::{with_capacity, push_str, push, as_bytes, from_utf8}`, `String` `PartialEq::eq`, `Eq::assert_fields_are_eq`, `Clone`, `Hash::hash`, `Vec::is_empty`, `RandomState` `Clone` and `build_hasher`, `DefaultHasher` `write` and `finish`, `HashMap::get` (first entry with an equal key, no hashing), `HashMap` `Clone`; structures: `Duration`, `FromUtf8Error`, `HashMap` (association list), `RandomState`, `DefaultHasher` (with `opaque ExtModel.sipHash13`, unused by `get`) | drafted, under review (S09) |
+| `zeroize` | definitions `Zeroizing::new`, `Zeroizing` `Clone` and `Deref`, `Zeroize` for `Z: DefaultIsZeroes` and for `Vec<Z>`; structure `Zeroizing` | drafted, under review (S09) |
+| Clock (`now_ms`, opaque) | `ok nowMs` with `opaque ExtModel.nowMs`. Environmental assumption: `Utc::now` panics if the clock is before 1970 or outside chrono's range, not modelled | drafted, under review (S09) |
+| `serde_json::Error` (type) | structure around `opaque ExtModel.SerdeJsonErrorImpl` (never created or inspected) | drafted, under review (S09) |
 | Codec state | a `Defs` hypothesis of E09/E10 and the round trips, not an axiom | planned, not yet written (S12) |
+
+Conventions and review rules for the models:
+- **`String` and memory.** `ok` from a `String` model means "returns, or aborts or panics for
+  memory reasons": out of memory, and the amortized growth of `RawVec::grow_amortized`
+  (`max(2·cap, len + additional)` above `isize::MAX` once the capacity exceeds `isize::MAX / 2`)
+  are not modelled; growth of the length beyond `isize::MAX` bytes is `fail panic`.
+- **Clock.** `nowMs` is one constant, so every reader of the clock (`now_ms`, and the translated
+  non-target wrappers `open`, `open_with`) is pure in the model. Review rule: **no spec statement
+  mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
+  `…RequestStateCodec.open` or `…RequestStateCodec.open_with`** (a variable named `now_ms`, such as
+  the time parameter of E01 `open_authenticated_body`, is not covered); opening is specified through
+  `open_at` with an explicit time. `seal_with` (also a clock reader) is excluded.
+- **`HashMap::get`.** Faithful for `Hash`/`Eq` instances that agree and do not fail (only
+  `K = Q = String` occurs). For S12: `Nodup` of the keys is needed only to identify the value;
+  `find?` returns `some` exactly when an equal key exists, so "found"/"not found" statements need
+  no `Nodup` premise (`Proofs.External.HashMap.find?_key_isSome_iff`, `find?_key_of_not_mem`).
 
 Opaque items (Charon `opaque` setting in `crates/rmcp/Cargo.toml`, plan Section 9), present in
 the working tree (S03), awaiting human sign-off:
 - `rmcp::model::request_state_wire::prim`: wraps the HMAC and base64 `Engine` types that cannot
-  be translated (B1, B3); no Rust model; its axioms are planned (S08–S09).
+  be translated (B1, B3); no Rust model; modelled at S08 by definitions (opaque `hmacSha256`).
 - `rmcp::model::request_state::_::now_ms`: reads the system clock (I/O); no Rust model; used
   only by non-target wrappers.
 - external crates `zeroize`, `base64`, `hmac`, `sha2`, `thiserror`, `chrono`, `serde_json`: only
-  signatures are needed; their behaviour reaches targets only through `prim`.
+  signatures are needed. Targets reach `hmac`, `sha2` and `base64` only through `prim`, `chrono`
+  only through `now_ms`, `zeroize` through its own models (`Zeroize`, `Zeroizing::{new, clone,
+  deref}`) and `serde_json` only through the type `serde_json::Error`; no external comes from
+  `thiserror`.
 
 Marking an item opaque only makes Charon keep its signature; the contracts it needs are the
-planned axioms and models in the table above.
+models in the table above. The `opaque` constants of the models are exactly four:
+`ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs` and the type
+`ExtModel.SerdeJsonErrorImpl`. None of these models appears in `#print axioms`, the `#guard_msgs`
+lists or `axioms.lock`; a change to one is caught only by review of `formal/trusted/`.
 
-Axioms in force: none accepted. Native-code axioms (separate trust class, human decision
+Trusted axioms: none (no axiom declared in `trusted/` since S08–S09, decision 2026-11-23).
+Native-code axioms (separate trust class, human decision
 2026-11-22): the five `toStr` side conditions of the string literals in target code
 (`VERSION_V1`, `VERSION_V2`, `KID_EMPTY_MSG`, `KID_TOO_LONG_MSG`, the `expect` message of
 `rs1_fallbacks_verify`), listed with statement hashes in `formal/trusted/native-axioms.lock`
 (working tree, awaiting review); the `axioms` audit accepts no other native-code axiom (none
-declared outside `Rmcp.Types`/`Rmcp.Funs`), and enforces the lock once `Rmcp` is a default
-target (S08–S09). Each
+declared outside `Rmcp.Types`/`Rmcp.Funs`), and enforces the lock for each one that a
+`Defs`/`Proofs`/`Specs` constant depends on (audit scope 2026-11-23). Each
 has a kernel proof, so an upstream Aeneas `toStr` fix would remove them (open item).
 
 ## Bugs found
@@ -192,8 +220,12 @@ None recorded.
 
 ## Open items
 
+- E09/E10 and the W10/W11 `h_len` premise for decoded bodies: S08 provides the Base64 length
+  law `ExtModel.b64Decode_length_le` (`b64Decode x = some y → y.length ≤ x.length`, a theorem);
+  whether E09/E10 use it or a premise over the decoded parts is decided when they are drafted
+  (`evidence/S10.md`, "Notes for review").
 - `docs/VERIFICATION.md` (the Aeneas process guide, added 2026-11-22 verbatim) differs from this
-  project's decided design in six places, kept as documented deviations: (1) it uses
+  project's decided design in seven places, kept as documented deviations: (1) it uses
   `lake build --wfail`; the project uses `warningAsError` per library plus the lean-guard checks
   (human decision: the pinned Aeneas library replays 4 `sorry` warnings); (2) its spec-file
   example uses `#guard_msgs (whitespace := lax, substring := true)`; the guard accepts only a bare
@@ -205,7 +237,11 @@ None recorded.
   (6) it allows no native-code axiom (`native_decide`/`bv_decide` never in a final proof); the
   project accepts the Aeneas `toStr` side conditions of string literals declared in
   `Rmcp.Types`/`Rmcp.Funs` and locked in `formal/trusted/native-axioms.lock` (human decision
-  2026-11-22), and no other.
+  2026-11-22), and no other; (7) it states the behaviour of an opaque item as a Lean axiom with a
+  consistency model; since S08–S09 the project states it as a definition or `ok` of an `opaque`
+  constant and declares no trusted axiom (human decision 2026-11-23). A wording change of
+  `docs/VERIFICATION.md` for (7) is proposed with S08/S09, not applied (the file stays verbatim
+  until the human decides; `evidence/S08.md`, "Open items").
 - S08–S09 (externals rewrite), open by human decision 2026-11-23 (S04a review R3a-1, R3a-2):
   (1) a shadowing `rmcp.<x>` declared in a project module that a trusted root imports passes all
   gates — enforce plan Section 5's rule that `RmcpExternal` imports only Aeneas and `Rmcp.Types`;
@@ -236,17 +272,18 @@ None recorded.
 - The copied pilot logs (`formal/docs/pilot/`) contain absolute local paths, including the
   macOS username; a human decides before any push.
 - The pilot artifacts total about 1.2 MB; a human accepts the size.
-- Lean-model domain notes for W06/W08/W09 and W10/W11/W15 (plan Section 3) are to be decided by
-  the spec owner at S05.
-- S05: `formal/specs/Defs.lean` imports the draft modules `Defs.Wire` and `Defs.RequestState`
-  for drafting (lead decision); the spec owner signs them off, or they are removed from the root,
-  before S05 lands (workflow guide, "Library roots"). See [`evidence/S05.md`](evidence/S05.md).
+- Resolved 2026-11-23: the spec owner signed off the S05 statements and `Defs` with the lead
+  defaults (exact no-fail domains, no 64-bit premise, `div_ceil` lemma in Proofs, `match`
+  postconditions). See [`evidence/S05.md`](evidence/S05.md).
 - S05 (a): E09–E11 and the round trips cannot discharge the W10/W11 `h_len` or W06/W08/W09
-  `h_count` premises (`b64Decode` opaque and unbounded); those E specs need their own domain
-  premise. See [`evidence/S05.md`](evidence/S05.md), "For later steps".
+  `h_count` premises (written when `b64Decode` was an opaque function; since S08 it is a
+  definition with `(b64Decode s).length ≤ s.length` proved, `ExtModel.b64Decode_length_le`, which
+  may let those E specs derive the premises from the token length); until that is checked, those
+  E specs need their own domain premise. See [`evidence/S05.md`](evidence/S05.md), "For later steps".
 - S05 (b), for S08: a URL-safe alphabet law for `b64` (no `.` in the output) with Rust test
-  vectors, needed by S15 to apply W08/W09 to sealed tokens. See
-  [`evidence/S05.md`](evidence/S05.md), "For later steps".
+  vectors, needed by S15 to apply W08/W09 to sealed tokens. Drafted at S08 (theorems
+  `Proofs.External.Base64.b64_alphabet`, `dot_not_mem_b64`), pending sign-off. See
+  [`evidence/S05.md`](evidence/S05.md), "For later steps", and [`evidence/S08.md`](evidence/S08.md).
 - S03 R5a-1 (final review): the word bans, the `#`-command allowlist and the attribute allowlist
   of `lean-guard.sh sources` can be bypassed by gluing a banned token to a preceding literal or
   `)`; fix not applied in Phase A (human decision 2026-11-22). See
@@ -263,8 +300,12 @@ None recorded.
   dependency; the native string-literal axioms of target code are handled via
   `formal/trusted/native-axioms.lock` (SPQR-style named baseline, checked by the `axioms`
   audit). Open: an upstream Aeneas `toStr` fix (kernel proof of the side condition) and rev bump
-  to remove the five native axioms; the 41 placeholder externals (S08–S09) before `Rmcp` and
-  `RmcpExternal` can become default targets. See [`evidence/S04a.md`](evidence/S04a.md).
+  to remove the five native axioms. The 41 placeholder externals are replaced at S08–S09 by
+  definitions, structures and opaque constants (decision 2026-11-23; drafted, under review).
+  Since the audit-scope decision (2026-11-23) the unused
+  placeholders no longer block making `Rmcp` and `RmcpExternal` default targets: with both
+  added, `lake build`, `sources`, `build-log` and `axioms` pass (`evidence/S03.md`, test D1);
+  adding them is a `lakefile.toml` change by the lead. See [`evidence/S04a.md`](evidence/S04a.md).
 - Docs-sync round 3: ten items left open by human decision (2026-11-22): (1) the claim that
   proofs need no trust review contradicts the X4 limit (plan Section 4, `WORKFLOW_AND_PR_GUIDE.md`,
   `REVIEWER_GUIDE.md`); (2) plan header and Section 9 say no blocker is open, despite the

@@ -144,8 +144,9 @@ opaque = []
   translated, and nothing we verify may depend on them.
 - **`opaque`** is almost never used. An item is made opaque only when it **cannot be translated
   and there is no useful Rust model** we could patch in. Its Lean signature is then generated
-  without a body, and we state its behaviour as a Lean axiom in
-`formal/trusted/<Crate>/FunsExternal.lean`. Every opaque
+  without a body, and we state its behaviour in `formal/trusted/<Crate>/FunsExternal.lean`, as a
+  definition (an exact model, or `ok` of an `opaque` value) wherever one can be written, and as a
+  Lean axiom only when it cannot. Every opaque
   item adds to the trusted base, so it needs a strong justification. The default answer to a
   translation problem is a patch (below), not `opaque`.
 
@@ -243,14 +244,17 @@ behaviour stated as an axiom. These axioms are trusted, so:
   proofs through it get stuck.
 - **Don't axiomatise a function whose Lean type merges distinct Rust types** (e.g. `size_of`,
   where `T` and `&T` share a Lean type) — state the fact as a hypothesis on the spec instead.
-- **Pin any dependency version an axiom relies on** (flate2, regex, …) and have the translate
+- **Pin any dependency version an axiom or external model relies on** (flate2, regex, …) and have the translate
   script check it (`cargo tree --locked`).
 - Each one is reviewed like a patch: by multiple agents, then by a human.
-- Where an axiom is backed by tests (a differential test against the dependency, say), keep the
-  test program in `formal/trusted/evidence/` if it is not part of the build. Where possible, also
-  give a model of the axioms in `formal/proofs/Proofs/Consistency/`, so they cannot prove `False`.
+- Where an axiom or an external model is backed by tests (a differential test against the
+  dependency, say), keep the test program in `formal/trusted/evidence/` if it is not part of the
+  build. Where possible, also give a model of any remaining axioms in
+  `formal/proofs/Proofs/Consistency/`, so they cannot prove `False`; a definition or an `opaque`
+  constant needs none. Note that `#print axioms` lists axioms only: an external model written as
+  a definition is checked by review of `formal/trusted/`, not by the axiom lists.
 - Where a model is generally useful (most std functions), prefer adding it to the Aeneas standard
-  library upstream, so it stops being an axiom here.
+  library upstream, so it stops being an axiom or external model here.
 
 Calls into other crates the project depends on can be handled in two ways:
 

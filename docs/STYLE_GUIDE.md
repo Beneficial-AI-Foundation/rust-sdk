@@ -104,10 +104,10 @@ directions are fixed:
 | Library | `srcDir` | Contents | May import |
 | --- | --- | --- | --- |
 | `Rmcp` | `translation` | Generated `Rmcp.Types`, `Rmcp.Funs` | Aeneas, `RmcpExternal` |
-| `RmcpExternal` | `trusted` | Hand-written `Rmcp.TypesExternal`, `Rmcp.FunsExternal`: external models, opaque functions, axioms | Aeneas, `Rmcp.Types` (the generated `FunsExternal` template imports it) |
+| `RmcpExternal` | `trusted` | Hand-written `Rmcp.TypesExternal`, `Rmcp.FunsExternal`: external models (definitions, structures, `opaque` constants; no axiom since S08–S09) | Aeneas, `Rmcp.Types` (the generated `FunsExternal` template imports it) |
 | `Defs` | `specs` | Pure definitions used by statements: byte-level models, transcripts, codec-state invariant | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
-| `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, consistency models | `Rmcp`, `RmcpExternal`, `Defs` |
-| `Specs` | `specs` | One spec file per Rust source file: `recall` of each accepted statement and its axioms | `Defs`, `Proofs` |
+| `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, laws of the external models (`Proofs/External/`; consistency models only if a trusted axiom is added again) | `Rmcp`, `RmcpExternal`, `Defs` |
+| `Specs` | `specs` | One spec file per Rust source file: `recall` of each accepted statement and its axioms | `Defs`, `Proofs`, `Mathlib.Tactic.Recall` (the `recall` command) |
 
 - `Proofs` never imports `Specs`, and nothing imports `Specs`.
 - A statement is phrased only with `Defs` definitions (and the translated function), so that its
@@ -122,20 +122,28 @@ directions are fixed:
 translate (plan Section 4). Organise `FunsExternal.lean` in sections: HMAC, Base64, standard
 library, clock.
 
-- Each opaque reference function (`hmacSha256`, `b64`, `b64Decode`) is an `opaque` declaration,
-  and the translated external is a `def` returning `ok` of it, never a bare `Result` axiom.
-- Each axiom describes its primitive on its own terms, never by referring to a target function.
-- Each axiom has a docstring giving its justification and the Rust tests that check it. The same
-  axiom is listed in the trusted-base section of `formal/docs/STATUS.md`. For example (the test
-  name is a placeholder):
+- No `axiom` in `trusted/` (human decision 2026-11-23). Each external function is a `def` with
+  the generated name and signature, and each external type a `structure`, keeping the
+  template's `@[rust_fun]` or `@[rust_type]` attribute where it has one (the template gives none
+  to the opaque `rmcp` functions, `prim` and `now_ms`); never a bare `Result` axiom. What a
+  model cannot compute is an `opaque` constant in the namespace `ExtModel` (`hmacSha256`,
+  `sipHash13`, `nowMs`, `SerdeJsonErrorImpl`), and the external returns `ok` of it. Laws about
+  the models (for example the Base64 round trip) are theorems in
+  `formal/proofs/Proofs/External/`.
+- Each model describes its primitive on its own terms, never by referring to a target function.
+- Each model has a docstring with the Rust source it encodes (crate or `rust-src` file and lines
+  at the pinned version) and its stated exceptions (panics or behaviours it does not model). The
+  same model is listed in the trusted-base section of `formal/docs/STATUS.md`, and
+  `formal/trusted/evidence/README.md` names the Rust tests that check it. For example:
 
   ```lean
-  /-- `URL_SAFE_NO_PAD` decoding inverts encoding.
+  /-- [rmcp::model::request_state_wire::prim::b64_decode]: ...
 
-  Justified by the `base64` crate documentation for `Engine::decode` at the pinned version
-  (`0.23.x`, checked by `scripts/aeneas-translate.sh`), and checked by the `b64_vectors` test in
-  `request_state_wire.rs`. Consistency model: `Proofs/Consistency/Base64.lean`. -/
-  axiom b64Decode_b64 (x : List U8) : b64Decode (b64 x) = some x
+  **Model:** `ok (b64Decode input)`. `URL_SAFE_NO_PAD` (`base64-0.23.1`,
+  `src/engine/general_purpose/mod.rs` line 472) decodes strictly: padding, foreign bytes,
+  a length `≡ 1 (mod 4)` and non-zero trailing bits are errors. -/
+  def model.request_state_wire.prim.b64_decode (input : Slice Std.U8) :
+      Result (Option (alloc.vec.Vec Std.U8)) := ...
   ```
 
 ## Specification Definition Guidelines
@@ -182,9 +190,11 @@ There is one proof file per Rust item (`VERIFICATION.md` §8), under
   ```
 
 - Further details or an overview of the proof can go in other comments if useful.
-- Consistency models of axioms go in `Proofs/Consistency/<Group>.lean` (`Hmac`, `Base64`,
-  `HashMap`). Each one instantiates the opaque functions with a concrete model and proves every
-  axiom of the group for it.
+- Consistency models are needed only for trusted axioms, and `trusted/` declares none since
+  S08–S09 (definitions and `opaque` constants cannot prove `False`). If an axiom is added again
+  (human decision), its consistency model goes in `Proofs/Consistency/<Group>.lean`, instantiating
+  the opaque functions with a concrete model and proving every axiom of the group for it. Laws
+  about the external models are theorems in `Proofs/External/<Group>.lean`.
 - Other translated code, if it later moves into `formal/`, mirrors the Rust module path below
   `Proofs/Model/`, for example
   `Proofs/Model/Transport/StreamableHttpServer/Tower/HostIsAllowed.lean`.

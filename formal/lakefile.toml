@@ -17,9 +17,13 @@ name = "rmcp_formal"
 # the keys name/srcDir/roots/leanOptions and `leanOptions = { warningAsError = true }`,
 # and no other package-level key than name, defaultTargets, require and lean_lib; it also
 # fails if a lakefile.lean exists or a source file switches the option off.
-# `Rmcp` and `RmcpExternal` join the default targets once the externals are
-# modelled and locked (S08–S09); `lake build Rmcp RmcpExternal` builds them.
-# Until then `lake build` builds only the hand-maintained roots.
+# `Rmcp` and `RmcpExternal` are not default targets; `lake build Rmcp RmcpExternal`
+# builds them. Since the audit-scope decision (2026-11-23) the unused placeholder
+# externals no longer block adding them: with both here, `lake build` and the
+# `sources`, `build-log` and `axioms` checks pass (formal/docs/evidence/S03.md, D1).
+# Adding them is the lead's decision; until then `lake build` builds only the
+# hand-maintained roots, and Rmcp is audited only once a Defs/Proofs/Specs module
+# imports Rmcp.Funs (S06).
 defaultTargets = ["Defs", "Proofs", "Specs"]
 
 [[require]]

@@ -10,15 +10,17 @@
                                     (see check_manifest).
   lean_guard.py sources FORMAL      banned words and constructs in the Lean sources, tracked or
                                     nested .lake paths, case variants of .lean (see check_sources).
-  lean_guard.py axiom-lock LOCK GOT the trusted axioms written by lean-axiom-audit.lean (GOT)
-                                    are exactly those of LOCK, with the same statement hashes
-                                    (see check_axiom_lock).
+  lean_guard.py axiom-lock LOCK GOT every trusted axiom written by lean-axiom-audit.lean (GOT)
+                                    that a Defs/Proofs/Specs constant uses is in LOCK, every
+                                    LOCK entry is declared, statement hashes agree (see
+                                    check_axiom_lock).
   lean_guard.py native-lock LOCK GOT
-                                    the native-code axioms written by lean-axiom-audit.lean
-                                    (GOT) are those of LOCK (formal/trusted/native-axioms.lock),
-                                    each an Aeneas toStr side condition declared in
-                                    Rmcp.Types or Rmcp.Funs, with the locked module and
-                                    statement hash (see check_native_lock).
+                                    every native-code axiom written by lean-axiom-audit.lean
+                                    (GOT) is an Aeneas toStr side condition declared in
+                                    Rmcp.Types or Rmcp.Funs; those a Defs/Proofs/Specs constant
+                                    uses are in LOCK (formal/trusted/native-axioms.lock), with
+                                    the locked module and statement hash (see
+                                    check_native_lock).
   lean_guard.py build-log FILE      every `warning:`/`error:` line of the `lake build` log is
                                     one of the four recorded Aeneas-library lines.
   lean_guard.py archive PKG ARCHIVE PKG/.lake/build and the Lake release ARCHIVE hold the same
@@ -778,10 +780,19 @@ LOCK_LINE = re.compile(r"(\S+) sha256:([0-9a-f]{64})")
 
 def check_axiom_lock(lock, got):
     """LOCK (formal/trusted/axioms.lock): lines `<axiom name> sha256:<hex>`, `#` comments and
-    blank lines ignored. GOT (written by lean-axiom-audit.lean): lines `<name> TAB <canonical
-    statement>` for every axiom declared in the roots of RmcpExternal. The set of names must
-    be the same, and for each the sha256 of the canonical statement (UTF-8) must be the one
-    in the lock."""
+    blank lines ignored. GOT (written by lean-axiom-audit.lean): lines `<used|unused> TAB
+    <name> TAB <canonical statement>` for every axiom declared in the roots of RmcpExternal
+    that are in the audited import closure; `used` if it is reachable from a constant declared
+    in a module of the Defs, Proofs or Specs library (audit scope, human decision 2026-11-23;
+    every constant of those modules counts; computed by one order-independent walk, a superset
+    of what `#print axioms` reports).
+    Fails if a `used` axiom is not in the lock, if a lock entry names no declared trusted axiom
+    (stale), or if the sha256 of the canonical statement (UTF-8) of a declared axiom differs
+    from its lock entry. `unused` axioms are listed for information and need no entry; a lock
+    entry for a declared but `unused` axiom is reported as unused (allowed), so a reviewed
+    model can be locked before a theorem depends on it. The statement of a declared, unlocked,
+    `unused` axiom is not checked: it can change or vanish without a failure (only the source
+    diff of trusted/ and the informational list show it)."""
     want, errs = {}, []
     with open(lock, encoding="utf-8") as f:
         for i, line in enumerate(f, 1):
@@ -793,25 +804,42 @@ def check_axiom_lock(lock, got):
                 errs.append(f"{lock}:{i}: not `<name> sha256:<64 hex>` or a duplicate name: {s}")
                 continue
             want[m.group(1)] = m.group(2)
-    have = {}
+    have, used = {}, set()
     with open(got, encoding="utf-8") as f:
         for line in f.read().splitlines():
-            name, sep, stmt = line.partition("\t")
-            if not sep:
+            parts = line.split("\t", 2)
+            if len(parts) != 3 or parts[0] not in ("used", "unused") or parts[1] in have:
                 errs.append(f"{got}: malformed line {line!r}")
                 continue
+            usage, name, stmt = parts
             have[name] = sha(stmt.encode("utf-8"))
-    for n in sorted(set(have) - set(want)):
-        errs.append(f"trusted axiom {n} is not in {os.path.basename(lock)} "
+            if usage == "used":
+                used.add(name)
+    base = os.path.basename(lock)
+    for n in sorted(used - set(want)):
+        errs.append(f"trusted axiom {n} is used by a Defs/Proofs/Specs constant but not in {base} "
                     f"(after review, add the line: {n} sha256:{have[n]})")
     for n in sorted(set(want) - set(have)):
-        errs.append(f"{os.path.basename(lock)} lists {n}, which is not an axiom of the RmcpExternal roots")
+        errs.append(f"{base} lists {n}, which is not an axiom declared in the RmcpExternal roots "
+                    "of the audited import closure (stale entry)")
     for n in sorted(set(want) & set(have)):
         if want[n] != have[n]:
             errs.append(f"trusted axiom {n}: statement hash {have[n]} differs from the lock ({want[n]})")
     if errs:
         fail(errs + ["trusted axioms differ from formal/trusted/axioms.lock"])
-    print(f"[lean-guard] trusted axioms: {len(have)}, matching {os.path.basename(lock)}")
+    for n in sorted(used):
+        print(f"[lean-guard] trusted axiom {n}: used, locked")
+    for n in sorted((set(want) & set(have)) - used):
+        print(f"[lean-guard] trusted axiom {n}: locked, unused by Defs/Proofs/Specs (allowed)")
+    unlocked = sorted(set(have) - used - set(want))
+    if unlocked:
+        print(f"[lean-guard] note: {len(unlocked)} trusted axiom(s) declared but used by no "
+              "Defs/Proofs/Specs constant (no lock entry needed):")
+        for n in unlocked:
+            print(f"[lean-guard]   {n}")
+    print(f"[lean-guard] trusted axioms: {len(have)} declared, {len(used)} used and locked, "
+          f"{len(set(want) & set(have)) - len(used)} locked but unused, {len(unlocked)} "
+          f"unused and unlocked; matching {base}")
 
 
 # ---------------------------------------------------------------------------------------
@@ -844,14 +872,21 @@ def check_native_lock(lock, got):
     lean-axiom-audit.lean, "Native-code axioms"). LOCK (formal/trusted/native-axioms.lock):
     lines `<axiom name> <declaring module> sha256:<hex>`, `#` comments and blank lines ignored.
     GOT (written by lean-axiom-audit.lean): `module TAB <name>` for every module of the audited
-    import closure, and `native TAB <name> TAB <module> TAB <canonical statement>` for every
-    native-code axiom a project constant depends on. Fails if a reached native axiom is not in
-    the lock, if its statement hash or module differs, if its statement is not the toStr form
-    (TOSTR_FORM), if a reached axiom or a lock entry is declared in a module other than the
-    roots of the generated Rmcp library (RMCP_ROOTS: Rmcp.Types, Rmcp.Funs; so a hand-written
-    `Aeneas.Std.toStr "x"` in Proofs, Specs, Defs or trusted/ fails even if listed), or if a
-    lock entry whose module is in the closure is not reached (stale). Entries for an Rmcp root
-    that is not in the closure (Rmcp is not a default target) are only reported."""
+    import closure, and `native TAB <used|unused> TAB <name> TAB <module> TAB <canonical
+    statement>` for every native-code axiom reachable from any project constant (the audit's
+    one order-independent walk over all of them); `used` if it is reachable from a constant
+    declared in a module of the Defs, Proofs or Specs library (the audit scope of axioms.lock,
+    human decision 2026-11-23, applied to this lock by the lead). Fails if any reached native
+    axiom (used or not) has a statement other than the toStr form (TOSTR_FORM) or is declared in
+    a module other than the roots of the generated Rmcp library (RMCP_ROOTS: Rmcp.Types,
+    Rmcp.Funs; so a hand-written `Aeneas.Std.toStr "x"` in Proofs, Specs, Defs or trusted/ fails
+    even if listed), if a lock entry names another module, if a `used` native axiom is not in
+    the lock, if the module or statement hash of a reached axiom differs from its lock entry, or
+    if a lock entry whose module is in the closure is not reached there (stale: no longer
+    declared, since every native axiom declared in a project module is reached by itself). A
+    lock entry for a reached but `unused` axiom is reported as unused (allowed); reached
+    `unused` axioms without an entry are listed for information. Entries for an Rmcp root that
+    is not in the closure are only reported."""
     want, errs = {}, []
     with open(lock, encoding="utf-8") as f:
         for i, line in enumerate(f, 1):
@@ -867,14 +902,15 @@ def check_native_lock(lock, got):
                 errs.append(f"{lock}:{i}: module {m.group(2)} is not a root of the generated Rmcp "
                             f"library ({', '.join(RMCP_ROOTS)}); only their native-code axioms "
                             "may be locked")
-    modules, have = set(), {}
+    modules, have, used = set(), {}, set()
     with open(got, encoding="utf-8") as f:
         for line in f.read().splitlines():
             parts = line.split("\t")
             if len(parts) == 2 and parts[0] == "module":
                 modules.add(parts[1])
-            elif len(parts) == 4 and parts[0] == "native" and parts[1] not in have:
-                _, name, mod, stmt = parts
+            elif (len(parts) == 5 and parts[0] == "native" and parts[1] in ("used", "unused")
+                  and parts[2] not in have):
+                _, usage, name, mod, stmt = parts
                 if not is_tostr_form(stmt):
                     errs.append(f"native-code axiom {name} ({mod}) is not an Aeneas toStr side "
                                 "condition of a string literal; it cannot be locked")
@@ -883,12 +919,14 @@ def check_native_lock(lock, got):
                                 f"the generated Rmcp library ({', '.join(RMCP_ROOTS)}); it cannot "
                                 "be locked")
                 have[name] = (mod, sha(stmt.encode("utf-8")))
+                if usage == "used":
+                    used.add(name)
             else:
                 errs.append(f"{got}: malformed line {line!r}")
     base = os.path.basename(lock)
-    for n in sorted(set(have) - set(want)):
-        errs.append(f"native-code axiom {n} is not in {base} "
-                    f"(after review, add the line: {n} {have[n][0]} sha256:{have[n][1]})")
+    for n in sorted(used - set(want)):
+        errs.append(f"native-code axiom {n} is used by a Defs/Proofs/Specs constant but not in "
+                    f"{base} (after review, add the line: {n} {have[n][0]} sha256:{have[n][1]})")
     unchecked = []
     for n in sorted(set(want) - set(have)):
         if want[n][0] in modules:
@@ -902,13 +940,25 @@ def check_native_lock(lock, got):
                         f"differs from the lock ({want[n][0]} {want[n][1]})")
     if errs:
         fail(errs + [f"native-code axioms differ from formal/trusted/{base}"])
-    for n in sorted(have):
-        print(f"[lean-guard] native-code axiom {n} ({have[n][0]}): toStr side condition, locked")
+    for n in sorted(used):
+        print(f"[lean-guard] native-code axiom {n} ({have[n][0]}): toStr side condition, used, "
+              "locked")
+    for n in sorted((set(want) & set(have)) - used):
+        print(f"[lean-guard] native-code axiom {n} ({have[n][0]}): toStr side condition, locked, "
+              "unused by Defs/Proofs/Specs (allowed)")
+    unlocked = sorted(set(have) - used - set(want))
+    if unlocked:
+        print(f"[lean-guard] note: {len(unlocked)} native-code axiom(s) reached (toStr side "
+              "conditions) but used by no Defs/Proofs/Specs constant (no lock entry needed):")
+        for n in unlocked:
+            print(f"[lean-guard]   {n} ({have[n][0]})")
     if unchecked:
         mods = sorted({want[n][0] for n in unchecked})
         print(f"[lean-guard] note: {len(unchecked)} entr(y/ies) of {base} not checked: "
               f"module(s) {', '.join(mods)} not reached from the roots")
-    print(f"[lean-guard] native-code axioms: {len(have)} reached, matching {base}")
+    print(f"[lean-guard] native-code axioms: {len(have)} reached, {len(used)} used and locked, "
+          f"{len(set(want) & set(have)) - len(used)} locked but unused, {len(unlocked)} unused "
+          f"and unlocked; matching {base}")
 
 
 COMMANDS = {"fresh": (check_fresh, 1), "axiom-lock": (check_axiom_lock, 2),

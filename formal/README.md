@@ -85,9 +85,10 @@ question for the human (`docs/evidence/S03.md`, open items).
 The release assets are checked against the sha256 values committed in
 `trusted/aeneas-bundle.sha256` (see Trusted base, Tools).
 
-The dependency versions the axioms rely on are pinned in `scripts/aeneas-translate.sh`
-(`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`); the script fails if `cargo tree` resolves any
-other version or a source other than crates.io. `Cargo.lock` is git-ignored and `scripts/apply-patches.sh` never copies it into
+The dependency versions the external models rely on are pinned in `scripts/aeneas-translate.sh`
+(`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, and since S08–S09 `digest 0.11.3`,
+`zeroize 1.9.2`, `chrono 0.4.45` and `serde_json 1.0.154`, which the models also cite); the
+script fails if `cargo tree` resolves any other version or a source other than crates.io. `Cargo.lock` is git-ignored and `scripts/apply-patches.sh` never copies it into
 `.llbc/work/`, so every run, local or CI, resolves the dependencies afresh (this needs the
 crates.io index).
 
@@ -205,8 +206,8 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
 
   The check is textual: **comments and docstrings count**. Prose hits the banned words too:
   "axiom", "admit", "extern", "unsafe", "sorry", "syntax", "macro", "elab", "initialize", "IO",
-  "simproc", "trace", "plausible". This includes the docstrings of the future
-  `Proofs/Consistency` models (S08–S09), which are about assumptions. Write instead
+  "simproc", "trace", "plausible". This includes the docstrings of the
+  `Proofs/External` laws (S08–S09), which are about the trusted models. Write instead
   "assumption", "postulate" or "trusted statement" (for axiom), "placeholder" or "unproved"
   (for sorry/admit), "foreign" or "outside Lean" (for extern), "unchecked" (for unsafe),
   "grammar" or "notation" (for syntax), "set up" or "create" (for initialize), "input/output"
@@ -217,46 +218,84 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
 - the `lake build` log has a line with `warning:` or `error:` other than the four Aeneas lines
   above, or no "Build completed successfully" line;
 - (`axioms`) `.lake/build/lib/lean` holds anything but modules named `Rmcp`, `Defs`, `Proofs`,
-  `Specs` or below them; a project `.olean` is stale; a constant declared in a module of this
-  project reached from the default targets depends on an axiom other than `propext`,
-  `Classical.choice`, `Quot.sound`, the axioms declared in the roots of `RmcpExternal` and the
-  locked `toStr` native-code axioms (next item; nothing else native) (this catches `sorryAx`,
-  also when inherited from the Aeneas library, and `Lean.ofReduceBool`); a root of
-  `RmcpExternal` declares a name in the namespace `rmcp` or adds an alias (see "Trusted
-  base"); or
-  the kernel rejects a project constant when all of them are replayed
+  `Specs` or below them; a project `.olean` is stale; the constants declared in the modules of
+  this project reached from the default targets depend (one order-independent walk over all of
+  them, through types, values and whole inductive blocks; a superset of what `#print axioms`
+  reports) on an axiom other than `propext`, `Classical.choice`, `Quot.sound`, the axioms declared
+  in the roots of `RmcpExternal` and the `toStr` native-code axioms of `Rmcp.Types`/`Rmcp.Funs`
+  (next item; locked if used; nothing else native) (this catches `sorryAx`, also when inherited
+  from the Aeneas library, and the `_native` axioms of `native_decide`/`decide +native`); a root of
+  `RmcpExternal` declares a name in the namespace `rmcp` or adds an
+  alias (see "Trusted base"); or the kernel rejects a project constant when all of them are replayed
   (`Lean.Environment.replay`, the check `leanchecker` runs) onto the non-project modules they
   import. The replay catches declarations that were added without a kernel check (for example
-  through `debug.skipKernelTC` set from a metaprogram, `docs/evidence/S03.md`, V1) and
-  altered `.olean` files. The audit reads the `.olean` files without running any code from
-  them (`loadExts := false`) and runs with the toolchain's own `lean`, not `lake env`, with
-  the toolchain library first on `LEAN_PATH`; `leanchecker` is not run separately (it uses the
-  same replay); or the axioms declared in the roots of `RmcpExternal` are not exactly those
-  listed in `trusted/axioms.lock`, each with the sha256 of its canonical statement recorded
-  there (a structural text of the type `Expr`: constants by full name with universe levels, de
-  Bruijn indices, binder info; independent of notation and pretty-printer options). The lock is
-  empty at S03 and enforced; the PR that adds or changes an axiom adds its line (the failure
-  message prints it), and review checks that each line belongs to a reviewed axiom;
+  through `debug.skipKernelTC` set from a metaprogram, `docs/evidence/S03.md`, V1) and altered
+  `.olean` files. The audit reads the `.olean` files without running any code from them
+  (`loadExts := false`) and runs with the toolchain's own `lean`, not `lake env`, with the
+  toolchain library first on `LEAN_PATH`; `leanchecker` is not run separately (it uses the same
+  replay); or
+  `trusted/axioms.lock` does not cover the trusted axioms in use. Audit scope (human decision
+  2026-11-23 for `axioms.lock`; the lead applied the same rule to `native-axioms.lock`, next item):
+  an axiom is *used* if it is reachable from some constant declared in a module of the `Defs`,
+  `Proofs` or `Specs` library, transitively through any constant (including the generated
+  `Rmcp.Types`/`Rmcp.Funs` definitions and the externals). Every constant of such a module counts,
+  including private helpers, instances and auxiliary declarations (conservative). The audit computes
+  the set with one walk over types, values and whole inductive blocks (constructors, recursors, the
+  other types of a mutual block) with a single visited set, so the result does not depend on the
+  order of the constants; it contains every axiom that `#print axioms` reports for those constants
+  and can contain more (an over-approximation). `#print axioms` itself can miss an axiom reached
+  through any inductive/constructor cycle, not only a mutual block: Lean stores per module the axiom
+  set of each constant computed with a shared cache, and a constant entered while its cycle is open
+  gets an incomplete set (`#print axioms rmcp.model.request_state.Keys.Single` omits the `HashMap`
+  and `RandomState` axioms that `Keys` reports; `docs/evidence/S03.md`). `axioms` fails if a used
+  axiom declared in a root of `RmcpExternal` is not in `trusted/axioms.lock`, if a lock entry names
+  no axiom declared in those roots (stale), or if the sha256 of a declared axiom's canonical
+  statement differs from its entry (a structural text of the type `Expr`: constants by full name
+  with universe levels, de Bruijn indices, binder info; independent of notation and pretty-printer
+  options). Trusted axioms that no `Defs`/`Proofs`/`Specs` constant depends on (before S08–S09, the
+  placeholder externals used only by generated functions that no theorem mentions) are listed for
+  information and need no entry; an entry for a declared but unused axiom is reported as "unused
+  (allowed)", so a reviewed model can be locked before a theorem depends on it. Importing
+  `Rmcp.Funs` into a proof module therefore does not require locking all externals. The weakening
+  this accepts: the statement of a declared trusted axiom that is not in the lock and not used
+  (before S08–S09, all 41 placeholder externals; none is declared once the S08–S09 models land,
+  human decision 2026-11-23) can change, or the axiom can vanish, without CI noticing, as
+  long as nothing in `Defs`/`Proofs`/`Specs` depends on it. This holds for ordinary PRs too, not
+  only for forged artifacts: only the source diff of `trusted/` and the guard's informational list
+  show such a change, so review of `trusted/` is the barrier for unused axioms. The scope applies to
+  the locks only: the allowed-axiom check, the kernel replay and the namespace check above cover
+  every project constant, including all of `Rmcp.Types`/`Rmcp.Funs` and `RmcpExternal`. The PR that
+  adds or changes a used axiom adds its line (the failure message prints it), and review checks that
+  each line belongs to a reviewed axiom (which covers the locked axioms only);
 - (`axioms`, native-code axioms; human decision 2026-11-22, handled as in the SPQR project) a
   native-code axiom (a name with a `_native` component, as `decide +native` and
   `native_decide` declare, or `Lean.trustCompiler`) is a trust item of its own, listed
-  separately in the audit output. A project constant may depend on one only if its statement is
-  exactly the side condition of the pinned Aeneas `toStr` for one string literal,
+  separately in the audit output. The project constants may reach one (by the walk of the
+  previous item over all of them) only if its statement is exactly the side condition of the
+  pinned Aeneas `toStr` for one string literal,
   `decide ("…".toByteArray.size ≤ Aeneas.Std.U32.max) = true`, and it is declared in
   `Rmcp.Types` or `Rmcp.Funs` (the generated modules; any other native-code axiom, including a
   `toStr` side condition from hand-written code in `Proofs`, `Specs`, `Defs` or `trusted/`,
   fails, even if listed), and it is listed in `trusted/native-axioms.lock` as
   `<name> <declaring module> sha256:<hash>` (the same structural statement hash as
-  `axioms.lock`). An unlisted one, a changed statement or module, a lock entry for a module
-  other than `Rmcp.Types`/`Rmcp.Funs`, and a stale entry (its module is in the audited import
-  closure, the axiom is not reached) fail. Only the roots of the default targets are audited,
-  so the native lock and `axioms.lock` are enforced on `Rmcp`/`RmcpExternal` once they are
-  default targets (S08–S09); until then native-lock entries for `Rmcp.Types`/`Rmcp.Funs` are
-  reported as not checked (entries for any other module fail) and any `axioms.lock` entry fails, even when
-  `.olean` files of `Rmcp` exist from an explicit `lake build Rmcp RmcpExternal` (auditing
-  them whenever they exist would fail every local run on the 41 unlocked placeholder axioms). The lock holds the five string literals of the target code (`VERSION_V1`,
-  `VERSION_V2`, `KID_EMPTY_MSG`, `KID_TOO_LONG_MSG`, the `expect` message in
-  `rs1_fallbacks_verify`). These side conditions also have a kernel proof
+  `axioms.lock`) if it is used (the audit scope of `axioms.lock`, previous item, which the lead
+  applied to this lock; a native axiom reached only through generated functions that no
+  `Defs`/`Proofs`/`Specs` constant depends on needs no entry and is listed for information; the
+  `toStr`-form and module restrictions hold for every native-code axiom reachable from any
+  project constant). A used one that is unlisted, a changed statement or module of a reached one,
+  a lock entry for a module other than `Rmcp.Types`/`Rmcp.Funs`, and a stale entry (its module is
+  in the audited import closure, the axiom is not reached there, so no longer declared) fail; an
+  entry for a reached but unused axiom is reported as "unused (allowed)". Only the import closure
+  of the roots of the default targets is audited: `Rmcp`/`RmcpExternal` are covered once a
+  `Defs`, `Proofs` or `Specs` module imports `Rmcp.Funs` (S06) or they become default targets (a
+  change of `lakefile.toml` by the lead; the unused placeholder externals no longer block it:
+  with `Rmcp` and `RmcpExternal` added to the default targets, `lake build` and the `sources`,
+  `build-log` and `axioms` checks pass, `docs/evidence/S03.md`, test D1); until then native-lock
+  entries for `Rmcp.Types`/`Rmcp.Funs` are reported as not checked (entries for any other module
+  fail) and any `axioms.lock` entry fails as stale, even when `.olean` files of `Rmcp` exist from
+  an explicit `lake build Rmcp RmcpExternal`. The lock holds the five string literals of the
+  target code (`VERSION_V1`, `VERSION_V2`, `KID_EMPTY_MSG`, `KID_TOO_LONG_MSG`, the `expect`
+  message in `rs1_fallbacks_verify`). These side conditions also have a kernel proof
   (`simp only [U32.max, U32.numBits, UScalarTy.numBits]; decide`, axioms `[propext]`), so an
   upstream Aeneas `toStr` fix and a rev bump would remove the axioms; that is preferred to a
   local replacement (open item, `docs/evidence/S04a.md`);
@@ -289,14 +328,17 @@ and elaboration can run code that rewrites files of the runner (a `#eval` writin
 
 What job `check` can and cannot detect in the artifact: it detects a project constant that
 depends on a disallowed axiom (`sorryAx`, `Lean.ofReduceBool`, an axiom outside the
-`RmcpExternal` roots), a constant the kernel rejects on replay, a trusted axiom whose name or
-statement differs from `trusted/axioms.lock`, a module outside the project names, a build log
+`RmcpExternal` roots), a constant the kernel rejects on replay, a trusted axiom used by a
+`Defs`/`Proofs`/`Specs` constant that is not in `trusted/axioms.lock`, a declared trusted axiom
+whose statement differs from its lock entry, a module outside the project names, a build log
 with unexpected warnings or errors, and an `.olean` older than its source by the trace hash
 (which a forger can fake). It does not detect that the artifact was compiled from other
 sources: the statements of spec theorems, definitions and non-axiom externals are not
 re-elaborated in job `check`, so a forged artifact can contain a different, kernel-correct
-project (for example a theorem with the reviewed name and a weaker statement), as long as it
-uses no axiom outside the lock.
+project (for example a theorem with the reviewed name and a weaker statement), as long as its
+`Defs`/`Proofs`/`Specs` constants use no trusted axiom outside the lock (since the audit-scope
+change of 2026-11-23 it can also add, remove or change in `RmcpExternal` any unlocked axiom
+that no `Defs`/`Proofs`/`Specs` constant depends on; such an axiom supports no theorem).
 
 Accepted residual limits (human decision, 2026-11-22; S03 is accepted with them):
 
@@ -312,9 +354,15 @@ Accepted residual limits (human decision, 2026-11-22; S03 is accepted with them)
   `linarith` discharger given as a `do` block ran during the build, `docs/evidence/S03.md`);
   and constructs in packages not yet seen. The run-code-free barrier against a forged artifact
   (V2) is therefore not closed against a determined attacker; review is the barrier.
+- The locks cover axioms only. The external models of `trusted/` are definitions, structures and
+  `opaque` constants (no axiom since S08–S09), which neither `#print axioms` nor `axioms.lock`
+  shows: a changed or forged model is caught only by review of `trusted/` (a hash lock over the
+  declarations of `RmcpExternal` is an option for the human at the S08/S09 sign-off).
 - The trusted-axiom lock limits what a forged artifact can do to non-axiom content: it cannot
-  add an axiom or change a locked axiom's statement, but it can change everything else as
-  described above.
+  add or change a trusted axiom that some `Defs`/`Proofs`/`Specs` constant depends on, and
+  cannot change a locked axiom's statement; it can add, remove or change any unlocked trusted
+  axiom that no such constant depends on (audit scope, human decision 2026-11-23), and it can
+  change everything else as described above.
 - `Specs` imports `Proofs`, so a module in `proofs/` can change the meaning of a reviewed spec
   statement without any metaprogramming: a global instance, notation, coercion or attribute
   declared there is in scope when the statement is elaborated (for example
@@ -335,15 +383,19 @@ Accepted residual limits (human decision, 2026-11-22; S03 is accepted with them)
 | Path | Library | Contents |
 |---|---|---|
 | `translation/` | `Rmcp` | generated by Aeneas, never edited by hand (from S04a) |
-| `trusted/` | `RmcpExternal` | patches, hand-written externals and axioms, axiom evidence (from S04a); `aeneas-bundle.sha256` (expected digests of the Aeneas release assets); `axioms.lock` (name and statement hash of every trusted axiom); `native-axioms.lock` (name, module and statement hash of every accepted native-code axiom) |
+| `trusted/` | `RmcpExternal` | patches, hand-written external models (definitions, structures and `opaque` constants; no axiom since S08–S09, human decision 2026-11-23), their evidence and the differential check (`evidence/`); `aeneas-bundle.sha256` (expected digests of the Aeneas release assets); `axioms.lock` (name and statement hash of every trusted axiom used by a `Defs`/`Proofs`/`Specs` constant, plus any reviewed unused one locked in advance); `native-axioms.lock` (name, module and statement hash of every accepted native-code axiom used by such a constant, plus locked unused ones) |
 | `specs/` | `Defs`, `Specs` | definitions used by statements; spec files; `Drafts/` is in no library |
-| `proofs/` | `Proofs` | proofs and consistency models |
+| `proofs/` | `Proofs` | proofs; laws and specs of the external models (`Proofs/External/`, S08–S09) |
 | `docs/` | — | status, board, function records, evidence, blockers |
 
-`Rmcp` and `RmcpExternal` are declared in `lakefile.toml` but are not default targets: S04a adds
-their modules, but the externals are unreviewed placeholders until S08–S09 (`lake build Rmcp
-RmcpExternal` builds them); `lake build` builds `Defs`, `Proofs` and `Specs`, which are empty
-roots for now.
+`Rmcp` and `RmcpExternal` are declared in `lakefile.toml` but are not default targets (`lake build
+Rmcp RmcpExternal` builds them); `lake build` builds `Defs`, `Proofs` and `Specs`. Making them
+default targets is a change of `lakefile.toml` by the lead. The unused placeholder externals
+(replaced at S08–S09 by definitions) no longer blocked it (audit scope, human decision
+2026-11-23): with both added to the default targets,
+`lake build` and the `sources`, `build-log` and `axioms` checks pass (`docs/evidence/S03.md`,
+test D1). Until then they are audited only through a `Defs`/`Proofs`/`Specs` module that imports
+`Rmcp.Funs` (S06).
 
 ## Trusted base
 
@@ -352,12 +404,28 @@ An auditor reads all of `trusted/` (including `axioms.lock` and `native-axioms.l
 Section 4, "What must be trusted". While `Specs` imports `Proofs`, that is not sufficient: the
 auditor also reads `proofs/` for instances, notation, coercions and attributes that change what
 a spec statement means (see "What CI checks", accepted residual limits).
-At S03 there are no patches, externals or axioms. Since S04a part 2, `trusted/Rmcp/` holds the
-externals started from the Aeneas templates: unreviewed placeholder axioms, not built by
-default, none in `axioms.lock`. Names in the namespace `rmcp` are banned in `trusted/`: the
-generated code works inside `namespace rmcp` and names the root-level externals and the Aeneas
-library functions unqualified, so a name `rmcp.<x>` from `trusted/` would silently take
-precedence over the one it means. Enforced in two layers. (1) `lean-guard.sh sources`, on every
+At S03 there are no patches, externals or axioms. S04a part 2 started `trusted/Rmcp/` from the
+Aeneas templates with unreviewed placeholder axioms. Since S08–S09 (human decision 2026-11-23:
+convert every axiom into a definition) it declares **no axiom**: each external type is a
+`structure`, each external function a definition with the generated name and signature
+(keeping the template's `@[rust_type]` or `@[rust_fun]` attribute where it has one; the five
+opaque `rmcp` functions, the `prim` functions and `now_ms`, have none), and what a model cannot
+compute is one of four `opaque` constants
+(`ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs`, `ExtModel.SerdeJsonErrorImpl`),
+which add no axiom; `axioms.lock` stays empty. What an auditor trusts is that each definition
+describes its Rust function, with the exceptions stated in its docstring
+(`trusted/evidence/README.md` cites the source and tests of each). These models do not appear in
+`#print axioms`, the `#guard_msgs` lists or `axioms.lock`, so a change to one is caught only by
+review of `trusted/`; a proof may use them once S08/S09 are signed off. Review rule: no spec statement
+mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
+`…RequestStateCodec.open` or `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the
+time parameter of E01 `open_authenticated_body`, is not covered): the single opaque clock reading
+`nowMs` makes those functions pure in
+the model; opening is specified through `open_at`.
+Names in the namespace `rmcp` are banned in `trusted/`: the generated code
+works inside `namespace rmcp` and names the root-level externals and the Aeneas library functions
+unqualified, so a name `rmcp.<x>` from `trusted/` would silently take precedence over the one it
+means. Enforced in two layers. (1) `lean-guard.sh sources`, on every
 file under `trusted/`: after comments (`--`, nested `/- -/`, docstrings), string literals and
 character literals are blanked, any identifier token whose first component is `rmcp` (also after
 `_root_.`, and quoted, `«rmcp»`) fails (declaration name, `namespace`, `alias`, a reference),
@@ -370,9 +438,11 @@ signatures name trait structures of `Rmcp.Types` (`core.hash.BuildHasher`, `zero
 on the build output: a constant of a root of `RmcpExternal` whose name (private prefix removed)
 starts with `rmcp`, including auxiliary ones such as `rmcp.x_def`, or any alias added by such a
 module (`export`, read from Lean's alias table), fails. Layer (2) runs only when `RmcpExternal`
-is reached from the default targets (from S08–S09; until then only in a scratch audit, see
-`docs/evidence/S04a.md`). Open routes, recorded for S08–S09 (human decision 2026-11-23, no fix
-in S04a): layer (2) checks only constants declared in the `RmcpExternal` roots themselves, so a
+is reached from the default targets (once a `Defs`/`Proofs`/`Specs` module imports `Rmcp.Funs`
+and so `Rmcp.FunsExternal`, or `RmcpExternal` becomes a default target, see "Layout"; until then
+only in a scratch audit, see `docs/evidence/S04a.md`). Open routes, recorded for S08–S09 (human
+decision 2026-11-23, no fix in S04a): layer (2) checks only constants declared in the `RmcpExternal`
+roots themselves, so a
 shadowing `rmcp.<x>` declared in another project module that a trusted root imports passes both
 layers (plan Section 5 allows `RmcpExternal` to import only Aeneas and `Rmcp.Types`, but nothing
 enforces it yet); and global `notation`/`infix` or a high-priority `instance` declared in

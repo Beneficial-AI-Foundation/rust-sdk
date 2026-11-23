@@ -120,8 +120,8 @@ steps:
 
   - id: S05
     day: D2
-    state: IN_PROGRESS
-    # drafts + 2 agent reviews (round 1: no blocking); awaiting spec owner sign-off
+    state: ACCEPTED
+    # 2 agent reviews (no blocking); signed off by the spec owner Hoang Le Truong 2026-11-23
     depends_on: [S01]
     owner: Spec drafter (mcp-spec or a person) + independent agent reviewers + spec owner
     files:
@@ -137,10 +137,11 @@ steps:
 
   - id: S06
     day: D2-4
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; incorporated (docs/review/W-batch-incorporation.md)
     depends_on: [S04a, S05]
     owner: Lean
     files:
+      - formal/proofs/Proofs/Model/RequestStateWire/Common.lean
       - formal/proofs/Proofs/Model/RequestStateWire/B64Len.lean
       - formal/proofs/Proofs/Model/RequestStateWire/KeyLengthOk.lean
       - formal/proofs/Proofs/Model/RequestStateWire/CheckKidLen.lean
@@ -158,50 +159,62 @@ steps:
 
   - id: S07
     day: D3-4
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; E01–E04 incorporated
     depends_on: [S06]
     owner: Lean
     files:
+      - formal/proofs/Proofs/Model/RequestState/Common.lean
       - formal/proofs/Proofs/Model/RequestState/OpenAuthenticatedBody.lean
       - formal/proofs/Proofs/Model/RequestState/B64Len.lean
       - formal/proofs/Proofs/Model/RequestState/ValidateKeyLength.lean
       - formal/proofs/Proofs/Model/RequestState/ValidateConfigKid.lean
       - formal/specs/Specs/Model/RequestState.lean
+      - formal/specs/Drafts/Staged/RequestState.lean   # staging copy until incorporation
       - formal/docs/evidence/S07.md   # per plan §7
     acceptance: >-
       E01-E04 checked using only W theorems.
 
   - id: S08
     day: D3-4
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; models applied and laws incorporated (Specs.External)
     depends_on: [S04a]
     owner: Extraction + reviewers + spec owner
+    # Human decision 2026-11-23: all placeholder axioms converted into definitions; no
+    # Proofs/Consistency models (plan Section 4).
     files:
       - formal/trusted/Rmcp/FunsExternal.lean   # HMAC, Base64
-      - formal/proofs/Proofs/Consistency/Hmac.lean
-      - formal/proofs/Proofs/Consistency/Base64.lean
+      - formal/proofs/Proofs/External/Base64.lean
+      - formal/proofs/Proofs/External/String.lean
+      - formal/proofs/Proofs/External/Prim.lean
+      - formal/specs/Drafts/External.lean   # shared with S09
+      - formal/specs/Drafts/Staged/External.lean   # staging copy until incorporation
       - formal/trusted/evidence/README.md
+      - formal/trusted/evidence/differential/   # Base64/UTF-8 differential check (not built)
       - formal/docs/evidence/S08.md   # per plan §7
     acceptance: >-
-      prim axioms reviewed by >= 2 independent agents, then signed off; consistency models
-      build; RFC 4231 and Base64 vectors pass through prim in Rust tests.
+      prim models (definitions, opaque hmacSha256; no axiom) reviewed by >= 2 independent
+      agents, then signed off; Base64 laws proved; RFC 4231 and Base64 vectors pass through
+      prim in Rust tests.
 
   - id: S09
     day: D3-4
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; models applied and laws incorporated (Specs.External)
     depends_on: [S04a]
     owner: Extraction + reviewers + spec owner
     files:
-      - formal/trusted/Rmcp/FunsExternal.lean   # standard library
+      - formal/trusted/Rmcp/FunsExternal.lean   # standard library, HashMap, zeroize, clock
       - formal/trusted/Rmcp/TypesExternal.lean
-      - formal/proofs/Proofs/Consistency/HashMap.lean
+      - formal/proofs/Proofs/External/Std.lean
+      - formal/specs/Drafts/External.lean   # shared with S08
+      - formal/specs/Drafts/Staged/External.lean   # staging copy until incorporation
       - formal/docs/evidence/S09.md   # per plan §7
     acceptance: >-
-      Standard-library models reviewed, as definitions where possible.
+      Standard-library, HashMap, zeroize and clock models reviewed, all as definitions or
+      structures (no axiom).
 
   - id: S10
     day: D4-5
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; incorporated (docs/review/W-batch-incorporation.md)
     depends_on: [S06]
     owner: Lean
     files:
