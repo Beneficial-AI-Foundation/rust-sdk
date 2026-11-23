@@ -36,6 +36,7 @@ import Proofs.Model.RequestState.SealRs2
 import Proofs.Model.RequestState.OpenRs1At
 import Proofs.Model.RequestState.Rs1FallbacksVerify
 import Proofs.Model.RequestState.OpenRs2At
+import Proofs.Model.RequestState.Roundtrip
 
 /-!
 # Proofs
@@ -45,6 +46,6 @@ Maintained by hand; a proof module is added here only once its proof is complete
 (docs/WORKFLOW_AND_PR_GUIDE.md, "Library roots"). Imports the `request_state_wire`
 proofs (S06, S10): `Common` and the 15 target modules; the laws of the
 external models (S08, S09: `Proofs.External.*`); and the `request_state` proofs of E01–E04
-(S07), E07/E08 (S11), E09a/E09/E10 (S13) and E11 (S14), with the slice-iterator helper
-`Proofs.External.Iter`.
+(S07), E07/E08 (S11), E09a/E09/E10 (S13), E11 (S14) and the round trips (S15, `Roundtrip`), with the
+slice-iterator helper `Proofs.External.Iter`.
 -/

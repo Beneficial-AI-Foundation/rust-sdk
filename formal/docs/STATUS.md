@@ -114,7 +114,7 @@ are in `Proofs`, their statements in `specs/Specs/Model/`.
 
 Total: 25 records (W01–W15, E01–E04, E07–E11, E09a). All 25 proved and incorporated (plus the
 composition theorem `frame_roundtrip`); the laws of the external models (S08–S09) are in
-`Specs.External`. Open: the round-trip theorems (S15).
+`Specs.External`. The four round-trip theorems (S15) are proved and incorporated.
 
 **E05 and E06 are unassigned.** They belonged to `mac_v1`/`mac_v2`, which the S04a refactor
 deletes (plan Section 2.2 and 2.3). The IDs are not renumbered, so the guides' references stay

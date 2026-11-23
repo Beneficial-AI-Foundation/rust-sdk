@@ -27,7 +27,7 @@ Definitions used: `Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLeng
 `b64Len`, `dot`, `components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`),
 `Defs.RequestState` (`StrIs`, `kidEmptyMsg`, `kidTooLongMsg`) and `Defs.CodecState` (`KeyTable`,
 `FallbacksKnown`, `CodecFallbacksKnown`, `Rs1Verifies`, `openRs1`, `openRs2`, `openAt`,
-`resultBytes`).
+`resultBytes`, `lookupKey`).
 
 External models used (S08–S09, `trusted/Rmcp/FunsExternal.lean`): E04 uses the model of
 `core.str.Str.len` (the byte length of the `Str`). E04 also depends on the native-code
@@ -53,13 +53,22 @@ E09a (644), E10 (659) (S11, S13, S14), then E01 (695), E03 (704), E04 (714), E02
 The E07–E11 and E09a statements were signed off by the spec owner on 2026-11-23 after three
 review rounds (`evidence/S05.md`, "E batch part 2"); their signed-off text was in
 `specs/Drafts/RequestState.lean`, removed at incorporation.
+
+Composition theorems last (S15, proofs in `Proofs/Model/RequestState/Roundtrip.lean`):
+`rs1_roundtrip`, `rs2_roundtrip`, `open_at_roundtrip_rs1`, `open_at_roundtrip_rs2`. Each says that
+sealing terminates, that some `Str` holds the token's bytes, and that opening any such `Str`
+returns `Ok (body[8..])`, under the plan Section 3 round-trip conditions and the seal statements'
+own size premises. Signed off by the spec owner on 2026-11-23 after two review rounds
+(`evidence/S15.md`). The rs1 ones reach `VERSION_V1._native.decide.ax_1` and
+`RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`; `rs2_roundtrip` reaches
+`VERSION_V2._native.decide.ax_1`; `open_at_roundtrip_rs2` reaches both `VERSION_V2…` and `…ax_3`.
 -/
 
 open Aeneas Aeneas.Std Result
 open Defs.Wire
 open rmcp.model.request_state  -- for `RequestStateError`; theorems named in full
 open Defs.CodecState (KeyTable FallbacksKnown CodecFallbacksKnown Rs1Verifies openRs1 openRs2
-  openAt resultBytes)
+  openAt resultBytes lookupKey)
 
 open rmcp.model.request_state.RequestStateCodec (open_at) in
 /-- E11 `open_at`: dispatches on the first `.`-component of the token, `"rs1"` to E09 and
@@ -306,3 +315,150 @@ info: 'Theorems.request_state.RequestStateCodec.b64_len' depends on axioms: [pro
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.b64_len
+
+/-- S15 `rs1_roundtrip`: sealing with E07 `seal_rs1` and opening any `Str` holding the token's
+bytes with E09 `open_rs1_at` (same associated data, accepted key, body of at least 8 bytes, not
+expired) returns `Ok (body[8..])`. -/
+theorem Theorems.request_state.RequestStateCodec.rs1_roundtrip (self : RequestStateCodec)
+    (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8)
+    (now_ms : Std.I64)
+    (h_len : (transcriptV1 associated_data.val body.val).length ≤ Usize.max)
+    (h_cap : versionV1.length + 2 + b64Len body.val.length + b64Len 32 ≤
+      ExtModel.maxStringBytes)
+    (h_body : expiryLen ≤ body.val.length)
+    (h_expiry : ¬ Expired (bodyExpiry body.val) now_ms.val)
+    (h_key : (∃ k, self.keys = .Single k ∧ k.inner.val = key.val) ∨
+      (∃ keys seal_mode rs1_fallbacks kid, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
+        kid ∈ rs1_fallbacks.val ∧ lookupKey keys kid = some key.val))
+    (h_fallbacks : CodecFallbacksKnown self) :
+    rmcp.model.request_state.RequestStateCodec.seal_rs1 key associated_data body ⦃
+      (token : String) =>
+      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
+      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
+      rmcp.model.request_state.RequestStateCodec.open_rs1_at self sealed associated_data
+        now_ms ⦃ (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+        -- line 640 → E01 line 698: `Ok(payload.to_vec())`, payload = body[8..]
+        resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.rs1_roundtrip self key associated_data body now_ms
+    h_len h_cap h_body h_expiry h_key h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.rs1_roundtrip' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ VERSION_V1._native.decide.ax_1,
+ RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.rs1_roundtrip
+
+/-- S15 `rs2_roundtrip`: sealing with E08 `seal_rs2` and opening any `Str` holding the token's
+bytes with E10 `open_rs2_at` (same associated data, UTF-8 kid of 1 to 255 bytes that the ring maps
+to the key, body of at least 8 bytes, not expired) returns `Ok (body[8..])`. -/
+theorem Theorems.request_state.RequestStateCodec.rs2_roundtrip (self : RequestStateCodec)
+    (kid : Str) (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8)
+    (now_ms : Std.I64) (kidStr : String)
+    (h_len : (transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val).length ≤
+      Usize.max)
+    (h_cap : versionV2.length + 3 + b64Len (kid : Slice Std.U8).val.length +
+      b64Len body.val.length + b64Len 32 ≤ ExtModel.maxStringBytes)
+    (h_body : expiryLen ≤ body.val.length)
+    (h_expiry : ¬ Expired (bodyExpiry body.val) now_ms.val)
+    (h_kid_utf8 : (kid : Slice Std.U8).val = ExtModel.utf8 kidStr)
+    (h_kid_len : 1 ≤ (kid : Slice Std.U8).val.length ∧
+      (kid : Slice Std.U8).val.length ≤ maxKidLen)
+    (h_key : ∃ keys seal_mode rs1_fallbacks, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
+      lookupKey keys kidStr = some key.val) :
+    rmcp.model.request_state.RequestStateCodec.seal_rs2 kid key associated_data body ⦃
+      (token : String) =>
+      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
+      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
+      rmcp.model.request_state.RequestStateCodec.open_rs2_at self sealed associated_data
+        now_ms ⦃ (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+        -- line 692 → E01 line 698: `Ok(payload.to_vec())`, payload = body[8..]
+        resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.rs2_roundtrip self kid key associated_data body
+    now_ms kidStr h_len h_cap h_body h_expiry h_kid_utf8 h_kid_len h_key
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.rs2_roundtrip' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ VERSION_V2._native.decide.ax_1]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.rs2_roundtrip
+
+/-- S15 `open_at_roundtrip_rs1`: sealing with E07 `seal_rs1` and opening any `Str` holding the
+token's bytes with E11 `open_at` returns `Ok (body[8..])`, under the premises of
+`rs1_roundtrip`. -/
+theorem Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1 (self : RequestStateCodec)
+    (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8)
+    (now_ms : Std.I64)
+    (h_len : (transcriptV1 associated_data.val body.val).length ≤ Usize.max)
+    (h_cap : versionV1.length + 2 + b64Len body.val.length + b64Len 32 ≤
+      ExtModel.maxStringBytes)
+    (h_body : expiryLen ≤ body.val.length)
+    (h_expiry : ¬ Expired (bodyExpiry body.val) now_ms.val)
+    (h_key : (∃ k, self.keys = .Single k ∧ k.inner.val = key.val) ∨
+      (∃ keys seal_mode rs1_fallbacks kid, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
+        kid ∈ rs1_fallbacks.val ∧ lookupKey keys kid = some key.val))
+    (h_fallbacks : CodecFallbacksKnown self) :
+    rmcp.model.request_state.RequestStateCodec.seal_rs1 key associated_data body ⦃
+      (token : String) =>
+      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
+      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
+      rmcp.model.request_state.RequestStateCodec.open_at self sealed associated_data now_ms ⦃
+        (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+        -- line 566 → line 640 → E01 line 698
+        resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_at_roundtrip_rs1 self key associated_data body
+    now_ms h_len h_cap h_body h_expiry h_key h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ VERSION_V1._native.decide.ax_1,
+ RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1
+
+/-- S15 `open_at_roundtrip_rs2`: sealing with E08 `seal_rs2` and opening any `Str` holding the
+token's bytes with E11 `open_at` returns `Ok (body[8..])`, under the premises of
+`rs2_roundtrip`. -/
+theorem Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2 (self : RequestStateCodec)
+    (kid : Str) (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8)
+    (now_ms : Std.I64) (kidStr : String)
+    (h_len : (transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val).length ≤
+      Usize.max)
+    (h_cap : versionV2.length + 3 + b64Len (kid : Slice Std.U8).val.length +
+      b64Len body.val.length + b64Len 32 ≤ ExtModel.maxStringBytes)
+    (h_body : expiryLen ≤ body.val.length)
+    (h_expiry : ¬ Expired (bodyExpiry body.val) now_ms.val)
+    (h_kid_utf8 : (kid : Slice Std.U8).val = ExtModel.utf8 kidStr)
+    (h_kid_len : 1 ≤ (kid : Slice Std.U8).val.length ∧
+      (kid : Slice Std.U8).val.length ≤ maxKidLen)
+    (h_key : ∃ keys seal_mode rs1_fallbacks, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
+      lookupKey keys kidStr = some key.val) :
+    rmcp.model.request_state.RequestStateCodec.seal_rs2 kid key associated_data body ⦃
+      (token : String) =>
+      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
+      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
+      rmcp.model.request_state.RequestStateCodec.open_at self sealed associated_data now_ms ⦃
+        (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+        -- line 567 → line 692 → E01 line 698
+        resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_at_roundtrip_rs2 self kid key associated_data body
+    now_ms kidStr h_len h_cap h_body h_expiry h_kid_utf8 h_kid_len h_key
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ VERSION_V2._native.decide.ax_1,
+ RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2

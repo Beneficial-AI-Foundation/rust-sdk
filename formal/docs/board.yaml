@@ -277,7 +277,7 @@ steps:
 
   - id: S15
     day: D8-9
-    state: NOT_STARTED
+    state: ACCEPTED  # human approval 2026-11-23; round trips proved and incorporated (evidence/S15.md)
     depends_on: [S11, S13, S14]
     owner: Lean
     files:
