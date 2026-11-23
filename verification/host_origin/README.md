@@ -3,6 +3,11 @@
 This is an initial extraction of production `rmcp` code at SDK commit `0e2396f`.
 It is not a proof of the Host/Origin rejection property in issue #3.
 
+The Lean CI builds this translation with Lean 4.31.0 and the pinned Aeneas
+backend. Run `lake build` from this directory to check it locally. A successful
+build confirms that the translation compiles; it does not establish the target
+security property.
+
 `RmcpHostOrigin/Funs.lean` contains the extracted bodies of `host_is_allowed`,
 `origin_is_allowed`, `AllowedPort::matches`, `default_port`, and generated
 closures/trait implementations. `FunsExternal.lean` contains declarations for
