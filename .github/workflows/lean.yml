@@ -1,0 +1,40 @@
+name: Lean Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'verification/host_origin/**'
+      - '.github/workflows/lean.yml'
+  pull_request:
+    branches: [main, release]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lean-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Lean Translation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: verification/host_origin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Lean
+        uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1
+        with:
+          lake-package-directory: verification/host_origin
+          build: false
+          test: false
+          lint: false
+          use-mathlib-cache: true
+
+      - name: Build Lean translation
+        run: lake build --no-ansi
