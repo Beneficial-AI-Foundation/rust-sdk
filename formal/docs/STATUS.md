@@ -10,8 +10,8 @@ Last updated 2026-11-23: S19 final status report, written at local commit `1640c
 Updated 2026-11-23 for the D2 fallback (human decision 2026-11-23): the SDK `*.rs` files are
 byte-identical to upstream `origin/main` (`7caec76`); the `request_state_wire` refactor and all
 added tests are translation patch `formal/trusted/patches/01-request-state-wire.patch`, applied
-only to the translated copy; every target is `PATCHED`. The translation and all 25 proofs are
-unchanged.
+only to the translated copy; every target's linkage is `patch-01` (proved on upstream `7caec76` plus
+translation patch 01). The translation and all 25 proofs are unchanged.
 
 Board at this report: S05–S16 and S18 `ACCEPTED` (human approval 2026-11-23); S01, S02, S03, S04
 and S04a `IN_PROGRESS` (human items open, see "Open items"); S17 `NOT_STARTED` (needs a push to
@@ -56,14 +56,14 @@ the last sentence names the excluded functions and non-targets instead.
 > (`open`, `open_with`, `new`, `try_new`).
 
 **D10 count (plan Section 8, "Gates").** Of the 25 targets: **verified on original code 0**,
-**checked but patched 25**, **open 0**. "Checked but patched" means spec `REVIEWED` (signed off by
-the spec owner), proof `CHECKED` and linkage `PATCHED` (patch 01) in every record of `functions/`,
-with the restated theorem in a spec file; each theorem holds under its stated premises (no-overflow
-and size domains, codec-state clauses) and is about the patched copy. (Before the D2 fallback, this
-count read "verified 25" with linkage `ORIGINAL` relative to local commit `9b030c6`; the proofs did
-not change.) If the refactor lands in the SDK source, patch 01 is deleted and the targets can become
-`ORIGINAL`. Plus 5 composition theorems. Excluded (not counted, not verified): the items under
-"Excluded functions" below. Not targets: 4 translatable wrappers.
+**proved with translation patch 01: 25**, **open 0**. "Proved with translation patch 01" means spec
+`REVIEWED` (signed off by the spec owner), proof `CHECKED` and linkage `patch-01` in every record of
+`functions/`, with the restated theorem in a spec file; each theorem holds under its stated premises
+(no-overflow and size domains, codec-state clauses) and is about the patched copy. (Before the D2
+fallback, this count read "verified 25" with linkage `ORIGINAL` relative to local commit `9b030c6`;
+the proofs did not change.) If the refactor lands in the SDK source, patch 01 is deleted and the
+targets can become `ORIGINAL`. Plus 5 composition theorems. Excluded (not counted, not verified):
+the items under "Excluded functions" below. Not targets: 4 translatable wrappers.
 
 Restated theorems (`theorem Theorems.…`, each proved by the spec theorem it restates and guarded
 by `#guard_msgs in` + `#print axioms`), counted at `1640c77`:
@@ -162,35 +162,35 @@ Only the named human spec owner may set `spec: REVIEWED`, and only a human may m
 
 Mirrors `formal/docs/functions/*.yaml` (the records are authoritative), checked at `1640c77`:
 every record has `translation: LEAN_OK`, `spec: REVIEWED`, `spec_owner: "Hoang Le Truong"`,
-`linkage: PATCHED` (patch 01, since 2026-11-23), `proof: CHECKED`.
+`linkage: patch-01` (patch 01, since 2026-11-23), `proof: CHECKED`.
 
 | ID | Rust symbol | translation | spec | linkage | proof |
 |---|---|---|---|---|---|
-| W01 | `request_state_wire::b64_len` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W02 | `request_state_wire::key_length_ok` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W03 | `request_state_wire::check_kid_len` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W04 | `request_state_wire::bytes_eq` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W05 | `request_state_wire::next_dot` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W06 | `request_state_wire::component_count` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W07 | `request_state_wire::version_of` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W08 | `request_state_wire::parse_rs1` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W09 | `request_state_wire::parse_rs2` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W10 | `request_state_wire::transcript_v1` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W11 | `request_state_wire::transcript_v2` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W12 | `request_state_wire::decode_expiry` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W13 | `request_state_wire::is_expired` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W14 | `request_state_wire::open_frame` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| W15 | `request_state_wire::frame` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E01 | `RequestStateCodec::open_authenticated_body` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E02 | `RequestStateCodec::b64_len` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E03 | `RequestStateCodec::validate_key_length` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E04 | `RequestStateCodec::validate_config_kid` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E07 | `RequestStateCodec::seal_rs1` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E08 | `RequestStateCodec::seal_rs2` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E09 | `RequestStateCodec::open_rs1_at` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E09a | `RequestStateCodec::rs1_fallbacks_verify` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E10 | `RequestStateCodec::open_rs2_at` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
-| E11 | `RequestStateCodec::open_at` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W01 | `request_state_wire::b64_len` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W02 | `request_state_wire::key_length_ok` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W03 | `request_state_wire::check_kid_len` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W04 | `request_state_wire::bytes_eq` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W05 | `request_state_wire::next_dot` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W06 | `request_state_wire::component_count` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W07 | `request_state_wire::version_of` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W08 | `request_state_wire::parse_rs1` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W09 | `request_state_wire::parse_rs2` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W10 | `request_state_wire::transcript_v1` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W11 | `request_state_wire::transcript_v2` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W12 | `request_state_wire::decode_expiry` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W13 | `request_state_wire::is_expired` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W14 | `request_state_wire::open_frame` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| W15 | `request_state_wire::frame` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E01 | `RequestStateCodec::open_authenticated_body` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E02 | `RequestStateCodec::b64_len` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E03 | `RequestStateCodec::validate_key_length` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E04 | `RequestStateCodec::validate_config_kid` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E07 | `RequestStateCodec::seal_rs1` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E08 | `RequestStateCodec::seal_rs2` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E09 | `RequestStateCodec::open_rs1_at` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E09a | `RequestStateCodec::rs1_fallbacks_verify` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E10 | `RequestStateCodec::open_rs2_at` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
+| E11 | `RequestStateCodec::open_at` | LEAN_OK | REVIEWED | patch-01 | CHECKED |
 
 Total: 25 records (W01–W15, E01–E04, E07–E11, E09a), all proved and restated in the spec
 files, plus the composition theorems `frame_roundtrip` (S06) and `rs1_roundtrip`,
@@ -376,13 +376,12 @@ Human decisions and actions:
 - **Owners and budget**: project owner and budget TBD (blocks S01 acceptance and the D2 gate).
 - **D2 fallback in use (human decision 2026-11-23)**: the refactor did not land in the SDK
   source; it is translation patch `formal/trusted/patches/01-request-state-wire.patch` on
-  upstream `7caec76`, and every target is `PATCHED`. The patch had the review of
-  `docs/VERIFICATION.md` §4: two independent agent reviews (no blocking; a side-by-side run of
-  upstream and the patched copy gave identical results on 2,463,458 cases) and the human
-  sign-off on 2026-11-23.
-  Landing the refactor upstream would let the patch be deleted and the targets become `ORIGINAL`.
-  (Before 2026-11-23 this item read: not landed in the fork; results about local commit
-  `9b030c6` / `1640c77`.)
+  upstream `7caec76`, and every target's linkage is `patch-01` (proved on upstream `7caec76` plus
+  translation patch 01). The patch had the review of `docs/VERIFICATION.md` §4: two independent
+  agent reviews (no blocking; a side-by-side run of upstream and the patched copy gave identical
+  results on 2,463,458 cases) and the human sign-off on 2026-11-23. Landing the refactor upstream
+  would let the patch be deleted and the targets become `ORIGINAL`. (Before 2026-11-23 this item
+  read: not landed in the fork; results about local commit `9b030c6` / `1640c77`.)
 - **S01–S04a acceptance**: `IN_PROGRESS` on the board; S02 lacks `CLAUDE.md` and its own review.
 - **CI has never run on GitHub**: the three workflows (`lean-build.yml`,
   `aeneas-translation.yml`, `patched-tests.yml`) need a push; the last two were checked only

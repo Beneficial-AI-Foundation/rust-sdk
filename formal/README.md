@@ -7,7 +7,7 @@ the day-to-day rules are in [`docs/WORKFLOW_AND_PR_GUIDE.md`](../docs/WORKFLOW_A
 In short (S19, 2026-11-23): all 25 targets are specified, signed off and proved, about the
 patched copy: upstream `origin/main` `7caec76` plus translation patch
 `trusted/patches/01-request-state-wire.patch` (D2 fallback, human decision 2026-11-23; every
-target `PATCHED`); the trusted base has that patch, no trusted axiom and five locked native-code
+target `patch-01`); the trusted base has that patch, no trusted axiom and five locked native-code
 axioms; see "Results" in `docs/STATUS.md`.
 
 ## Translated configuration

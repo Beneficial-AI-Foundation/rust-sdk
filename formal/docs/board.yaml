@@ -97,7 +97,8 @@ steps:
     # 2026-11-23, D2 fallback (human decision): the refactor did not land in the SDK source;
     # it and its tests are formal/trusted/patches/01-request-state-wire.patch on upstream
     # origin/main 7caec76 (SDK *.rs byte-identical to it), applied only to .llbc/work/;
-    # every target is PATCHED. The patch awaits the VERIFICATION.md section 4 review.
+    # every target's linkage is patch-01. The patch had its VERIFICATION.md section 4 review and
+    # human sign-off (2026-11-23).
     depends_on: [S03, S04]
     owner: Extraction + reviewer
     files:
@@ -115,7 +116,7 @@ steps:
       and every target is present in Funs.lean with a real body. Under the D2 fallback
       (2026-11-23), (1) is replaced by the refactor as translation patch 01 on the pinned
       upstream commit 7caec76, with the VERIFICATION.md section 4 review (agents, then the
-      human), and every target is PATCHED.
+      human), and every target's linkage is patch-01.
 
   - id: S05
     day: D2

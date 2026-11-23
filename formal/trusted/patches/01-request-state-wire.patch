@@ -109,7 +109,7 @@ argument above; they are #[cfg(test)] and do not change the translation.
 Evidence in CI: patched-tests.yml runs the crate's library tests on the patched copy
 (cargo test --no-default-features --features request-state --lib, overflow checks and debug
 assertions on), which include every test above, so a behaviour change they cover is caught.
-Every target is linkage PATCHED. Delete this patch if the refactor lands in the SDK source.
+Every target's linkage is patch-01. Delete this patch if the refactor lands in the SDK source.
 
 diff --git a/crates/rmcp/src/model.rs b/crates/rmcp/src/model.rs
 index 5a493d4..315f83c 100644

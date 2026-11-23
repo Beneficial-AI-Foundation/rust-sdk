@@ -104,7 +104,8 @@ A patch is a small, behaviour-preserving edit applied only to the copy of the cr
 `.llbc/work/`; the real source is never patched. None were planned (plan Section 4, "What must be
 trusted"); since 2026-11-23 (D2 fallback, human decision) there is one,
 `formal/trusted/patches/01-request-state-wire.patch`, which carries the `request_state_wire`
-refactor and its tests on upstream `7caec76`, so every target is `PATCHED`. If one is needed:
+refactor and its tests on upstream `7caec76`, so every target's linkage is `patch-01` (proved on
+upstream `7caec76` plus translation patch 01). If one is needed:
 
 1. Run `scripts/apply-patches.sh` so that `.llbc/work/` holds the patched copy.
 2. Make the edit in `.llbc/work/`.
@@ -115,7 +116,7 @@ refactor and its tests on upstream `7caec76`, so every target is `PATCHED`. If o
 
 One concern per patch. Each patch is reviewed like an axiom (see
 [Review and sign-off](#review-and-sign-off)), and every target whose translation depends on it is
-`linkage: PATCHED`. Delete a patch when an Aeneas upgrade makes it unnecessary.
+`linkage: patch-01`. Delete a patch when an Aeneas upgrade makes it unnecessary.
 
 ## Pinned toolchain
 

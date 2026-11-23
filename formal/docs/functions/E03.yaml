@@ -5,7 +5,7 @@ source_line: 704  # `fn validate_key_length` in the patched copy (same line at 4
 generated_symbol: rmcp.model.request_state.RequestStateCodec.validate_key_length
 translation: LEAN_OK  # Aeneas output compiles at 46cfb02 (S04a part 2)
 spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead defaults; the S05 evidence (git history at 01bdc9b))
-linkage: PATCHED  # patch 01 (formal/trusted/patches/01-request-state-wire.patch), D2 fallback 2026-11-23
+linkage: patch-01  # patch 01 (formal/trusted/patches/01-request-state-wire.patch), D2 fallback 2026-11-23
 proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestState/ValidateKeyLength.lean
 spec_file: formal/specs/Specs/Model/RequestState.lean
