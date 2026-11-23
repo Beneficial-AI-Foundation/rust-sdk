@@ -12,7 +12,7 @@ spec_file: formal/specs/Specs/Model/RequestState.lean
 theorem: rmcp.model.request_state.RequestStateCodec.b64_len_spec
 used_by: [E07, E08]  # targets whose proofs consume this theorem; seal_rs1/seal_rs2 call Self::b64_len (request_state.rs l. 589, 606-608 at 0e2396f)
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file
-evidence: [formal/docs/evidence/S01.md, formal/docs/evidence/S05.md, formal/docs/evidence/S07.md, formal/docs/review/S07-E02-dossier.md]  # S01 records; S05 spec drafts; S07 proof; incorporated 2026-11-23 on the human's approval
+evidence: [formal/docs/evidence/S01.md, formal/docs/evidence/S05.md, formal/docs/evidence/S07.md]  # S01 records; S05 spec drafts; S07 proof; incorporated 2026-11-23 on the human's approval
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestState.lean (S05)
 spec_reviews:
   - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}

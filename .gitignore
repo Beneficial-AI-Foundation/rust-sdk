@@ -35,3 +35,6 @@ node_modules/
 .llbc/
 formal/.lake/
 formal/translation/Rmcp/*External_Template.lean
+
+# The differential check builds with --locked from this lock file (formal/trusted/evidence/README.md)
+!formal/trusted/evidence/differential/rdiff/Cargo.lock
