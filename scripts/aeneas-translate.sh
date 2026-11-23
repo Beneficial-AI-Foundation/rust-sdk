@@ -42,6 +42,21 @@
 #   scripts/aeneas-translate.sh            full run: patch, check, translate, check, install
 #   scripts/aeneas-translate.sh --check D  only the output checks on an existing output
 #                                          directory D (containing Rmcp/Funs.lean)
+#   scripts/aeneas-translate.sh --check-deps
+#                                          dependency checks only: the environment and
+#                                          pinned-rustc checks, apply-patches.sh, the cargo
+#                                          configuration and manifest refusals, the crates.io
+#                                          source and PINNED_DEPS checks and the build.rs
+#                                          digest, exactly as in a full run (same code); then
+#                                          it stops before Charon, leaving the checked
+#                                          resolution in <work>/Cargo.lock and the isolated
+#                                          CARGO_HOME in <llbc>/cargo-home. It needs no Aeneas
+#                                          bundle (the toolchain is RUSTUP_TOOLCHAIN, which
+#                                          must be unset or the pinned nightly) and writes no
+#                                          translation. patched-tests.yml runs it, then
+#                                          `cargo test --locked` on that Cargo.lock.
+# Every cargo call after the dependency check (cargo metadata, and cargo build through
+# Charon) gets --locked, so the translation uses exactly the resolution that was checked.
 # The overflow mode is fixed explicitly: every cargo call gets
 #   --config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true
 # (command-line --config has the highest precedence in cargo). Aeneas models overflow as
@@ -148,12 +163,17 @@ check_output() {
   log "all ${#TARGETS[@]} targets defined in Funs.lean; no sorry"
 }
 
+MODE=full
 if [[ "${1:-}" == "--check" ]]; then
   [[ $# -eq 2 ]] || die "usage: $0 --check <output-dir>"
   check_output "$2"
   exit 0
+elif [[ "${1:-}" == "--check-deps" ]]; then
+  [[ $# -eq 1 ]] || die "usage: $0 --check-deps"
+  MODE=deps
+else
+  [[ $# -eq 0 ]] || die "usage: $0 [--check <output-dir> | --check-deps]"
 fi
-[[ $# -eq 0 ]] || die "usage: $0 [--check <output-dir>]"
 
 # Environment variables that change what cargo or rustc build are refused (not unset), so
 # that a CI log shows why a run stopped. Allowed: CARGO_HOME (its configuration is not used,
@@ -192,15 +212,18 @@ check_environment
 # repository (e.g. RMCP_TRANSLATION_DEST=<repo>/formal would delete formal/), and with a
 # scratch source it must lie outside the repository, so that a scratch translation never
 # overwrites formal/translation/ (paths canonicalised: symlinks, `.`, `..`).
+# (--check-deps writes no output, so it skips these checks.)
 ROOT_C="$(canon_path "$ROOT")"
-DEST_C="$(canon_path "$DEST")"
-REPO_DEST_C="$(canon_path "$ROOT/formal/translation")"
-within "$ROOT_C" "$DEST_C" && die "RMCP_TRANSLATION_DEST ($DEST_C) contains the repository"
-if [[ -n "${RMCP_SOURCE_ROOT:-}" && "$(canon_path "$RMCP_SOURCE_ROOT")" != "$ROOT_C" ]]; then
-  within "$DEST_C" "$ROOT_C" \
-    && die "RMCP_SOURCE_ROOT is not this repository; set RMCP_TRANSLATION_DEST to a scratch directory outside the repository (got $DEST_C)"
-elif [[ "$DEST_C" != "$REPO_DEST_C" ]] && within "$DEST_C" "$ROOT_C"; then
-  die "RMCP_TRANSLATION_DEST ($DEST_C) is inside the repository but is not formal/translation"
+if [[ "$MODE" == full ]]; then
+  DEST_C="$(canon_path "$DEST")"
+  REPO_DEST_C="$(canon_path "$ROOT/formal/translation")"
+  within "$ROOT_C" "$DEST_C" && die "RMCP_TRANSLATION_DEST ($DEST_C) contains the repository"
+  if [[ -n "${RMCP_SOURCE_ROOT:-}" && "$(canon_path "$RMCP_SOURCE_ROOT")" != "$ROOT_C" ]]; then
+    within "$DEST_C" "$ROOT_C" \
+      && die "RMCP_SOURCE_ROOT is not this repository; set RMCP_TRANSLATION_DEST to a scratch directory outside the repository (got $DEST_C)"
+  elif [[ "$DEST_C" != "$REPO_DEST_C" ]] && within "$DEST_C" "$ROOT_C"; then
+    die "RMCP_TRANSLATION_DEST ($DEST_C) is inside the repository but is not formal/translation"
+  fi
 fi
 
 # The work directory gets rsync --delete (work/) and rm -rf (out/, cargo-home/); see
@@ -212,17 +235,25 @@ CRATE_DIR="$WORK/crates/rmcp"
 
 # The pinned bundle (installed by aeneas-install.sh from the rev in formal/lakefile.toml).
 # Every table header starts a new block and clears `name`/`rev` (same awk as aeneas-install.sh).
-TAG="$(awk '
-  /^[[:space:]]*\[/ { in_req = ($0 ~ /^[[:space:]]*\[\[require\]\]/); is_aeneas = 0; rev = ""; next }
-  in_req && /^[[:space:]]*name[[:space:]]*=[[:space:]]*"aeneas"[[:space:]]*(#.*)?$/ { is_aeneas = 1 }
-  in_req && /^[[:space:]]*rev[[:space:]]*=/ { rev = $0 }
-  in_req && is_aeneas && rev != "" { sub(/^[^"]*"/, "", rev); sub(/".*$/, "", rev); print rev; exit }
-' "$ROOT/formal/lakefile.toml")"
-BUNDLE="$ROOT/.aeneas/$TAG"
-[[ -n "$TAG" && -f "$BUNDLE/.installed" ]] || die "bundle ${TAG:-?} not installed; run scripts/aeneas-install.sh"
-CHARON="$BUNDLE/charon"
-AENEAS="$BUNDLE/aeneas"
-RUST_CHANNEL="$(sed -n 's/^channel[[:space:]]*=[[:space:]]*"\(.*\)"/\1/p' "$BUNDLE/rust-toolchain")"
+# --check-deps does not use the bundle: its channel is RUSTUP_TOOLCHAIN (default: the pinned
+# nightly), checked against the same pin below.
+if [[ "$MODE" == full ]]; then
+  TAG="$(awk '
+    /^[[:space:]]*\[/ { in_req = ($0 ~ /^[[:space:]]*\[\[require\]\]/); is_aeneas = 0; rev = ""; next }
+    in_req && /^[[:space:]]*name[[:space:]]*=[[:space:]]*"aeneas"[[:space:]]*(#.*)?$/ { is_aeneas = 1 }
+    in_req && /^[[:space:]]*rev[[:space:]]*=/ { rev = $0 }
+    in_req && is_aeneas && rev != "" { sub(/^[^"]*"/, "", rev); sub(/".*$/, "", rev); print rev; exit }
+  ' "$ROOT/formal/lakefile.toml")"
+  BUNDLE="$ROOT/.aeneas/$TAG"
+  [[ -n "$TAG" && -f "$BUNDLE/.installed" ]] || die "bundle ${TAG:-?} not installed; run scripts/aeneas-install.sh"
+  CHARON="$BUNDLE/charon"
+  AENEAS="$BUNDLE/aeneas"
+  RUST_CHANNEL="$(sed -n 's/^channel[[:space:]]*=[[:space:]]*"\(.*\)"/\1/p' "$BUNDLE/rust-toolchain")"
+  CHANNEL_FROM="bundle channel"
+else
+  RUST_CHANNEL="${RUSTUP_TOOLCHAIN:-nightly-2026-06-01}"
+  CHANNEL_FROM="RUSTUP_TOOLCHAIN"
+fi
 export RUSTUP_TOOLCHAIN="$RUST_CHANNEL"
 # The toolchain actually selected (RUSTUP_HOME may point at any rustup home): the `rustc` on
 # PATH, which cargo runs and whose sysroot provides the librustc_driver that charon-driver
@@ -230,7 +261,7 @@ export RUSTUP_TOOLCHAIN="$RUST_CHANNEL"
 # RUSTC_VV_PINNED is the `rustc -vV` of nightly-2026-06-01 (commit date 2026-05-31); it
 # changes with the Aeneas rev ("Pinned toolchain").
 [[ "$RUST_CHANNEL" == "nightly-2026-06-01" ]] \
-  || die "bundle channel $RUST_CHANNEL, but RUSTC_VV_PINNED is for nightly-2026-06-01 (update it with the Aeneas rev)"
+  || die "$CHANNEL_FROM $RUST_CHANNEL, but RUSTC_VV_PINNED is for nightly-2026-06-01 (update it with the Aeneas rev)"
 RUSTC_VV_PINNED="commit-hash: 14210df0e27ccd7d9e6a05b8085cbd438e4bbc65 commit-date: 2026-05-31 release: 1.98.0-nightly"
 command -v rustc >/dev/null 2>&1 || die "rustc not found"
 rustc_vv="$(rustc -vV)" || die "rustc -vV failed for toolchain $RUST_CHANNEL${RUSTUP_HOME:+ (RUSTUP_HOME=$RUSTUP_HOME)}"
@@ -238,15 +269,19 @@ got_vv="$(awk -F': ' '$1 == "release" || $1 == "commit-hash" || $1 == "commit-da
 [[ "$got_vv" == "$RUSTC_VV_PINNED" ]] \
   || die "the selected rustc reports '$got_vv', expected '$RUSTC_VV_PINNED' (toolchain $RUST_CHANNEL${RUSTUP_HOME:+, RUSTUP_HOME=$RUSTUP_HOME})"
 export CARGO_TARGET_DIR="$LLBC/target"
-# The bundle's macOS binaries reference libiconv/zlib under /nix/store; the same
-# libraries exist in /usr/lib (see aeneas-install.sh).
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  export DYLD_FALLBACK_LIBRARY_PATH="/usr/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
-fi
 command -v jq >/dev/null 2>&1 || die "jq not found"
-charon_tc="$("$CHARON" toolchain-version)" || die "charon toolchain-version failed"
-[[ "$charon_tc" == "$RUST_CHANNEL" ]] || die "charon was built for $charon_tc, the bundle pins $RUST_CHANNEL"
-log "aeneas $TAG, charon $("$CHARON" version), rust $RUST_CHANNEL (rustc $got_vv)"
+if [[ "$MODE" == full ]]; then
+  # The bundle's macOS binaries reference libiconv/zlib under /nix/store; the same
+  # libraries exist in /usr/lib (see aeneas-install.sh).
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    export DYLD_FALLBACK_LIBRARY_PATH="/usr/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+  fi
+  charon_tc="$("$CHARON" toolchain-version)" || die "charon toolchain-version failed"
+  [[ "$charon_tc" == "$RUST_CHANNEL" ]] || die "charon was built for $charon_tc, the bundle pins $RUST_CHANNEL"
+  log "aeneas $TAG, charon $("$CHARON" version), rust $RUST_CHANNEL (rustc $got_vv)"
+else
+  log "dependency check only (--check-deps), rust $RUST_CHANNEL (rustc $got_vv)"
+fi
 
 # 1. Fresh copy of the workspace with the translation patches applied (apply-patches.sh
 # refuses a source with a .cargo/config* file and never copies .cargo/).
@@ -295,13 +330,26 @@ log "manifests: no [profile], [patch], [replace] or cargo-features"
 
 # 2. Dependencies, resolved for the translated configuration: every dependency of rmcp
 # must come from crates.io (`cargo tree` prints a source only for a path, git or
-# other-registry package), and the pinned crates must have the pinned versions.
+# other-registry package), and the pinned crates must have the pinned versions. This
+# `cargo tree` writes <work>/Cargo.lock (the copy has none); every later cargo call uses it
+# with --locked.
+[[ ! -e "$WORK/Cargo.lock" ]] || die "$WORK/Cargo.lock exists before resolution (apply-patches.sh never copies one)"
 tree="$(cargo tree "${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" -e normal --prefix none --format '{p}' \
   | sed -e 's/ (\*)$//' -e 's/ (proc-macro)$//' | sort -u)"
 foreign="$(awk -v root="rmcp" '$1 != root && / \(/' <<<"$tree")"
 if [[ -n "$foreign" ]]; then
   printf '%s\n' "$foreign" >&2
   die "dependencies not from crates.io (path, git or other registry)"
+fi
+# The same source check over build and dev dependencies too: cargo test (patched-tests.yml)
+# also builds the dev-dependencies, so none of them may come from a path, git or other
+# registry either (review of PR #9).
+alltree="$(cargo tree "${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" -e normal,build,dev --prefix none \
+  --format '{p}' | sed -e 's/ (\*)$//' -e 's/ (proc-macro)$//' | sort -u)"
+foreign="$(awk -v root="rmcp" '$1 != root && / \(/' <<<"$alltree")"
+if [[ -n "$foreign" ]]; then
+  printf '%s\n' "$foreign" >&2
+  die "build or dev dependencies not from crates.io (path, git or other registry)"
 fi
 rootline="$(awk '$1 == "rmcp"' <<<"$tree")"
 [[ "$rootline" == "rmcp v"*" ($(pwd -P))" ]] || die "unexpected rmcp package(s) in the tree: $rootline"
@@ -320,7 +368,7 @@ done
 # and also accepts keys that widen the translation (include, start_from_pub,
 # extract_opaque_bodies, start_from_if_exists, start_from_attribute, rustc.flags);
 # none of them is allowed here.
-pkg="$(cargo metadata "${CONFIG_ARGS[@]}" --format-version 1 --no-deps \
+pkg="$(cargo metadata "${CONFIG_ARGS[@]}" --locked --format-version 1 --no-deps \
   | jq -c '[.packages[] | select(.name == "rmcp")] | if length == 1 then .[0] else error("rmcp package count \(length)") end')"
 # Build script: exactly crates/rmcp/build.rs, with the pinned digest.
 builds="$(jq -r '[.targets[] | select(.kind | index("custom-build")) | .src_path] | join(" ")' <<<"$pkg")"
@@ -331,6 +379,10 @@ else got_sha="$(shasum -a 256 build.rs | awk '{print $1}')"; fi
 [[ "$got_sha" == "$BUILD_RS_SHA256" ]] \
   || die "crates/rmcp/build.rs has sha256 $got_sha, pinned $BUILD_RS_SHA256 (review it, then update BUILD_RS_SHA256)"
 log "build script crates/rmcp/build.rs (pinned sha256)"
+if [[ "$MODE" == deps ]]; then
+  log "dependency checks passed; checked resolution in $WORK/Cargo.lock (use cargo --locked), CARGO_HOME $ISO_CARGO_HOME"
+  exit 0
+fi
 meta="$(jq -c '.metadata.charon' <<<"$pkg")"
 [[ "$meta" != "null" && -n "$meta" ]] || die "no [package.metadata.charon] in crates/rmcp/Cargo.toml"
 extra="$(jq -c '(keys - ["start_from", "hide_marker_traits", "exclude", "opaque"])' <<<"$meta")"
@@ -347,7 +399,7 @@ mkdir -p "$LLBC"
 LLBC_FILE="$LLBC/rmcp.llbc"
 rm -f "$LLBC_FILE"
 set +e
-"$CHARON" cargo --preset=aeneas --dest-file "$LLBC_FILE" -- "${CARGO_ARGS[@]}"
+"$CHARON" cargo --preset=aeneas --dest-file "$LLBC_FILE" -- "${CARGO_ARGS[@]}" --locked
 rc=$?
 set -e
 [[ $rc -eq 0 ]] || die "charon exited with $rc"

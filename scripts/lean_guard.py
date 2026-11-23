@@ -70,9 +70,9 @@ LIBS = {
     "Proofs": ("proofs", ["Proofs"]),
     "Specs": ("specs", ["Specs"]),
 }
-LIB_KEYS = {"name", "srcDir", "roots", "leanOptions"}
-PACKAGE_KEYS = {"name", "defaultTargets", "require", "lean_lib"}
-REQUIRE_KEYS = {"name", "git", "rev", "subDir"}
+LIB_FIELDS = {"name", "srcDir", "roots", "leanOptions"}
+PACKAGE_FIELDS = {"name", "defaultTargets", "require", "lean_lib"}
+REQUIRE_FIELDS = {"name", "git", "rev", "subDir"}
 REQUIRED_DEFAULTS = {"Defs", "Proofs", "Specs"}
 
 
@@ -165,7 +165,7 @@ def check_toolchain(formal):
 def check_lakefile(formal):
     cfg, errs = load_lakefile(formal)
     errs += check_toolchain(formal)
-    extra = set(cfg) - PACKAGE_KEYS
+    extra = set(cfg) - PACKAGE_FIELDS
     if extra:
         errs.append(f"lakefile.toml: package-level key(s) not allowed: {sorted(extra)}")
     if cfg.get("name") != "rmcp_formal":
@@ -175,8 +175,8 @@ def check_lakefile(formal):
         errs.append("lakefile.toml: expected exactly one [[require]] (aeneas)")
     else:
         r = reqs[0]
-        if set(r) - REQUIRE_KEYS:
-            errs.append(f"lakefile.toml: [[require]] key(s) not allowed: {sorted(set(r) - REQUIRE_KEYS)}")
+        if set(r) - REQUIRE_FIELDS:
+            errs.append(f"lakefile.toml: [[require]] key(s) not allowed: {sorted(set(r) - REQUIRE_FIELDS)}")
         if (r.get("name"), r.get("git"), r.get("subDir")) != (
                 "aeneas", "https://github.com/AeneasVerif/aeneas", "backends/lean"):
             errs.append("lakefile.toml: [[require]] must be aeneas from "
@@ -194,8 +194,8 @@ def check_lakefile(formal):
         if not isinstance(lib, dict):
             continue
         n = lib.get("name")
-        if set(lib) != LIB_KEYS:
-            errs.append(f"lakefile.toml: library {n}: keys {sorted(lib)}, expected exactly {sorted(LIB_KEYS)}")
+        if set(lib) != LIB_FIELDS:
+            errs.append(f"lakefile.toml: library {n}: keys {sorted(lib)}, expected exactly {sorted(LIB_FIELDS)}")
         if lib.get("leanOptions") != {"warningAsError": True}:
             errs.append(f"lakefile.toml: library {n}: leanOptions {lib.get('leanOptions')!r}, "
                         "expected exactly { warningAsError = true }")
@@ -225,9 +225,9 @@ def audit_roots(formal):
     if errs:
         fail(errs)
     libs = {lib["name"]: lib for lib in cfg.get("lean_lib", [])}
-    trusted = libs.get("RmcpExternal", {}).get("roots", [])
+    ext_roots = libs.get("RmcpExternal", {}).get("roots", [])
     roots = [r for t in cfg.get("defaultTargets", []) for r in libs[t]["roots"]]
-    print(",".join(trusted) if trusted else "-")
+    print(",".join(ext_roots) if ext_roots else "-")
     print(" ".join(roots))
 
 

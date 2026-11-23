@@ -15,6 +15,13 @@
 # Rust setup action (dtolnay/rust-toolchain and Swatinem/rust-cache export CARGO_* variables
 # that scripts/aeneas-translate.sh refuses); the runner's preinstalled rustup is used.
 #
+# Cargo.lock is not committed (plan Section 4): this job resolves and checks its own Cargo.lock
+# (scripts/aeneas-translate.sh; Charon's cargo build then runs with --locked on it), and so does
+# patched-tests.yml (`aeneas-translate.sh --check-deps`, then `cargo test --locked`). The pinned
+# crates and all sources are identical by check; unpinned transitive crates could differ between
+# the two jobs. A committed verification lockfile shared by both is a human decision
+# (formal/docs/STATUS.md, "Open items").
+#
 # Residual risk: the job runs the PR's own scripts and the build scripts / proc macros of the
 # crates.io dependencies in the same job as the check, so a PR that changes scripts/ is checked by
 # its own scripts; review of scripts/ is the barrier (as for lean-build.yml).
@@ -29,6 +36,8 @@ on:
       - 'crates/rmcp/build.rs'
       - 'Cargo.toml'
       - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
+      - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
+      - '**/.cargo/config.toml'   # must still run the check that refuses it
       - 'formal/trusted/patches/**'
       - 'formal/trusted/Rmcp/**'
       - 'formal/trusted/aeneas-bundle.sha256'
@@ -47,6 +56,8 @@ on:
       - 'crates/rmcp/build.rs'
       - 'Cargo.toml'
       - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
+      - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
+      - '**/.cargo/config.toml'   # must still run the check that refuses it
       - 'formal/trusted/patches/**'
       - 'formal/trusted/Rmcp/**'
       - 'formal/trusted/aeneas-bundle.sha256'

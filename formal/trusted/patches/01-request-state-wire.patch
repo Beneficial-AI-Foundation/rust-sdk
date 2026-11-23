@@ -6,11 +6,12 @@ every *.rs file, stay byte-identical to it; only crates/rmcp/Cargo.toml differs,
 metadata that cargo ignores). Applied only to the copy in .llbc/work/ by
 scripts/apply-patches.sh (patch -p1 -F 0, file-name order); the real source is never patched.
 Files: crates/rmcp/src/model.rs, crates/rmcp/src/model/request_state.rs,
-crates/rmcp/src/model/request_state_wire.rs (new). Generated with
-  git diff 7caec762 ccaf9ee -- crates/rmcp/src/model.rs crates/rmcp/src/model/request_state.rs \
-    crates/rmcp/src/model/request_state_wire.rs
+crates/rmcp/src/model/request_state_wire.rs (new). Generated with git diff 7caec762 ccaf9ee --
+crates/rmcp/src/model.rs crates/rmcp/src/model/request_state.rs \
+crates/rmcp/src/model/request_state_wire.rs
 (ccaf9ee on docs/verification-guides holds the refactor of 9b030c6 plus the S16 tests of
-317ace2). The patch body below is the authoritative content. The Charon settings ([package.metadata.charon] in
+317ace2). The patch body below is the authoritative content. The Charon settings
+([package.metadata.charon] in
 crates/rmcp/Cargo.toml) are not part of this patch; they stay in the repository.
 
 Change:
@@ -83,15 +84,15 @@ are byte-identical to ccaf9ee, where the S04a and S16 checks ran (records in git
 01bdc9b):
 - evidence: existing request-state tests and the Section 7 boundary tests pass (S04a, S16);
 - evidence: RFC 4231 HMAC vectors and RFC 4648 Base64 vectors pass through prim (S04a);
-- evidence: tokens sealed before and after are byte-identical, committed regression test
-      mod byte_identity incl. Expired and InvalidKeyId (S04a); differential test base vs head,
-      about 2.9M open calls, no difference (S04a review round 1; a one-off review run, not CI
-      evidence); repeated for this patch: 2,463,458 results (open_at, seal, constructors) on
-      upstream 7caec76 and on the patched copy, identical (D2 patch review, 2026-11-23);
+- evidence: tokens sealed before and after are byte-identical, committed regression test mod
+  byte_identity incl. Expired and InvalidKeyId (S04a); differential test base vs head, about 2.9M
+  open calls, no difference (S04a review round 1; a one-off review run, not CI evidence); repeated
+  for this patch: 2,463,458 results (open_at, seal, constructors) on upstream 7caec76 and on the
+  patched copy, identical (D2 patch review, 2026-11-23);
 - evidence: new public items documented, Aeneas-safe rules of plan Section 2.1 checked, types
-      #[non_exhaustive] (S04a);
-- evidence: existing public API unchanged, only addition rmcp::model::request_state_wire (rustdoc JSON
-      comparison, S04a).
+  #[non_exhaustive] (S04a);
+- evidence: existing public API unchanged, only addition rmcp::model::request_state_wire (rustdoc
+  JSON comparison, S04a).
 Reviews: S04a two independent agent reviews (no blocking) plus fix-round reviews; S16 two
 independent agent reviews plus a confirming round, accepted by the human. As a translation patch
 it is part of the trusted base; two independent agent reviews of it in this form found no
@@ -107,10 +108,10 @@ one, and because mod byte_identity and the RFC vectors are the evidence for the 
 argument above; they are #[cfg(test)] and do not change the translation.
 
 Evidence in CI: patched-tests.yml runs the crate's library tests on the patched copy
-(cargo test --no-default-features --features request-state --lib, overflow checks and debug
-assertions on), which include every test above, so a behaviour change they cover is caught.
+(after scripts/aeneas-translate.sh --check-deps, cargo test --locked --no-default-features
+--features request-state --lib, overflow checks and debug assertions on), which include every test
+above, so a behaviour change they cover is caught.
 Every target's linkage is patch-01. Delete this patch if the refactor lands in the SDK source.
-
 diff --git a/crates/rmcp/src/model.rs b/crates/rmcp/src/model.rs
 index 5a493d4..315f83c 100644
 --- a/crates/rmcp/src/model.rs

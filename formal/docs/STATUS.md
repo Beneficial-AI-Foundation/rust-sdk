@@ -397,6 +397,12 @@ Human decisions and actions:
   `01bdc9b`: `formal/docs/evidence/`, `formal/docs/review/`). The pilot record (`formal/docs/pilot/`,
   `formal/docs/pilot.md`, whose logs contained local paths) was removed from git history on
   2026-11-23 (human decision).
+- **No shared verification lockfile**: `Cargo.lock` is not committed (plan Section 4), so
+  `aeneas-translation.yml` and `patched-tests.yml` each resolve and check their own (same code:
+  `scripts/aeneas-translate.sh`, the test job through `--check-deps`, then `cargo test --locked`).
+  Pinned crates (`PINNED_DEPS`) and sources (crates.io only) are identical by check; unpinned
+  transitive crates could differ between the jobs. Committing a verification lockfile shared by
+  both jobs is a human decision.
 - **Mathlib oleans** fetched by `lake exe cache get` are not digest-checked (scope decision).
 - **Upstream Aeneas `toStr` issue** (`Aeneas/Std/String.lean`): to be filed by a human; after a
   fix and a rev bump, `native-axioms.lock` can be emptied.

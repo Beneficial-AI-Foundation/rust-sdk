@@ -1,17 +1,25 @@
 # Patched copy passes the crate's tests (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 5,
 # "CI"; docs/VERIFICATION.md, Section 9).
 #
-# Installs the pinned nightly, copies the workspace into .llbc/work/ and applies
-# formal/trusted/patches/*.patch with scripts/apply-patches.sh, then runs the crate's library
-# tests in the translated feature configuration on the copy:
-#   cargo test --no-default-features --features request-state --lib   (in .llbc/work/crates/rmcp)
+# Installs the pinned nightly, then runs `scripts/aeneas-translate.sh --check-deps`: it copies the
+# workspace into .llbc/work/, applies formal/trusted/patches/*.patch with scripts/apply-patches.sh
+# and runs the same dependency checks as the translation (same code: refused CARGO_*/RUSTFLAGS/...
+# variables, pinned `rustc -vV`, no cargo configuration file, no [profile]/[patch]/[replace]/
+# cargo-features, every dependency from crates.io, PINNED_DEPS versions, build.rs sha256), leaving
+# the checked resolution in .llbc/work/Cargo.lock. It then runs the crate's library tests in the
+# translated feature configuration on the copy, on exactly that resolution:
+#   cargo test --locked --no-default-features --features request-state --lib   (in .llbc/work/crates/rmcp)
 # With no patches this is the plain test suite; it becomes evidence that the patches (part of
 # the trusted base) preserve behaviour if the D2 fallback is used. Since 2026-11-23 it is (human
 # decision): this job is the evidence for formal/trusted/patches/01-request-state-wire.patch,
 # whose tests (byte identity, codec constants, RFC 4231/4648 vectors, S16 boundary cases) exist
-# only in the patched copy. Cargo.lock is not committed
-# and apply-patches.sh never copies one, so dependencies are resolved afresh, as for the
-# translation. Same trigger paths as aeneas-translation.yml.
+# only in the patched copy. Same trigger paths as aeneas-translation.yml.
+#
+# Cargo.lock is not committed (plan Section 4) and apply-patches.sh never copies one, so this job
+# and aeneas-translation.yml each resolve and check their own Cargo.lock: the pinned crates and
+# all sources are identical by check, but unpinned transitive crates could differ between the two
+# jobs (e.g. a crates.io release between the runs). A committed verification lockfile shared by
+# both jobs would close this; that is a human decision (formal/docs/STATUS.md, "Open items").
 #
 # Residual risk: the job runs the PR's own scripts and the build scripts / proc macros of the
 # crates.io dependencies in the same job as the check, so a PR that changes scripts/ is checked by
@@ -27,6 +35,8 @@ on:
       - 'crates/rmcp/build.rs'
       - 'Cargo.toml'
       - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
+      - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
+      - '**/.cargo/config.toml'   # must still run the check that refuses it
       - 'formal/trusted/patches/**'
       - 'formal/trusted/Rmcp/**'
       - 'formal/trusted/aeneas-bundle.sha256'
@@ -45,6 +55,8 @@ on:
       - 'crates/rmcp/build.rs'
       - 'Cargo.toml'
       - '**/Cargo.toml'   # any workspace member: Cargo.lock is not committed, resolution is workspace-wide
+      - '**/.cargo/config'        # refused by apply-patches.sh / aeneas-translate.sh; a change
+      - '**/.cargo/config.toml'   # must still run the check that refuses it
       - 'formal/trusted/patches/**'
       - 'formal/trusted/Rmcp/**'
       - 'formal/trusted/aeneas-bundle.sha256'
@@ -111,13 +123,20 @@ jobs:
           rustc -vV
           cargo -V
 
-      - name: Copy the workspace and apply the translation patches
-        run: scripts/apply-patches.sh
+      # Copies the workspace, applies the translation patches and checks the resolved
+      # dependencies (stops before Charon; needs no Aeneas bundle).
+      - name: Copy the workspace, apply the translation patches, check the dependencies
+        run: scripts/aeneas-translate.sh --check-deps
 
       - name: Run the crate's library tests on the patched copy
         working-directory: .llbc/work/crates/rmcp
-        # Same profile settings as the translation (scripts/aeneas-translate.sh); the host of
-        # ubuntu-latest is x86_64-unknown-linux-gnu, the translated target.
+        # --locked: exactly the resolution checked above (cargo fails if .llbc/work/Cargo.lock
+        # would change). CARGO_HOME: the isolated home of the check (no configuration file; only
+        # links to the registry and git caches). Same profile settings as the translation
+        # (scripts/aeneas-translate.sh); the host of ubuntu-latest is x86_64-unknown-linux-gnu,
+        # the translated target.
+        env:
+          CARGO_HOME: ${{ github.workspace }}/.llbc/cargo-home
         run: >-
-          cargo test --no-default-features --features request-state --lib
+          cargo test --locked --no-default-features --features request-state --lib
           --config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true

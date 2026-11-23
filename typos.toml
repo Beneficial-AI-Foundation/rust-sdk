@@ -1,5 +1,27 @@
 # W3C `traceparent` example values (SEP-414) embed hex spans like `0ba9` that the
 # spell checker misreads as typos; ignore the canonical traceparent format.
 [default]
-extend-ignore-re = ["00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}"]
+extend-ignore-re = [
+  "00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}",
+  # Request-state tokens in test vectors (formal/trusted/patches/): `rs1.`/`rs2.` followed by
+  # base64url components.
+  "rs[12]\\.[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*",
+  # Test inputs: RFC 4648 base64 vector "fo", and the byte string "abd" (differs from "abc").
+  "b\"(fo|abd)\"",
+]
 
+# The crate name `flate2` (docs/VERIFICATION.md).
+[default.extend-identifiers]
+flate2 = "flate2"
+
+# Lean files only: hypothesis names (`hge`, `henc`, `hsi`), Lean's `ConstantInfo.thmInfo`
+# (scripts/lean-axiom-audit.lean) and the RFC 4648 vector theorem `b64_rfc4648_fo`.
+[type.lean]
+extend-glob = ["*.lean"]
+
+[type.lean.extend-identifiers]
+hge = "hge"
+henc = "henc"
+hsi = "hsi"
+thmInfo = "thmInfo"
+b64_rfc4648_fo = "b64_rfc4648_fo"
