@@ -82,3 +82,19 @@ Reviewer assignment needs no secret. The roster is read from the public
 To test either stage without side effects, run the workflow from the Actions tab
 with `dry_run` enabled: it logs the verdict and the rotation pick, and changes
 nothing.
+
+# AI pull request review
+
+Maintainers with repository write access can request a quick AI review of an open
+pull request by posting exactly `!review` as a new PR comment. The bot follows
+[`AI_PR_REVIEW_GUIDE.md`](AI_PR_REVIEW_GUIDE.md), reads the pinned diff and
+existing CI results, then posts a static review comment. It does not run Rust
+tests or approve the PR. If the head or base changes while it runs, request a
+new review. Human review remains necessary.
+
+The workflow requires an Actions secret named `OPENAI_API_KEY` with API access
+and billing. The optional `CODEX_REVIEW_MODEL` Actions variable selects a model;
+otherwise the Codex action uses its default. Keep the workflow and its prompt on
+the default branch: PR content is treated as untrusted review evidence. The
+review job has a 15-minute timeout. Test the workflow helper locally with
+`node --test scripts/codex-review.test.cjs`.
