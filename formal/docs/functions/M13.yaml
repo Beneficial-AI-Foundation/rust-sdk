@@ -5,7 +5,7 @@ source_line: 3741  # at 7caec76; in the patched copy, model.rs lines are +2 (pat
 generated_symbol: rmcp.model.Reference.as_prompt_name  # S21 translation
 translation: LEAN_OK  # S21 (2026-11-23): scripts/aeneas-translate.sh exit 0; lake build passes
 spec: DRAFT
-linkage: ORIGINAL  # pending S22: holds only while scripts/check-original-linkage.sh passes (plan Section 19)
+linkage: ORIGINAL  # pending S22: check passes locally on the S22 working tree (2026-11-24); not yet in CI on a commit
 proof: OPEN
 proof_file: formal/proofs/Proofs/Model/Reference.lean
 spec_file: formal/specs/Specs/Model.lean

@@ -67,6 +67,8 @@
 #
 # Environment (default to the repository; used for scratch runs):
 #   RMCP_SOURCE_ROOT        workspace to translate (passed to apply-patches.sh)
+#   RMCP_TARGET_SET         all (default) or phase2 (scripts/check-original-linkage.sh)
+#   RMCP_NO_PATCHES         1: no translation patch applied (passed to apply-patches.sh)
 #   RMCP_LLBC_DIR           work directory (default: <repo>/.llbc)
 #   RMCP_TRANSLATION_DEST   output directory (default: <repo>/formal/translation);
 #                           required when RMCP_SOURCE_ROOT is not the repository
@@ -162,6 +164,18 @@ TARGETS=(
 )
 
 
+# RMCP_TARGET_SET=phase2 (used only by scripts/check-original-linkage.sh, plan Section 19): check
+# only the Phase 2 targets; the Phase 1 targets (model.request_state*) exist only with patch 01.
+case "${RMCP_TARGET_SET:-all}" in
+  all) ;;
+  phase2)
+    phase2=()
+    for t in "${TARGETS[@]}"; do [[ "$t" == model.request_state* ]] || phase2+=("$t"); done
+    TARGETS=("${phase2[@]}")
+    ;;
+  *) printf '[aeneas-translate] error: RMCP_TARGET_SET must be all or phase2\n' >&2; exit 1 ;;
+esac
+
 log() { printf '[aeneas-translate] %s\n' "$*"; }
 die() { printf '[aeneas-translate] error: %s\n' "$*" >&2; exit 1; }
 
@@ -237,6 +251,11 @@ PY
   log "all ${#TARGETS[@]} targets defined in Funs.lean; no sorry"
 }
 
+# The linkage-check switches are for a full scratch translation only (see below); in --check
+# mode RMCP_TARGET_SET would silently shrink the target list.
+if [[ "${1:-}" == "--check" && ( -n "${RMCP_NO_PATCHES:-}" || "${RMCP_TARGET_SET:-all}" != all ) ]]; then
+  die "RMCP_NO_PATCHES / RMCP_TARGET_SET are for a full scratch translation only"
+fi
 MODE=full
 if [[ "${1:-}" == "--check" ]]; then
   [[ $# -eq 2 ]] || die "usage: $0 --check <output-dir>"
@@ -298,6 +317,13 @@ if [[ "$MODE" == full ]]; then
   elif [[ "$DEST_C" != "$REPO_DEST_C" ]] && within "$DEST_C" "$ROOT_C"; then
     die "RMCP_TRANSLATION_DEST ($DEST_C) is inside the repository but is not formal/translation"
   fi
+fi
+# The linkage-check switches (RMCP_NO_PATCHES, RMCP_TARGET_SET) only ever translate into a
+# scratch directory outside the repository; never into formal/translation/.
+if [[ -n "${RMCP_NO_PATCHES:-}" || "${RMCP_TARGET_SET:-all}" != all ]]; then
+  [[ "$MODE" == full ]] || die "RMCP_NO_PATCHES / RMCP_TARGET_SET are for a full scratch translation only"
+  within "$DEST_C" "$ROOT_C" \
+    && die "RMCP_NO_PATCHES / RMCP_TARGET_SET need RMCP_TRANSLATION_DEST outside the repository (got $DEST_C)"
 fi
 
 # The work directory gets rsync --delete (work/) and rm -rf (out/, cargo-home/); see
@@ -580,6 +606,7 @@ log "translation written to $DEST"
 # error here, but lean-guard.sh sources will apply the strict rule until the pin is updated in a
 # reviewed PR.
 pins="$ROOT/formal/trusted/translation-pins.txt"
+[[ -z "${RMCP_NO_PATCHES:-}" && "${RMCP_TARGET_SET:-all}" == all ]] || pins=/dev/null/none  # linkage run: no pin note
 dest_c="$(canon_path "$DEST")"
 if [[ -f "$pins" && -f "$dest_c/Rmcp/Funs.lean" ]]; then
   want="$(awk '$1 == "file" && $2 == "translation/Rmcp/Funs.lean" { print $4 }' "$pins")"

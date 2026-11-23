@@ -446,6 +446,23 @@ S22 check), `proof: OPEN`.
 | T07, T08 | `tower::default_port`, `tower::AllowedPort::matches` | `transport/streamable_http_server/tower.rs:1146, 1164` |
 | A01–A03 | `AuthorizationManager::{embedded_ipv4, is_disallowed_metadata_ipv4, is_disallowed_metadata_ipv6}` | `transport/auth.rs:1359, 1343, 1370` |
 
+**S22 linkage-check evidence (2026-11-24, local, macOS, on the S22 working tree; script as
+reviewed in round 2):** `scripts/check-original-linkage.sh <scratch>` on the real tree: exit 0 —
+part (a) passes (src tree `4efe696a…`, crates and manifest digests pinned), `Funs.lean` 41/41,
+`Types.lean` 27/27, `FunsExternal_Template.lean` 30/30, `TypesExternal_Template.lean` 9/9 blocks
+identical. In scratch clones of that tree with the change committed: (1a) `default_port` 443 → 444
+in `tower.rs`: exit 1 at part (a) ("crates/rmcp/src at HEAD is tree 6ab32ce…, not the pinned
+upstream tree"); (1b) `[lib] path = "src/lib.rs"` added to `crates/rmcp/Cargo.toml`: exit 1 at
+part (a) (manifest digest differs); (2) translation patch `02-seeded-default-port.patch` (443 →
+444) with `scripts/aeneas-translate.sh` regenerating the translation (exit 0, `444#u16` in
+`Funs.lean`) and committed: exit 1 at part (b), "DIFFERS in committed Funs.lean:
+transport.streamable_http_server.tower.default_port" (40/41). No log is committed; this paragraph
+is the record. After review round 3 the script gained further guards (pinned SDK-side opaque/exclude
+list, shadowing guard, stricter header rule). On the final script: the real tree passes (exit 0;
+same block counts); a committed-only declaration `transport.async_rw.Str.Insts.CoreCmpPartialEqStr.eq`
+injected into the committed `Funs.lean` fails (shadowing, exit 1); an extra opaque SDK entry
+(`NumberOrString`'s `PartialEq` impl) fails at the rewrite (exit 1).
+
 **S21 translation run (2026-11-23, local, macOS with `DYLD_FALLBACK_LIBRARY_PATH=/usr/lib`):**
 `scripts/aeneas-translate.sh`, exit 0; Aeneas `nightly-2026.08.20-5d08da4`, Charon 0.1.235, Rust
 `nightly-2026-06-01`; translated source: upstream `7caec76` plus patch 01 (`.llbc/work/`). All 50
@@ -456,7 +473,7 @@ lines). Re-run after the review fixes: output byte-identical. `lake build` (1745
 (`$FEATURES,macros`) passes 801 library tests. The three workflows have not run on GitHub.
 
 Board: S20 `IN_PROGRESS`; S21 `IN_PROGRESS` (translated, all 25 `LEAN_OK`; human sign-off and CI pending);
-S22–S37 `NOT_STARTED`.
+S22 `IN_PROGRESS` (linkage check written and reviewed; local evidence below; not yet in CI); S26/S27 `IN_PROGRESS` (signed off, proved); the other steps `NOT_STARTED`.
 
 ## Open items
 

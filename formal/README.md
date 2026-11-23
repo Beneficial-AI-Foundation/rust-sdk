@@ -119,7 +119,24 @@ From the repository root:
 scripts/aeneas-install.sh      # bundle into .aeneas/<tag>/, Rust nightly, Lean toolchain
 scripts/aeneas-translate.sh    # copy + patches (.llbc/work/), version check, Charon, Aeneas,
                                # target, glob and sorry checks, then formal/translation/
+scripts/check-original-linkage.sh <scratch-dir>   # Phase 2 linkage (plan Section 19)
 ```
+
+`scripts/check-original-linkage.sh` (S22) copies the tracked files into `<scratch-dir>` (outside
+the repository), rewrites the copy's Charon settings to the Phase 2 start points, translates it
+with `aeneas-translate.sh` under `RMCP_NO_PATCHES=1` and `RMCP_TARGET_SET=phase2` (no translation
+patch; only the Phase 2 targets checked), and fails unless every block of that translation equals
+the committed one up to the `Source:` field (file and lines); it also checks (part (a)) that the committed
+source is upstream `7caec76`: the `crates/rmcp/src` tree id, a digest of every other tracked file
+under `crates/` plus the root `Cargo.toml`, and a digest of `crates/rmcp/Cargo.toml` without its
+Charon table are pinned, and `crates/`, `Cargo.toml` and `formal/translation/` must be clean. It shows
+that the Phase 2 translation does not depend on any patch; it cannot see a patch that changes the
+body of an `opaque` SDK item, so it requires the SDK-side opaque list to be exactly
+`AuthorizationManager` (a type) and nothing of the SDK to be excluded, and it fails if a
+committed-only (patched) declaration could shadow a name used in a Phase 2 block. Dependency
+resolution beyond `PINNED_DEPS` is not pinned by it (both sides share it; plan Section 19). A Phase 2 record may say `linkage: ORIGINAL`
+only while it passes; `aeneas-translation.yml` runs it after the stale-translation check. The
+two switches are refused unless the output goes to a scratch directory outside the repository.
 
 For a scratch source, set `RMCP_SOURCE_ROOT`, `RMCP_LLBC_DIR` and `RMCP_TRANSLATION_DEST`
 together. The paths are canonicalised (symlinks, `.`, `..`); the script refuses a scratch source

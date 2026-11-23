@@ -18,6 +18,7 @@
 # Usage: scripts/apply-patches.sh
 # Environment (both default to the repository; used for scratch runs):
 #   RMCP_SOURCE_ROOT   workspace to copy (must contain Cargo.toml and crates/rmcp)
+#   RMCP_NO_PATCHES    1: copy without applying any patch (scripts/check-original-linkage.sh)
 #   RMCP_LLBC_DIR      directory holding work/ (default: <repo>/.llbc); refused if it is /,
 #                      $HOME, the repository or an ancestor, or an existing non-empty
 #                      directory without the marker .rmcp-llbc-dir (scripts/llbc-dir-guard.sh)
@@ -69,6 +70,13 @@ cargo_hits="$(find "$WORK" -name .cargo -print)"
 [[ -z "$cargo_hits" ]] || die ".cargo copied into $WORK (a symlink named .cargo in the source?): $cargo_hits"
 log "copied ${SRC} to ${WORK}"
 
+# RMCP_NO_PATCHES=1 (used only by scripts/check-original-linkage.sh, plan Section 19): copy the
+# workspace without applying any patch, to translate the unmodified source.
+if [[ "${RMCP_NO_PATCHES:-}" == 1 ]]; then
+  log "RMCP_NO_PATCHES=1: no patch applied (unmodified source)"
+  exit 0
+fi
+[[ -z "${RMCP_NO_PATCHES:-}" ]] || die "RMCP_NO_PATCHES must be unset or 1"
 shopt -s nullglob
 patches=("$PATCHES"/*.patch)
 shopt -u nullglob

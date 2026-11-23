@@ -371,14 +371,20 @@ steps:
 
   - id: S22
     day: D1-2
-    state: NOT_STARTED
+    state: IN_PROGRESS  # script and workflow step written; passes locally (2026-11-24)
     depends_on: [S21]
     owner: Extraction
     files:
       - scripts/check-original-linkage.sh
       - .github/workflows/aeneas-translation.yml
+      - scripts/aeneas-translate.sh  # RMCP_TARGET_SET, refusals, pin note
+      - scripts/apply-patches.sh  # RMCP_NO_PATCHES
+      - formal/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 19, 21, 25
+      - formal/docs/functions/{M01..M14,T01..T08,A01..A03}.yaml  # linkage comment
+      - formal/docs/STATUS.md
     acceptance: >-
-      Linkage check passes on 7caec76 and fails once on a seeded body change.
+      The check passes on the S22 commit; it fails (1) at part (a) on a committed change under crates/ or in crates/rmcp/Cargo.toml outside the Charon table, and (2) at part (b) on a seeded translation patch changing a Phase 2 body, with the translation regenerated.
 
   - id: S23
     day: D2
@@ -538,7 +544,7 @@ steps:
     owner: Lead
     files:
     acceptance: >-
-      Linkage check, missing target and removed native-lock entry each shown to fail once on a throwaway branch.
+      Linkage check (part (a): a change under crates/; part (b): a seeded translation patch), missing target and removed native-lock entry each shown to fail once on a throwaway branch.
 
   - id: S36
     day: D9-10
