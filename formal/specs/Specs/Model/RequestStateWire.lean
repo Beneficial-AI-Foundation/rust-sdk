@@ -15,8 +15,8 @@ order with the composition theorem last. Each is restated as a theorem
 `Theorems.request_state_wire.<function>`, proved by the spec theorem in
 `Proofs/Model/RequestStateWire/`, and followed by the assumptions its proof depends on, checked by
 `#print axioms` under `#guard_msgs`. The statements were signed off by the spec owner on
-2026-11-23 (evidence/S05.md); their signed-off text is in `specs/Drafts/RequestStateWire.lean`
-at commit `adce319`, removed when they were incorporated (docs/review/W-batch-incorporation.md).
+2026-11-23 (the S05 evidence (git history at 0d75981)); their signed-off text is in `specs/Drafts/RequestStateWire.lean`
+at commit `adce319`, removed when they were incorporated (the W-batch incorporation procedure (git history at 0d75981)).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 features `--no-default-features --features request-state`, with `overflow-checks=true` and

@@ -16,7 +16,7 @@ by the assumptions its proof depends on, checked by `#print axioms` under `#guar
 depends on at most `propext`, `Classical.choice` and `Quot.sound`: the externals are definitions,
 structures and four `opaque` constants, and add no assumption (`#print axioms` does not list
 `opaque` constants such as `ExtModel.hmacSha256`, so changes to the models are caught only by
-review of `trusted/`). Approved by the spec owner on 2026-11-23 (evidence/S08.md, S09.md); the
+review of `trusted/`). Approved by the spec owner on 2026-11-23 (S08/S09 evidence, git history at 0d75981); the
 draft text was in `specs/Drafts/External.lean`, removed at incorporation.
 -/
 

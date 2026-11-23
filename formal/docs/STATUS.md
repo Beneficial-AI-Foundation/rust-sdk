@@ -3,7 +3,7 @@
 Plan: [`docs/MCP_SDK_Verification_Master_Plan_EN.md`][plan].
 Task state: [`board.yaml`](board.yaml) (authoritative). Per-function records:
 [`functions/`](functions/). Step evidence: [`evidence/`](evidence/); this report's evidence:
-[`evidence/S19.md`](evidence/S19.md).
+the S19 evidence (git history at 0d75981).
 
 Last updated 2026-11-23: S19 final status report, written at local commit `aaf997d` (branch
 `docs/verification-guides`, not pushed). S19 itself awaits acceptance by the human owner.
@@ -74,14 +74,14 @@ by `#guard_msgs in` + `#print axioms`), counted at `aaf997d`:
 | Pinned commit | **not yet**: the refactor PR (S04a part 1) has not landed in the fork |
 | Verified Rust source | local commit `14d2830` (refactor); non-test lines unchanged at `aaf997d` |
 | Translation | committed at `adce319` (from `14d2830` + Charon settings); unchanged since |
-| Aeneas | release tag `nightly-2026.08.20-5d08da4` ([`evidence/S03.md`](evidence/S03.md)) |
+| Aeneas | release tag `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 0d75981)) |
 
 SHA-256 of the target files at `14d2830`: `request_state.rs` `a09f02e3…f076`,
 `request_state_wire.rs` `96f433d7…c357`. Since then the files changed only by the S16 test
 insertions inside `mod tests` (`790b75e`; `git diff -U0 14d2830 aaf997d` shows two insertion-only
 hunks, after line 735 resp. 280), and `crates/rmcp/Cargo.toml` only in comments and the
 derived-`Debug` `exclude` entries (`adce319`, `e410368`). The committed translation was reproduced
-byte for byte on a fresh clone at `5ea289a` ([`evidence/S18.md`](evidence/S18.md)).
+byte for byte on a fresh clone at `5ea289a` (the S18 evidence (git history at 0d75981)).
 
 Target files (both compile only with the `request-state` feature):
 - `crates/rmcp/src/model/request_state_wire.rs` (new, public; added by the S04a refactor)
@@ -346,7 +346,7 @@ Defects found in the plan, documents and tooling, with their state:
 12. The plan (S04a, Section 5), the guides and `docs/VERIFICATION.md` name three CI workflows;
     only `.github/workflows/lean-build.yml` existed. Found at S19. **Fixed** (2026-11-23):
     `aeneas-translation.yml` and `patched-tests.yml` written, reviewed and checked locally
-    (`evidence/CI-workflows.md`); they have not run on GitHub yet (S17).
+    (the CI-workflows evidence (git history at 0d75981)); they have not run on GitHub yet (S17).
 
 Items 1–3 are in the plan text the specifications were checked against, not in the Rust code.
 
@@ -360,19 +360,22 @@ Human decisions and actions:
 - **S01–S04a acceptance**: `IN_PROGRESS` on the board; S02 lacks `CLAUDE.md` and its own review.
 - **CI has never run on GitHub**: the three workflows (`lean-build.yml`,
   `aeneas-translation.yml`, `patched-tests.yml`) need a push; the last two were checked only
-  locally on macOS (`evidence/CI-workflows.md`). S17 (each CI check shown to fail once on a
+  locally on macOS (the CI-workflows evidence (git history at 0d75981)). S17 (each CI check shown to fail once on a
   throwaway branch) is `NOT_STARTED`.
 - **`docs/VERIFICATION.md` Section 9 vs the CI workflows** (the guide is kept verbatim; human
   decision pending): it gives generic trigger paths including `Cargo.lock` (not committed here),
   runs the patched tests "with `register_tool`" (no patches and no Charon `rustc_args` here), and
   describes `lean-build` as `lake build --wfail` (deviation (1) above).
-- **Pilot artifacts** (`formal/docs/pilot/`): copied logs contain absolute local paths with the
-  macOS username; total size about 1.2 MB. A human decides before any push.
+- **Pilot artifacts and per-step evidence**: removed from the working tree on 2026-11-23 (human
+  decision), together with the W-batch procedure; they remain in git history (last at commit
+  `0d75981`: `formal/docs/evidence/`, `formal/docs/pilot/`, `formal/docs/pilot.md`,
+  `formal/docs/review/`). The pilot logs in that history contain absolute local paths with the
+  macOS username; a human decides before any push whether to rewrite history.
 - **Mathlib oleans** fetched by `lake exe cache get` are not digest-checked (scope decision).
 - **Upstream Aeneas `toStr` issue** (`Aeneas/Std/String.lean`): to be filed by a human; after a
   fix and a rev bump, `native-axioms.lock` can be emptied.
 
-Accepted limits, still open (`formal/README.md`, "What CI checks"; `evidence/S03.md`):
+Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evidence (git history at 0d75981)):
 - S03 X4: `Specs` imports `Proofs`, so a global instance or notation in `proofs/` could change a
   spec statement's meaning; no structural fix decided. At `aaf997d` a text search finds no
   `instance`, `notation` or infix declaration in `proofs/` or `trusted/` (the two `Decidable`
@@ -409,7 +412,7 @@ Deferred scope:
 - Negative round trips (tampered token or other key → `IntegrityCheckFailed`): provable only
   under a no-collision premise on the opaque HMAC model (S15, decided 2026-11-23: deferred).
 - Specifications for `open`, `open_with`, `new`, `try_new`; the remaining plan Section 12 items.
-  Next-sprint scope: [`evidence/S19.md`](evidence/S19.md).
+  Next-sprint scope: the S19 evidence (git history at 0d75981).
 
 ## Incident
 
@@ -418,6 +421,6 @@ its destination; it ran for about three minutes before it was killed. Every unli
 no deletion was found afterwards. The output-directory check now refuses `/`, a second guard
 runs before `rsync --delete`, `RMCP_LLBC_DIR` is guarded (fix round 4, V3), and the agent role
 files (`.claude/agents/*.md`, "Safety") restrict destructive commands to scratch directories.
-Details: [`evidence/S03.md`](evidence/S03.md), "U6: output directory".
+Details: the S03 evidence (git history at 0d75981), "U6: output directory".
 
 [plan]: ../../docs/MCP_SDK_Verification_Master_Plan_EN.md

@@ -4,7 +4,7 @@ source_file: crates/rmcp/src/model/request_state.rs
 source_line: 704  # `fn validate_key_length` at adce319
 generated_symbol: rmcp.model.request_state.RequestStateCodec.validate_key_length
 translation: LEAN_OK  # Aeneas output compiles at adce319 (S04a part 2)
-spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead defaults; evidence/S05.md)
+spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead defaults; the S05 evidence (git history at 0d75981))
 linkage: ORIGINAL
 proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestState/ValidateKeyLength.lean
@@ -12,11 +12,11 @@ spec_file: formal/specs/Specs/Model/RequestState.lean
 theorem: rmcp.model.request_state.RequestStateCodec.validate_key_length_spec
 used_by: []  # targets whose proofs consume this theorem; used only when constructing a codec (§2.2)
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file
-evidence: [formal/docs/evidence/S01.md, formal/docs/evidence/S05.md, formal/docs/evidence/S07.md, formal/docs/evidence/S09.md]  # S01 records; S05 spec drafts; S07 proof; S09 external models; incorporated 2026-11-23 on the human's approval
+evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 0d75981:formal/docs/evidence/<step>.md
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestState.lean (S05)
 spec_reviews:
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
 spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-23
 prover: "AI: Claude Code, claude-opus-5-5"  # mcp-lean agent, a separate instance from the mcp-spec drafter (same model)
 reviewer: null

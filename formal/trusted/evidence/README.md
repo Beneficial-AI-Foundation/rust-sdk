@@ -3,7 +3,7 @@
 `formal/trusted/Rmcp/TypesExternal.lean` and `FunsExternal.lean` model every external of the
 translation, i.e. every type and function that Charon did not translate: those of other crates
 and of the standard library, and the opaque `rmcp` items (the four `prim` functions and
-`RequestStateCodec::now_ms`); 41 externals, inventory in `formal/docs/evidence/S04a.md`. Since
+`RequestStateCodec::now_ms`); 41 externals, inventory in the S04a evidence (git history at 0d75981). Since
 S08–S09 **they declare no axiom**: each type is a `structure`, each function a definition with
 the generated name and signature, keeping the template's `@[rust_type]` or `@[rust_fun]`
 attribute where it has one (the five opaque `rmcp` functions have none). What the models

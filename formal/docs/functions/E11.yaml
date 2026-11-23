@@ -4,7 +4,7 @@ source_file: crates/rmcp/src/model/request_state.rs
 source_line: 559  # `fn open_at` at adce319 (unchanged at 9e584e2)
 generated_symbol: rmcp.model.request_state.RequestStateCodec.open_at
 translation: LEAN_OK  # Aeneas output compiles at adce319 (S04a part 2)
-spec: REVIEWED                # signed off by the spec owner 2026-11-23 after 3 review rounds (evidence/S05.md "E batch part 2")
+spec: REVIEWED                # signed off by the spec owner 2026-11-23 after 3 review rounds (the S05 evidence (git history at 0d75981) "E batch part 2")
 linkage: ORIGINAL
 proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestState/OpenAt.lean
@@ -12,18 +12,18 @@ spec_file: formal/specs/Specs/Model/RequestState.lean
 theorem: rmcp.model.request_state.RequestStateCodec.open_at_spec  # restated as Theorems.request_state.RequestStateCodec.open_at in the spec file
 used_by: []  # targets whose proofs consume this theorem; consumed by open_at_roundtrip_rs1 / open_at_roundtrip_rs2 (not IDs)
 axioms: [propext, Classical.choice, Quot.sound, rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]  # as printed by `#print axioms` in the spec file; native-code ones are locked Aeneas toStr side conditions (trusted/native-axioms.lock)
-evidence: [formal/docs/evidence/S01.md, formal/docs/evidence/S05.md, formal/docs/evidence/S13.md]  # S01 records; S05 spec drafts and review rounds ("E batch part 2"); S13 proofs, proof review and incorporation (S11–S14)
+evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 0d75981:formal/docs/evidence/<step>.md
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft (round 2; fix round 2 after the round-1 review; fix round 3 after the round-2 review): formal/specs/Drafts/RequestState.lean (definitions in the draft module formal/specs/Defs/CodecState.lean), theorem rmcp.model.request_state.RequestStateCodec.open_at_spec
 spec_reviews:
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: 1 blocking (transcript bound on encoded components), fixed in fix round 2, evidence: formal/docs/evidence/S05.md}
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: a, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: b, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: a, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
-  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: b, verdict: no blocking findings, evidence: formal/docs/evidence/S05.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: 1 blocking (transcript bound on encoded components), fixed in fix round 2, evidence: the S05 evidence (git history at 0d75981)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: a, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: b, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: a, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: b, verdict: no blocking findings, evidence: the S05 evidence (git history at 0d75981)}
 spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-23
 prover: "AI: Claude Code, claude-opus-5-5"  # mcp-lean agents, separate instances from the mcp-spec drafter (same model)
-reviewer: "AI: Claude Code mcp-review, claude-opus-5-5"  # proof review round 1, no blocking findings (evidence/S13.md); incorporation approved by the spec owner 2026-11-23
+reviewer: "AI: Claude Code mcp-review, claude-opus-5-5"  # proof review round 1, no blocking findings (the S13 evidence (git history at 0d75981)); incorporation approved by the spec owner 2026-11-23
 # Copied from the specification column of plan Section 2 for convenience.
 behaviour: |-  # derived copy of plan §2.1/§2.2; informational, not a specification
   `V1` → E09, `V2` → E10, `None` → `MalformedFormat`; result passed through unchanged

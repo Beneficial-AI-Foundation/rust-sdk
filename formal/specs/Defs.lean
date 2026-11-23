@@ -15,6 +15,6 @@ Root of the `Defs` library: definitions used by the spec statements (plan Sectio
 Maintained by hand (docs/WORKFLOW_AND_PR_GUIDE.md, "Library roots").
 
 Imports `Defs.Wire`, `Defs.RequestState` and `Defs.CodecState`, whose definitions the spec owner
-signed off at S05 (2026-11-23; `docs/evidence/S05.md`), as the workflow guide's "Library roots"
+signed off at S05 (2026-11-23; the S05 evidence (git history at 0d75981)), as the workflow guide's "Library roots"
 requires.
 -/

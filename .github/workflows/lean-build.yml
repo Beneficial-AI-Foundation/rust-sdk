@@ -4,7 +4,7 @@
 # project's modules, including `sorry`, and runs every `#guard_msgs` axiom check in the
 # spec files. `--wfail` is not used: with the pinned Aeneas rev it also fails on four
 # `sorry` warnings replayed from the Aeneas library itself (Aeneas/Std/Slice.lean:363,586,
-# Aeneas/Std/StringIter.lean:12,15; formal/docs/evidence/S03.md).
+# Aeneas/Std/StringIter.lean:12,15; the S03 evidence (git history at 0d75981)).
 #
 # Two jobs, because `lake build` runs code of the project (elaboration) that could rewrite
 # files of the runner, including scripts/lean-guard.sh, before a later step of the same job:

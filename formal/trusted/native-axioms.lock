@@ -36,7 +36,7 @@
 # U32.numBits, UScalarTy.numBits]; decide` proves each with [propext] only (U32.max is
 # @[irreducible], which is why plain `decide` fails). An upstream Aeneas `toStr` that
 # discharges the side condition that way, and a rev bump, would remove them (open item,
-# formal/docs/evidence/S04a.md).
+# the S04a evidence (git history at 0d75981)).
 #
 # Updating: regenerate the translation, run `lake build` with Rmcp in the audited roots and
 # `scripts/lean-guard.sh axioms`; the failure message prints the line to add for each
