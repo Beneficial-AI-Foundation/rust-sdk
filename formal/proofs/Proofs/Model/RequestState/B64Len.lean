@@ -13,8 +13,8 @@ import Proofs.Model.RequestStateWire.B64Len
 Delegates to `request_state_wire::b64_len`; the proof uses the W01 theorem `b64_len_spec`
 through `step`, without unfolding the W function.
 
-Source: "crates/rmcp/src/model/request_state.rs", line 725 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state.rs", line 725 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

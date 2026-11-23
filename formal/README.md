@@ -4,9 +4,11 @@ Status: see [`docs/STATUS.md`](docs/STATUS.md) (per-function status) and
 [`docs/board.yaml`](docs/board.yaml) (plan steps). The plan is
 [`docs/MCP_SDK_Verification_Master_Plan_EN.md`](../docs/MCP_SDK_Verification_Master_Plan_EN.md);
 the day-to-day rules are in [`docs/WORKFLOW_AND_PR_GUIDE.md`](../docs/WORKFLOW_AND_PR_GUIDE.md).
-In short (S19, 2026-11-23): all 25 targets are specified, signed off and proved, at a local
-commit that is not yet a pinned fork commit; the trusted base has no trusted axiom and five
-locked native-code axioms; see "Results" in `docs/STATUS.md`.
+In short (S19, 2026-11-23): all 25 targets are specified, signed off and proved, about the
+patched copy: upstream `origin/main` `7caec76` plus translation patch
+`trusted/patches/01-request-state-wire.patch` (D2 fallback, human decision 2026-11-23; every
+target `PATCHED`); the trusted base has that patch, no trusted axiom and five locked native-code
+axioms; see "Results" in `docs/STATUS.md`.
 
 ## Translated configuration
 
@@ -406,7 +408,9 @@ An auditor reads all of `trusted/` (including `axioms.lock` and `native-axioms.l
 Section 4, "What must be trusted". While `Specs` imports `Proofs`, that is not sufficient: the
 auditor also reads `proofs/` for instances, notation, coercions and attributes that change what
 a spec statement means (see "What CI checks", accepted residual limits).
-There is no translation patch. S04a part 2 started `trusted/Rmcp/` from the Aeneas templates
+There is one translation patch, `trusted/patches/01-request-state-wire.patch` (the
+`request_state_wire` refactor and its tests on upstream `7caec76`; D2 fallback, human decision
+2026-11-23); before that date there was none. S04a part 2 started `trusted/Rmcp/` from the Aeneas templates
 with placeholder axioms; since S08–S09 (accepted 2026-11-23; human decision: convert every axiom
 into a definition) it declares **no axiom**: each external type is a
 `structure`, each external function a definition with the generated name and signature

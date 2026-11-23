@@ -14,9 +14,10 @@ between a translated `&str` and a Lean `String`. E01–E04 otherwise use the `De
 definitions (`bodyExpiry`, `Expired`, `expiryLen`, `b64Len`, `minKeyLength`, `maxKidLen`), so
 that the W theorems apply to them without conversion (plan Section 5, "Lean libraries").
 
-Rust source: `crates/rmcp/src/model/request_state.rs` at local commit `9b030c6` (the
-translation was generated from it plus the working-tree Charon excludes of the seven derived
-`Debug` impls; `formal/translation/` is untracked and not yet a pinned fork commit). Everything
+Rust source: `crates/rmcp/src/model/request_state.rs` in the patched copy (patch 01 on
+origin/main 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback
+2026-11-23); line numbers refer to it. The translation was generated from it plus the Charon
+settings of `crates/rmcp/Cargo.toml` (the seven derived `Debug` impls excluded). Everything
 lives in the namespace `Defs.RequestState`.
 -/
 

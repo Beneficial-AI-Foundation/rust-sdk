@@ -15,8 +15,8 @@ and maps its errors (`TooShort` to `MalformedFormat`, `Expired` to `Expired`); o
 copies the payload into a new vector. The proof uses the W14 theorem `open_frame_spec` through
 `step`, without unfolding the W function.
 
-Source: "crates/rmcp/src/model/request_state.rs", line 695 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state.rs", line 695 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

@@ -20,8 +20,8 @@ import Proofs.Model.RequestState.Common
 Builds the `rs1` token `"rs1." ++ b64 body ++ "." ++ b64 tag`, where `tag` is the HMAC SHA-256
 of the W10 transcript of `associated_data` and `body` under `key`.
 
-Source: "crates/rmcp/src/model/request_state.rs", lines 572–583 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state.rs", lines 572–583 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

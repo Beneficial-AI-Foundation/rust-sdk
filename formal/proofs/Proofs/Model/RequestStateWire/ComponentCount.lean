@@ -15,8 +15,8 @@ Number of `.`-components of a byte string: a counter starting at 1, incremented 
 The loop invariant says that the counter is one more than the number of `.` bytes before the
 index; `Proofs.RequestStateWire.length_components` relates that count to `components`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 92 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 92 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

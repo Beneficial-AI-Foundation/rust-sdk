@@ -15,8 +15,8 @@ Opens an authenticated body: `TooShort` below 8 bytes, `Expired` when W13 holds 
 value of the first 8 bytes, otherwise the bytes after the expiry prefix. The proof uses
 `decode_expiry_spec` and `is_expired_spec` through `step`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 225 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 225 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

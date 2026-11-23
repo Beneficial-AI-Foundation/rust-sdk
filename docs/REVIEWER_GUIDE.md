@@ -41,7 +41,9 @@ For other kinds of PR use the steps below as guidelines, with your own judgement
 
 ### 1. Check for specification correctness
 
-Compare the statement with the Rust source at the pinned commit and with plan Section 3. In
+Compare the statement with the Rust source at the pinned commit and with plan Section 3. Since
+the D2 fallback of 2026-11-23 the target files are those of the patched copy (the output of
+`scripts/apply-patches.sh` in `.llbc/work/`; `request_state_wire.rs` exists only there). In
 particular:
 
 - Does it cover the `Ok` case and every `Err` variant, in the Rust order of checks?

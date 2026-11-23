@@ -1,11 +1,11 @@
 id: W01
 rust_symbol: rmcp::model::request_state_wire::b64_len
-source_file: crates/rmcp/src/model/request_state_wire.rs
-source_line: 33  # `pub fn b64_len` at 46cfb02
+source_file: crates/rmcp/src/model/request_state_wire.rs  # in the patched copy (patch 01 on origin/main 7caec76); line numbers refer to it
+source_line: 33  # `pub fn b64_len` in the patched copy (same line at 46cfb02)
 generated_symbol: rmcp.model.request_state_wire.b64_len
 translation: LEAN_OK  # Aeneas output compiles at 46cfb02 (S04a part 2)
 spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead defaults; the S05 evidence (git history at 01bdc9b))
-linkage: ORIGINAL
+linkage: PATCHED  # patch 01 (formal/trusted/patches/01-request-state-wire.patch), D2 fallback 2026-11-23
 proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestStateWire/B64Len.lean
 spec_file: formal/specs/Specs/Model/RequestStateWire.lean

@@ -12,8 +12,8 @@ import Defs.Wire
 Checks a key-id length: `0` is `Empty`, more than `MAX_KID_LEN = 255` is `TooLong`,
 otherwise `Ok`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 54 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 54 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

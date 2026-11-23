@@ -6,7 +6,10 @@
 # tests in the translated feature configuration on the copy:
 #   cargo test --no-default-features --features request-state --lib   (in .llbc/work/crates/rmcp)
 # With no patches this is the plain test suite; it becomes evidence that the patches (part of
-# the trusted base) preserve behaviour if the D2 fallback is used. Cargo.lock is not committed
+# the trusted base) preserve behaviour if the D2 fallback is used. Since 2026-11-23 it is (human
+# decision): this job is the evidence for formal/trusted/patches/01-request-state-wire.patch,
+# whose tests (byte identity, codec constants, RFC 4231/4648 vectors, S16 boundary cases) exist
+# only in the patched copy. Cargo.lock is not committed
 # and apply-patches.sh never copies one, so dependencies are resolved afresh, as for the
 # translation. Same trigger paths as aeneas-translation.yml.
 #

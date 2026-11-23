@@ -19,9 +19,10 @@ text is in `specs/Drafts/RequestState.lean` at commit `46cfb02`.
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 features `--no-default-features --features request-state`, with `overflow-checks=true` and
 `debug-assertions=true` (plan Section 1), so arithmetic overflow panics, which Aeneas models as
-failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is local commit `46cfb02`
-(S04a part 2), not yet a pinned fork commit. Line numbers refer to `request_state.rs` at
-`46cfb02`.
+failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is the patched copy (patch 01
+on origin/main 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback
+2026-11-23; translation committed at `46cfb02`). Line numbers refer to `request_state.rs` in the
+patched copy.
 
 Definitions used: `Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLength`, `maxKidLen`,
 `b64Len`, `dot`, `components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`),

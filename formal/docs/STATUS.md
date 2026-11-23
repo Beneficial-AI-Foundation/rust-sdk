@@ -7,6 +7,11 @@ the S19 evidence (git history at 01bdc9b).
 
 Last updated 2026-11-23: S19 final status report, written at local commit `1640c77` (branch
 `docs/verification-guides`, not pushed). S19 itself awaits acceptance by the human owner.
+Updated 2026-11-23 for the D2 fallback (human decision 2026-11-23): the SDK `*.rs` files are
+byte-identical to upstream `origin/main` (`7caec76`); the `request_state_wire` refactor and all
+added tests are translation patch `formal/trusted/patches/01-request-state-wire.patch`, applied
+only to the translated copy; every target is `PATCHED`. The translation and all 25 proofs are
+unchanged.
 
 Board at this report: S05–S16 and S18 `ACCEPTED` (human approval 2026-11-23); S01, S02, S03, S04
 and S04a `IN_PROGRESS` (human items open, see "Open items"); S17 `NOT_STARTED` (needs a push to
@@ -15,44 +20,50 @@ GitHub); S19 is this report.
 ## Results
 
 Plan Section 11 template, filled with the actual results. Three deviations from the template's
-wording, each forced by a recorded fact: the SDK commit is a local commit, not a pinned fork commit
-(the refactor has not landed); the external contracts are models (definitions, structures and
-`opaque` constants), not axioms (human decision 2026-11-23); five native-code axioms are added to
-the trusted base. No target is open, so the last sentence names the excluded functions and
-non-targets instead.
+wording, each forced by a recorded fact: the verified code is upstream `origin/main` plus a
+translation patch, not the unmodified upstream files (D2 fallback, human decision 2026-11-23); the
+external contracts are models (definitions, structures and `opaque` constants), not axioms (human
+decision 2026-11-23); five native-code axioms are added to the trusted base. No target is open, so
+the last sentence names the excluded functions and non-targets instead.
 
-> At SDK commit `9b030c6d1f5955dfa588d75fe6fb3bdbf903444f` (a **local commit** on branch
-> `docs/verification-guides`; **not yet a pinned fork commit**, because the refactor PR has not
-> landed in the fork; the non-test source of both target files is unchanged up to `1640c77`),
-> translated for `x86_64-unknown-linux-gnu` with `--no-default-features --features request-state`
-> (and the Charon settings committed at `46cfb02`), the following public request-state wire
-> functions and existing codec functions are verified against the Aeneas translation
-> (`nightly-2026.08.20-5d08da4`): W01 `b64_len`, W02 `key_length_ok`, W03 `check_kid_len`,
-> W04 `bytes_eq`, W05 `next_dot`, W06 `component_count`, W07 `version_of`, W08 `parse_rs1`,
-> W09 `parse_rs2`, W10 `transcript_v1`, W11 `transcript_v2`, W12 `decode_expiry`,
-> W13 `is_expired`, W14 `open_frame`, W15 `frame` (module `request_state_wire`); E01
-> `open_authenticated_body`, E02 `b64_len`, E03 `validate_key_length`, E04
-> `validate_config_kid`, E07 `seal_rs1`, E08 `seal_rs2`, E09 `open_rs1_at`, E09a
-> `rs1_fallbacks_verify`, E10 `open_rs2_at`, E11 `open_at` (`RequestStateCodec`); and the
-> composition theorems `frame_roundtrip`, `rs1_roundtrip`, `rs2_roundtrip`,
-> `open_at_roundtrip_rs1`, `open_at_roundtrip_rs2`. These results rest on the trusted base listed
-> in `formal/README.md` and `STATUS.md`: Charon, Aeneas and Lean; the translated configuration;
-> the HMAC-SHA256, Base64url and standard-library models in `formal/trusted/` (definitions,
-> structures and four `opaque` constants; no trusted axiom); the five Aeneas `toStr` native-code
-> axioms locked in `formal/trusted/native-axioms.lock`; the codec-state hypothesis; the
-> statements in `formal/specs/`; and the exclusions. They do not establish cryptographic
-> security, constant-time execution, or correctness of the public codec wrappers. No target is
-> open; the functions not listed are excluded (Section 2.3, "Excluded functions" below) or are
-> translatable non-targets (`open`, `open_with`, `new`, `try_new`).
+> At upstream SDK commit `7caec762799bece6fba38e4298b8ca7db8bac12c` (`origin/main`) **with the
+> translation patch `formal/trusted/patches/01-request-state-wire.patch` applied** (D2 fallback,
+> human decision 2026-11-23: the `request_state_wire` refactor exists only in the patched copy
+> `.llbc/work/`; the SDK `*.rs` files in the repository are byte-identical to `7caec76`), translated
+> for `x86_64-unknown-linux-gnu` with `--no-default-features --features request-state` (and the
+> Charon settings in `crates/rmcp/Cargo.toml`), the following request-state wire functions (public
+> in the patched copy) and existing codec functions are checked against the Aeneas translation of
+> the patched copy (`nightly-2026.08.20-5d08da4`): W01 `b64_len`, W02 `key_length_ok`, W03
+> `check_kid_len`, W04 `bytes_eq`, W05 `next_dot`, W06 `component_count`, W07 `version_of`, W08
+> `parse_rs1`, W09 `parse_rs2`, W10 `transcript_v1`, W11 `transcript_v2`, W12 `decode_expiry`, W13
+> `is_expired`, W14 `open_frame`, W15 `frame` (module `request_state_wire`); E01
+> `open_authenticated_body`, E02 `b64_len`, E03 `validate_key_length`, E04 `validate_config_kid`,
+> E07 `seal_rs1`, E08 `seal_rs2`, E09 `open_rs1_at`, E09a `rs1_fallbacks_verify`, E10 `open_rs2_at`,
+> E11 `open_at` (`RequestStateCodec`); and the composition theorems `frame_roundtrip`,
+> `rs1_roundtrip`, `rs2_roundtrip`, `open_at_roundtrip_rs1`, `open_at_roundtrip_rs2`. The code
+> verified is `7caec76` plus patch 01, not the unmodified upstream files. The link to upstream
+> behaviour is the patch's byte-identity regression tests (`mod byte_identity` and the codec tests,
+> run on the patched copy by `patched-tests.yml`) and the differential check of S04a (about 2.9M
+> `open` calls, unrefactored vs refactored codec, no difference); that link is argued and tested,
+> not proved. These results rest on the trusted base listed in `formal/README.md` and `STATUS.md`:
+> Charon, Aeneas and Lean; the translated configuration; translation patch 01; the HMAC-SHA256,
+> Base64url and standard-library models in `formal/trusted/` (definitions, structures and four
+> `opaque` constants; no trusted axiom); the five Aeneas `toStr` native-code axioms locked in
+> `formal/trusted/native-axioms.lock`; the codec-state hypothesis; the statements in
+> `formal/specs/`; and the exclusions. They do not establish cryptographic security, constant-time
+> execution, or correctness of the public codec wrappers. No target is open; the functions not
+> listed are excluded (Section 2.3, "Excluded functions" below) or are translatable non-targets
+> (`open`, `open_with`, `new`, `try_new`).
 
-**D10 count (plan Section 8, "Gates").** Of the 25 targets: **verified 25**, **checked but
-patched 0**, **open 0**. "Verified" means spec `REVIEWED` (signed off by the spec owner), proof
-`CHECKED` and linkage `ORIGINAL` in every record of `functions/`, with the restated theorem in a
-spec file; each theorem holds under its stated premises (no-overflow and size domains, codec-state
-clauses). Qualification: linkage is `ORIGINAL` with respect to the local commit above; it becomes
-a claim about a fork commit only when the refactor lands and the pinned commit is recorded
-(S04a, open). Plus 5 composition theorems. Excluded (not counted, not verified): the items
-under "Excluded functions" below. Not targets: 4 translatable wrappers.
+**D10 count (plan Section 8, "Gates").** Of the 25 targets: **verified on original code 0**,
+**checked but patched 25**, **open 0**. "Checked but patched" means spec `REVIEWED` (signed off by
+the spec owner), proof `CHECKED` and linkage `PATCHED` (patch 01) in every record of `functions/`,
+with the restated theorem in a spec file; each theorem holds under its stated premises (no-overflow
+and size domains, codec-state clauses) and is about the patched copy. (Before the D2 fallback, this
+count read "verified 25" with linkage `ORIGINAL` relative to local commit `9b030c6`; the proofs did
+not change.) If the refactor lands in the SDK source, patch 01 is deleted and the targets can become
+`ORIGINAL`. Plus 5 composition theorems. Excluded (not counted, not verified): the items under
+"Excluded functions" below. Not targets: 4 translatable wrappers.
 
 Restated theorems (`theorem Theorems.…`, each proved by the spec theorem it restates and guarded
 by `#guard_msgs in` + `#print axioms`), counted at `1640c77`:
@@ -71,21 +82,25 @@ by `#guard_msgs in` + `#print axioms`), counted at `1640c77`:
 | Repository | https://github.com/truonghoangle/rust-sdk (fork of the Rust MCP SDK) |
 | Base commit | `0e2396f73a88617141b31f645de6f1171ed5f993` |
 | SHA-256 of `request_state.rs` at base | `41e69cad…b416` (full value: plan Section 1) |
-| Pinned commit | **not yet**: the refactor PR (S04a part 1) has not landed in the fork |
-| Verified Rust source | local commit `9b030c6` (refactor); non-test lines unchanged at `1640c77` |
-| Translation | committed at `46cfb02` (from `9b030c6` + Charon settings); unchanged since |
+| Pinned commit | upstream `origin/main` `7caec762799bece6fba38e4298b8ca7db8bac12c`; every SDK `*.rs` file is byte-identical to it (D2 fallback, 2026-11-23) |
+| Translation patch | `formal/trusted/patches/01-request-state-wire.patch`: the refactor of local commit `9b030c6` plus the S16 tests of `317ace2`, applied only to `.llbc/work/` by `scripts/apply-patches.sh` |
+| Verified Rust source | the patched copy (`7caec76` + patch 01); its non-test lines equal those of `9b030c6`, so line numbers are unchanged |
+| Translation | committed at `46cfb02` (from `9b030c6` + Charon settings); reproduced byte for byte through the patch path (2026-11-23) |
 | Aeneas | release tag `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 01bdc9b)) |
 
-SHA-256 of the target files at `9b030c6`: `request_state.rs` `a09f02e3…f076`,
+`request_state.rs` at `7caec76` has the base SHA-256 above (unchanged since `0e2396f`).
+History: SHA-256 of the target files at `9b030c6`: `request_state.rs` `a09f02e3…f076`,
 `request_state_wire.rs` `96f433d7…c357`. Since then the files changed only by the S16 test
 insertions inside `mod tests` (`317ace2`; `git diff -U0 9b030c6 1640c77` shows two insertion-only
 hunks, after line 735 resp. 280), and `crates/rmcp/Cargo.toml` only in comments and the
 derived-`Debug` `exclude` entries (`46cfb02`, `baf1762`). The committed translation was reproduced
-byte for byte on a fresh clone at `2cb8d58` (the S18 evidence (git history at 01bdc9b)).
+byte for byte on a fresh clone at `2cb8d58` (the S18 evidence (git history at 01bdc9b)). Since
+the D2 fallback these changes are in patch 01, and the files in the repository are upstream.
 
-Target files (both compile only with the `request-state` feature):
-- `crates/rmcp/src/model/request_state_wire.rs` (new, public; added by the S04a refactor)
-- `crates/rmcp/src/model/request_state.rs` (refactored onto it at S04a)
+Target files, in the patched copy (both compile only with the `request-state` feature):
+- `crates/rmcp/src/model/request_state_wire.rs` (new, public; created by patch 01, absent from
+  the repository's sources)
+- `crates/rmcp/src/model/request_state.rs` (upstream file, refactored onto it by patch 01)
 
 ## Translated configuration
 
@@ -96,11 +111,12 @@ Single target, fixed in `scripts/aeneas-translate.sh` (S03):
 --config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true
 ```
 
-Charon settings: `[package.metadata.charon]` in `crates/rmcp/Cargo.toml` (`start_from`,
-`exclude`, `opaque`), committed. Dependency pins (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`,
-`base64 0.23.1`, `digest 0.11.3`, `zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`.
-**No translation patch** (no `formal/trusted/patches/` directory exists) and **no hand edit** of the
-generated files (`formal/translation/` is reproduced byte for byte by the translate script,
+Charon settings: `[package.metadata.charon]` in `crates/rmcp/Cargo.toml` (`start_from`, `exclude`,
+`opaque`), committed (they name `request_state_wire`, which exists only in the patched copy).
+Dependency pins (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`,
+`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`. **One translation patch**,
+`formal/trusted/patches/01-request-state-wire.patch` (D2 fallback, 2026-11-23), and **no hand edit**
+of the generated files (`formal/translation/` is reproduced byte for byte by the translate script,
 S18). The proofs hold only for this configuration.
 
 ## Scope decision (plan Section 1)
@@ -127,7 +143,8 @@ operations the code uses.
 - any configuration other than the one above;
 - full MCP protocol verification.
 
-Claims apply to the commit and configuration above only, not to upstream releases.
+Claims apply to the commit, patch and configuration above only, not to upstream releases or to
+the unpatched upstream files.
 
 ## Owners and budget
 
@@ -145,35 +162,35 @@ Only the named human spec owner may set `spec: REVIEWED`, and only a human may m
 
 Mirrors `formal/docs/functions/*.yaml` (the records are authoritative), checked at `1640c77`:
 every record has `translation: LEAN_OK`, `spec: REVIEWED`, `spec_owner: "Hoang Le Truong"`,
-`linkage: ORIGINAL`, `proof: CHECKED`.
+`linkage: PATCHED` (patch 01, since 2026-11-23), `proof: CHECKED`.
 
 | ID | Rust symbol | translation | spec | linkage | proof |
 |---|---|---|---|---|---|
-| W01 | `request_state_wire::b64_len` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W02 | `request_state_wire::key_length_ok` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W03 | `request_state_wire::check_kid_len` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W04 | `request_state_wire::bytes_eq` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W05 | `request_state_wire::next_dot` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W06 | `request_state_wire::component_count` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W07 | `request_state_wire::version_of` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W08 | `request_state_wire::parse_rs1` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W09 | `request_state_wire::parse_rs2` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W10 | `request_state_wire::transcript_v1` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W11 | `request_state_wire::transcript_v2` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W12 | `request_state_wire::decode_expiry` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W13 | `request_state_wire::is_expired` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W14 | `request_state_wire::open_frame` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| W15 | `request_state_wire::frame` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E01 | `RequestStateCodec::open_authenticated_body` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E02 | `RequestStateCodec::b64_len` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E03 | `RequestStateCodec::validate_key_length` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E04 | `RequestStateCodec::validate_config_kid` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E07 | `RequestStateCodec::seal_rs1` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E08 | `RequestStateCodec::seal_rs2` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E09 | `RequestStateCodec::open_rs1_at` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E09a | `RequestStateCodec::rs1_fallbacks_verify` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E10 | `RequestStateCodec::open_rs2_at` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
-| E11 | `RequestStateCodec::open_at` | LEAN_OK | REVIEWED | ORIGINAL | CHECKED |
+| W01 | `request_state_wire::b64_len` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W02 | `request_state_wire::key_length_ok` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W03 | `request_state_wire::check_kid_len` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W04 | `request_state_wire::bytes_eq` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W05 | `request_state_wire::next_dot` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W06 | `request_state_wire::component_count` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W07 | `request_state_wire::version_of` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W08 | `request_state_wire::parse_rs1` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W09 | `request_state_wire::parse_rs2` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W10 | `request_state_wire::transcript_v1` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W11 | `request_state_wire::transcript_v2` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W12 | `request_state_wire::decode_expiry` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W13 | `request_state_wire::is_expired` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W14 | `request_state_wire::open_frame` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| W15 | `request_state_wire::frame` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E01 | `RequestStateCodec::open_authenticated_body` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E02 | `RequestStateCodec::b64_len` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E03 | `RequestStateCodec::validate_key_length` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E04 | `RequestStateCodec::validate_config_kid` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E07 | `RequestStateCodec::seal_rs1` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E08 | `RequestStateCodec::seal_rs2` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E09 | `RequestStateCodec::open_rs1_at` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E09a | `RequestStateCodec::rs1_fallbacks_verify` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E10 | `RequestStateCodec::open_rs2_at` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
+| E11 | `RequestStateCodec::open_at` | LEAN_OK | REVIEWED | PATCHED | CHECKED |
 
 Total: 25 records (W01–W15, E01–E04, E07–E11, E09a), all proved and restated in the spec
 files, plus the composition theorems `frame_roundtrip` (S06) and `rs1_roundtrip`,
@@ -242,8 +259,10 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
   verified.
 - **Tools:** Charon `0.1.235` and Aeneas (`nightly-2026.08.20-5d08da4`), Lean `v4.31.0` kernel,
   prebuilt Aeneas Lean library (archive sha256 checked) and Mathlib oleans (not digest-checked).
-- **Configuration:** the translated configuration above. **Patches:** none. **Hand edits of the
-  translation:** none. **Exclusions:** the list above (plan Section 2.3).
+- **Configuration:** the translated configuration above. **Patches:** one,
+  `formal/trusted/patches/01-request-state-wire.patch` (the refactor and its tests; D2 fallback,
+  2026-11-23; reviewed by two independent agents and signed off by the human on 2026-11-23, VERIFICATION.md §4). **Hand edits of the translation:** none.
+  **Exclusions:** the list above (plan Section 2.3).
 - **Statements:** `formal/specs/Defs/` and `formal/specs/Specs/`.
 
 External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
@@ -298,7 +317,8 @@ above.
 
 **Rust code: no bug found in the 25 verified functions** within the stated scope (the
 translated configuration, the external models and their stated exceptions, the codec-state
-hypothesis). No proof needed a patch or a change of production code, and no differential or
+hypothesis). No proof needed a change of production code beyond the refactor (now patch 01,
+which was made for translatability, not for a proof), and no differential or
 test run found a disagreement (S13: 125,664 + 12,160 + 216 differential cases, 0
 disagreements on inputs satisfying the hypotheses; S04a: about 2.9M `open` calls base vs
 refactor, no difference; S16: 95 request-state tests pass, 8 hand-made mutants each caught).
@@ -354,9 +374,15 @@ Items 1–3 are in the plan text the specifications were checked against, not in
 
 Human decisions and actions:
 - **Owners and budget**: project owner and budget TBD (blocks S01 acceptance and the D2 gate).
-- **Refactor PR (S04a part 1)**: not landed in the fork; no pinned commit. Until it lands, every
-  result is about local commit `9b030c6` (source) / `1640c77` (proofs). If it is not landed, the
-  D2 fallback (refactor as a translation patch, every target `PATCHED`) applies.
+- **D2 fallback in use (human decision 2026-11-23)**: the refactor did not land in the SDK
+  source; it is translation patch `formal/trusted/patches/01-request-state-wire.patch` on
+  upstream `7caec76`, and every target is `PATCHED`. The patch had the review of
+  `docs/VERIFICATION.md` §4: two independent agent reviews (no blocking; a side-by-side run of
+  upstream and the patched copy gave identical results on 2,463,458 cases) and the human
+  sign-off on 2026-11-23.
+  Landing the refactor upstream would let the patch be deleted and the targets become `ORIGINAL`.
+  (Before 2026-11-23 this item read: not landed in the fork; results about local commit
+  `9b030c6` / `1640c77`.)
 - **S01–S04a acceptance**: `IN_PROGRESS` on the board; S02 lacks `CLAUDE.md` and its own review.
 - **CI has never run on GitHub**: the three workflows (`lean-build.yml`,
   `aeneas-translation.yml`, `patched-tests.yml`) need a push; the last two were checked only
@@ -364,8 +390,9 @@ Human decisions and actions:
   throwaway branch) is `NOT_STARTED`.
 - **`docs/VERIFICATION.md` Section 9 vs the CI workflows** (the guide is kept verbatim; human
   decision pending): it gives generic trigger paths including `Cargo.lock` (not committed here),
-  runs the patched tests "with `register_tool`" (no patches and no Charon `rustc_args` here), and
-  describes `lean-build` as `lake build --wfail` (deviation (1) above).
+  runs the patched tests "with `register_tool`" (no Charon `rustc_args` here; patch 01 adds no
+  tool attribute), and describes `lean-build` as `lake build --wfail` (deviation (1) above). Its Section 5 also says patches are applied "with `git apply`" in numeric order;
+  `scripts/apply-patches.sh` uses `patch -p1 -F 0` in file-name (lexical) order.
 - **Pilot artifacts and per-step evidence**: removed from the working tree on 2026-11-23 (human
   decision), together with the W-batch procedure; they remain in git history (last at commit
   `01bdc9b`: `formal/docs/evidence/`, `formal/docs/review/`). The pilot record (`formal/docs/pilot/`,

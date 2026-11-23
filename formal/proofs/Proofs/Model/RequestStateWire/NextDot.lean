@@ -14,8 +14,8 @@ Index of the first `.` at or after `start`, or `s.len()` if there is none.
 The loop invariant says that the index has not moved below `start` and that no `.` lies in
 `[start, i)`; the measure is `s.len() - i`.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 80 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 80 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

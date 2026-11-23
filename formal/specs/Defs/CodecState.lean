@@ -23,7 +23,8 @@ Signed off by the spec owner on 2026-11-23 with the E07–E11 statements (the S0
 "E batch part 2").
 
 Rust source: `crates/rmcp/src/model/request_state.rs` (and `request_state_wire.rs` where named)
-at `46cfb02`; both files are unchanged at `b4cf8d9`, and the line numbers below refer to them.
+in the patched copy (patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers
+below refer to it (its non-test lines are those of `46cfb02`).
 -/
 
 namespace Defs.CodecState

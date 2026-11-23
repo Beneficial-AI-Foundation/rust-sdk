@@ -13,11 +13,11 @@ Section 2.1) are written in: the `.`-components of a token, the version tags and
 separators as byte lists, big-endian encoding and decoding of 64-bit values, the two MAC
 transcripts, the frame layout and the expiry predicate.
 
-Rust source: `crates/rmcp/src/model/request_state_wire.rs` at local commit `9b030c6`; line
-numbers below refer to that file. The translation the drafts are checked against was generated
-from `9b030c6` plus the working-tree Charon excludes of the seven derived `Debug` impls
-(`crates/rmcp/Cargo.toml`); `formal/translation/` is untracked and not yet a pinned fork commit
-(S04a not landed). Every definition is stated on
+Rust source: `crates/rmcp/src/model/request_state_wire.rs` in the patched copy (patch 01 on
+origin/main 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback
+2026-11-23; the file exists only there); line numbers below refer to it. The translation the
+drafts are checked against was generated from it plus the Charon settings of
+`crates/rmcp/Cargo.toml` (the seven derived `Debug` impls excluded). Every definition is stated on
 mathematical objects (`List U8`, `Nat`, `Int`) and does not refer to the translated code.
 Everything lives in the namespace `Defs.Wire`.
 -/

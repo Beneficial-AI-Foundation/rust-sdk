@@ -16,8 +16,8 @@ the big-endian length of the associated data, the associated data, then the body
 
 Same proof as `transcript_v1_spec` (W10) with two more appended slices.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 193 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 193 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

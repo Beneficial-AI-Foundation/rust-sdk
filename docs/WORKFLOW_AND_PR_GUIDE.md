@@ -101,8 +101,10 @@ Aeneas translates Rust into Lean, see the
 ### Translation patches
 
 A patch is a small, behaviour-preserving edit applied only to the copy of the crate in
-`.llbc/work/`; the real source is never patched. None are planned (plan Section 4, "What must be
-trusted"). If one is needed:
+`.llbc/work/`; the real source is never patched. None were planned (plan Section 4, "What must be
+trusted"); since 2026-11-23 (D2 fallback, human decision) there is one,
+`formal/trusted/patches/01-request-state-wire.patch`, which carries the `request_state_wire`
+refactor and its tests on upstream `7caec76`, so every target is `PATCHED`. If one is needed:
 
 1. Run `scripts/apply-patches.sh` so that `.llbc/work/` holds the patched copy.
 2. Make the edit in `.llbc/work/`.

@@ -11,7 +11,9 @@ External types of the `rmcp` translation (`Rmcp.Types` imports this module).
 Started at plan step S04a from the template that Aeneas generated
 (`formal/translation/Rmcp/TypesExternal_Template.lean`) for the translation of commit
 `9b030c6` with the Charon settings of S04a part 2 (derived `Debug` impls excluded), Aeneas
-`nightly-2026.08.20-5d08da4`. Plan steps S08–S09 replaced every placeholder of the template:
+`nightly-2026.08.20-5d08da4`. Since the D2 fallback (2026-11-23) the translated source is the
+patched copy (patch 01 on origin/main 7caec76), which gives the same translation; the `Source:`
+line numbers below refer to it. Plan steps S08–S09 replaced every placeholder of the template:
 each type is now a `structure` that models the fields of the Rust type; the one field that
 no translated code and no model looks inside (`serde_json`'s boxed `ErrorImpl`) has an
 `opaque` type. This module declares no axiom.

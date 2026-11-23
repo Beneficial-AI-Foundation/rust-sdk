@@ -94,12 +94,16 @@ steps:
     # (PR 2) drafted in the working tree from local commit 9b030c6 (derived Debug impls
     # excluded, native-axioms.lock); externals started (unreviewed placeholders); awaiting
     # review and human sign-off (see evidence)
+    # 2026-11-23, D2 fallback (human decision): the refactor did not land in the SDK source;
+    # it and its tests are formal/trusted/patches/01-request-state-wire.patch on upstream
+    # origin/main 7caec76 (SDK *.rs byte-identical to it), applied only to .llbc/work/;
+    # every target is PATCHED. The patch awaits the VERIFICATION.md section 4 review.
     depends_on: [S03, S04]
     owner: Extraction + reviewer
     files:
-      - crates/rmcp/src/model/request_state_wire.rs
-      - crates/rmcp/src/model/request_state.rs
-      - crates/rmcp/src/model.rs
+      - formal/trusted/patches/01-request-state-wire.patch  # request_state_wire.rs (new),
+                                                            # request_state.rs, model.rs
+      - crates/rmcp/Cargo.toml  # [package.metadata.charon] only
       - formal/translation/**
       - formal/trusted/Rmcp/TypesExternal.lean
       - formal/trusted/Rmcp/FunsExternal.lean
@@ -108,7 +112,10 @@ steps:
     acceptance: >-
       Two PRs: (1) the refactor, with the checklist of Section 9 passing, landed in the fork
       and the pinned commit recorded; (2) the translation, where all three CI workflows pass
-      and every target is present in Funs.lean with a real body.
+      and every target is present in Funs.lean with a real body. Under the D2 fallback
+      (2026-11-23), (1) is replaced by the refactor as translation patch 01 on the pinned
+      upstream commit 7caec76, with the VERIFICATION.md section 4 review (agents, then the
+      human), and every target is PATCHED.
 
   - id: S05
     day: D2
@@ -274,11 +281,12 @@ steps:
     depends_on: [S04a]   # plan: "S04a onward"
     owner: Review
     files:
-      - crates/rmcp/src/model/request_state_wire.rs   # mod tests only
-      - crates/rmcp/src/model/request_state.rs        # mod tests only
+      # D2 fallback (2026-11-23): the S16 tests (mod tests of request_state_wire.rs and
+      # request_state.rs) are now part of patch 01, not of the SDK sources
+      - formal/trusted/patches/01-request-state-wire.patch  # its mod tests hunks only
     acceptance: >-
       Section 7 boundary cases and contract test vectors pass under
-      cargo test --features request-state.
+      cargo test --features request-state (on the patched copy, patched-tests.yml).
 
   - id: S17
     day: D9

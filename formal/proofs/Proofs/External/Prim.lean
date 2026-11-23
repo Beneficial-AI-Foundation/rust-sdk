@@ -11,7 +11,8 @@ import Proofs.External.String
 # Specs of the `prim` externals (HMAC-SHA256, Base64url)
 
 Spec theorems for the four `request_state_wire::prim` functions
-(`crates/rmcp/src/model/request_state_wire.rs` lines 247–277), modelled in
+(`crates/rmcp/src/model/request_state_wire.rs` lines 247–277 in the patched copy, patch 01 on
+origin/main 7caec76; line numbers refer to it), modelled in
 `formal/trusted/Rmcp/FunsExternal.lean` (sections HMAC and Base64). HMAC is stated in terms of
 the opaque reference function `ExtModel.hmacSha256`, Base64 in terms of `ExtModel.b64` and
 `ExtModel.b64Decode`, whose laws are in `Proofs.External.Base64`.

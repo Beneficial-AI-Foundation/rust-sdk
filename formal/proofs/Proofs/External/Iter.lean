@@ -11,7 +11,8 @@ import Aeneas
 Spec theorem for `core::slice::iter::Iter::next` as modelled by the Aeneas library
 (`Aeneas/Std/SliceIter.lean`, an index into the slice): it yields the element at the index and
 advances, or returns `None` at the end without changing the iterator. Used by the `for` loop of
-`rs1_fallbacks_verify` (E09a, "crates/rmcp/src/model/request_state.rs", line 651).
+`rs1_fallbacks_verify` (E09a, "crates/rmcp/src/model/request_state.rs", line 651 in the patched
+copy: patch 01 on origin/main 7caec76; line numbers refer to it).
 -/
 
 open Aeneas Aeneas.Std Result

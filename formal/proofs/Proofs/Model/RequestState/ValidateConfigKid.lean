@@ -16,8 +16,8 @@ import Proofs.Model.RequestState.Common
 Checks the byte length of a configured key id: `0` gives `InvalidKeyring(KID_EMPTY_MSG)`, more
 than `MAX_KID_LEN = 255` gives `InvalidKeyring(KID_TOO_LONG_MSG)`, otherwise `Ok(())`.
 
-Source: "crates/rmcp/src/model/request_state.rs", line 714 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state.rs", line 714 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

@@ -34,8 +34,8 @@ evaluates to `Ok (body[8..])` under the key, expiry and body-length premises. Th
 
 Source: "crates/rmcp/src/model/request_state.rs", lines 559–570 (`open_at`), 572–583
 (`seal_rs1`), 585–605 (`seal_rs2`), 607–641 (`open_rs1_at`), 659–693 (`open_rs2_at`) and
-695–702 (`open_authenticated_body`) at local commit `46cfb02` (the translation base; not yet a
-pinned fork commit).
+695–702 (`open_authenticated_body`) in the patched copy (patch 01 on origin/main 7caec76,
+D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

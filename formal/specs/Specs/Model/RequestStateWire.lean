@@ -23,8 +23,10 @@ features `--no-default-features --features request-state`, with `overflow-checks
 `debug-assertions=true` (every cargo call gets `--config profile.dev.overflow-checks=true` and
 `--config profile.dev.debug-assertions=true`, plan Section 1), so arithmetic overflow panics,
 which Aeneas models as failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is
-local commit `46cfb02` (S04a part 2), not yet a pinned fork commit. Line numbers refer to
-`request_state_wire.rs` at `46cfb02`.
+the patched copy (patch 01 on origin/main 7caec76,
+`formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23; translation
+committed at `46cfb02`). Line numbers refer to
+`request_state_wire.rs` in the patched copy, the only place the file exists.
 
 Definitions used: `Defs.Wire` (`b64Len`, `minKeyLength`, `maxKidLen`, `dot`, `components`,
 `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`, `beNat`, `toInt64`, `Expired`,

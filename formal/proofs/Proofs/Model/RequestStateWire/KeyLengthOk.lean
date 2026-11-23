@@ -11,8 +11,8 @@ import Defs.Wire
 
 Whether a key length reaches `MIN_KEY_LENGTH = 32` bytes.
 
-Source: "crates/rmcp/src/model/request_state_wire.rs", line 39 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state_wire.rs", line 39 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

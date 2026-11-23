@@ -178,7 +178,9 @@ There is one proof file per Rust item (`VERIFICATION.md` §8), under
 - The file is named after the function in UpperCamelCase. E.g., for `open_rs1_at` the file is
   `OpenRs1At.lean`. File names are fixed by the table in plan Section 5.
 - The file contains a module docstring immediately after the imports. It explains the function
-  concisely, and gives the plan ID, the Rust source path, and the line at the pinned commit:
+  concisely, and gives the plan ID, the Rust source path, and the line at the pinned commit
+  (since the D2 fallback of 2026-11-23: the line in the patched copy, patch 01 on origin/main
+  `7caec76`):
 
   ```lean
   /-!

@@ -11,8 +11,9 @@ import Defs.Wire
 
 Theorems about `ExtModel.b64` and `ExtModel.b64Decode` (`formal/trusted/Rmcp/FunsExternal.lean`),
 the model of `base64-0.23.1` `URL_SAFE_NO_PAD` behind `prim::b64_encode_into` and
-`prim::b64_decode` (`crates/rmcp/src/model/request_state_wire.rs` lines 268–276). Since the model
-is a definition, these are proved, not assumed: decoding inverts encoding, every decodable input
+`prim::b64_decode` (`crates/rmcp/src/model/request_state_wire.rs` lines 268–276 in the patched
+copy, patch 01 on origin/main 7caec76; line numbers refer to it). Since the model is a definition,
+these are proved, not assumed: decoding inverts encoding, every decodable input
 is the encoding of its result (so `b64Decode` rejects padding, foreign symbols, impossible
 lengths and non-canonical trailing bits), the output alphabet, the output length, and the
 RFC 4648 Section 10 vectors and the strictness cases of the Rust tests, checked by `decide`.
@@ -180,8 +181,9 @@ theorem length_b64_of_dvd (x : List U8) (h : 3 ∣ x.length) :
 
 RFC 4648 Section 10 (the URL-safe alphabet agrees with the standard one on them), as in the
 Rust test `rfc4648_base64url_vectors`, and the cases of `base64url_alphabet_and_append` and
-`base64url_decode_is_strict` (`request_state_wire.rs`). Bytes are written as decimal ASCII
-codes: `f o b a r` = `102 111 98 97 114`; `Z m g 9 v Y F y` = `90 109 103 57 118 89 70 121`. -/
+`base64url_decode_is_strict` (`request_state_wire.rs`, in the patched copy). Bytes are written
+as decimal ASCII codes: `f o b a r` = `102 111 98 97 114`;
+`Z m g 9 v Y F y` = `90 109 103 57 118 89 70 121`. -/
 
 theorem b64_rfc4648_empty : b64 [] = [] := by decide
 theorem b64_rfc4648_f : b64 [102#u8] = [90#u8, 103#u8] := by decide

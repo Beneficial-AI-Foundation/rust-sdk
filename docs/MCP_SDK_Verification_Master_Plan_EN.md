@@ -8,14 +8,14 @@ Date: 22 November 2026. This is the single current plan.
 - **Run 3, public `request_state_wire` API (this plan):** the codec is refactored onto fifteen public, pure functions plus four opaque primitives. Tokens and 162 `open` results are byte-identical to the original code. The pilot's claim that the existing request-state tests, `clippy` and `rustfmt` passed is not recorded (no log survives); S04a re-ran them on the refactor in the working tree (not yet landed): 265 library tests pass, including 39 in `request_state.rs` and 28 in `request_state_wire.rs`, and `clippy` and `rustfmt` are clean (the S04a evidence (git history at 01bdc9b)).
 - **Excluded functions:** every function that cannot be translated with the pinned toolchain is excluded from translation and from the project's claims (Section 2.3). After that, the Aeneas log has no error, and the generated Lean compiles with 0 errors and no `sorry` anywhere, with no hand edit.
 - **Process:** the plan follows the Aeneas verification process guide, [`VERIFICATION.md`](VERIFICATION.md): one `formal/` folder split into `trusted/`, `specs/`, `translation/` and `proofs/`; Charon settings in `Cargo.toml`; Aeneas pinned by one release tag; three CI workflows.
-- **Status (2026-11-23):** all 25 targets and the composition theorems are specified, signed off by the spec owner and proved; steps S05–S16, S18 and S19 are accepted (`formal/docs/board.yaml`; results in `formal/docs/STATUS.md`, "Results"). The results are at local commit `9b030c6` (translation committed at `46cfb02`), not yet a pinned fork commit.
-- **Waiting on the human owner:** naming the project owner and budget (S01); approval and landing of the refactor PR in the fork, which gives the pinned commit (S04a); pushing so the three CI workflows run on GitHub for the first time, and S17 (all three exist; none has run on GitHub yet). See `formal/docs/STATUS.md`, "Open items".
+- **Status (2026-11-23):** all 25 targets and the composition theorems are specified, signed off by the spec owner and proved; steps S05–S16, S18 and S19 are accepted (`formal/docs/board.yaml`; results in `formal/docs/STATUS.md`, "Results"). The results are about upstream `origin/main` `7caec76` plus translation patch `formal/trusted/patches/01-request-state-wire.patch` (D2 fallback, human decision 2026-11-23): every SDK `*.rs` file is byte-identical to `7caec76`, the refactor and its tests exist only in the patched copy, and every target is `PATCHED` (D10: 0 verified on original code, 25 checked-but-patched, 0 open). The translation (committed at `46cfb02`) is reproduced byte for byte through the patch path, so no proof changed.
+- **Waiting on the human owner:** naming the project owner and budget (S01); (the D2 fallback is in use: patch 01 was reviewed by two agents and signed off by the human on 2026-11-23, S04a); running the three CI workflows on GitHub for the first time (needs a pull request), and S17 (all three exist; none has run on GitHub yet). See `formal/docs/STATUS.md`, "Open items".
 
 ## Fixed requirements
 
 | Requirement | Section |
 |---|---|
-| Verify existing SDK functions, and the new public `request_state_wire` functions they are built on; no replacement of the `hmac`, `sha2` or `base64` crates | 1, 2 |
+| Verify existing SDK functions, and the new public `request_state_wire` functions they are built on (since the D2 fallback, 2026-11-23: in the patched copy); no replacement of the `hmac`, `sha2` or `base64` crates | 1, 2 |
 | Every target is a concrete function in the pinned source, with an independent specification | 2, 3 |
 | New functions are public, foundational (pure byte/integer logic, no I/O) and reusable outside the codec | 2 |
 | Every target translates with the pinned toolchain; no target may depend on an unresolved blocker | 2, 9 |
@@ -57,10 +57,10 @@ Change a requirement only when the user changes it, or a documented technical in
 
 - **Repository:** https://github.com/truonghoangle/rust-sdk (the user's fork of the Rust MCP SDK).
 - **Base commit:** `0e2396f73a88617141b31f645de6f1171ed5f993`. The current `main` (`7caec76`) adds only `verification/host_origin/`, and `crates/rmcp/src/model/request_state.rs` is byte-identical between the two (SHA-256 `41e69cad94869be4b93120f3cd39a10fad4a3730585240b712c2ada1b311b416`).
-- **Pinned commit:** the fork commit that lands the `request_state_wire` refactor (S04a). Record it in `formal/docs/STATUS.md`. From then on, the translation CI (Section 5) guarantees that the committed translation matches the Rust source in the repository, so no separate hash check is needed.
-- **Target files:**
-  - `crates/rmcp/src/model/request_state_wire.rs` (new, public)
-  - `crates/rmcp/src/model/request_state.rs` (refactored onto it)
+- **Pinned commit:** the fork commit that lands the `request_state_wire` refactor (S04a). Record it in `formal/docs/STATUS.md`. **D2 fallback (human decision 2026-11-23).** The refactor was not landed; the pinned commit is upstream `origin/main` `7caec76`, every SDK `*.rs` file is byte-identical to it, and the refactor is translation patch 01 (Section 9, "Refactor"). From then on, the translation CI (Section 5) guarantees that the committed translation matches the Rust source in the repository (since the D2 fallback: that source with patch 01 applied), so no separate hash check is needed.
+- **Target files** (since the D2 fallback, in the patched copy `.llbc/work/` only; line numbers refer to it):
+  - `crates/rmcp/src/model/request_state_wire.rs` (new, public; created by patch 01)
+  - `crates/rmcp/src/model/request_state.rs` (refactored onto it by patch 01)
 - **Feature:** both files compile only with the `request-state` feature (`crates/rmcp/Cargo.toml`, `request-state = ["dep:hmac", "dep:zeroize", "base64"]`).
 - **Translated configuration (single target):** `--target x86_64-unknown-linux-gnu --no-default-features --features request-state --lib`, fixed in `scripts/aeneas-translate.sh`, with overflow checks and debug assertions pinned on: every cargo call (also through Charon) gets `--config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true`, so arithmetic panics on overflow, which is what Aeneas models as failure. Nothing else may change the build: the script refuses environment variables that change how cargo or rustc build (`RUSTFLAGS`, `RUSTC*`, `RUSTDOC*`, `CHARON_*`, `AENEAS_*`, every `CARGO_*` outside a short allowlist, and every `RUSTUP_*` except `RUSTUP_TOOLCHAIN` and `RUSTUP_HOME`), a selected `rustc` whose `rustc -vV` is not the pinned nightly, a `.cargo/config` or `.cargo/config.toml` in the source, the work copy or any ancestor of it, and `[profile]`, `[patch]`, `[replace]` or `cargo-features` in the workspace or `crates/rmcp` manifest; it runs cargo with an isolated `CARGO_HOME`, requires every dependency of `rmcp` in this configuration to come from crates.io at the pinned versions (Section 4), and requires the build script to be `crates/rmcp/build.rs` with the sha256 pinned in the script (`BUILD_RS_SHA256`) and an empty output (exact lists: `formal/README.md`, "Translated configuration"). **The proofs hold only for this configuration.** It is stated in `formal/README.md` and in the module docstring of each spec file. The pilot ran on macOS aarch64 without `--target`; S03 records whether the output differs.
 
@@ -77,11 +77,13 @@ Change a requirement only when the user changes it, or a documented technical in
 - any configuration other than the one above;
 - full MCP protocol verification.
 
-Claims apply to the pinned commit and configuration only, not to upstream releases.
+Claims apply to the pinned commit and configuration only (since the D2 fallback, 2026-11-23: with translation patch 01 applied), not to upstream releases.
 
 ## 2. Targets
 
 ### 2.1 Public foundation: `rmcp::model::request_state_wire` (new)
+
+**D2 fallback (human decision 2026-11-23).** "New" and "public" below describe the patched copy: the module exists only after translation patch 01 is applied (Section 9, "Refactor"); the SDK sources at `7caec76` do not contain it.
 
 These are module-level `pub fn`s that use only slices, integers, fixed arrays and `Vec<u8>`. Each one is useful outside the codec, for example to a client or a gateway that inspects a token's version, or to tooling that builds test vectors. All fifteen translated in run 3.
 
@@ -128,7 +130,7 @@ These four are the entire trusted boundary to the crypto and encoding crates. Th
 
 ### 2.2 Existing codec functions (refactored onto the foundation)
 
-These are associated functions of `RequestStateCodec`. Line numbers will be filled in from the pinned commit at S01.
+These are associated functions of `RequestStateCodec`. Since the D2 fallback (2026-11-23) the refactoring is patch 01, so the verified bodies are those of the patched copy. Line numbers will be filled in from the pinned commit at S01.
 
 | ID | Function | Independent specification | Built on |
 |---|---|---|---|
@@ -246,7 +248,7 @@ A proved spec says something about the Rust code only if all of the following ar
 
 - **Tools:** Charon and Aeneas translate the Rust faithfully, and Lean's kernel checks proofs correctly.
 - **Configuration:** the target and features fixed in `scripts/aeneas-translate.sh` (Section 1).
-- **Translation patches** (`formal/trusted/patches/`): none are planned. If the refactor is not landed (Section 8, D2 fallback), it becomes a patch here and every target is `PATCHED`.
+- **Translation patches** (`formal/trusted/patches/`): none were planned. If the refactor is not landed (Section 8, D2 fallback), it becomes a patch here and every target is `PATCHED`. Since 2026-11-23 (human decision) this is the case: `01-request-state-wire.patch` (the refactor and its tests) is in the trusted base; its VERIFICATION.md §4 review (multiple agents, then the human) is pending.
 - **External models:** the definitions, structures and `opaque` constants of `formal/trusted/Rmcp/FunsExternal.lean` and `TypesExternal.lean` (the `RmcpExternal` roots) describe the Rust functions, with the stated exceptions in their docstrings (Section 4); since S08–S09 these roots declare no axiom (human decision 2026-11-23).
 - **Axioms:** any declared in the `RmcpExternal` roots (none since S08–S09), plus Lean's `propext`, `Classical.choice` and `Quot.sound`, plus the native-code axioms listed in `formal/trusted/native-axioms.lock` — only Aeneas `toStr` string-literal side conditions (`decide (<literal>.toByteArray.size ≤ U32.max) = true`), each with a pinned statement and declared in the generated `Rmcp.Types`/`Rmcp.Funs`, handled as in the SPQR project (human decision 2026-11-22; a kernel proof exists, so an upstream Aeneas `toStr` fix would remove them); the CI axiom audit rejects any project constant (including all of `Rmcp.Types`/`Rmcp.Funs`) that depends on another axiom, or on a native-code axiom of another form or module; the locks are required only for the trusted and native-code axioms reachable from some constant of a `Defs`, `Proofs` or `Specs` module (audit scope, human decision 2026-11-23 for `axioms.lock`, applied by the lead to `native-axioms.lock`), so a trusted axiom (none since S08–S09) or a `toStr` native axiom that no `Defs`/`Proofs`/`Specs` constant depends on needs no lock entry, and its statement is checked only by review of `trusted/` and of the translation diff (Section 5, CI); the spec files' `#guard_msgs` lists show which of them each proof uses.
 - **Statements:** the definitions in `formal/specs/Defs/` and the statements in `formal/specs/Specs/` say what we mean.
@@ -325,6 +327,8 @@ formal/
                                                        native-code axiom (Aeneas `toStr` side conditions)
                                                        used by a Defs/Proofs/Specs constant
     patches/                                    empty unless the D2 fallback is used
+                                                       (used since 2026-11-23:
+                                                       01-request-state-wire.patch)
     Rmcp/TypesExternal.lean                     NEW    S04a from the template, edited S08–S09
     Rmcp/FunsExternal.lean                      NEW    S04a from the template, edited S08–S09
     evidence/README.md                          NEW    S08   Rust source and tests backing each external model
@@ -428,7 +432,7 @@ Three workflows (VERIFICATION.md §9) keep the repository honest:
   - `unpack-build TAR`: job `check` only, as above.
 
   Limits: the `sources` rules are textual, not semantic; only the axioms declared in the `RmcpExternal` roots (`Rmcp.TypesExternal`, `Rmcp.FunsExternal`) are trusted by the audit, so those files still have to be read and reviewed; a module that no root imports is neither built nor audited; unlike `#print axioms`, the audit does not lose axioms on inductive/constructor cycles: it follows types, values and whole inductive blocks with one visited set (an over-approximation). Residual risks of the two-job design (`formal/README.md`, "What CI checks"): (1) the artifact is attacker-controlled data if the build ran malicious code; job `check` replays it in the kernel and audits its axioms, but cannot tell whether it was compiled from these sources, since a build that runs code could upload output of a different (or empty) project, and the only barrier is that the build runs no project code: the metaprogramming bans of `sources`, checked in job `build` before the build, and review (a ban that misses a way to run code is a hole in this barrier, not only in the textual check); (2) `.olean` files are memory images that Lean maps without validating them, so a crafted file could crash the audit or worse (job `check` has read-only repository permissions and no secrets, so the worst outcome is a wrong check result); (3) the Mathlib oleans of job `check` come from Mathlib's cache server and are not checked against a committed digest (open scope question for the human). On the translation side, a fake `rustc` that prints exactly the pinned `rustc -vV` lines is not caught by asking it (`charon-driver` would then not find its `librustc_driver`).
-- **Patched copy passes the crate's tests** (`patched-tests.yml`). Same paths as the translation check (including `crates/rmcp/build.rs` and the root `Cargo.toml`). Installs the pinned nightly, runs `scripts/apply-patches.sh`, and runs `cargo test --no-default-features --features request-state --lib` in `.llbc/work/crates/rmcp`. With no patches this is the plain test suite; it becomes evidence for the patches if the D2 fallback is used.
+- **Patched copy passes the crate's tests** (`patched-tests.yml`). Same paths as the translation check (including `crates/rmcp/build.rs` and the root `Cargo.toml`). Installs the pinned nightly, runs `scripts/apply-patches.sh`, and runs `cargo test --no-default-features --features request-state --lib` in `.llbc/work/crates/rmcp`. With no patches this is the plain test suite; it becomes evidence for the patches if the D2 fallback is used, which it is since 2026-11-23 (patch 01 carries the refactor's tests, so the run is evidence for patch 01).
 
 ## 6. Status model
 
@@ -442,7 +446,7 @@ One vocabulary is used everywhere.
 |---|---|
 | `translation` | `NOT_TRIED`, `LLBC_OK` (Charon), `LEAN_OK` (Aeneas output compiles), `BLOCKED` |
 | `spec` | `DRAFT`, `REVIEWED` |
-| `linkage` | `ORIGINAL` (pinned source, no patch touches it), `PATCHED` (its translation depends on a patch in `formal/trusted/patches/`) |
+| `linkage` | `ORIGINAL` (pinned source, no patch touches it), `PATCHED` (its translation depends on a patch in `formal/trusted/patches/`). Since the D2 fallback (2026-11-23) all 25 targets are `PATCHED` (patch 01); a target whose proof is about a patched copy is reported as checked-but-patched, not verified (D10) |
 | `proof` | `OPEN`, `CHECKED` |
 
 Specifications follow VERIFICATION.md §6: drafted (by a person or the `mcp-spec` agent), **reviewed independently by multiple agents**, then signed off by a named human spec owner, all before any proof work starts. Only the spec owner sets `spec: REVIEWED` or moves a task to `ACCEPTED`. The drafter is recorded in `spec_drafted_by`, and an AI drafter never sets `REVIEWED`. Any change to an accepted statement returns `spec` to `DRAFT`.
@@ -603,7 +607,7 @@ In each pipeline:
 | S02 | D1 | S01 | `CLAUDE.md`, `.claude/agents/*.md`, `docs/VERIFICATION.md`, the four `docs/` guides | Lead — roles and edit permissions defined; `CLAUDE.md` points to the guides; the guides describe the `formal/` layout, the Lean build gate (Section 5, CI), spec files with `#guard_msgs` and `STATUS.md` instead of the old layout |
 | S03 | D1 | S01 | `formal/lakefile.toml`, `lean-toolchain`, `lake-manifest.json`, `formal/README.md`, `formal/trusted/aeneas-bundle.sha256`, `scripts/aeneas-*.sh`, `scripts/apply-patches.sh`, `scripts/lean-guard.sh`, `scripts/lean_guard.py`, `scripts/lean-axiom-audit.lean`, `scripts/llbc-dir-guard.sh`, `crates/rmcp/Cargo.toml`, `.gitignore`, `lean-build.yml` | Extraction — `aeneas-install.sh` installs `nightly-2026.08.20-5d08da4` and is a no-op on rerun; bundle versions match Section 5; the pinned Charon reads `[package.metadata.charon]` (otherwise the script passes the same lists as flags, recorded in the evidence); the empty project builds in CI (B10); `aeneas-translate.sh` fails on a nonzero Aeneas exit, a missing target, any `sorry`, or a dependency version mismatch; output on the fixed Linux target compared with the run-3 output |
 | S04 | D1 | S01 | pilot record and S04 evidence (removed 2026-11-23; git history at 01bdc9b) | Extraction — runs 1–3 artifacts (refactor patch, Charon arguments, scripts, logs, token harness) copied from scratch |
-| S04a | D1–2 | S03, S04 | `request_state_wire.rs`, `request_state.rs`, `model.rs`; `formal/translation/**`; `formal/trusted/Rmcp/*External.lean`; `aeneas-translation.yml`, `patched-tests.yml` | Extraction + reviewer — two PRs, as the workflow guide requires: (1) the refactor, with the checklist of Section 9 passing, landed in the fork and the pinned commit recorded; (2) the translation, where all three CI workflows pass and every target is present in `Funs.lean` with a real body |
+| S04a | D1–2 | S03, S04 | `request_state_wire.rs`, `request_state.rs`, `model.rs` (since the D2 fallback, 2026-11-23: `formal/trusted/patches/01-request-state-wire.patch`); `formal/translation/**`; `formal/trusted/Rmcp/*External.lean`; `aeneas-translation.yml`, `patched-tests.yml` | Extraction + reviewer — two PRs, as the workflow guide requires: (1) the refactor, with the checklist of Section 9 passing, landed in the fork and the pinned commit recorded; (2) the translation, where all three CI workflows pass and every target is present in `Funs.lean` with a real body |
 | S05 | D2 | S01 | `Defs.lean`, `Defs/Wire.lean`, `Defs/RequestState.lean`, `formal/specs/Drafts/`, `Specs.lean`, `Proofs.lean` | Spec drafter (`mcp-spec` or a person) + independent agent reviewers + spec owner — W01–W15 and E01–E04 statements reviewed by ≥ 2 independent agents, then signed off |
 | S06 | D2–4 | S04a, S05 | W01–W06, W12–W15 proof files; `Specs/Model/RequestStateWire.lean` | Lean — W01–W06, W12–W15 checked and restated in the spec file; W01 overflow domain explicit |
 | S07 | D3–4 | S06 | E01–E04 proof files; `Specs/Model/RequestState.lean` | Lean — E01–E04 checked using only W theorems |
@@ -615,7 +619,7 @@ In each pipeline:
 | S13 | D6–8 | S07, S08, S09, S10, S12 | `Rs1FallbacksVerify.lean`, `OpenRs1At.lean`, `OpenRs2At.lean`, `Proofs/External/Iter.lean` (slice-iterator helper) | Lean — E09a, E09, E10 checked with full error order |
 | S14 | D8 | S10, S13 | `OpenAt.lean` | Lean — E11 dispatch theorem checked |
 | S15 | D8–9 | S11, S13, S14 | `Roundtrip.lean`; end of `Specs/Model/RequestState.lean` | Lean — each round-trip theorem accepted on its own; missing ones listed `OPEN` |
-| S16 | D2–9 | S04a onward | `mod tests` in both target files | Review — Section 7 boundary cases and contract test vectors pass under `cargo test --features request-state` |
+| S16 | D2–9 | S04a onward | `mod tests` in both target files (since the D2 fallback, 2026-11-23: in patch 01) | Review — Section 7 boundary cases and contract test vectors pass under `cargo test --features request-state` |
 | S17 | D9 | accepted results | the three workflows | Lead — each CI check shown to fail once on a throwaway branch: a hand edit to `Funs.lean`, a new axiom (`#guard_msgs` diff), a `sorry`, and a failing test on the patched copy |
 | S18 | D9–10 | S17 | the S18 evidence (git history at 01bdc9b) | Review — fresh clone: install, translate, `git status` clean, `lake build` and the `scripts/lean-guard.sh` checks pass |
 | S19 | D10 | board state; no success required | `formal/docs/STATUS.md`, `formal/README.md` | Lead + human owner — honest per-function status, trusted base, bugs found, open items, cost; next-sprint scope |
@@ -629,7 +633,7 @@ S19 is mandatory even if every other step fails.
 ### Gates
 
 - **D2:** the refactor PR is approved and landed, and the translation PR passes all three CI workflows with every target present. The project owner confirms that people and budget are allocated.
-  - **Fallback if the refactor is not landed in the fork:** commit the refactor as `formal/trusted/patches/01-request-state-wire.patch`, with the header VERIFICATION.md §4 requires (change, why, behaviour argument from Section 9), reviewed by multiple agents and a human. `apply-patches.sh` applies it to the copy, `patched-tests.yml` runs the crate's tests on it, and every target is labelled `PATCHED`. The technical work is the same; only the linkage claim is weaker, and the patch joins the trusted base. No path in this plan leaves a target `BLOCKED` by translation.
+  - **Fallback if the refactor is not landed in the fork:** commit the refactor as `formal/trusted/patches/01-request-state-wire.patch`, with the header VERIFICATION.md §4 requires (change, why, behaviour argument from Section 9), reviewed by multiple agents and a human. `apply-patches.sh` applies it to the copy, `patched-tests.yml` runs the crate's tests on it, and every target is labelled `PATCHED`. The technical work is the same; only the linkage claim is weaker, and the patch joins the trusted base. No path in this plan leaves a target `BLOCKED` by translation. **In use since 2026-11-23 (human decision):** the patch exists, every target is `PATCHED`, and its multi-agent and human review is pending.
 - **D5:** W leaves (S06) and the HMAC/Base64/standard-library boundary (S08–S09) are measured. Re-estimate the rest from actual effort. Keep every target visible.
 - **D10:** `formal/docs/STATUS.md` written. Report how many functions are verified, checked-but-patched, and open.
 
@@ -664,6 +668,8 @@ Each blocker lists its cause and how the wire design removes it. "Run 3" means t
 ### Refactor (replaces the run-2 adapter)
 
 The refactor is a real change to the SDK source, landed in the fork, not a translation patch: it adds public API that the user asked for (Section 1). Translation patches (VERIFICATION.md §4) are reserved for behaviour-preserving workarounds applied only to the copy in `.llbc/work/`; none are planned.
+
+**D2 fallback (human decision 2026-11-23).** The refactor was not landed, so the paragraph above no longer holds: the D2 fallback (Section 8) is in use. The refactor and all its tests (S04a, S16) are `formal/trusted/patches/01-request-state-wire.patch` on upstream `7caec76`, applied only to `.llbc/work/` by `scripts/apply-patches.sh`; the SDK `*.rs` files are byte-identical to `7caec76`, and every target is `PATCHED`. The behaviour argument below is the patch's argument; its link to upstream behaviour is the byte-identity regression tests and the S04a differential check (argued and tested, not proved). Landing the refactor upstream would let the patch be deleted and the targets become `ORIGINAL`.
 
 | Change | Behaviour argument for review |
 |---|---|

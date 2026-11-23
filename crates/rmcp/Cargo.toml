@@ -47,6 +47,9 @@ features = [
 rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.charon]
+# The module request_state_wire is created by formal/trusted/patches/01-request-state-wire.patch,
+# applied only to the translated copy (D2 fallback, human decision 2026-11-23); the SDK sources are
+# upstream and unchanged.
 start_from = [
   "rmcp::model::request_state",
   "rmcp::model::request_state_wire",

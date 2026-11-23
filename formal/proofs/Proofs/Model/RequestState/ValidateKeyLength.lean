@@ -16,8 +16,8 @@ import Proofs.Model.RequestState.Common
 `key_length_ok_spec` through `step`, and `Proofs.RequestState.val_MIN_KEY_LENGTH` for the value
 of the generated constant `RequestStateCodec::MIN_KEY_LENGTH`.
 
-Source: "crates/rmcp/src/model/request_state.rs", line 704 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state.rs", line 704 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result

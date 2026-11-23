@@ -32,7 +32,11 @@ Source paths: `rust-src` is
 `scripts/aeneas-translate.sh` (`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`,
 `zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`; plan Section 4), and std's
 `hashbrown 0.17.1` per the toolchain's `library/Cargo.lock`. Test files: `wire` = `crates/rmcp/src/model/
-request_state_wire.rs`, `codec` = `crates/rmcp/src/model/request_state.rs`.
+request_state_wire.rs`, `codec` = `crates/rmcp/src/model/request_state.rs`, both in the patched
+copy (patch 01 on origin/main 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2
+fallback 2026-11-23): `request_state_wire.rs` and every test named here that the patch adds exist
+only there, so run the command above in `.llbc/work/crates/rmcp` after
+`scripts/apply-patches.sh` (as `patched-tests.yml` does).
 
 ## HMAC (`prim::hmac_sha256`, `prim::hmac_sha256_verify`)
 

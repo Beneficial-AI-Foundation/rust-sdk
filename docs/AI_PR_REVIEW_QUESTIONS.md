@@ -252,7 +252,8 @@ Historical examples for each question are listed in the [appendix](#appendix-his
   equivalence check did not?
 - Does the `linkage` field match the decision actually taken? A landed and re-pinned refactor makes
   targets `ORIGINAL` relative to the new pin; if the refactor is applied as a patch in
-  `formal/trusted/patches/` instead, every target is `PATCHED`.
+  `formal/trusted/patches/` instead, every target is `PATCHED` (the case since the D2 fallback of
+  2026-11-23: patch 01, all 25 targets `PATCHED`).
 - For a translation patch: does its header state the change, why it is needed (with the upstream
   issue, if any), and why the behaviour is unchanged? Is it minimal, with one concern? Does
   `patched-tests.yml` pass on the patched copy, and do those tests actually exercise the changed
@@ -483,7 +484,8 @@ Useful author-facing questions after investigation include:
   is the argument that the Rust function computes it?"
 - "The round-trip premise requires a nonempty ad. Is that intended? `seal_rs1` accepts an empty ad."
 - "The record says `linkage: ORIGINAL`, but the pin still predates the `request_state_wire`
-  refactor. Was the refactor PR (S04a) landed and re-pinned?"
+  refactor. Was the refactor PR (S04a) landed and re-pinned?" (Under the D2 fallback the answer
+  is no, and the record must say `PATCHED`.)
 - "`git status --porcelain` shows a diff in `Funs.lean` after re-running the translate script.
   Was the translation regenerated after the last Charon setting change?"
 

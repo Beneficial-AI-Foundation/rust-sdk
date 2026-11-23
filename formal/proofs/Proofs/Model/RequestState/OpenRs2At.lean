@@ -24,8 +24,8 @@ order `MalformedFormat`, `InvalidKeyId` (encoded kid too long), `InvalidEncoding
 `InvalidKeyId` (decoded kid length, UTF-8), `UnknownKeyId`, `InvalidEncoding` (body, tag),
 `IntegrityCheckFailed`, then E01 on the decoded body.
 
-Source: "crates/rmcp/src/model/request_state.rs", lines 659–693 at local commit `46cfb02`
-(the translation base; not yet a pinned fork commit).
+Source: "crates/rmcp/src/model/request_state.rs", lines 659–693 in the patched copy
+(patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
 -/
 
 open Aeneas Aeneas.Std Result
