@@ -367,6 +367,21 @@ deprecated `new` accepts a key of any length (only `try_new` checks it); and
 `rs1_fallbacks_verify` panics (`expect`) if an rs1 fallback id is not a key, which the excluded
 keyring constructors prevent (not verified).
 
+**Phase 2 (S24, human decision H7, 2026-11-24): `async_rw` method lists miss six core MCP
+names.** `is_standard_method` / `is_standard_notification` (`async_rw.rs` 396–433, upstream
+`7caec76`) do not list `tasks/get`, `tasks/result`, `tasks/cancel`, `tasks/list`,
+`notifications/tasks/status` and `notifications/elicitation/complete`, which are in the core
+MCP schemas (`2025-11-25`; plan H6 union). Effect: only when a line fails to deserialize
+(`try_parse_with_compatibility`, `Err` arm, lines 468–485; `should_ignore_notification`, lines
+437–457) and, after any leading BOM is removed (line 464), the line is valid UTF-8 and parses as a
+JSON value with a string `method` (otherwise the result is `Err`), a line with one of these
+method names is silently dropped (`Ok(None)`) instead of
+returned as a `Serde` error: always for the two notifications, and for the four `tasks/*`
+requests when the message has no `id` key (a standard, listed name gives
+`Err(JsonRpcMessageCodecError::Serde)` in these cases). The T05/T06 statements describe the code
+("in the core list and not in `Defs.Methods.codeOmits`"). Not yet reported upstream (see "Open
+items").
+
 Defects found in the plan, documents and tooling, with their state:
 
 1. Plan §4 said the constructors enforce "every key is at least 32 bytes"; false for
@@ -417,7 +432,7 @@ Plan Part II (Sections 13–25). Twenty-five existing upstream functions in six 
 composition theorems C01–C05. Selected by a measured pilot (plan Section 14, 2026-11-23); the
 pilot is not the project's translation, which is S21.
 
-**Human decisions (2026-11-23; run log of S20):**
+**Human decisions (H1–H5 2026-11-23, run log of S20; H6–H7 2026-11-24, S24):**
 
 | ID | Decision | State |
 |---|---|---|
@@ -426,6 +441,8 @@ pilot is not the project's translation, which is S21.
 | H3 | Boundary tests from upstream tests and differential programs (the latter dropped 2026-11-23, plan Section 18 amendment); a test-only patch 02 only for an uncovered case, recorded (if created) as a further deviation from `docs/VERIFICATION.md` §4 under "Documents" | Accepted |
 | H4 | `opaque` entry for the type `rmcp::transport::auth::AuthorizationManager` | Accepted |
 | H5 | Project owner and budget | **Open**: TBD (human, 2026-11-23); spec owner named: Hoang Le Truong |
+| H6 | Source of the T05/T06 method lists: union of the method names in the official MCP `schema.ts` of the five `KNOWN_VERSIONS` (22 requests, 12 notifications), since `2026-07-28` alone lacks `initialize`/`ping`. Core protocol only: extension methods (rmcp's `tasks/update`, `notifications/tasks`) are out of scope by design, not a bug; schema versions pinned (commit + sha256), list contents pinned by Lean regression checks, derivation reproduced by the command in `Defs.Methods`; a Tasks-extension list, if needed, is generated separately with capability-dependent handling checked; coverage claims say "core protocol", never "full MCP" | Decided (human, 2026-11-24, S24) |
+| H7 | T05/T06 code form: "in the core list and not in `codeOmits`" (six names); the gap is a bug ("Bugs found"). `notifications/elicitation/response` is out of scope like the extension names | Decided (human, 2026-11-24, S24) |
 
 **Owners:** spec owner Hoang Le Truong (named for Phase 2 on 2026-11-23); project owner and budget
 TBD (H5, open by human decision 2026-11-23).
@@ -445,6 +462,23 @@ S22 check), `proof: OPEN`.
 | T04–T06 | `async_rw::{without_carriage_return, is_standard_notification, is_standard_method}` | `transport/async_rw.rs:385, 420, 396` |
 | T07, T08 | `tower::default_port`, `tower::AllowedPort::matches` | `transport/streamable_http_server/tower.rs:1146, 1164` |
 | A01–A03 | `AuthorizationManager::{embedded_ipv4, is_disallowed_metadata_ipv4, is_disallowed_metadata_ipv6}` | `transport/auth.rs:1359, 1343, 1370` |
+
+**S24 spec cycle (2026-11-24):** drafts `formal/specs/Drafts/Model.lean` (M01–M14, the plan
+Section 16.1 joint lemmas, C03, the S27 deferred law) and `formal/specs/Drafts/Transport.lean`
+(T04–T08, C05), with `Defs/{Bytes,IntParse,JsonRpc,Methods,Tower}.lean` (not yet imported from
+the `Defs` root; they join it at incorporation). Four review rounds with two fresh `mcp-review`
+agents each and three fix rounds by fresh `mcp-spec` agents; round 4 had no blocking or judgment
+finding. Checks done by the reviewers (scratch, not committed): every statement proved at least
+once against the translation, with axioms `propext`, `Classical.choice`, `Quot.sound` and the H2
+`toStr` side conditions only; `Defs.parseI64` against the trusted `i64FromAscii` (0 differences on
+about 37,000 inputs) and against Rust `str::parse::<i64>` (30 boundary strings plus 11,111
+strings, identical); T04–T08 on exhaustive small inputs; 13 mutations of the `Defs.Methods`
+regression checks (all content changes fail the build). Human decisions H6 (amended) and H7;
+a bug recorded under "Bugs found". Signed off by the spec owner Hoang Le Truong on 2026-11-24.
+Deferred to incorporation: the `StrIs` ↔ `Defs.utf8Bytes` lemma; optionally moving the
+`utf8Bytes = ExtModel.utf8` check from `Defs/Bytes.lean` to `Proofs/External/String.lean`; two
+docstring nits (the derivation-command wording in `Defs/Methods.lean`, the citation
+`mod.rs` 1592–1606 at `Defs/IntParse.lean` line 85).
 
 **S22 linkage-check evidence (2026-11-24, local, macOS, on the S22 working tree; script as
 reviewed in round 2):** `scripts/check-original-linkage.sh <scratch>` on the real tree: exit 0 —
@@ -473,12 +507,15 @@ lines). Re-run after the review fixes: output byte-identical. `lake build` (1745
 (`$FEATURES,macros`) passes 801 library tests. The three workflows have not run on GitHub.
 
 Board: S20 `IN_PROGRESS`; S21 `IN_PROGRESS` (translated, all 25 `LEAN_OK`; human sign-off and CI pending);
-S22 `IN_PROGRESS` (linkage check written and reviewed; local evidence below; not yet in CI); S26/S27 `IN_PROGRESS` (signed off, proved); the other steps `NOT_STARTED`.
+S22 `IN_PROGRESS` (linkage check written and reviewed; local evidence below; not yet in CI); S24 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S26/S27 `IN_PROGRESS` (signed off, proved); the other steps `NOT_STARTED`.
 
 ## Open items
 
 Human decisions and actions:
 - **Phase 2 owner and budget (H5)**: not named; blocks S20 acceptance and gate G1 (plan Section 21).
+- **Report the H7 gap upstream** (S24, 2026-11-24): the `async_rw` method lists miss six core MCP
+  names ("Bugs found", Phase 2). Not reported yet; reporting is outward-facing and needs the
+  owner's go-ahead.
 - **`external_code` in `scripts/lean_guard.py`** (pre-existing, found in the S21 review): it does not
   treat guillemet identifiers `«…»` as one unit, so a `«"»` can shift its view of literals in
   `trusted/` for the rule against `rmcp`-namespace identifiers. The S21 exception for generated files

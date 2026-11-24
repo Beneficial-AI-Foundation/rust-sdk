@@ -397,13 +397,15 @@ steps:
 
   - id: S24
     day: D2-3
-    state: NOT_STARTED
+    state: IN_PROGRESS  # statements signed off by the spec owner 2026-11-24 after 4 spec-cycle rounds; awaits human acceptance
     depends_on: [S20]
     owner: Spec drafter + reviewers + spec owner
     files:
       - formal/specs/Defs/JsonRpc.lean
       - formal/specs/Defs/IntParse.lean
       - formal/specs/Defs/Methods.lean
+      - formal/specs/Defs/Tower.lean
+      - formal/specs/Defs/Bytes.lean
       - formal/specs/Drafts/
     acceptance: >-
       M01-M14, T04-T08, C03, C05 and the plan Section 16.1 joint lemmas statements reviewed by >= 2 agents and signed off.
