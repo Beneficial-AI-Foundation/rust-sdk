@@ -391,10 +391,11 @@ steps:
 
   - id: S23
     day: D2
-    state: NOT_STARTED
+    state: IN_PROGRESS  # reviewed 2026-11-24 (2 reviewers, no blocking); signed off by the spec owner 2026-11-24; becomes ACCEPTED when S21 and S22 pass CI (plan Section 21: dependencies govern acceptance)
     depends_on: [S21, S22]
     owner: Reviewers + spec owner
     files:
+      - formal/docs/STATUS.md
     acceptance: >-
       Charon settings, opaque AuthorizationManager type, widened configuration and placeholders reviewed (>= 2) and signed off.
 

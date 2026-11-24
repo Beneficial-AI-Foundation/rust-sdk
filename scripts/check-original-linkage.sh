@@ -19,7 +19,9 @@
 # Phase 2 target is invisible to any comparison of translations (only its signature is
 # translated); the script therefore requires the SDK-side opaque list to be exactly
 # rmcp::transport::auth::AuthorizationManager (a type with no body; SDK_OPAQUE below), no SDK item
-# excluded, and no unmodified-source External template citing crates/rmcp/src; a committed-only
+# excluded, and no unmodified-source External template citing crates/rmcp/src (the SDK_OPAQUE
+# test only sees entries starting with `rmcp::`; an impl-first pattern such as `{impl … for
+# rmcp::…}` is caught by the template check instead, S23 review 2026-11-24); a committed-only
 # (patched) declaration that could shadow a name used in a Phase 2 block also fails. Not pinned:
 # dependency resolution beyond PINNED_DEPS (workspace members outside crates/ take part in it;
 # both sides of the comparison share it, and the stale-translation check requires a clean tree).

@@ -233,6 +233,11 @@ Rust documentation. Used by: the proofs of all statements above.
 >   `2^61` bytes, equally impossible) and a `Vec` above `isize::MAX` bytes are not modelled;
 >   allocation failure is not modelled. For such inputs a statement may promise a result where
 >   Rust panics.
+>   The models also state representation choices that change no result of the targets (`Arc`
+>   equality checks pointer equality first; `Ipv6Addr` as eight segments; `MaybeUninit` partial
+>   initialisation; non-UTF-8 `Str` bytes; `HashMap::get` assumes `Hash`/`Eq` agree; the clock is
+>   opaque): complete list in [`../docs/STATUS.md`](../docs/STATUS.md), "Stated exceptions of the
+>   external models".
 > - **35 native-code assumptions**, locked in
 >   [`formal/trusted/native-axioms.lock`](../trusted/native-axioms.lock): the side conditions of
 >   the Aeneas `toStr` of string literals, decided by compiled code (5 for Phase 1, 30 for the

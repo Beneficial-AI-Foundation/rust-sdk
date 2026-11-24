@@ -35,7 +35,9 @@ the last sentence names the excluded functions and non-targets instead.
 > translation patch `formal/trusted/patches/01-request-state-wire.patch` applied** (D2 fallback,
 > human decision 2026-11-23: the `request_state_wire` refactor exists only in the patched copy
 > `.llbc/work/`; the SDK `*.rs` files in the repository are byte-identical to `7caec76`), translated
-> for `x86_64-unknown-linux-gnu` with `--no-default-features --features request-state` (and the
+> for `x86_64-unknown-linux-gnu` with `--no-default-features --features request-state` [Phase 1
+> record; the committed translation now uses the widened Phase 2 feature list, under which the
+> Phase 1 output is byte-identical (S21, S23)] (and the
 > Charon settings in `crates/rmcp/Cargo.toml`), the following request-state wire functions (public
 > in the patched copy) and existing codec functions are checked against the Aeneas translation of
 > the patched copy (`nightly-2026.08.20-5d08da4`): W01 `b64_len`, W02 `key_length_ok`, W03
@@ -242,8 +244,9 @@ directly, with no seal wrapper verified; the codec-state invariant is permanentl
 
 ## Trusted base
 
-Checked at `aacfbf7` by `scripts/lean-guard.sh axioms` (exit 0; 2110 constants in 46 project
-modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
+Checked at `3ded001` by `scripts/lean-guard.sh axioms` (exit 0; 4047 constants in 74 project
+modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23 review
+2026-11-24; first recorded at `aacfbf7` with 2110 constants in 46 modules):
 
 - **Trusted axioms: 0.** `formal/trusted/axioms.lock` has no entry; the `RmcpExternal` roots
   declare no axiom (human decision 2026-11-23). Allowed builtins: `propext`, `Classical.choice`,
@@ -467,8 +470,8 @@ pilot is not the project's translation, which is S21.
 TBD (H5, open by human decision 2026-11-23).
 
 **Per-function status** (mirrors `functions/{M,T,A}*.yaml`; the records are authoritative). Every
-record: `translation: LEAN_OK` (S21), `spec: DRAFT`, `linkage: ORIGINAL` (pending the
-S22 check), `proof: OPEN`.
+record: `translation: LEAN_OK` (S21), `spec: REVIEWED` (S24/S25), `linkage: ORIGINAL` (pending the
+S22 CI run; passes locally), `proof: CHECKED` (S28–S32).
 
 | ID | Rust symbol | Line at `7caec76` |
 |---|---|---|
@@ -535,6 +538,33 @@ used by E09/E10). Human decision 2026-11-24: in phase C an axiom list may only s
 `formal/trusted/` and `formal/translation/` unchanged; full `lake build` (1773 jobs) and the four
 `lean-guard.sh` checks pass. Two independent `mcp-review` agents reviewed the refinement (no
 blocking finding) and a third the fix round (no blocking finding).
+
+**S23 review (2026-11-24, at `3ded001`; two independent `mcp-review` agents, no blocking finding):**
+the Charon settings, the `opaque` `AuthorizationManager` entry (H4), the widened configuration (H1)
+and the Phase 2 external models (the S21 placeholders) were reviewed. Both reviewers ran
+`scripts/check-original-linkage.sh` locally (exit 0: `Funs` 41/41, `Types` 27/27, templates 30/30
+and 9/9 blocks identical; source tree and digests re-derived at `7caec76` and HEAD) and a full
+re-translation in scratch, byte-identical to `formal/translation/`. The feature list, target and
+overflow settings agree everywhere; no Phase 2 target depends on a feature outside the list (only
+M06 `any(client, server)` and M07 `client`); the Phase 1 blocks are byte-identical to the pre-S21
+translation (148/148). No Phase 2 target reaches an opaque crate or `AuthorizationManager`, and
+`exclude` reaches nothing in Phase 2, so no statement is weakened. No placeholder remains (only the
+five documented `opaque` constants; each external has a model with a cited source). Corrections
+made: H4's reason (Charon/hax fails on the `Arc<dyn CredentialStore/StateStore>` fields, not Aeneas
+on oauth2 aliases; plan Section 15 and H4; the `Cargo.toml` comment keeps its wording so the S22
+pins stay valid); the linkage script's description of its opaque check; stale STATUS, plan
+Section 24 and record text. Conditional: S21 and S22 are not yet accepted (no CI run), so S23 can
+be signed off only subject to their CI runs. **Signed off by the spec owner Hoang Le Truong on 2026-11-24**, subject to the
+S21/S22 CI runs; S23 becomes `ACCEPTED` when both pass.
+
+**Stated exceptions of the external models (complete list, S23):** inputs of `2^61` bytes or more
+(size convention; includes HMAC's bit-length counter and a `Vec` above `isize::MAX`); allocation
+failure; `Arc` `PartialEq` checks pointer equality first (`Rmcp/FunsExternal.lean`); `Ipv6Addr` is
+stored as eight segments instead of sixteen octets (`TypesExternal.lean`); `MaybeUninit` partial
+initialisation is not modelled; `Str` may hold non-UTF-8 bytes in the model and `push_str` of such
+bytes is `fail undef`; `HashMap::get` assumes `Hash` and `Eq` agree; the clock `Utc::now` is opaque
+(`nowMs`). None changes a result of the translated targets (the only `Arc` instance is `str`; the
+other items are representation choices or unused by the targets).
 
 **S25 spec cycle (2026-11-24):** drafts `formal/specs/Drafts/ClientSideSse.lean` (T01–T03, C01 with
 its plan form, C02 with its prefix form) and `formal/specs/Drafts/Auth.lean` (A01–A03, C04 with a

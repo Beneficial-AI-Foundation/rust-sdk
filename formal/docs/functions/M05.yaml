@@ -5,7 +5,7 @@ source_line: 843  # at 7caec76; in the patched copy, model.rs lines are +2 (patc
 generated_symbol: rmcp.model.JsonRpcMessage.into_result  # S21 translation
 translation: LEAN_OK  # S21 (2026-11-23): scripts/aeneas-translate.sh exit 0; lake build passes
 spec: REVIEWED                # signed off by the spec owner 2026-11-24 (S24, after 4 spec-cycle rounds)
-linkage: ORIGINAL  # pending S22: check passes locally on the S22 working tree (2026-11-24); not yet in CI on a commit
+linkage: ORIGINAL  # pending S22 CI: check passes locally on commit 3ded001 (S23 review, 2026-11-24); not yet in CI
 proof: CHECKED  # proved 2026-11-24 (S28, incorporation of S24/S25); proof reviewed by an independent mcp-review agent 2026-11-24 (no blocking finding)
 proof_file: formal/proofs/Proofs/Model/JsonRpcMessage.lean
 spec_file: formal/specs/Specs/Model.lean

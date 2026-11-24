@@ -999,6 +999,11 @@ opaque = [
   # `self`. Translating the type pulls in oauth2's client type aliases, on which Aeneas fails
   # with an internal error (pilot, Section 14). Opaque, the type does not even appear in
   # the generated files; the three function bodies are still translated.
+  # [S23 correction, 2026-11-24: without this entry Charon itself fails (a hax panic on the
+  # fields `Arc<dyn CredentialStore>` and `Arc<dyn StateStore>`, auth.rs:1252-1253, async-fn
+  # traits), before Aeneas runs; and no type declaration is generated, while the name still
+  # appears as the namespace of the three translated functions. The comment in
+  # crates/rmcp/Cargo.toml keeps the old wording so the S22 pins stay valid.]
   "rmcp::transport::auth::AuthorizationManager",
 ]
 ```
@@ -1306,7 +1311,7 @@ All 25 verified, plus C01–C05, is the goal.
 | H1 | **Accepted 2026-11-23 (human).** One translated configuration with the widened feature list (Section 15), instead of a second configuration | Adopt: the Phase 1 output is byte-identical under it, and one configuration keeps one CI path |
 | H2 | **Accepted 2026-11-23 (human).** Accept 30 more `toStr` native-code axioms (same class, locked, kernel-provable) for T05–T08 | Accept; alternative: replace T05–T08 with reserves (T08 calls T07), and C05 goes too |
 | H3 | **Accepted 2026-11-23 (human)**, as recommended; the differential programs were later dropped (2026-11-23, Section 18 amendment). Boundary tests: existing upstream tests plus differential programs only, or also a test-only patch 02. A test-only patch is a process exception: VERIFICATION.md §4 defines translation patches as behaviour-preserving edits that make an item translate | Upstream + differential first; patch 02 only for a case S34 finds uncovered; if created, the exception is recorded in `formal/docs/STATUS.md`, "Documents", as a further deviation from VERIFICATION.md (which is kept verbatim) |
-| H4 | **Accepted 2026-11-23 (human).** The `opaque` entry for the `AuthorizationManager` type (Section 15) | Accept: the type is not used by A01–A03 and does not appear in the generated files |
+| H4 | **Accepted 2026-11-23 (human).** The `opaque` entry for the `AuthorizationManager` type (Section 15) | Accept: the type is not used by A01–A03 and does not appear in the generated files (S23 correction 2026-11-24: the reason is a Charon/hax failure on the `dyn` async-trait fields, see Section 15) |
 | H5 | **Open (TBD, human 2026-11-23).** Project owner and budget for Phase 2 (and the open Phase 1 S01). The Phase 2 spec owner is Hoang Le Truong (named 2026-11-23) | — |
 | H6 | **Decided 2026-11-24 (human, S24).** Source of the T05/T06 method lists in `Defs.Methods`: the union of the method names in the official `schema.ts` of the five versions in `ProtocolVersion::KNOWN_VERSIONS` (22 requests, 12 notifications), because the `2026-07-28` schema alone lacks `initialize` and `ping` | Union of the five versions (adopted). **Amended 2026-11-24 (human):** `notifications/elicitation/response` (rmcp core block, in no core schema) is out of scope too. Earlier amendment: the lists cover the core protocol only; extension schemas are kept separate. rmcp's Tasks-extension methods `tasks/update` and `notifications/tasks` are outside the core union by design, not a bug. The upstream schema versions are pinned (commit and sha256 in `Defs.Methods`); Lean regression checks pin the list contents, and the derivation from the schemas is reproduced by the command recorded in `Defs.Methods`. If Tasks-extension support is verified later, its method list is generated separately from the extension schema, with capability-dependent handling checked. Coverage claims say "core protocol" and never "full MCP" |
 | H7 | **Decided 2026-11-24 (human, S24).** The Rust lists of T05/T06 (`async_rw.rs` 396–433) lack six names of the core union: `tasks/get`, `tasks/result`, `tasks/cancel`, `tasks/list`, `notifications/tasks/status`, `notifications/elicitation/complete` (`Defs.Methods.codeOmits`). The T05/T06 statements take the code form "in the core list and not in `codeOmits`", with the six names listed one by one; the gap is recorded in `STATUS.md`, "Bugs found" | Code form, bug recorded (adopted) |
@@ -1363,7 +1368,7 @@ The Phase 2 external models (`core::net`, integer parsing, `str` and `Arc` equal
 |---|---|---|
 | The widened features change the Phase 1 translation in a future upstream commit | Phase 1 proofs break | The stale-translation CI shows the diff; every Phase 1 block is checked byte-identical in S21; the pilot measured no change at `7caec76` |
 | A `_` glob matches a new upstream method | Extra or different target translated | Target-presence check in `aeneas-translate.sh` (Section 15, rule 3) |
-| A model of `core::net` or `i64::from_str` does not match the pinned `std` | A02/A03/M06 theorems describe the model, not Rust | Exhaustive IPv4 differential; IPv6 boundary and random tests; integer-parse corpus; two reviews and human sign-off per model |
+| A model of `core::net` or `i64::from_str` does not match the pinned `std` | A02/A03/M06 theorems describe the model, not Rust | Proved laws of each model (S26/S27) checked against the cited `rust-src`; two reviews and human sign-off per model; the differential tests planned here were dropped (Section 18 amendment) |
 | T03's loop proof is harder than estimated | S31 slips | Batch 4 has no external dependency and can start at S25; C01 can be proved on `Defs` first; G2 re-estimates |
 | 30 more native-code axioms | Larger trusted base | Same accepted class, locked, kernel-provable; H2 alternative |
 | Build size of the widened configuration (about 17 GB locally) | Slower CI, runner disk limits | CI caches `.aeneas/` only, as today; S21 measures the CI time and disk use on the GitHub runner |

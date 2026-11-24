@@ -5,7 +5,7 @@ source_line: 1146  # at 7caec76; file not touched by patch 01
 generated_symbol: rmcp.transport.streamable_http_server.tower.default_port  # S21 translation
 translation: LEAN_OK  # S21 (2026-11-23): scripts/aeneas-translate.sh exit 0; lake build passes
 spec: REVIEWED                # signed off by the spec owner 2026-11-24 (S24, after 4 spec-cycle rounds)
-linkage: ORIGINAL  # pending S22: check passes locally on the S22 working tree (2026-11-24); not yet in CI on a commit
+linkage: ORIGINAL  # pending S22 CI: check passes locally on commit 3ded001 (S23 review, 2026-11-24); not yet in CI
 proof: CHECKED  # proved 2026-11-24 (S29, incorporation of S24/S25); proof reviewed by an independent mcp-review agent 2026-11-24 (no blocking finding)
 proof_file: formal/proofs/Proofs/Transport/Tower.lean
 spec_file: formal/proofs/Proofs/Internal/Transport/StreamableHttpServer/Tower.lean

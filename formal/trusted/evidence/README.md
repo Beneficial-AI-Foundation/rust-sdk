@@ -241,7 +241,8 @@ pinned toolchain `nightly-2026-06-01` (read in
 `~/.rustup/toolchains/nightly-2026-06-01-aarch64-apple-darwin/lib/rustlib/src/rust/library/`).
 The model laws (plan Section 18, "Evidence" column): 43 statements, signed off by the spec owner on
 2026-11-23, proved (`formal/proofs/Proofs/External/{String,Option,Std,IntParse,Net}.lean`) and
-restated in `formal/specs/Specs/External.lean` (Phase 2 part). **The differential programs of plan
+restated in `formal/specs/Specs/External.lean` (Phase 2 part; since 2026-11-24 in
+`formal/proofs/Proofs/Internal/External.lean`). **The differential programs of plan
 Section 18 were not built: stage 3 was dropped by human decision on 2026-11-23.** The
 reproducible evidence for these models is the cited `core`/`alloc` source and (after stage 6)
 the proved laws. The spot checks below are unrecorded scratch runs, with no committed harness or
@@ -327,9 +328,10 @@ of an address as natural numbers). The opaque carrier `SerdeJsonValue` is listed
 - **Not built (stage 3 dropped, 2026-11-23).** Planned was a differential
   test against `i64::from_str` over a corpus (signs, empty, `+`/`-` alone, leading zeros, both
   bounds and one past each, non-ASCII digits, whitespace) plus 10^6 random strings over
-  `[+\-0-9a ]`. The law `model = Defs.parseI64` (`Proofs/External/IntParse.lean`) is deferred
-  until after plan step S24, which defines `Defs.parseI64`; the stage-2 drafts state laws about
-  the model only.
+  `[+\-0-9a ]`. The law `model = Defs.parseI64` (`Proofs/External/IntParse.lean`) was deferred
+  until after plan step S24, which defines `Defs.parseI64`; it is now proved as
+  `I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64` (signed off at S24, proved
+  at incorporation, 2026-11-24).
 
 ### IP addresses (`Ipv4Addr`, `Ipv6Addr`)
 
