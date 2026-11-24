@@ -13,8 +13,9 @@ added tests are translation patch `formal/trusted/patches/01-request-state-wire.
 only to the translated copy; every Phase 1 target's (W/E) linkage is `patch-01` (proved on upstream
 `7caec76` plus translation patch 01). The translation and all 25 proofs are unchanged.
 
-Board at this report: S05–S16 and S18 `ACCEPTED` (human approval 2026-11-23); S01, S02, S03, S04
-and S04a `IN_PROGRESS` (human items open, see "Open items"); S17 `NOT_STARTED` (needs a push to
+Board at this report: S05–S16 and S18 `ACCEPTED` (human approval 2026-11-23); S02 and S04
+`ACCEPTED` (human approval 2026-11-24); S01, S03 and S04a `IN_PROGRESS`, accepted by the owner on
+2026-11-24 and waiting only for H5 (S01) or the first CI runs (S03, S04a); S17 `NOT_STARTED` (needs a push to
 GitHub); S19 is this report.
 
 Updated 2026-11-23 for **Phase 2** (plan Part II, Sections 13–25): S20 started; human decisions
@@ -542,6 +543,12 @@ used by E09/E10). Human decision 2026-11-24: in phase C an axiom list may only s
 `lean-guard.sh` checks pass. Two independent `mcp-review` agents reviewed the refinement (no
 blocking finding) and a third the fix round (no blocking finding).
 
+**Human acceptance (2026-11-24):** the owner accepted the 18 steps that were waiting. S02, S04 and
+S24–S33 are `ACCEPTED` (their acceptance criteria are met). S01 and S20 become `ACCEPTED` when H5
+(project owner and budget) is named; S03, S04a, S21 and S22 when their CI runs pass (first push);
+likewise S23 (after S21 and S22) and S34 (after S21), accepted earlier the same day. S24 and S25
+depend on S20, whose only open item is H5; the owner accepted them regardless.
+
 **S23 review (2026-11-24, at `3ded001`; two independent `mcp-review` agents, no blocking finding):**
 the Charon settings, the `opaque` `AuthorizationManager` entry (H4), the widened configuration (H1)
 and the Phase 2 external models (the S21 placeholders) were reviewed. Both reviewers ran
@@ -643,8 +650,9 @@ lines). Re-run after the review fixes: output byte-identical. `lake build` (1745
 `lean-guard.sh` `sources`, `build-log`, `axioms`, `aeneas-archive` pass; the widened test build
 (`$FEATURES,macros`) passes 801 library tests. The three workflows have not run on GitHub.
 
-Board: S20 `IN_PROGRESS`; S21 `IN_PROGRESS` (translated, all 25 `LEAN_OK`; human sign-off and CI pending);
-S22 `IN_PROGRESS` (linkage check written and reviewed; local evidence below; not yet in CI); S24 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S25 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S28–S33 `IN_PROGRESS` (proved, restated and proof-reviewed 2026-11-24; awaits human acceptance); S26/S27 `IN_PROGRESS` (signed off, proved); the other steps `NOT_STARTED`.
+Board (2026-11-24, after the human acceptance above): S24–S33 `ACCEPTED`; S20, S21, S22, S23 and S34
+`IN_PROGRESS`, accepted by the owner and waiting only for H5 (S20) or the first CI runs (S21, S22,
+then S23 and S34); S35, S36 and S37 `NOT_STARTED`.
 
 ## Open items
 

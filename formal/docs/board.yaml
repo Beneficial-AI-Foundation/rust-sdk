@@ -10,7 +10,7 @@
 steps:
   - id: S01
     day: D1
-    state: IN_PROGRESS
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when H5 (project owner and budget) is named
     # drafted and agent-reviewed in the working tree; awaiting human sign-off (see evidence)
     depends_on: []
     owner: Lead
@@ -24,7 +24,7 @@ steps:
 
   - id: S02
     day: D1
-    state: IN_PROGRESS
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     # agent role files (.claude/agents/) and guide edits exist in the working tree; CLAUDE.md
     # missing (docs/VERIFICATION.md tracked since af41799); not run through the review cycle as its own step
     depends_on: [S01]
@@ -46,7 +46,7 @@ steps:
 
   - id: S03
     day: D1
-    state: IN_PROGRESS
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when the empty project builds in CI (B10)
     # drafted and agent-reviewed in the working tree (5 rounds); accepted limits and open items
     # recorded in the S03 evidence (git history at 223ff12); awaiting human sign-off
     depends_on: [S01]
@@ -81,7 +81,7 @@ steps:
 
   - id: S04
     day: D1
-    state: IN_PROGRESS
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     # drafted and agent-reviewed in the working tree; awaiting human sign-off (see evidence)
     depends_on: [S01]
     owner: Extraction
@@ -92,7 +92,7 @@ steps:
 
   - id: S04a
     day: D1-2
-    state: IN_PROGRESS
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when all three CI workflows pass
     # refactor part (PR 1) drafted and agent-reviewed in the working tree; translation part
     # (PR 2) drafted in the working tree from local commit f8fb6a7 (derived Debug impls
     # excluded, native-axioms.lock); externals started (unreviewed placeholders); awaiting
@@ -331,7 +331,7 @@ steps:
   # ---- Phase 2 (plan Part II, Section 21). Added at S20, 2026-11-23. ----
   - id: S20
     day: D1
-    state: IN_PROGRESS  # H1-H4 decided 2026-11-23 (human); H5 (owner, budget) open; records and guides drafted
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when H5 (project owner and budget) is named
     depends_on: []
     owner: Lead + human
     files:
@@ -347,7 +347,7 @@ steps:
 
   - id: S21
     day: D1
-    state: IN_PROGRESS  # translated and reviewed 2026-11-23; human sign-off and CI on GitHub pending
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when the three CI workflows are green
     depends_on: [S20]
     owner: Extraction
     files:
@@ -374,7 +374,7 @@ steps:
 
   - id: S22
     day: D1-2
-    state: IN_PROGRESS  # script and workflow step written; passes locally (2026-11-24)
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when the check passes in CI
     depends_on: [S21]
     owner: Extraction
     files:
@@ -401,7 +401,7 @@ steps:
 
   - id: S24
     day: D2-3
-    state: IN_PROGRESS  # statements signed off by the spec owner 2026-11-24 after 4 spec-cycle rounds; awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S20]
     owner: Spec drafter + reviewers + spec owner
     files:
@@ -416,7 +416,7 @@ steps:
 
   - id: S25
     day: D2-4
-    state: IN_PROGRESS  # statements signed off by the spec owner 2026-11-24 after 4 spec-cycle rounds; awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S20]
     owner: Spec drafter + reviewers + spec owner
     files:
@@ -428,7 +428,7 @@ steps:
 
   - id: S26
     day: D3-4
-    state: IN_PROGRESS  # models + laws signed off by the spec owner and proved 2026-11-23; awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S21]
     owner: Extraction + reviewers + spec owner
     files:
@@ -444,7 +444,7 @@ steps:
 
   - id: S27
     day: D3-5
-    state: IN_PROGRESS  # models + laws signed off and proved 2026-11-23 (parseI64 law after S24); awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S21, S24]
     owner: Extraction + reviewers + spec owner
     files:
@@ -459,7 +459,7 @@ steps:
 
   - id: S28
     day: D3-5
-    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S24, S26]
     owner: Lean
     files:
@@ -474,7 +474,7 @@ steps:
 
   - id: S29
     day: D4-6
-    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S24, S26]  # and human decision H2 (accepted 2026-11-23)
     owner: Lean
     files:
@@ -488,7 +488,7 @@ steps:
 
   - id: S30
     day: D5-6
-    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S27, S28]
     owner: Lean
     files:
@@ -499,7 +499,7 @@ steps:
 
   - id: S31
     day: D4-8
-    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S21, S25]
     owner: Lean
     files:
@@ -510,7 +510,7 @@ steps:
 
   - id: S32
     day: D6-8
-    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S25, S26, S27]
     owner: Lean
     files:
@@ -521,7 +521,7 @@ steps:
 
   - id: S33
     day: D8-9
-    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     depends_on: [S28, S29, S30, S31, S32]
     owner: Lean + review
     files:
