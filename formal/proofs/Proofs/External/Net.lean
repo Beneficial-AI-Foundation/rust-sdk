@@ -23,7 +23,7 @@ theorem byte_val (n : Nat) : (ExtModel.byte n).val = n % 256 := by
   simp [ExtModel.byte, UScalar.val]
 
 /-- Masking with `0xff00` keeps the second byte: `n &&& 0xff00 = (n / 256 % 256) * 256`. -/
-theorem and_ff00 (n : Nat) : n &&& 65280 = n / 256 % 256 * 256 := by
+theorem and_65280_eq (n : Nat) : n &&& 65280 = n / 256 % 256 * 256 := by
   have h1 : (65280 : Nat) = (2 ^ 8 - 1) * 2 ^ 8 := by norm_num
   apply Nat.eq_of_testBit_eq
   intro i
@@ -276,5 +276,5 @@ theorem core.net.ip_addr.Ipv6Addr.is_multicast_spec (self : core.net.ip_addr.Ipv
     · intro he; apply UScalar.eq_of_val_eq; rw [he]; rfl
   simp only [core.net.ip_addr.Ipv6Addr.is_multicast, h, List.getD_cons_zero, WP.spec_ok,
     decide_eq_true_eq]
-  rw [hv, UScalar.val_and, show (65280#u16).val = 65280 from rfl, and_ff00]
+  rw [hv, UScalar.val_and, show (65280#u16).val = 65280 from rfl, and_65280_eq]
   omega

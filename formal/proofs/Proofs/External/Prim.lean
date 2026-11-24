@@ -44,8 +44,8 @@ theorem hmac_sha256_verify_spec (key : Slice U8) (msg : Slice U8) (tag : Slice U
   simp [hmac_sha256_verify]
 
 /-- A tag whose length is not 32 is rejected (in particular a truncated tag). -/
-theorem hmac_sha256_verify_wrong_length (key : Slice U8) (msg : Slice U8) (tag : Slice U8)
-    (h : tag.length ≠ 32) : hmac_sha256_verify key msg tag = ok false := by
+theorem hmac_sha256_verify_eq_ok_false_of_length_ne (key : Slice U8) (msg : Slice U8)
+    (tag : Slice U8) (h : tag.length ≠ 32) : hmac_sha256_verify key msg tag = ok false := by
   simp only [hmac_sha256_verify, ok.injEq, decide_eq_false_iff_not]
   intro heq
   apply h
@@ -70,7 +70,7 @@ theorem b64_encode_into_spec (input : Slice U8) (out : String)
     b64_encode_into input out ⦃ (result : String) =>
       utf8 result = utf8 out ++ b64 input.val ⦄ := by
   have hb : utf8 (String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))) =
-      b64 input.val := utf8_ofList_ascii _ (b64_ascii _)
+      b64 input.val := utf8_ofList_ascii _ (val_lt_128_of_mem_b64 _)
   have hlen : (out ++ String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))
       ).utf8ByteSize ≤ maxStringBytes := by
     rw [← length_utf8, utf8_append, hb, List.length_append, length_utf8, length_b64]; exact h
@@ -81,7 +81,7 @@ theorem b64_encode_into_fail (input : Slice U8) (out : String)
     (h : maxStringBytes < out.utf8ByteSize + (4 * input.length + 2) / 3) :
     b64_encode_into input out = fail Error.panic := by
   have hb : utf8 (String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))) =
-      b64 input.val := utf8_ofList_ascii _ (b64_ascii _)
+      b64 input.val := utf8_ofList_ascii _ (val_lt_128_of_mem_b64 _)
   have hlen : ¬ (out ++ String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))
       ).utf8ByteSize ≤ maxStringBytes := by
     rw [← length_utf8, utf8_append, hb, List.length_append, length_utf8, length_b64]

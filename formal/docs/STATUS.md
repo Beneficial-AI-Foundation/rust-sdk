@@ -463,6 +463,24 @@ S22 check), `proof: OPEN`.
 | T07, T08 | `tower::default_port`, `tower::AllowedPort::matches` | `transport/streamable_http_server/tower.rs:1146, 1164` |
 | A01–A03 | `AuthorizationManager::{embedded_ipv4, is_disallowed_metadata_ipv4, is_disallowed_metadata_ipv6}` | `transport/auth.rs:1359, 1343, 1370` |
 
+**Mathlib naming batch (2026-11-24, human decision):** a read-only audit of the hand-written Lean
+under `formal/` listed the names that break Mathlib conventions; the clear violations were renamed,
+name only, with every statement, definition body and proof unchanged (checked by re-applying the
+rename map to `99a2590` and diffing: only three re-wraps and one docstring rewording differ; full
+`lake build` and the four `lean-guard.sh` checks pass; `#print axioms` output unchanged; one
+independent `mcp-review` confirmed). Signed-off names renamed and **re-signed by the spec owner
+Hoang Le Truong on 2026-11-24**: `NoRs1Fallback` → `noRs1Fallback`; C05
+`notification_is_standard_method` → `is_standard_method_of_is_standard_notification`; C03
+`into_result_consistent` → `into_result_eq`; `first_eq_head_into_vec` → `first_eq_head?_into_vec`;
+`b64_alphabet` → `isSome_b64Val_of_mem_b64`; `b64Val_isSome_iff` → `isSome_b64Val_iff`;
+`utf8_inj` → `utf8_injective`; `b64_ascii` → `val_lt_128_of_mem_b64`; `map_err_Ok`/`map_err_Err` →
+`map_err_ok`/`map_err_err`; `RangeInclusive.contains_eq` → `contains_eq_match_le`;
+`hmac_sha256_verify_wrong_length` → `hmac_sha256_verify_eq_ok_false_of_length_ne`;
+`dot_not_mem_b64` → `dot_notMem_b64`. Helpers renamed: `isSome_b64Val_b64Sym`,
+`ne_dot_of_mem_{versionV1,versionV2,b64}`, `and_65280_eq`, `isDigit`, `isDigit_of_mem_digitBytes`,
+`takeWhile_isDigit_eq_self`, `val_cast_u64`. Kept as project conventions: `_spec`/`_fail`,
+`_roundtrip`; acronyms are written as words (`docs/STYLE_GUIDE.md`, "Formatting").
+
 **S24 spec cycle (2026-11-24):** drafts `formal/specs/Drafts/Model.lean` (M01–M14, the plan
 Section 16.1 joint lemmas, C03, the S27 deferred law) and `formal/specs/Drafts/Transport.lean`
 (T04–T08, C05), with `Defs/{Bytes,IntParse,JsonRpc,Methods,Tower}.lean` (not yet imported from

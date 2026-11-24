@@ -14,7 +14,7 @@ Builds the `rs1` MAC transcript: `DOMAIN_V1`, the 8 big-endian bytes of the leng
 associated data, the associated data, then the body, by four `Vec::extend_from_slice` calls.
 
 Uses `Proofs.RequestStateWire.extend_from_slice_spec` through `step`; the length prefix is
-`be64` of the exact length by `val_to_slice_to_be_bytes` and `val_cast_U64`.
+`be64` of the exact length by `val_to_slice_to_be_bytes` and `val_cast_u64`.
 
 Source: "crates/rmcp/src/model/request_state_wire.rs", line 183 in the patched copy
 (patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
@@ -51,7 +51,7 @@ theorem transcript_v1_spec (associated_data : Slice U8) (body : Slice U8)
   unfold transcript_v1
   have hs : (Array.to_slice (core.num.U64.to_be_bytes
       (UScalar.cast .U64 associated_data.len))).val = be64 associated_data.length := by
-    rw [val_to_slice_to_be_bytes, val_cast_U64, Slice.len_val]
+    rw [val_to_slice_to_be_bytes, val_cast_u64, Slice.len_val]
   step as ⟨t, ht⟩
   rw [List.nil_append, val_DOMAIN_V1] at ht
   simp only [lift, bind_tc_ok]

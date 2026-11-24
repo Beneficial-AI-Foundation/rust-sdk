@@ -1062,9 +1062,9 @@ Joint lemmas, stated with the targets because later phases use them as a set: M1
 |---|---|---|---|
 | C01 `sse_observe_append` | If `observe st a = Ok` with state `st'`, then `observe st (a ++ b)` equals `observe st' b` (result and state) | T03 | Chunk boundaries do not change the limiter's decision, including a CRLF split across chunks; this is what a later proof of `bounded_sse_stream` needs |
 | C02 `sse_observe_bound` | If `sat(retained + line) ≤ max` holds before and `observe` returns `Ok`, it holds after | T01–T03 | The limiter's memory guarantee: an accepted stream never retains more than `max_size` bytes of the current event |
-| C03 `into_result_consistent` | `into_result m = (into_response m).map (fun (r, i) => (Ok r, some i)) <\|> (into_error m).map (fun (e, i) => (Err e, i))` | M02, M04, M05 | Routing code may use either form |
+| C03 `into_result_eq` (renamed to Mathlib style 2026-11-24, was `into_result_consistent`) | `into_result m = (into_response m).map (fun (r, i) => (Ok r, some i)) <\|> (into_error m).map (fun (e, i) => (Err e, i))` | M02, M04, M05 | Routing code may use either form |
 | C04 `ipv6_embedding_no_bypass` | `embedded_ipv4 a = some v → is_disallowed_metadata_ipv6 a = is_disallowed_metadata_ipv4 v` | A01–A03 | No SSRF bypass by writing a blocked IPv4 address in IPv4-mapped, compatible, NAT64 or 6to4 form |
-| C05 `notification_is_standard_method` | `is_standard_notification m → is_standard_method m` | T05, T06 | The allow-lists are consistent |
+| C05 `is_standard_method_of_is_standard_notification` (renamed to Mathlib style 2026-11-24, was `notification_is_standard_method`) | `is_standard_notification m → is_standard_method m` | T05, T06 | The allow-lists are consistent |
 
 ### 16.5 Measured and not taken
 

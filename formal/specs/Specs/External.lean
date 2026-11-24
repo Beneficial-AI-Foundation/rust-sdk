@@ -71,37 +71,37 @@ info: 'Theorems.External.Base64.b64Decode_eq_some_iff' depends on axioms: [prope
 #print axioms Theorems.External.Base64.b64Decode_eq_some_iff
 
 /-- **Alphabet:** every byte of an encoding is a symbol of the URL-safe alphabet. -/
-theorem _root_.Theorems.External.Base64.b64_alphabet
+theorem _root_.Theorems.External.Base64.isSome_b64Val_of_mem_b64
     : ∀ (x : List U8), ∀ c ∈ b64 x, (b64Val c).isSome :=
-  _root_.Proofs.External.Base64.b64_alphabet
+  _root_.Proofs.External.Base64.isSome_b64Val_of_mem_b64
 
 /--
-info: 'Theorems.External.Base64.b64_alphabet' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'Theorems.External.Base64.isSome_b64Val_of_mem_b64' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.External.Base64.b64_alphabet
+#print axioms Theorems.External.Base64.isSome_b64Val_of_mem_b64
 
 /-- The symbols of the URL-safe alphabet are the bytes `A`–`Z`, `a`–`z`, `0`–`9`, `-`, `_`. -/
-theorem _root_.Theorems.External.Base64.b64Val_isSome_iff (c : U8) :
+theorem _root_.Theorems.External.Base64.isSome_b64Val_iff (c : U8) :
     (b64Val c).isSome ↔ (65 ≤ c.val ∧ c.val ≤ 90) ∨ (97 ≤ c.val ∧ c.val ≤ 122) ∨
       (48 ≤ c.val ∧ c.val ≤ 57) ∨ c.val = 45 ∨ c.val = 95 :=
-  _root_.Proofs.External.Base64.b64Val_isSome_iff c
+  _root_.Proofs.External.Base64.isSome_b64Val_iff c
 
 /--
-info: 'Theorems.External.Base64.b64Val_isSome_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'Theorems.External.Base64.isSome_b64Val_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.External.Base64.b64Val_isSome_iff
+#print axioms Theorems.External.Base64.isSome_b64Val_iff
 
 /-- In particular an encoding never contains the separator `.` (`Defs.Wire.dot`). -/
-theorem _root_.Theorems.External.Base64.dot_not_mem_b64 (x : List U8) : Defs.Wire.dot ∉ b64 x :=
-  _root_.Proofs.External.Base64.dot_not_mem_b64 x
+theorem _root_.Theorems.External.Base64.dot_notMem_b64 (x : List U8) : Defs.Wire.dot ∉ b64 x :=
+  _root_.Proofs.External.Base64.dot_notMem_b64 x
 
 /--
-info: 'Theorems.External.Base64.dot_not_mem_b64' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'Theorems.External.Base64.dot_notMem_b64' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.External.Base64.dot_not_mem_b64
+#print axioms Theorems.External.Base64.dot_notMem_b64
 
 /-- **Length:** the unpadded encoding of `n` bytes has `⌈4n/3⌉ = (4n + 2) / 3` symbols. -/
 theorem _root_.Theorems.External.Base64.length_b64
@@ -271,14 +271,14 @@ info: 'Theorems.External.Utf8.strOfBytes?_eq_none_iff' depends on axioms: [prope
 #print axioms Theorems.External.Utf8.strOfBytes?_eq_none_iff
 
 /-- Two strings with the same bytes are equal. -/
-theorem _root_.Theorems.External.Utf8.utf8_inj {s t : String} (h : utf8 s = utf8 t) : s = t :=
-  _root_.Proofs.External.Utf8.utf8_inj h
+theorem _root_.Theorems.External.Utf8.utf8_injective {s t : String} (h : utf8 s = utf8 t) : s = t :=
+  _root_.Proofs.External.Utf8.utf8_injective h
 
 /--
-info: 'Theorems.External.Utf8.utf8_inj' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'Theorems.External.Utf8.utf8_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.External.Utf8.utf8_inj
+#print axioms Theorems.External.Utf8.utf8_injective
 
 /-- ASCII bytes, as characters, encode to themselves. -/
 theorem _root_.Theorems.External.Utf8.utf8_ofList_ascii (l : List U8) (h : ∀ b ∈ l, b.val < 128) :
@@ -325,14 +325,15 @@ info: 'Theorems.External.Utf8.toStr_val' depends on axioms: [propext, Classical.
 #print axioms Theorems.External.Utf8.toStr_val
 
 /-- Every symbol of an encoding is ASCII. -/
-theorem _root_.Theorems.External.Utf8.b64_ascii (x : List U8) : ∀ b ∈ b64 x, b.val < 128 :=
-  _root_.Proofs.External.Utf8.b64_ascii x
+theorem _root_.Theorems.External.Utf8.val_lt_128_of_mem_b64 (x : List U8) :
+    ∀ b ∈ b64 x, b.val < 128 :=
+  _root_.Proofs.External.Utf8.val_lt_128_of_mem_b64 x
 
 /--
-info: 'Theorems.External.Utf8.b64_ascii' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'Theorems.External.Utf8.val_lt_128_of_mem_b64' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.External.Utf8.b64_ascii
+#print axioms Theorems.External.Utf8.val_lt_128_of_mem_b64
 
 /-- A Rust `String` length (at most `isize::MAX`) fits in a `usize`, so the bytes of any
 `String` the models produce form a `Slice`. -/
@@ -391,18 +392,18 @@ info: 'Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_spec' 
 #print axioms Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_spec
 
 /-- A tag whose length is not 32 is rejected (in particular a truncated tag). -/
-theorem _root_.Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_wrong_length
+theorem _root_.Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_eq_ok_false_of_length_ne
     (key : Slice U8) (msg : Slice U8) (tag : Slice U8)
     (h : tag.length ≠ 32) : hmac_sha256_verify key msg tag = ok false :=
-  _root_.model.request_state_wire.prim.hmac_sha256_verify_wrong_length key msg tag h
+  _root_.model.request_state_wire.prim.hmac_sha256_verify_eq_ok_false_of_length_ne key msg tag h
 
 /--
-info: 'Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_wrong_length' depends on axioms: [propext,
+info: 'Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_eq_ok_false_of_length_ne' depends on axioms: [propext,
  Classical.choice,
  Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_wrong_length
+#print axioms Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_eq_ok_false_of_length_ne
 
 /-- The tag that `hmac_sha256` computes is accepted. -/
 theorem _root_.Theorems.External.model.request_state_wire.prim.hmac_sha256_verify_hmac_sha256
@@ -534,31 +535,31 @@ info: 'Theorems.External.core.result.Result.is_err_spec' depends on axioms: [pro
 #print axioms Theorems.External.core.result.Result.is_err_spec
 
 /-- `core::result::Result::map_err` on `Ok`: unchanged, the closure is not called. -/
-theorem Theorems.External.core.result.Result.map_err_Ok {T E F O : Type}
+theorem Theorems.External.core.result.Result.map_err_ok {T E F O : Type}
     (inst : core.ops.function.FnOnce O E F) (t : T) (op : O) :
     core.result.Result.map_err inst (core.result.Result.Ok t : core.result.Result T E) op =
       ok (core.result.Result.Ok t) :=
-  _root_.core.result.Result.map_err_Ok inst t op
+  _root_.core.result.Result.map_err_ok inst t op
 
 /--
-info: 'Theorems.External.core.result.Result.map_err_Ok' does not depend on any axioms
+info: 'Theorems.External.core.result.Result.map_err_ok' does not depend on any axioms
 -/
 #guard_msgs in
-#print axioms Theorems.External.core.result.Result.map_err_Ok
+#print axioms Theorems.External.core.result.Result.map_err_ok
 
 /-- `core::result::Result::map_err` on `Err e`: `Err (op e)`; the closure's failure
 propagates. -/
-theorem Theorems.External.core.result.Result.map_err_Err {T E F O : Type}
+theorem Theorems.External.core.result.Result.map_err_err {T E F O : Type}
     (inst : core.ops.function.FnOnce O E F) (e : E) (op : O) :
     core.result.Result.map_err inst (core.result.Result.Err e : core.result.Result T E) op =
       (do let f ← inst.call_once op e; ok (core.result.Result.Err f)) :=
-  _root_.core.result.Result.map_err_Err inst e op
+  _root_.core.result.Result.map_err_err inst e op
 
 /--
-info: 'Theorems.External.core.result.Result.map_err_Err' does not depend on any axioms
+info: 'Theorems.External.core.result.Result.map_err_err' does not depend on any axioms
 -/
 #guard_msgs in
-#print axioms Theorems.External.core.result.Result.map_err_Err
+#print axioms Theorems.External.core.result.Result.map_err_err
 
 /-- **Spec theorem for `<&[T] as Default>::default`**: the empty slice. -/
 theorem Theorems.External.Shared0Slice.Insts.CoreDefaultDefault.default_spec (T : Type) :
@@ -1384,7 +1385,7 @@ fails or diverges that propagates, if it is `false` the result is `false` withou
 call, and if it is `true` the result is `item < end` (exhausted) or `item <= end` (not
 exhausted), including its failure. The four cases cover every result of the first call (same
 model and Rust lines as `contains_u8_spec`; `&&` short-circuits). -/
-theorem Theorems.External.core.ops.range.RangeInclusive.contains_eq {Idx : Type} {U : Type}
+theorem Theorems.External.core.ops.range.RangeInclusive.contains_eq_match_le {Idx : Type} {U : Type}
     (cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
     (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U)
     (cmpPartialOrdInst2 : core.cmp.PartialOrd U Idx)
@@ -1403,14 +1404,14 @@ theorem Theorems.External.core.ops.range.RangeInclusive.contains_eq {Idx : Type}
         cmpPartialOrdInst2 self item =
         if self.exhausted then cmpPartialOrdInst2.lt item self.«end»
         else cmpPartialOrdInst2.le item self.«end») :=
-  _root_.core.ops.range.RangeInclusive.contains_eq cmpPartialOrdInst cmpPartialOrdInst1
+  _root_.core.ops.range.RangeInclusive.contains_eq_match_le cmpPartialOrdInst cmpPartialOrdInst1
     cmpPartialOrdInst2 self item
 
 /--
-info: 'Theorems.External.core.ops.range.RangeInclusive.contains_eq' does not depend on any axioms
+info: 'Theorems.External.core.ops.range.RangeInclusive.contains_eq_match_le' does not depend on any axioms
 -/
 #guard_msgs in
-#print axioms Theorems.External.core.ops.range.RangeInclusive.contains_eq
+#print axioms Theorems.External.core.ops.range.RangeInclusive.contains_eq_match_le
 
 /-! ## `Proofs/External/IntParse.lean`: `str::parse` and `i64::from_str` (Phase 2) -/
 

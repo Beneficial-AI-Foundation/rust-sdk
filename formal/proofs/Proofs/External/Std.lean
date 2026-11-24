@@ -62,7 +62,7 @@ theorem core.result.Result.is_err_spec {T : Type} {E : Type} (self : core.result
 
 /-- `core::result::Result::map_err` on `Ok`: unchanged, the closure is not called. -/
 @[simp]
-theorem core.result.Result.map_err_Ok {T E F O : Type}
+theorem core.result.Result.map_err_ok {T E F O : Type}
     (inst : core.ops.function.FnOnce O E F) (t : T) (op : O) :
     core.result.Result.map_err inst (core.result.Result.Ok t : core.result.Result T E) op =
       Aeneas.Std.Result.ok (core.result.Result.Ok t) := rfl
@@ -70,7 +70,7 @@ theorem core.result.Result.map_err_Ok {T E F O : Type}
 /-- `core::result::Result::map_err` on `Err e`: `Err (op e)`; the closure's failure
 propagates. -/
 @[simp]
-theorem core.result.Result.map_err_Err {T E F O : Type}
+theorem core.result.Result.map_err_err {T E F O : Type}
     (inst : core.ops.function.FnOnce O E F) (e : E) (op : O) :
     core.result.Result.map_err inst (core.result.Result.Err e : core.result.Result T E) op =
       (do let f ← inst.call_once op e; Aeneas.Std.Result.ok (core.result.Result.Err f)) := rfl
@@ -635,7 +635,7 @@ theorem core.ops.range.RangeInclusive.new_contains_u8_spec (a b item : U8) :
 fails or diverges that propagates, if it is `false` the result is `false` without a second
 call, and if it is `true` the result is `item < end` (exhausted) or `item <= end` (not
 exhausted), including its failure. -/
-theorem core.ops.range.RangeInclusive.contains_eq {Idx : Type} {U : Type}
+theorem core.ops.range.RangeInclusive.contains_eq_match_le {Idx : Type} {U : Type}
     (cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
     (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U)
     (cmpPartialOrdInst2 : core.cmp.PartialOrd U Idx)

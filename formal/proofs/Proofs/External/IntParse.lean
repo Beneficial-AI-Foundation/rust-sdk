@@ -28,7 +28,7 @@ namespace Proofs.External.IntParse
 open Proofs.External.Utf8 Proofs.External.Base64
 
 /-- The decimal-digit test of the statements. -/
-def isDig (c : U8) : Bool := decide (48 ≤ c.val ∧ c.val ≤ 57)
+def isDigit (c : U8) : Bool := decide (48 ≤ c.val ∧ c.val ≤ 57)
 
 /-- The value of the digits `l` read left to right after the value `acc`. -/
 def digitFold (acc : Nat) (l : List U8) : Nat :=
@@ -60,8 +60,8 @@ theorem inRange_mono {positive : Bool} {x y : Nat} (hxy : x ≤ y) (hy : InRange
 /-- The digit loop, from a magnitude in range. -/
 theorem i64DigitLoop_eq (positive : Bool) (a : Nat) (l : List U8) (ha : InRange positive a) :
     i64DigitLoop positive (signed positive a) l =
-      if InRange positive (digitFold a (l.takeWhile isDig)) then
-        (if l.takeWhile isDig = l then .ok (signed positive (digitFold a (l.takeWhile isDig)))
+      if InRange positive (digitFold a (l.takeWhile isDigit)) then
+        (if l.takeWhile isDigit = l then .ok (signed positive (digitFold a (l.takeWhile isDigit)))
           else .error .InvalidDigit)
       else .error (if positive then .PosOverflow else .NegOverflow) := by
   induction l generalizing a with
@@ -69,11 +69,11 @@ theorem i64DigitLoop_eq (positive : Bool) (a : Nat) (l : List U8) (ha : InRange 
     simp only [i64DigitLoop, List.takeWhile_nil, digitFold, List.foldl_nil, if_true, ha]
   | cons c t ih =>
     by_cases hc : 48 ≤ c.val ∧ c.val ≤ 57
-    · have hd : isDig c = true := by simp only [isDig, decide_eq_true_eq]; exact hc
+    · have hd : isDigit c = true := by simp only [isDigit, decide_eq_true_eq]; exact hc
       have hdec : decDigit? c = some (c.val - 48) := by rw [decDigit?, if_pos hc]
       rw [List.takeWhile_cons_of_pos hd]
-      have hfold : digitFold a (c :: t.takeWhile isDig) =
-          digitFold (10 * a + (c.val - 48)) (t.takeWhile isDig) := by
+      have hfold : digitFold a (c :: t.takeWhile isDigit) =
+          digitFold (10 * a + (c.val - 48)) (t.takeWhile isDigit) := by
         simp only [digitFold, List.foldl_cons]
       rw [hfold]
       have hnext : (if positive then signed positive a * 10 + ((c.val - 48 : Nat) : Int)
@@ -82,7 +82,7 @@ theorem i64DigitLoop_eq (positive : Bool) (a : Nat) (l : List U8) (ha : InRange 
         cases positive <;> simp only [signed, if_true, if_false, Bool.false_eq_true] <;> push_cast
           <;> ring
       simp only [i64DigitLoop, hdec, hnext]
-      have hle := le_digitFold (10 * a + (c.val - 48)) (t.takeWhile isDig)
+      have hle := le_digitFold (10 * a + (c.val - 48)) (t.takeWhile isDigit)
       by_cases hr : InRange positive (10 * a + (c.val - 48))
       · have hr' : -2 ^ 63 ≤ signed positive (10 * a + (c.val - 48)) ∧
             signed positive (10 * a + (c.val - 48)) < 2 ^ 63 := by
@@ -95,7 +95,7 @@ theorem i64DigitLoop_eq (positive : Bool) (a : Nat) (l : List U8) (ha : InRange 
           unfold InRange at hr; unfold signed
           cases positive <;> simp only [if_true, if_false, Bool.false_eq_true] at hr ⊢ <;> omega
         rw [if_neg hr', if_neg (fun h => hr (inRange_mono hle h))]
-    · have hd : isDig c = false := by simp only [isDig, decide_eq_false_iff_not]; exact hc
+    · have hd : isDigit c = false := by simp only [isDigit, decide_eq_false_iff_not]; exact hc
       have hdec : decDigit? c = none := by rw [decDigit?, if_neg hc]
       rw [List.takeWhile_cons_of_neg (by simp only [hd]; decide)]
       simp only [i64DigitLoop, hdec, digitFold, List.foldl_nil, ha, if_true]
@@ -137,11 +137,11 @@ theorem from_str_eq (src : Str) (sign body : List U8)
     (h_body : body ≠ [])
     (h_unsigned : sign = [] → ∀ c ∈ body.head?, c.val ≠ 43 ∧ c.val ≠ 45) :
     I64.Insts.CoreStrTraitsFromStrParseIntError.from_str src =
-      ok (if InRange (decide (sign ≠ [45#u8])) (digitFold 0 (body.takeWhile isDig)) then
-          (if body.takeWhile isDig = body then
+      ok (if InRange (decide (sign ≠ [45#u8])) (digitFold 0 (body.takeWhile isDigit)) then
+          (if body.takeWhile isDigit = body then
             core.result.Result.Ok
               ⟨BitVec.ofInt 64 (signed (decide (sign ≠ [45#u8]))
-                (digitFold 0 (body.takeWhile isDig)))⟩
+                (digitFold 0 (body.takeWhile isDigit)))⟩
           else core.result.Result.Err { kind := .InvalidDigit })
         else core.result.Result.Err
           { kind := if decide (sign ≠ [45#u8]) then .PosOverflow else .NegOverflow }) := by
@@ -162,8 +162,8 @@ theorem digitFold_replicate_zero (k : Nat) : digitFold 0 (List.replicate k 48#u8
     rw [List.replicate_succ, digitFold, List.foldl_cons]
     exact ih
 
-theorem takeWhile_of_all (l : List U8) (h : ∀ b ∈ l, isDig b = true) :
-    l.takeWhile isDig = l := by
+theorem takeWhile_isDigit_eq_self (l : List U8) (h : ∀ b ∈ l, isDigit b = true) :
+    l.takeWhile isDigit = l := by
   induction l with
   | nil => rfl
   | cons c t ih =>
@@ -200,12 +200,12 @@ theorem utf8_toString (m : Nat) : utf8 (toString m) = digitBytes m := by
   rw [byte_val]
   omega
 
-theorem isDig_digitBytes (m : Nat) : ∀ b ∈ digitBytes m, isDig b = true := by
+theorem isDigit_of_mem_digitBytes (m : Nat) : ∀ b ∈ digitBytes m, isDigit b = true := by
   intro b hb
   rw [digitBytes, List.mem_map] at hb
   obtain ⟨ch, hch, rfl⟩ := hb
   have := toNat_of_mem_toDigits hch
-  simp only [isDig, byte_val, decide_eq_true_eq]
+  simp only [isDigit, byte_val, decide_eq_true_eq]
   omega
 
 theorem digitFold_map (acc : Nat) (L : List Char) (h : ∀ ch ∈ L, ch.toNat < 256) :
@@ -270,12 +270,12 @@ theorem I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_spec
               (¬ neg → e.kind = ExtModel.IntErrorKind.PosOverflow)) ∨
             (¬ overflow ∧ d ≠ body ∧ e.kind = ExtModel.IntErrorKind.InvalidDigit) ⦄ := by
   rw [from_str_eq src sign body h_src h_sign h_body h_unsigned, WP.spec_ok]
-  have hfun : (fun c : U8 => decide (48 ≤ c.val ∧ c.val ≤ 57)) = isDig := rfl
-  have hv : Nat.ofDigits 10 ((body.takeWhile isDig).map (fun c => c.val - 48)).reverse =
-      digitFold 0 (body.takeWhile isDig) := by
+  have hfun : (fun c : U8 => decide (48 ≤ c.val ∧ c.val ≤ 57)) = isDigit := rfl
+  have hv : Nat.ofDigits 10 ((body.takeWhile isDigit).map (fun c => c.val - 48)).reverse =
+      digitFold 0 (body.takeWhile isDigit) := by
     rw [digitFold_eq_ofDigits, Nat.zero_mul, Nat.zero_add]
   simp only [hfun, hv]
-  generalize body.takeWhile isDig = d
+  generalize body.takeWhile isDigit = d
   generalize digitFold 0 d = v
   have hv64 : ∀ x : Int, -2 ^ 63 ≤ x → x < 2 ^ 63 →
       (⟨BitVec.ofInt 64 x⟩ : I64).val = x := by
@@ -309,17 +309,17 @@ theorem I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_signed_toString
     I64.Insts.CoreStrTraitsFromStrParseIntError.from_str src =
       ok (core.result.Result.Ok n) := by
   rw [utf8_toString, List.append_assoc] at h_src
-  have hdig : ∀ b ∈ List.replicate k 48#u8 ++ digitBytes n.val.natAbs, isDig b = true := by
+  have hdig : ∀ b ∈ List.replicate k 48#u8 ++ digitBytes n.val.natAbs, isDigit b = true := by
     intro b hb
     rcases List.mem_append.1 hb with hb | hb
     · rw [List.eq_of_mem_replicate hb]; rfl
-    · exact isDig_digitBytes _ b hb
+    · exact isDigit_of_mem_digitBytes _ b hb
   have hne : List.replicate k 48#u8 ++ digitBytes n.val.natAbs ≠ [] := by
     rw [ne_eq, List.append_eq_nil_iff, not_and]
     exact fun _ => digitBytes_ne_nil _
-  have htw : (List.replicate k 48#u8 ++ digitBytes n.val.natAbs).takeWhile isDig =
+  have htw : (List.replicate k 48#u8 ++ digitBytes n.val.natAbs).takeWhile isDigit =
       List.replicate k 48#u8 ++ digitBytes n.val.natAbs :=
-    takeWhile_of_all _ hdig
+    takeWhile_isDigit_eq_self _ hdig
   have hval : digitFold 0 (List.replicate k 48#u8 ++ digitBytes n.val.natAbs) = n.val.natAbs := by
     rw [digitFold_append, digitFold_replicate_zero, digitFold_digitBytes]
   have hunsigned : sign = [] →
@@ -327,7 +327,7 @@ theorem I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_signed_toString
         c.val ≠ 43 ∧ c.val ≠ 45 := by
     intro _ c hc
     have := hdig c (List.mem_of_mem_head? hc)
-    simp only [isDig, decide_eq_true_eq] at this
+    simp only [isDigit, decide_eq_true_eq] at this
     omega
   have hsign : sign = [] ∨ sign = [43#u8] ∨ sign = [45#u8] := by
     rcases h_sign with h | h | h

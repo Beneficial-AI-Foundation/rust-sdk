@@ -110,7 +110,7 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
   | some rp =>
     simp only at ho
     have hrs : openRs1 self (sealed : Slice Std.U8).val associated_data.val now_ms.val =
-        (if Defs.CodecState.NoRs1Fallback self then .error .UnknownKeyId else
+        (if Defs.CodecState.noRs1Fallback self then .error .UnknownKeyId else
           match ExtModel.b64Decode rp.body.val, ExtModel.b64Decode rp.tag.val with
           | none, _ => .error .InvalidEncoding
           | some _, none => .error .InvalidEncoding
@@ -123,7 +123,7 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
     rcases self with ⟨keys⟩
     cases keys with
     | Single key =>
-      simp only [Defs.CodecState.NoRs1Fallback, Bool.false_eq_true, if_false]
+      simp only [Defs.CodecState.noRs1Fallback, Bool.false_eq_true, if_false]
       apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.body)
       intro o1 ho1
       cases o1 with
@@ -183,11 +183,11 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
       apply WP.spec_bind (alloc.vec.Vec.is_empty_spec _ fbs)
       intro b hb
       by_cases hemp : fbs.val = []
-      · have hnf : Defs.CodecState.NoRs1Fallback ⟨.Ring keys mode fbs⟩ = true := by
-          simp [Defs.CodecState.NoRs1Fallback, hemp]
+      · have hnf : Defs.CodecState.noRs1Fallback ⟨.Ring keys mode fbs⟩ = true := by
+          simp [Defs.CodecState.noRs1Fallback, hemp]
         simp [hb, hemp, hnf, resultBytes]
-      have hnf : Defs.CodecState.NoRs1Fallback ⟨.Ring keys mode fbs⟩ = false := by
-        simp [Defs.CodecState.NoRs1Fallback, hemp]
+      have hnf : Defs.CodecState.noRs1Fallback ⟨.Ring keys mode fbs⟩ = false := by
+        simp [Defs.CodecState.noRs1Fallback, hemp]
       simp only [hb, hemp, decide_false, Bool.false_eq_true, if_false, hnf]
       apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.body)
       intro o1 ho1

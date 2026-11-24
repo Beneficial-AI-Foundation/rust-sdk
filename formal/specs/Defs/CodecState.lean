@@ -153,7 +153,7 @@ instance (codec : RequestStateCodec) (msg tag : List U8) : Decidable (Rs1Accepts
 /-- A keyring codec with no rs1 fallback, which rejects every `rs1` token with `UnknownKeyId`
 before decoding (request_state.rs lines 617–621; plan Section 3, "E09 — error order",
 step 2). -/
-def NoRs1Fallback (codec : RequestStateCodec) : Bool :=
+def noRs1Fallback (codec : RequestStateCodec) : Bool :=
   match codec.keys with
   | .Single _ => false
   | .Ring _ _ rs1_fallbacks => rs1_fallbacks.val.isEmpty
@@ -188,7 +188,7 @@ def openRs1 (codec : RequestStateCodec) (token ad : List U8) (now : Int) :
   match components token with
   | [v, bodyB64, tagB64] =>
     if v ≠ versionV1 then .error .MalformedFormat
-    else if NoRs1Fallback codec then .error .UnknownKeyId
+    else if noRs1Fallback codec then .error .UnknownKeyId
     else
       match ExtModel.b64Decode bodyB64, ExtModel.b64Decode tagB64 with
       | none, _ => .error .InvalidEncoding

@@ -20,7 +20,7 @@ contributions", rule 4).
 Draft specification statements for the Phase 2 targets of
 `crates/rmcp/src/transport/async_rw.rs` (T04 `without_carriage_return`, T05
 `is_standard_notification`, T06 `is_standard_method`, and the composition theorem C05
-`notification_is_standard_method`) and of
+`is_standard_method_of_is_standard_notification`) and of
 `crates/rmcp/src/transport/streamable_http_server/tower.rs` (T07 `default_port`, T08
 `AllowedPort::matches`). They are stated against the translated functions of `Rmcp.Funs`
 (Aeneas `nightly-2026.08.20-5d08da4`; target `x86_64-unknown-linux-gnu`, `--no-default-features
@@ -47,7 +47,7 @@ code form "in the core list and not in `codeOmits`", with the six names listed o
 Proof names follow plan Section 20: `<generated name>_spec`, restated later as
 `Theorems.async_rw.<function>`, `Theorems.tower.default_port` and
 `Theorems.tower.AllowedPort.matches`;
-C05 keeps its name (`Theorems.async_rw.notification_is_standard_method`).
+C05 is restated as `Theorems.async_rw.is_standard_method_of_is_standard_notification`.
 
 This file is a draft: it lives in `formal/specs/Drafts/`, belongs to no library and is never
 built by `lake build`. Each proof is a placeholder, allowed only here. A statement
@@ -124,13 +124,14 @@ theorem is_standard_method_spec (method : Str) :
 
 /-! ## Composition theorem C05 (plan Section 16.4) -/
 
-/-- **C05 `notification_is_standard_method`**: every method that `is_standard_notification`
-accepts, `is_standard_method` accepts too; the allow-lists are consistent (plan Section 16.4,
-C05; uses T05, T06; `async_rw.rs` line 417, `|| is_standard_notification(method)`). About the
-translated functions `is_standard_notification` and `is_standard_method`. It takes a successful
-call returning `true` as its hypothesis, and covers only that case; T05 shows that the call
-never fails. Not tagged `@[step]`. -/
-theorem notification_is_standard_method (method : Str)
+/-- **C05 `is_standard_method_of_is_standard_notification`**: every method that
+`is_standard_notification` accepts, `is_standard_method` accepts too; the allow-lists are
+consistent (plan Section 16.4, C05; uses T05, T06; `async_rw.rs` line 417,
+`|| is_standard_notification(method)`). About the translated functions
+`is_standard_notification` and `is_standard_method`. It takes a successful call returning `true`
+as its hypothesis, and covers only that case; T05 shows that the call never fails. Not tagged
+`@[step]`. -/
+theorem is_standard_method_of_is_standard_notification (method : Str)
     (h : is_standard_notification method = ok true) :
     is_standard_method method = ok true := by
   sorry

@@ -110,7 +110,7 @@ theorem strOfBytes?_eq_none_iff (l : List U8) : strOfBytes? l = none ↔ ∀ s, 
     | some s => exact absurd ((strOfBytes?_eq_some_iff l s).1 hl) (h s)
 
 /-- Two strings with the same bytes are equal. -/
-theorem utf8_inj {s t : String} (h : utf8 s = utf8 t) : s = t := by
+theorem utf8_injective {s t : String} (h : utf8 s = utf8 t) : s = t := by
   have := strOfBytes?_utf8 s
   rw [h, strOfBytes?_utf8] at this
   exact (Option.some.inj this).symm
@@ -174,9 +174,9 @@ theorem toStr_val (s : String) (h : s.toByteArray.size ≤ U32.max) :
   rfl
 
 /-- Every symbol of an encoding is ASCII. -/
-theorem b64_ascii (x : List U8) : ∀ b ∈ b64 x, b.val < 128 := by
+theorem val_lt_128_of_mem_b64 (x : List U8) : ∀ b ∈ b64 x, b.val < 128 := by
   intro b hb
-  have := (b64Val_isSome_iff b).1 (b64_alphabet x b hb)
+  have := (isSome_b64Val_iff b).1 (isSome_b64Val_of_mem_b64 x b hb)
   omega
 
 /-- A Rust `String` length (at most `isize::MAX`) fits in a `usize`, so the bytes of any

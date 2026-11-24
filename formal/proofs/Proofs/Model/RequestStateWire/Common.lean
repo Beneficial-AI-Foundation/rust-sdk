@@ -235,7 +235,7 @@ theorem length_be64 (n : Nat) : (be64 n).length = 8 := by
   simp only [be64, List.length_map, List.length_range]
 
 /-- The cast `usize as u64` is exact: `Usize` has 32 or 64 bits. -/
-theorem val_cast_U64 (x : Usize) : (UScalar.cast .U64 x).val = x.val := by
+theorem val_cast_u64 (x : Usize) : (UScalar.cast .U64 x).val = x.val := by
   apply UScalar.cast_val_mod_pow_greater_numBits_eq
   simp only [UScalarTy.Usize_numBits_eq, UScalarTy.U64_numBits_eq]
   rcases System.Platform.numBits_eq with h | h <;> omega

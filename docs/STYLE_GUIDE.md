@@ -93,7 +93,15 @@ declaration with `set_option ... in`. Use multiples of **200000** as the standar
   possible before breaking.
 - List imports immediately after the file header, without empty lines.
 - Name definitions and theorems (except function spec theorems) following the
-  [Mathlib naming guidelines][mathlib-naming].
+  [Mathlib naming guidelines][mathlib-naming]: theorems snake_case named after their statement,
+  definitions lowerCamelCase (also when `Bool`-valued), types, structures and `Prop`-valued
+  definitions UpperCamelCase; constructors and `≠` are written in lower case inside theorem names
+  (`map_err_ok`, `ne_dot_of_mem_b64`).
+- Acronyms are written as words, as in the Rust names (`ipv4Value`, `embeddedIpv4`, `utf8Bytes`,
+  `parseI64`, `previousWasCr`; human decision 2026-11-24).
+- Project conventions kept beside Mathlib's (human decision 2026-11-24): a function spec theorem
+  is `<generated name>_spec` and its failure-case companion `<generated name>_fail`; round-trip
+  theorems may be named `<function>_roundtrip`. Generated Aeneas names are never renamed.
 
 ## Library layering
 

@@ -44,27 +44,27 @@ open rmcp.model.request_state
 open Defs.Wire (dot versionV1 versionV2 transcriptV1 transcriptV2 b64Len expiryLen bodyExpiry
   maxKidLen components Expired)
 open Defs.CodecState (CodecFallbacksKnown lookupKey resultBytes openRs1 openRs2 openAt openBody
-  Rs1Accepts NoRs1Fallback TagVerifies maxEncodedKidLen)
+  Rs1Accepts noRs1Fallback TagVerifies maxEncodedKidLen)
 
 namespace Proofs.RequestState.Roundtrip
 
 open Proofs.RequestStateWire Proofs.External.Base64
 
-theorem not_dot_of_mem_versionV1 : ∀ x ∈ versionV1, x ≠ dot := by decide
+theorem ne_dot_of_mem_versionV1 : ∀ x ∈ versionV1, x ≠ dot := by decide
 
-theorem not_dot_of_mem_versionV2 : ∀ x ∈ versionV2, x ≠ dot := by decide
+theorem ne_dot_of_mem_versionV2 : ∀ x ∈ versionV2, x ≠ dot := by decide
 
-theorem not_dot_of_mem_b64 (x : List U8) : ∀ c ∈ ExtModel.b64 x, c ≠ dot :=
-  fun _ hc h => dot_not_mem_b64 x (h ▸ hc)
+theorem ne_dot_of_mem_b64 (x : List U8) : ∀ c ∈ ExtModel.b64 x, c ≠ dot :=
+  fun _ hc h => dot_notMem_b64 x (h ▸ hc)
 
 /-- The `.`-components of an `rs1` token are its version, body encoding and tag encoding. -/
 theorem components_tokenV1 (b t : List U8) :
     components (versionV1 ++ [dot] ++ ExtModel.b64 b ++ [dot] ++ ExtModel.b64 t) =
       [versionV1, ExtModel.b64 b, ExtModel.b64 t] := by
   simp only [List.append_assoc, List.cons_append, List.nil_append]
-  rw [components_append_dot _ _ not_dot_of_mem_versionV1,
-    components_append_dot _ _ (not_dot_of_mem_b64 b),
-    components_eq_singleton _ (not_dot_of_mem_b64 t)]
+  rw [components_append_dot _ _ ne_dot_of_mem_versionV1,
+    components_append_dot _ _ (ne_dot_of_mem_b64 b),
+    components_eq_singleton _ (ne_dot_of_mem_b64 t)]
 
 /-- The `.`-components of an `rs2` token are its version and the encodings of kid, body and
 tag. -/
@@ -72,10 +72,10 @@ theorem components_tokenV2 (k b t : List U8) :
     components (versionV2 ++ [dot] ++ ExtModel.b64 k ++ [dot] ++ ExtModel.b64 b ++ [dot] ++
       ExtModel.b64 t) = [versionV2, ExtModel.b64 k, ExtModel.b64 b, ExtModel.b64 t] := by
   simp only [List.append_assoc, List.cons_append, List.nil_append]
-  rw [components_append_dot _ _ not_dot_of_mem_versionV2,
-    components_append_dot _ _ (not_dot_of_mem_b64 k),
-    components_append_dot _ _ (not_dot_of_mem_b64 b),
-    components_eq_singleton _ (not_dot_of_mem_b64 t)]
+  rw [components_append_dot _ _ ne_dot_of_mem_versionV2,
+    components_append_dot _ _ (ne_dot_of_mem_b64 k),
+    components_append_dot _ _ (ne_dot_of_mem_b64 b),
+    components_eq_singleton _ (ne_dot_of_mem_b64 t)]
 
 /-- A byte list with at most four `.`-components has fewer than `Usize.max` `.` bytes (the
 `.`-count premise of E09 and E10). -/
@@ -101,10 +101,10 @@ theorem openRs1_eq_ok (self : RequestStateCodec) (tok key ad body : List U8) (no
       (∃ keys seal_mode rs1_fallbacks kid, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
         kid ∈ rs1_fallbacks.val ∧ lookupKey keys kid = some key)) :
     openRs1 self tok ad now = .ok (body.drop expiryLen) := by
-  have hnf : NoRs1Fallback self = false := by
+  have hnf : noRs1Fallback self = false := by
     rcases h_key with ⟨k, hk, _⟩ | ⟨keys, sm, fbs, kid, hk, hmem, _⟩
-    · simp only [NoRs1Fallback, hk]
-    · simp only [NoRs1Fallback, hk, List.isEmpty_eq_false_iff]
+    · simp only [noRs1Fallback, hk]
+    · simp only [noRs1Fallback, hk, List.isEmpty_eq_false_iff]
       exact List.ne_nil_of_mem hmem
   have hacc : Rs1Accepts self (transcriptV1 ad body)
       (ExtModel.hmacSha256 key (transcriptV1 ad body)).val := by

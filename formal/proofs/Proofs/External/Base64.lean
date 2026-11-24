@@ -47,7 +47,7 @@ theorem b64Sym_b64Val {c : U8} {n : Nat} (h : b64Val c = some n) : b64Sym n = c 
     split_ifs <;> first | omega | (apply byte_eq; omega)
 
 /-- `b64Sym` produces only symbols of the URL-safe alphabet. -/
-theorem b64Val_b64Sym_isSome (n : Nat) : (b64Val (b64Sym n)).isSome := by
+theorem isSome_b64Val_b64Sym (n : Nat) : (b64Val (b64Sym n)).isSome := by
   unfold b64Sym
   split_ifs <;> simp only [b64Val, byte_val] <;> split_ifs <;>
     first | rfl | omega
@@ -131,22 +131,22 @@ theorem b64Decode_eq_some_iff (s y : List U8) : b64Decode s = some y ↔ b64 y =
   ⟨b64_of_b64Decode s y, fun h => h ▸ b64Decode_b64 y⟩
 
 /-- **Alphabet:** every byte of an encoding is a symbol of the URL-safe alphabet. -/
-theorem b64_alphabet : ∀ (x : List U8), ∀ c ∈ b64 x, (b64Val c).isSome
+theorem isSome_b64Val_of_mem_b64 : ∀ (x : List U8), ∀ c ∈ b64 x, (b64Val c).isSome
   | a :: b :: c :: rest => by
     intro d hd
     simp only [b64, List.mem_cons] at hd
-    rcases hd with h | h | h | h | h <;> first | (subst h; exact b64Val_b64Sym_isSome _) |
-      exact b64_alphabet rest d h
+    rcases hd with h | h | h | h | h <;> first | (subst h; exact isSome_b64Val_b64Sym _) |
+      exact isSome_b64Val_of_mem_b64 rest d h
   | [a, b] => by
     intro d hd; simp only [b64, List.mem_cons, List.not_mem_nil, or_false] at hd
-    rcases hd with h | h | h <;> (subst h; exact b64Val_b64Sym_isSome _)
+    rcases hd with h | h | h <;> (subst h; exact isSome_b64Val_b64Sym _)
   | [a] => by
     intro d hd; simp only [b64, List.mem_cons, List.not_mem_nil, or_false] at hd
-    rcases hd with h | h <;> (subst h; exact b64Val_b64Sym_isSome _)
+    rcases hd with h | h <;> (subst h; exact isSome_b64Val_b64Sym _)
   | [] => by simp [b64]
 
 /-- The symbols of the URL-safe alphabet are the bytes `A`–`Z`, `a`–`z`, `0`–`9`, `-`, `_`. -/
-theorem b64Val_isSome_iff (c : U8) :
+theorem isSome_b64Val_iff (c : U8) :
     (b64Val c).isSome ↔ (65 ≤ c.val ∧ c.val ≤ 90) ∨ (97 ≤ c.val ∧ c.val ≤ 122) ∨
       (48 ≤ c.val ∧ c.val ≤ 57) ∨ c.val = 45 ∨ c.val = 95 := by
   unfold b64Val
@@ -154,9 +154,9 @@ theorem b64Val_isSome_iff (c : U8) :
     false_iff] <;> omega
 
 /-- In particular an encoding never contains the separator `.` (`Defs.Wire.dot`). -/
-theorem dot_not_mem_b64 (x : List U8) : Defs.Wire.dot ∉ b64 x := by
+theorem dot_notMem_b64 (x : List U8) : Defs.Wire.dot ∉ b64 x := by
   intro h
-  have := (b64Val_isSome_iff _).1 (b64_alphabet x _ h)
+  have := (isSome_b64Val_iff _).1 (isSome_b64Val_of_mem_b64 x _ h)
   simp [Defs.Wire.dot] at this
 
 /-- **Length:** the unpadded encoding of `n` bytes has `⌈4n/3⌉ = (4n + 2) / 3` symbols. -/

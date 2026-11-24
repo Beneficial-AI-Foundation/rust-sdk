@@ -19,7 +19,7 @@ contributions", rule 4).
 
 Draft specification statements for the Phase 2 targets of `crates/rmcp/src/model.rs` (M01–M07,
 M09–M14) and `crates/rmcp/src/model/task.rs` (M08), the composition theorem C03
-`into_result_consistent` (plan Section 16.4), the four joint lemmas of plan Section 16.1, and
+`into_result_eq` (plan Section 16.4), the four joint lemmas of plan Section 16.1, and
 the law `model = Defs.parseI64` of the `i64::from_str` model deferred from S27 (marked "S27
 deferred law"). They are stated against the translated functions of `Rmcp.Funs` (Aeneas
 `nightly-2026.08.20-5d08da4`; target `x86_64-unknown-linux-gnu`, `--no-default-features
@@ -42,7 +42,7 @@ A statement `f x ⦃ (result : T) => P result ⦄` says that `f x` terminates wi
 that its result satisfies `P` (plan Section 3, "What a spec means"; Section 17). The
 postcondition of each spec theorem M01–M14 (the `_spec` statements) determines the result
 uniquely (M06 through the injectivity of `I64.val`), and the `_fail` statements, the joint
-equations `is_empty_eq_len_eq_zero`, `first_eq_head_into_vec`, `len_eq_len_into_vec` and the
+equations `is_empty_eq_len_eq_zero`, `first_eq_head?_into_vec`, `len_eq_len_into_vec` and the
 composition theorem C03 fix the outcome exactly. Two statements do not determine their result,
 by design: the joint lemma `exactly_one_some` says only that exactly one of the four results is
 `some` (the spec theorems M01–M04 pin each of them), and the S27 deferred law leaves the
@@ -333,7 +333,7 @@ theorem is_empty_eq_len_eq_zero {T : Type} (self : model.SamplingContent T) :
 /-- Joint lemma M12 `= (M09).head?`: `first` is the first element of `into_vec` (plan Section
 16.1; `model.rs` lines 2926–2931 and 2958–2963). In Rust `first` borrows and `into_vec`
 consumes; the translation passes both the value. -/
-theorem first_eq_head_into_vec {T : Type} (self : model.SamplingContent T) :
+theorem first_eq_head?_into_vec {T : Type} (self : model.SamplingContent T) :
     first self = (do let v ← into_vec self; ok v.val.head?) := by
   sorry
 
@@ -366,13 +366,13 @@ namespace rmcp.model
 
 /-! ## Composition theorem C03 (plan Section 16.4) -/
 
-/-- **C03 `into_result_consistent`**: `into_result` is `into_response` mapped to
+/-- **C03 `into_result_eq`**: `into_result` is `into_response` mapped to
 `(Ok r, Some i)`, or else `into_error` mapped to `(Err e, i)` (plan Section 16.4, C03; uses M02,
 M04, M05; `model.rs` lines 825–850). About the translated functions `into_result`,
 `into_response` and `into_error`; an equation of computations, so it holds for every message,
 including whether a call fails (none does, by M02, M04, M05). Routing code may use either form.
-Restated as `Theorems.model.into_result_consistent`; not tagged `@[step]`. -/
-theorem into_result_consistent {Req Resp Noti : Type}
+Restated as `Theorems.model.into_result_eq`; not tagged `@[step]`. -/
+theorem into_result_eq {Req Resp Noti : Type}
     (m : model.JsonRpcMessage Req Resp Noti) :
     JsonRpcMessage.into_result m = (do
       let r ← JsonRpcMessage.into_response m

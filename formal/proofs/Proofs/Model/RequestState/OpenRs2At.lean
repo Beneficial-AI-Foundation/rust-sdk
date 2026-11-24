@@ -107,7 +107,7 @@ theorem open_rs2_at_spec (self : RequestStateCodec) (sealed : Str)
           unfold alloc.string.String.from_utf8
           split
           · rename_i ks hks
-            simp only [hks, bind_tc_ok, core.result.Result.map_err_Ok]
+            simp only [hks, bind_tc_ok, core.result.Result.map_err_ok]
             have hku : kid = ExtModel.utf8 ks :=
               (Proofs.External.Utf8.strOfBytes?_eq_some_iff _ _).1 hks
             cases hkeys : self.keys with
