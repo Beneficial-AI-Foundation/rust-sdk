@@ -7,7 +7,28 @@ import Defs
 import Proofs.Transport.AsyncRw
 
 /-!
-# Spec file for crates/rmcp/src/transport/async_rw.rs
+# Internal spec file for crates/rmcp/src/transport/async_rw.rs
+
+These are guarantees about private functions (free `fn`s of `async_rw.rs`), kept out of
+`formal/specs/`, which holds only the public API (human decision 2026-11-24). Index of all
+guarantees: `formal/specs/README.md`.
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| T04 | `without_carriage_return` | drops exactly one trailing `\r` if present | none |
+| T06 | `is_standard_method` | `true` iff a core request or notification name, (a) | none |
+| T05 | `is_standard_notification` | `true` iff a core notification name, (a) | none |
+| C05 | both | `is_standard_notification(m)` → `is_standard_method(m)` | (b) |
+
+Rows T04–T06 say that the call does not panic and that its result satisfies the guarantee.
+"Core" names are the lists `Defs.Methods.standardRequests` and `standardNotifications` (union of
+the official MCP `schema.ts` of five protocol versions, human decision H6), compared byte for
+byte. (a) except the six names of `Defs.Methods.codeOmits` that the code does not list (recorded
+bug, human decision H7; `formal/docs/STATUS.md`, "Bugs found"). (b) the call of
+`is_standard_notification` returned `true`. Used by: `AsyncRwTransport::receive` and the
+`Decoder` impl of `JsonRpcMessageCodec` (T04 on each line; T05/T06 in `should_ignore_notification`,
+which `try_parse_with_compatibility` asks whether a line that fails to deserialize is dropped),
+used by the stdio and child-process transports; those callers are not translated.
 
 Statements of the line and method guards of the line codec (plan Section 16.2, T04–T06), in Rust
 source order, each restated as a theorem `Theorems.async_rw.<function>` proved by the spec
@@ -18,14 +39,17 @@ checked by `#print axioms` under `#guard_msgs`; the composition theorem C05 last
 incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
-(widened for Phase 2, plan Section 15, human decision H1), with `overflow-checks=true` and
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
+Phase 2, plan Section 15, human decision H1), with `overflow-checks=true` and
 `debug-assertions=true` (plan Section 1), so arithmetic overflow panics, which Aeneas models as
 failure. Aeneas `nightly-2026.08.20-5d08da4`. `async_rw.rs` is upstream `7caec76`, unmodified
 (not touched by patch 01); line numbers refer to it.
 
-Definitions used: `Defs.Methods` (`standardRequests`, `standardNotifications`, `codeOmits`,
-H6 and H7) and `Defs.utf8Bytes` (`Defs.Bytes`).
+Definitions used: `Defs.Methods`, in module `Proofs.Defs.Methods`
+(`formal/proofs/Proofs/Defs/Methods.lean`; the Lean names are unchanged): `standardRequests`,
+`standardNotifications`, `codeOmits`, H6 and H7; and `Defs.utf8Bytes` (`Defs.Bytes`, in
+`formal/specs/Defs/`).
 
 External models used (S26, `trusted/Rmcp/FunsExternal.lean`): T04 uses the models of
 `core.slice.Slice.strip_suffix` (with `ExtModel.sliceEq`) and `core.option.Option.unwrap_or`;

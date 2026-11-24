@@ -5,40 +5,69 @@ Authors: Hoang Le Truong
 -/
 import Defs
 import Proofs.Model.JsonRpcMessage
-import Proofs.Model.NumberOrString
 import Proofs.Model.SamplingContent
 import Proofs.Model.Reference
 
 /-!
-# Spec file for crates/rmcp/src/model.rs (Phase 2: M01–M07, M09–M14, C03)
+# Spec file for crates/rmcp/src/model.rs (Phase 2, public API: M01–M05, M09–M14, C03)
 
-Statements of the Phase 2 targets of `model.rs` (plan Section 16.1), each restated as a theorem
-`Theorems.model.<Type>.<function>` proved by the spec theorem in `Proofs/Model/<Type>.lean` and
-followed by the assumptions its proof depends on, checked by `#print axioms` under
+Summary (one row per theorem below; index of all guarantees: `formal/specs/README.md`). A row
+about a call `f x ⦃ r => P r ⦄` says that the call does not panic and that its result satisfies
+the guarantee; rows written "a = b" are equations between computations of the translated code.
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| M01 | `JsonRpcMessage::into_request` | `Some((p, id))` iff it is request `p`, `id` | none |
+| M02 | `JsonRpcMessage::into_response` | `Some((r, id))` iff it is response `r`, `id` | none |
+| M03 | `JsonRpcMessage::into_notification` | `Some(n)` iff it is notification `n` | none |
+| M04 | `JsonRpcMessage::into_error` | `Some((e, id))` iff it is error `e`, optional `id` | none |
+| M05 | `JsonRpcMessage::into_result` | response: `(Ok, Some id)`; error: `(Err, id)`; (c) | none |
+| M09 | `SamplingContent::into_vec` | `Single(x)` gives `[x]`, `Multiple(v)` gives `v` | none |
+| M10 | `SamplingContent::is_empty` | `false` for `Single`; else `true` iff `v` empty | none |
+| M11 | `SamplingContent::len` | 1 for `Single`; `v.len()` for `Multiple(v)` | none |
+| M12 | `SamplingContent::first` | `Some(x)` for `Single(x)`; `Multiple(v)`: first of `v` | none |
+| M13 | `Reference::as_prompt_name` | prompt: `Some` of its name's bytes; else `None` | (a) |
+| M13 | `…::as_prompt_name` (`_fail`) | name over `usize::MAX` bytes: fails (Lean only) | (b) |
+| M14 | `Reference::as_resource_uri` | resource: `Some` of its URI's bytes; else `None` | (a) |
+| M14 | `…::as_resource_uri` (`_fail`) | URI over `usize::MAX` bytes: fails (Lean only) | (b) |
+| joint | `is_empty`, `len` | `is_empty()` = `len() == 0` | none |
+| joint | `first`, `into_vec` | `first()` = head of `into_vec()` | none |
+| joint | `len`, `into_vec` | `len()` = `into_vec().len()` | none |
+| joint | `into_request` … `into_error` | the four succeed; exactly one returns `Some` | none |
+| C03 | `into_result` | = `into_response` as `(Ok, Some id)`, else `into_error` | none |
+
+(a) the name or URI has at most `usize::MAX` UTF-8 bytes (always true of a Rust `String`; the
+Lean `String` model needs it). (b) the name or URI has more than `usize::MAX` bytes; the `_fail`
+rows describe the Lean model, not a Rust behaviour. "joint": a joint lemma of plan Section 16.1.
+C03 in full: `into_result` is `into_response` mapped to `(Ok(r), Some(id))`, or else `into_error`
+mapped to `(Err(e), id)`. (c) `None` exactly for a request or a notification.
+
+This file holds only the public API of `model.rs` (functions `pub` in upstream rmcp; human
+decision 2026-11-24). The `pub(crate)` functions M06 `NumberOrString::numeric_string_value` and
+M07 `NumberOrString::matches_response_id` are in `formal/proofs/Proofs/Internal/Model.lean`.
+
+Statements of the public Phase 2 targets of `model.rs` (plan Section 16.1), each restated as a
+theorem `Theorems.model.<Type>.<function>` proved by the spec theorem in `Proofs/Model/<Type>.lean`
+and followed by the assumptions its proof depends on, checked by `#print axioms` under
 `#guard_msgs`. M08 (`model/task.rs`) is in `Specs/Model/Task.lean`. Signed off by the spec owner
 on 2026-11-24 (S24/S25 spec cycle, `formal/docs/STATUS.md`); the signed-off text was in
 `specs/Drafts/Model.lean`, removed at incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
-(widened for Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true`
-(plan Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`,
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
+Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true` (plan
+Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`,
 unmodified (plan Section 13); the generated `Source:` lines of `model.rs` are two higher
 (patch 01).
 
 Definitions used: `Defs.JsonRpc` (`kind`, `MessageKind`, `request`, `response`, `notification`,
-`error`, `numericValue`), `Defs.IntParse` (`Defs.parseI64`, through `numericValue`) and
-`Defs.Bytes` (`Defs.utf8Bytes`).
+`error`) and `Defs.Bytes` (`Defs.utf8Bytes`).
 
-External models used (`trusted/Rmcp/FunsExternal.lean`): M06 and M07 use the models of the
-`Arc` deref (line 761), `str::parse` (line 1023), `i64::from_str` (line 1009, through the S27
-deferred law `Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64`
-in `Specs/External.lean`) and `Result::ok` (`core.result.Result.ok`, line 828); M07 also uses
-`Option`'s `PartialEq` (line 811) and the `Arc<str>` `PartialEq` (line 780), which calls the
-`str` equality `Str.Insts.CoreCmpPartialEqStr.eq` (line 735); M13/M14 use the `String` deref
-model (line 749), which fails with `maximumSizeExceeded` for a Lean `String` of more than
-`Usize.max` bytes (no Rust `String` is), hence their size premises and `_fail` companions; M10
-uses `Vec::is_empty` (`alloc.vec.Vec.is_empty`, line 637) and M12 `<[T]>::first`
+External models used (`trusted/Rmcp/FunsExternal.lean`): M13/M14 use the `String` deref model
+(line 749), which fails with `maximumSizeExceeded` for a Lean `String` of more than `Usize.max`
+bytes (no Rust `String` is), hence their size premises and `_fail` companions; M10 uses
+`Vec::is_empty` (`alloc.vec.Vec.is_empty`, line 637) and M12 `<[T]>::first`
 (`core.slice.Slice.first`, line 842). No statement reaches a native-code assumption
 (`…_native.decide.ax_<n>`).
 
@@ -46,51 +75,23 @@ From the Aeneas library (`Aeneas/Std/Vec.lean`; definitions, not trusted models)
 `<[T]>::into_vec` (`alloc.slice.Slice.into_vec`), M11 `Vec::len` (`alloc.vec.Vec.len`) and M12
 `Vec::deref` (`alloc.vec.Vec.deref`).
 
-Statements here, in Rust source order: M06 (line 322), M07 (330), M01 (819), M02 (825),
-M03 (831), M04 (837), M05 (843), M09 (2926), M10 (2934), M11 (2942), M12 (2958), M13 (3741, with
-`as_prompt_name_fail`), M14 (3749, with `as_resource_uri_fail`); then the joint lemmas of plan
-Section 16.1 (`SamplingContent.is_empty_eq_len_eq_zero`, `SamplingContent.first_eq_head?_into_vec`,
+Statements here, in Rust source order: M01 (819), M02 (825), M03 (831), M04 (837), M05 (843),
+M09 (2926), M10 (2934), M11 (2942), M12 (2958), M13 (3741, with `as_prompt_name_fail`), M14
+(3749, with `as_resource_uri_fail`); then the joint lemmas of plan Section 16.1
+(`SamplingContent.is_empty_eq_len_eq_zero`, `SamplingContent.first_eq_head?_into_vec`,
 `SamplingContent.len_eq_len_into_vec`, `JsonRpcMessage.exactly_one_some`), and last the
 composition theorem C03 `into_result_eq` (plan Section 16.4, proved in
 `Proofs/Model/JsonRpcMessage.lean`).
 
 Not translated (outside the Phase 2 scope, plan Section 13, "Not claimed"): every other item of
-`model.rs`. Besides the thirteen targets, the translation contains only the derived `PartialEq`
+`model.rs`. Besides the thirteen `model.rs` targets (M06/M07 are in
+`formal/proofs/Proofs/Internal/Model.lean`), the translation contains only the derived `PartialEq`
 of `NumberOrString` (line 304), which M07 calls; no statement is about it.
 -/
 
 open Aeneas Aeneas.Std Result
 open rmcp  -- for `model.…` in the statements; theorems named in full
 open Defs.JsonRpc
-
-/-- M06 `numeric_string_value`: `None` for a numeric id; for a string id, the value of its bytes
-under `Defs.parseI64` (the `i64::from_str` grammar), `None` if rejected. -/
-theorem Theorems.model.NumberOrString.numeric_string_value (self : model.NumberOrString) :
-    rmcp.model.NumberOrString.numeric_string_value self ⦃ (result : Option I64) =>
-      result.map (·.val) = numericValue self ⦄ :=
-  rmcp.model.NumberOrString.numeric_string_value_spec self
-
-/--
-info: 'Theorems.model.NumberOrString.numeric_string_value' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.model.NumberOrString.numeric_string_value
-
-/-- M07 `matches_response_id`: `true` iff the ids are equal, or `self` is a number `n` and the
-response id is a string whose `Defs.parseI64` value is `n`. -/
-theorem Theorems.model.NumberOrString.matches_response_id
-    (self response_id : model.NumberOrString) :
-    rmcp.model.NumberOrString.matches_response_id self response_id ⦃ (result : Bool) =>
-      (result = true ↔
-        self = response_id ∨
-          ∃ n : I64, self = .Number n ∧ numericValue response_id = some n.val) ⦄ :=
-  rmcp.model.NumberOrString.matches_response_id_spec self response_id
-
-/--
-info: 'Theorems.model.NumberOrString.matches_response_id' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.model.NumberOrString.matches_response_id
 
 /-- M01 `into_request`: `Some (request, id)` exactly for the request with that payload and id. -/
 theorem Theorems.model.JsonRpcMessage.into_request

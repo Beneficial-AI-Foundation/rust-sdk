@@ -7,7 +7,37 @@ import Defs
 import Proofs.Transport.ClientSideSse
 
 /-!
-# Spec file for crates/rmcp/src/transport/common/client_side_sse.rs
+# Internal spec file for crates/rmcp/src/transport/common/client_side_sse.rs
+
+These are guarantees about private functions (the methods of the private struct
+`SseEventSizeLimiter`), kept out of `formal/specs/`, which holds only the public API (human
+decision 2026-11-24). Index of all guarantees: `formal/specs/README.md`.
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| T03 | `SseEventSizeLimiter::observe` | result and new state are those of (a) | none |
+| T02 | `SseEventSizeLimiter::finish_line` | new state per `finishLine`; result: T01 on it | none |
+| T01 | `SseEventSizeLimiter::check_limit` | `Err(())` iff `sat(retained + line) > max` | none |
+| C01 | `observe` on `a ++ b` | = `observe` on `a`, then on `Ok` `observe` on `b` | none |
+| C01 | `observe` on `a ++ b` (plan form) | = `observe` on `b` from the state after `a` | (b) |
+| C02 | `observe` | bound `sat(retained + line) ≤ max` kept, `max` same | (c) |
+| C02 | `observe` on prefix `a` (prefix form) | returns `Ok`, keeps `max` and the bound | (d) |
+
+Rows about a call say that it does not panic and that its result satisfies the guarantee; "="
+rows are equations between computations of the translated code. `sat` is addition saturating
+at `usize::MAX`. (a) `Defs.Sse.observe`: a left fold of the limiter model `Defs.Sse.step` over
+the chunk's bytes that stops at the first byte whose step fails the bound check (an LF completing
+CR LF is not checked). (b) `observe` on `a` returned `Ok(())`.
+(c) the bound holds before and this call returned `Ok(())`. (d) the bound holds before and
+`observe` on `a ++ b` returned `Ok(())`. C01's general form also says that on `Err(())` the call
+on `a ++ b` returns the same `Err(())` and state. The limit counts, per event, each completed
+non-comment line's length + 1 and the current line's length; completed comment lines and the
+blank line count 0 (`Defs.Sse`, "What is counted"; not the raw byte size). Used by:
+`BoundedSseByteStream::poll_next` (through `bounded_sse_stream`), the event-size limit
+(`max_sse_event_size`) of the reqwest streamable HTTP client
+(`transport/common/reqwest/streamable_http_client.rs`, lines 205 and 482) and of the Unix-socket
+one (`transport/common/unix_socket.rs`, lines 384 and 589); that wrapper is `async` and not
+translated.
 
 Statements of the SSE event-size limiter `SseEventSizeLimiter` (plan Section 16.2, T01–T03), in
 Rust source order: T03 `observe` (line 48), T02 `finish_line` (line 75), T01 `check_limit`
@@ -25,18 +55,20 @@ spec cycle ("S24/S25 spec cycle" in `formal/docs/STATUS.md`); their signed-off t
 `specs/Drafts/ClientSideSse.lean`, removed at incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
-(the widened feature list of plan Section 15, human decision H1), with `overflow-checks=true`
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (the widened
+feature list of plan Section 15, human decision H1), with `overflow-checks=true`
 and `debug-assertions=true` (plan Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers
 refer to `client_side_sse.rs` at upstream `7caec76`, unmodified (the file is not touched by
 patch 01). All arithmetic of these functions saturates (`usize::saturating_add`), so no
 statement has a premise about overflow.
 
-Definitions used: `Defs.Sse` (`ofLimiter`, `satAdd`, `withinLimit`, `toResult`, `finishLine`,
+Definitions used: `Defs.Sse`, in module `Proofs.Defs.Sse` (`formal/proofs/Proofs/Defs/Sse.lean`;
+the Lean names are unchanged): `ofLimiter`, `satAdd`, `withinLimit`, `toResult`, `finishLine`,
 `observe`, and `step` only through `observe`; the regression-checked independent description
-`historyOutcome` is not used by the statements). External models used: none beyond the Aeneas
-library (`core.num` `saturating_add` and the slice iterator are part of it). Native-code axioms
-reached: none.
+`historyOutcome` is not used by the statements. External models used: none beyond the Aeneas
+library (`core.num` `saturating_add` and the slice iterator are part of it). Native-code
+assumptions reached: none.
 
 Not translated (plan Section 23: `async`/`Pin` is outside the Aeneas scope):
 `SseEventSizeLimiter::new` (lines 38–46), `BoundedSseByteStream::poll_next` (lines 115–141)

@@ -4,20 +4,53 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Defs
-import Proofs
+import Proofs.Defs.Wire
+import Proofs.External.Base64
+import Proofs.External.String
+import Proofs.External.Prim
+import Proofs.External.Std
+import Proofs.External.Option
+import Proofs.External.IntParse
+import Proofs.External.Net
 
 /-!
-# Spec file for the external models (S08–S09, S26–S27)
+# Internal spec file for the external models (S08–S09, S26–S27)
+
+These are laws of the trusted Lean models of the external functions the translated code calls
+(`std`/`core`/`alloc`, `core::net`, integer parsing, the HMAC and Base64 primitives of patch 01's
+`prim` module), not guarantees about rmcp functions; they are kept out of `formal/specs/`, which
+holds only the public API (human decision 2026-11-24). They state what the models in
+`formal/trusted/` compute, so that a reviewer can compare them with the Rust documentation; the
+spec proofs use them. Index of all guarantees: `formal/specs/README.md`.
+
+| Section (count) | What the laws say |
+|---|---|
+| Base64 (14) | unpadded Base64url: round trip, canonical decoding, alphabet, lengths |
+| String (12) | `utf8` bytes: length, append, injective, inverse `strOfBytes?`, ASCII |
+| Prim (7) | `prim`: HMAC = `hmacSha256`, verify = tag equality, Base64 calls |
+| Std (39) | `Option`, `Result`, `str`, `String`, `Vec`, hashing, `HashMap`, `zeroize` |
+| String, Phase 2 (6) | `str` equality, `String` deref, `Arc` deref and equality |
+| Option, Phase 2 (6) | `Option::or_else`, `Option` equality, `Result::ok` |
+| Std, Phase 2 (10) | `slice::first`, slice-array equality, `strip_suffix`, `RangeInclusive` |
+| IntParse, Phase 2 (7) | `i64::from_str`: errors, round trips, equal to `Defs.parseI64` |
+| Net, Phase 2 (15) | `Ipv4Addr`/`Ipv6Addr` octets, segments and range predicates |
+
+Premises: many laws have none; others name the parts of a value (the octets of an address), require
+that a Lean `String` or `Vec` is no larger than a Rust one can be (`Usize.max` or `isize::MAX`
+bytes), or that an instance decides equality; the `_fail` laws state where the model fails (where
+Rust panics, or for Lean values that no Rust value has). Counts are of the theorems in each section
+below (116 in all).
 
 Statements about the Lean models of the externals in `trusted/Rmcp/{Types,Funs}External.lean`
 (plan Section 4), restated as theorems `Theorems.External.<original name>` proved by the laws in
-`Proofs/External/`, each followed
-by the assumptions its proof depends on, checked by `#print axioms` under `#guard_msgs`. Each
-depends on at most `propext`, `Classical.choice` and `Quot.sound`: the externals are definitions,
-structures and four `opaque` constants, and add no assumption (`#print axioms` does not list
-`opaque` constants such as `ExtModel.hmacSha256`, so changes to the models are caught only by
-review of `trusted/`). Approved by the spec owner on 2026-11-23 (S08/S09 evidence, git history at 223ff12); the
-draft text was not committed: the statements entered git already incorporated, in af41799.
+`Proofs/External/`, each followed by the assumptions its proof depends on, checked by
+`#print axioms` under `#guard_msgs`. Each depends on at most `propext`, `Classical.choice` and
+`Quot.sound`: the externals are definitions, structures and five `opaque` constants
+(`ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs` and the types
+`ExtModel.SerdeJsonErrorImpl`, `ExtModel.SerdeJsonValue`), and add no assumption (`#print axioms`
+does not list `opaque` constants, so changes to the models are caught only by review of
+`trusted/`). Approved by the spec owner on 2026-11-23 (S08/S09 evidence, git history at 223ff12);
+the draft text was not committed: the statements entered git already incorporated, in af41799.
 
 Phase 2 (plan steps S26/S27, plan Section 18): the laws of the models of the Phase 2 externals
 (`trusted/Rmcp/{Types,Funs}External.lean`, sections "Phase 2"), restated in the last part of
@@ -27,7 +60,10 @@ this file as `Theorems.External.<original name>` and proved at stage 6 in
 incorporation. Each depends on at most `propext`, `Classical.choice` and `Quot.sound`. The S27
 deferred law `I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64` was signed off
 separately, on 2026-11-24 (S24 sign-off, S24/S25 spec cycle in `formal/docs/STATUS.md`); its
-signed-off text was in `formal/specs/Drafts/Model.lean`, removed at incorporation.
+signed-off text was in `formal/specs/Drafts/Model.lean`, removed at incorporation. Moved here
+from `formal/specs/Specs/External.lean` on 2026-11-24 (statements unchanged). Definitions from
+the moved `Defs` modules keep their Lean names (`Defs.Wire.dot`, `Defs.Wire.b64Len` are in module
+`Proofs.Defs.Wire`).
 -/
 
 /-! ## `Proofs/External/Base64.lean` -/

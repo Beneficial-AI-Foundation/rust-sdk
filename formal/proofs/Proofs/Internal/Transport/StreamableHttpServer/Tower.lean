@@ -7,7 +7,22 @@ import Defs
 import Proofs.Transport.Tower
 
 /-!
-# Spec file for crates/rmcp/src/transport/streamable_http_server/tower.rs
+# Internal spec file for crates/rmcp/src/transport/streamable_http_server/tower.rs
+
+These are guarantees about private functions (`default_port` and the method of the private enum
+`AllowedPort`), kept out of `formal/specs/`, which holds only the public API (human decision
+2026-11-24). Index of all guarantees: `formal/specs/README.md`.
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| T07 | `default_port` | `"http"`: `Some(80)`; `"https"`: `Some(443)`; else `None` | none |
+| T08 | `AllowedPort::matches` | `Any`, `Unspecified`: `true`; `Exact(p)`: (a) | none |
+
+Each row says that the call does not panic and that its result satisfies the guarantee. Schemes
+are compared byte for byte (case-sensitive). (a) `true` iff the explicit port, or else T07's
+default port of the scheme, is `p`. Used by: `origin_is_allowed`, the `Origin` check of the
+DNS-rebinding protection of `StreamableHttpService` (`allowed_origins` of
+`StreamableHttpServerConfig`); the caller and the origin parsing are not translated.
 
 Statements of the origin-port policy of the DNS-rebinding protection (plan Section 16.2, T07,
 T08), in Rust source order, each restated as a theorem `Theorems.tower.<function>` (with
@@ -18,13 +33,16 @@ cycle, `formal/docs/STATUS.md`); their signed-off text was in `specs/Drafts/Tran
 removed at incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
-(widened for Phase 2, plan Section 15, human decision H1), with `overflow-checks=true` and
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
+Phase 2, plan Section 15, human decision H1), with `overflow-checks=true` and
 `debug-assertions=true` (plan Section 1), so arithmetic overflow panics, which Aeneas models as
 failure. Aeneas `nightly-2026.08.20-5d08da4`. `tower.rs` is upstream `7caec76`, unmodified (not
 touched by patch 01); line numbers refer to it.
 
-Definitions used: `Defs.Tower` (`defaultPort`, `http`, `https`).
+Definitions used: `Defs.Tower`, in module `Proofs.Defs.Tower`
+(`formal/proofs/Proofs/Defs/Tower.lean`; the Lean names are unchanged): `defaultPort`, `http`,
+`https`.
 
 External models used (S26, `trusted/Rmcp/FunsExternal.lean`): the model of
 `<str as PartialEq>::eq` (byte-list equality) and the bytes of the Aeneas `toStr` literals

@@ -7,7 +7,33 @@ import Defs
 import Proofs.Transport.Auth
 
 /-!
-# Spec file for crates/rmcp/src/transport/auth.rs (Phase 2: A01–A03, C04)
+# Internal spec file for crates/rmcp/src/transport/auth.rs (Phase 2: A01–A03, C04)
+
+These are guarantees about private functions (associated functions of `AuthorizationManager`
+without `pub`), kept out of `formal/specs/`, which holds only the public API (human decision
+2026-11-24). Index of all guarantees: `formal/specs/README.md`.
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| A02 | `is_disallowed_metadata_ipv4` | `true` iff in a blocked IPv4 range (a) | none |
+| A01 | `embedded_ipv4` | `Some` of the IPv4 address carried in a form (b), else `None` | none |
+| A03 | `is_disallowed_metadata_ipv6` | A02 on a carried IPv4 address, else (c) | none |
+| C04 | A01, A03, A02 | A01 gives `Some(v)` ⇒ A03 on the address = A02 on `v` | (d) |
+| C04 | A03 (corollary) | a blocked IPv4 address in form (b) is blocked | (e) |
+
+Rows A01–A03 and the corollary say that the call does not panic and that its result satisfies
+the guarantee; the C04 row is an equation between computations of the translated code. The
+functions are methods of `AuthorizationManager`. (a) `10/8`, `172.16/12`, `192.168/16`,
+`127/8`, `169.254/16`, `255.255.255.255`, `0.0.0.0`, `224/4`, `0/8`, `100.64/10`, `198.18/15`
+(`Defs.Net.ipv4Disallowed`); `240.0.0.0/4` is not blocked (recorded bug, human decision H8;
+`formal/docs/STATUS.md`, "Bugs found"). (b) IPv4-mapped `::ffff:0:0/96`, NAT64 `64:ff9b::/96`,
+IPv4-compatible `::/96` except `::` and `::1`, or 6to4 `2002::/16` (`Defs.Net.embeddedIpv4`).
+(c) `true` iff `::1`, `::`, `ff00::/8`, `fe80::/10`, `fc00::/7`, `2001::/32` or `64:ff9b:1::/48`
+(`Defs.Net.ipv6Disallowed`). (d) the call of `embedded_ipv4` returned `Some(v)`. (e) the address
+writes an IPv4 address that `Defs.Net.ipv4Disallowed` blocks in one of the forms (b). Used by:
+`is_allowed_metadata_url` (through `is_disallowed_metadata_host`), the SSRF check of the OAuth
+metadata URLs during `AuthorizationManager` discovery, and `AddressClass::of` in
+`auth/metadata_resolver.rs`, the filter of resolved addresses; these callers are not translated.
 
 The statements of the SSRF address guard of `AuthorizationManager` (plan Section 16.3), in Rust
 source order, each restated as a theorem `Theorems.auth.AuthorizationManager.<function>` proved
@@ -18,14 +44,16 @@ cycle, `formal/docs/STATUS.md`); the signed-off text was in `specs/Drafts/Auth.l
 incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
-(widened for Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true`
-(plan Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
+Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true` (plan
+Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`
 (the file is not touched by patch 01).
 
-Definitions used: `Defs.Net` (`ipv4Value`, `ipv6Value`, `ipv4Disallowed`, `embeddedIpv4`,
+Definitions used: `Defs.Net`, in module `Proofs.Defs.Net` (`formal/proofs/Proofs/Defs/Net.lean`;
+the Lean names are unchanged): `ipv4Value`, `ipv6Value`, `ipv4Disallowed`, `embeddedIpv4`,
 `ipv6Disallowed`, `ipv4Mapped`, `nat64WellKnown`, `sixToFour`; the ranges are RFC prefixes tested
-by `inPrefix`, not the `std` predicates the code calls).
+by `inPrefix`, not the `std` predicates the code calls.
 
 External models used (S26/S27, `trusted/Rmcp/{Types,Funs}External.lean`, sections "Phase 2"):
 `core.net.ip_addr.Ipv4Addr` (`addrOctets`, `octets`, `is_private`, `is_loopback`,
@@ -37,9 +65,9 @@ External models used (S26/S27, `trusted/Rmcp/{Types,Funs}External.lean`, section
 `ExtModel.sliceEqSameLength`); their laws are `Theorems.External.core.net.ip_addr.*`,
 `Theorems.External.core.ops.range.RangeInclusive.*` and
 `Theorems.External.Slice.Insts.CoreCmpPartialEqArray.eq_spec` and `eq_u16_spec` in
-`Specs/External.lean`. Each statement rests on these models matching `core::net` and `core` at
-the pinned nightly (plan Section 17; Section 18). From the Aeneas library (definitions, not
-trusted models): `core::convert::From<u16> for u32` (`core.convert.num.FromU32U16.from`,
+`Proofs/Internal/External.lean`. Each statement rests on these models matching `core::net` and
+`core` at the pinned nightly (plan Section 17; Section 18). From the Aeneas library (definitions,
+not trusted models): `core::convert::From<u16> for u32` (`core.convert.num.FromU32U16.from`,
 `Aeneas/Std/Scalar/CoreConvertNum.lean` line 74) and `RangeInclusive::new`.
 Native-code assumptions reached: none.
 

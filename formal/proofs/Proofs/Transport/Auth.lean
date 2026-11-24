@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
-import Defs.Net
+import Proofs.Defs.Net
 import Proofs.External.Net
 import Proofs.External.Std
 

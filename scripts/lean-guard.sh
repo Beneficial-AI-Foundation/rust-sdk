@@ -47,7 +47,8 @@
 #          run_cmd, run_tac, by_elab, include_str, elab, macro, syntax, initialize,
 #          plausible, ...; the metaprogramming monads and Lean.Elab), every `#` command
 #          except #check, #print and the `#guard_msgs in #print axioms <name>` form (allowed
-#          only in formal/specs/Specs.lean and formal/specs/Specs/), every attribute not in
+#          only in formal/specs/Specs.lean, formal/specs/Specs/ and
+#          formal/proofs/Proofs/Internal/), every attribute not in
 #          ATTR_ALLOWED (in `@[...]` and `attribute [...]`), the `native` option of decide,
 #          `debug.` options, `set_option linter.<name> false` (except in formal/translation/,
 #          where Aeneas emits it) and `axiom` outside formal/trusted/ (and the unbuilt

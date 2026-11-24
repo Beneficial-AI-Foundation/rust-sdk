@@ -13,7 +13,7 @@ import Defs.IntParse
 # Laws of the Phase 2 external models: IntParse (plan steps S26/S27, stage 6)
 
 Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27),
-restated in `formal/specs/Specs/External.lean` (Phase 2 part); the draft file was removed at
+restated in `formal/proofs/Proofs/Internal/External.lean` (Phase 2 part); the draft file was removed at
 incorporation. For this group (spec owner sign-off 2026-11-23): `str::parse` and `i64::from_str`.
 
 The digit loop `ExtModel.i64DigitLoop` is described by `i64DigitLoop_eq`: from a magnitude `a`

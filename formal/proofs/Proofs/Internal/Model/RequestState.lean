@@ -4,32 +4,99 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Defs
-import Proofs
+import Proofs.Defs.Wire
+import Proofs.Defs.RequestState
+import Proofs.Defs.CodecState
+import Proofs.Model.RequestState.OpenAuthenticatedBody
+import Proofs.Model.RequestState.ValidateKeyLength
+import Proofs.Model.RequestState.ValidateConfigKid
+import Proofs.Model.RequestState.B64Len
+import Proofs.Model.RequestState.OpenAt
+import Proofs.Model.RequestState.SealRs1
+import Proofs.Model.RequestState.SealRs2
+import Proofs.Model.RequestState.OpenRs1At
+import Proofs.Model.RequestState.Rs1FallbacksVerify
+import Proofs.Model.RequestState.OpenRs2At
+import Proofs.Model.RequestState.Roundtrip
 
 /-!
-# Spec file for crates/rmcp/src/model/request_state.rs
+# Internal spec file for crates/rmcp/src/model/request_state.rs (Phase 1: E01–E11, round trips)
+
+These are guarantees about private associated functions of `RequestStateCodec` (without `pub`),
+kept out of `formal/specs/`, which holds only the public API (human decision 2026-11-24); the
+public wrappers (`seal`, `open`, `try_new`, …) are not verified. E09a `rs1_fallbacks_verify` is
+patch-only: patch 01 moves the rs1 fallback loop of `open_rs1_at` into it, so it has no upstream
+counterpart. Index of all guarantees: `formal/specs/README.md`.
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| E11 | `open_at` | exactly `openAt`: `rs1` → E09, `rs2` → E10, else `MalformedFormat` | (T), (F) |
+| E07 | `seal_rs1` | `rs1.b64(body).b64(tag)`, tag = HMAC of `transcriptV1(ad, body)` | (T), (C) |
+| E08 | `seal_rs2` | `rs2.b64(kid).b64(body).b64(tag)`, HMAC of `transcriptV2` | (T), (C) |
+| E09 | `open_rs1_at` | exactly `openRs1` (plan Section 3 error order, then E01) | (D), (T), (F) |
+| E09a | `rs1_fallbacks_verify` | `true` iff some rs1 fallback key verifies the tag | (F) |
+| E10 | `open_rs2_at` | exactly `openRs2` (plan Section 3 error order, then E01) | (D), (T) |
+| E01 | `open_authenticated_body` | `MalformedFormat` if under 8 bytes, else (n) | none |
+| E03 | `validate_key_length` | `Ok` iff ≥ 32 bytes, else `KeyTooShort { 32, len }` | none |
+| E04 | `validate_config_kid` | `Ok` iff 1 to 255 UTF-8 bytes, else `InvalidKeyring(msg)` | none |
+| E02 | `b64_len` | `4 * ((len + 2) / 3)`, as W01 | no overflow |
+| S15 | `rs1_roundtrip` | `seal_rs1`, then `open_rs1_at` (same `ad`): `Ok(body[8..])` | (R1) |
+| S15 | `rs2_roundtrip` | `seal_rs2`, then `open_rs2_at` (same `ad`): `Ok(body[8..])` | (R2) |
+| S15 | `open_at_roundtrip_rs1` | `seal_rs1`, then `open_at` (same `ad`): `Ok(body[8..])` | (R1) |
+| S15 | `open_at_roundtrip_rs2` | `seal_rs2`, then `open_at` (same `ad`): `Ok(body[8..])` | (R2) |
+
+Each row says that the call (for the round trips: sealing, then opening any `str` holding the
+token's bytes) does not panic and that its result satisfies the guarantee, within the HMAC and
+allocation exceptions below. HMAC is HMAC-SHA256 under `key` (the opaque model
+`ExtModel.hmacSha256`); `b64` is unpadded Base64url; `ad` is the associated data. `openAt`,
+`openRs1`, `openRs2` are `Defs.CodecState` definitions; E09: `MalformedFormat` unless the token
+is `rs1.b.t`, `UnknownKeyId` for a keyring without rs1 fallback, `InvalidEncoding` for a
+non-canonical Base64url `b` or `t`, `IntegrityCheckFailed` unless an accepted key verifies the
+tag, then E01. E10: `MalformedFormat`, then `InvalidKeyId` (encoded kid over 340 bytes),
+`InvalidEncoding` (kid), `InvalidKeyId` (kid of 0 or over 255 bytes, or not UTF-8),
+`UnknownKeyId` (single-key codec or unknown kid), `InvalidEncoding` (body, tag),
+`IntegrityCheckFailed`, then E01. E04's two messages are `KID_EMPTY_MSG` (length 0) and
+`KID_TOO_LONG_MSG` (over 255). (n) `Expired` if the expiry (the signed big-endian value of the
+first 8 bytes) is non-zero and `now_ms` is later, else `Ok` of the bytes after the first 8.
+
+Assumption keys (the same as in `formal/specs/README.md`): (T) the MAC transcript fits in
+`usize::MAX` bytes; (C) the `with_capacity` sum (version, dots and the Base64 lengths of kid,
+body and a 32-byte tag) is at most `isize::MAX` bytes (`ExtModel.maxStringBytes`, the largest
+Rust `String`); (D) the token has fewer than `usize::MAX` `.` bytes; (F) every rs1 fallback id
+is a key id: of a keyring codec (`CodecFallbacksKnown`) for E09 and E11 (E11 needs it only for a
+token starting with `rs1`), of the arguments (`FallbacksKnown`) for E09a (else the code's
+`expect` panics; not proved); (R1) the same associated data in both calls; (T), (C), body of at
+least 8 bytes, not expired at `now_ms`, the key is the codec's single key or the key of one of
+its rs1 fallback ids, and (F); (R2) the same associated data in both calls; (T), (C), body of at
+least 8 bytes, not expired at `now_ms`, the kid is UTF-8 of 1 to 255 bytes and the codec is a
+keyring that maps it to the key. Used by (upstream names): `open`/`open_with` (E11 and below;
+E09a through E09, in the patched copy), `seal`/`seal_with` through the excluded `seal_at` (E07,
+E08, E02), `try_new` and `new_with_keyring` (E03, E04); those wrappers are not verified.
 
 Statements of the codec functions of `RequestStateCodec` (plan Section 2.2), in Rust source
 order, each restated as a theorem `Theorems.request_state.RequestStateCodec.<function>` proved by
 the spec theorem in `Proofs/Model/RequestState/` and followed by
 the assumptions its proof depends on, checked by `#print axioms` under `#guard_msgs`. The
-statements were signed off by the spec owner on 2026-11-23 (the S05 evidence (git history at 223ff12)); their signed-off
-text is in `specs/Drafts/RequestState.lean` at commit `9bd8144`.
+statements were signed off by the spec owner on 2026-11-23 (the S05 evidence, git history at
+223ff12); their signed-off text is in `specs/Drafts/RequestState.lean` at commit `9bd8144`.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
-(widened for Phase 2, plan Section 15; the translation of this file's targets is unchanged), with `overflow-checks=true` and
-`debug-assertions=true` (plan Section 1), so arithmetic overflow panics, which Aeneas models as
-failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is the patched copy (patch 01
-on origin/main 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback
-2026-11-23; translation committed at `9bd8144`). Line numbers refer to `request_state.rs` in the
-patched copy.
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
+Phase 2, plan Section 15; the translation of this file's targets is unchanged), with
+`overflow-checks=true` and `debug-assertions=true` (plan Section 1), so arithmetic overflow
+panics, which Aeneas models as failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation
+base is the patched copy (patch 01 on origin/main 7caec76,
+`formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23; translation
+committed at `9bd8144`). Line numbers refer to `request_state.rs` in the patched copy.
 
-Definitions used: `Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLength`, `maxKidLen`,
-`b64Len`, `dot`, `components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`),
-`Defs.RequestState` (`StrIs`, `kidEmptyMsg`, `kidTooLongMsg`) and `Defs.CodecState` (`KeyTable`,
-`FallbacksKnown`, `CodecFallbacksKnown`, `Rs1Verifies`, `openRs1`, `openRs2`, `openAt`,
-`resultBytes`, `lookupKey`).
+Definitions used, in the modules `Proofs.Defs.Wire`, `Proofs.Defs.RequestState` and
+`Proofs.Defs.CodecState` (`formal/proofs/Proofs/Defs/`; the Lean names are unchanged):
+`Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLength`, `maxKidLen`, `b64Len`, `dot`,
+`components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`), `Defs.RequestState`
+(`StrIs`, `kidEmptyMsg`, `kidTooLongMsg`) and `Defs.CodecState` (`KeyTable`, `FallbacksKnown`,
+`CodecFallbacksKnown`, `Rs1Verifies`, `openRs1`, `openRs2`, `openAt`, `resultBytes`,
+`lookupKey`).
 
 External models used (S08–S09, `trusted/Rmcp/FunsExternal.lean`): E04 uses the model of
 `core.str.Str.len` (the byte length of the `Str`). E04 also depends on the native-code
@@ -43,8 +110,10 @@ Section 4, rows "HMAC" and "Standard library"): HMAC SHA-256 always succeeds in 
 its `u64` bit-length counter overflows (a panic under overflow-checks) for a message of at least
 `2^61 - 64` bytes or a key of at least `2^61` bytes; allocation failure is not modelled, and the
 transcript `Vec` is modelled up to `Usize.max` bytes where Rust panics above `isize::MAX`. For
-such inputs a statement promises a result where the Rust code panics. The E07/E08 premises
-`h_len`/`h_cap` are the no-overflow domains of the debug-build semantics. E07 and E08 reach the
+such inputs a statement promises a result where the Rust code panics. In E07/E08, `h_len` is (T),
+the bound of the Lean model of `Vec::extend_from_slice` on the transcript, and `h_cap` is (C), the
+`String` capacity limit `isize::MAX` above which `String::with_capacity` panics (capacity
+overflow); it also keeps the `usize` sum from overflowing. E07 and E08 reach the
 locked native-code assumptions `VERSION_V1._native.decide.ax_1` and
 `VERSION_V2._native.decide.ax_1`;
 E09, E09a and E11 reach `RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`;
@@ -53,17 +122,18 @@ E10 reaches none (all in `trusted/native-axioms.lock`).
 Statements here, in Rust source order: E11 (line 559), E07 (572), E08 (585), E09 (607),
 E09a (644), E10 (659) (S11, S13, S14), then E01 (695), E03 (704), E04 (714), E02 (725) (S07).
 The E07–E11 and E09a statements were signed off by the spec owner on 2026-11-23 after three
-review rounds (the S05 evidence (git history at 223ff12), "E batch part 2"); their signed-off text was in
-`specs/Drafts/RequestState.lean`, removed at incorporation.
+review rounds (the S05 evidence, git history at 223ff12, "E batch part 2"); their signed-off
+text was in `specs/Drafts/RequestState.lean`, removed at incorporation.
 
 Composition theorems last (S15, proofs in `Proofs/Model/RequestState/Roundtrip.lean`):
 `rs1_roundtrip`, `rs2_roundtrip`, `open_at_roundtrip_rs1`, `open_at_roundtrip_rs2`. Each says that
 sealing terminates, that some `Str` holds the token's bytes, and that opening any such `Str`
 returns `Ok (body[8..])`, under the plan Section 3 round-trip conditions and the seal statements'
 own size premises. Signed off by the spec owner on 2026-11-23 after two review rounds
-(the S15 evidence (git history at 223ff12)). The rs1 ones reach `VERSION_V1._native.decide.ax_1` and
-`RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`; `rs2_roundtrip` reaches
-`VERSION_V2._native.decide.ax_1`; `open_at_roundtrip_rs2` reaches both `VERSION_V2…` and `…ax_3`.
+(the S15 evidence, git history at 223ff12). The rs1 ones reach `VERSION_V1._native.decide.ax_1`
+and `RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`; `rs2_roundtrip`
+reaches `VERSION_V2._native.decide.ax_1`; `open_at_roundtrip_rs2` reaches both `VERSION_V2…` and
+`…ax_3`.
 -/
 
 open Aeneas Aeneas.Std Result

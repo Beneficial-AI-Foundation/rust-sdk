@@ -8,7 +8,7 @@ spec: REVIEWED                # signed off by the spec owner 2026-11-24 (S25, af
 linkage: ORIGINAL  # pending S22: check passes locally on the S22 working tree (2026-11-24); not yet in CI on a commit
 proof: CHECKED  # proved 2026-11-24 (S31, incorporation of S24/S25); proof reviewed by an independent mcp-review agent 2026-11-24 (no blocking finding)
 proof_file: formal/proofs/Proofs/Transport/ClientSideSse.lean
-spec_file: formal/specs/Specs/Transport/Common/ClientSideSse.lean
+spec_file: formal/proofs/Proofs/Internal/Transport/Common/ClientSideSse.lean
 theorem: rmcp.transport.common.client_side_sse.SseEventSizeLimiter.check_limit_spec  # restated as Theorems.client_side_sse.SseEventSizeLimiter.check_limit
 used_by: [T02, T03, C02]  # Phase 2 targets/composition theorems consuming this theorem (plan Section 16)
 axioms: [propext, Quot.sound]  # as printed by `#print axioms` in the spec file; Classical.choice removed in phase C (human decision 2026-11-24)

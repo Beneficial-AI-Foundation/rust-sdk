@@ -597,7 +597,7 @@ def external_ns_errors(rel, text):
 
 
 GUARD = re.compile(r"#guard_msgs(?![A-Za-z0-9_'!?])")
-# The only accepted form, in specs/Specs.lean and specs/Specs/: `#guard_msgs in` (no option:
+# The only accepted form, in specs/Specs.lean, specs/Specs/ and proofs/Proofs/Internal/: `#guard_msgs in` (no option:
 # `(drop …)` would swallow messages, `(error)` etc. would let info pass) followed, on the same
 # or the next line, by exactly one `#print axioms <name>` and the end of that line.
 GUARD_OK = re.compile(r"#guard_msgs[ \t]+in[ \t]*(?:\r?\n[ \t]*)?#print[ \t]+axioms[ \t]+\S+[ \t]*(?:\r?\n|\Z)")
@@ -723,7 +723,10 @@ def check_sources(formal):
                     if n not in ATTR_ALLOWED:
                         errs.append(f"{rel}:{lineno(text, pos)}: banned: attribute {n or content.strip()!r} "
                                     "(not in ATTR_ALLOWED)")
-            in_specs = rel == "specs/Specs.lean" or rel.startswith("specs/Specs/")
+            # Restated statements with their axiom checks: public API in specs/Specs/, internal
+            # (private) functions and model laws in proofs/Proofs/Internal/ (human decision 2026-11-24).
+            in_specs = (rel == "specs/Specs.lean" or rel.startswith("specs/Specs/")
+                        or rel.startswith("proofs/Proofs/Internal/"))
             for m in GUARD.finditer(text):
                 # Prose: `#guard_msgs` written in backticks cannot be a command (a backtick
                 # before `#` does not parse in Lean), so it is skipped.
@@ -731,7 +734,8 @@ def check_sources(formal):
                     continue
                 ln = lineno(text, m.start())
                 if not in_specs:
-                    errs.append(f"{rel}:{ln}: #guard_msgs is allowed only in specs/Specs.lean and specs/Specs/")
+                    errs.append(f"{rel}:{ln}: #guard_msgs is allowed only in specs/Specs.lean, specs/Specs/ "
+                                "and proofs/Proofs/Internal/")
                 elif not GUARD_OK.match(text, m.start()):
                     errs.append(f"{rel}:{ln}: #guard_msgs must be exactly `#guard_msgs in` followed by "
                                 "one `#print axioms <name>` line (no options, no drop)")

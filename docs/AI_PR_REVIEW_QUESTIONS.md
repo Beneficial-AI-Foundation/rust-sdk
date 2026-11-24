@@ -116,7 +116,8 @@ refer to.
    the library roots (`Defs.lean`, `Specs.lean`, `Proofs.lean`) list exactly the modules the PR
    intends to accept, and that drafts stay in `formal/specs/Drafts/`.
 6. **Audit the trust base on base and head.** Compare the `#guard_msgs` axiom lists in
-   `formal/specs/Specs/**` between base and head, and the diff of `formal/trusted/`. Expected
+   `formal/specs/Specs/**` and `formal/proofs/Proofs/Internal/**` (public and internal spec files,
+   human decision 2026-11-24) between base and head, and the diff of `formal/trusted/`. Expected
    builtin axioms are `propext`, `Classical.choice`, and `Quot.sound`. Every other axiom must be in
    the trusted-base section of `formal/docs/STATUS.md` (`trusted/` declares none since S08–S09;
    the external models are definitions and `opaque` constants, which these lists do not show, so
@@ -150,8 +151,8 @@ PR that touches several kinds needs each applicable section.
 
 | Kind of change | Typical files | Sections to apply |
 | --- | --- | --- |
-| Specification of one target | `formal/specs/Drafts/*.lean`, `formal/specs/Defs/*.lean` | Specification strength and error order; Status records |
-| Proof of one target | `formal/proofs/Proofs/Model/RequestState{,Wire}/*.lean`, its restated theorem in `formal/specs/Specs/Model/*.lean`; Phase 2: `formal/proofs/Proofs/{Model,Transport}/*.lean`, restated in `formal/specs/Specs/{Model.lean,Model/Task.lean,Transport/**}` | Specification strength; Proof maintainability; Validation |
+| Specification of one target | `formal/specs/Drafts/*.lean`, `formal/specs/Defs/*.lean`, `formal/proofs/Proofs/Defs/*.lean`, a statement or docstring in `formal/proofs/Proofs/Internal/**` or `formal/specs/Specs/**`, `formal/specs/README.md` | Specification strength and error order; Status records |
+| Proof of one target | `formal/proofs/Proofs/Model/RequestState{,Wire}/*.lean` and Phase 2 `formal/proofs/Proofs/{Model,Transport}/*.lean`; restated in `formal/specs/Specs/{Model.lean,Model/Task.lean}` (public API) or `formal/proofs/Proofs/Internal/**` (Phase 1, M06/M07, transports, model laws; since 2026-11-24) | Specification strength; Proof maintainability; Validation |
 | Refactor, source change, or Aeneas `rev` bump | `crates/rmcp/src/model/request_state{,_wire}.rs`, `formal/lakefile.toml` | Translation, refactor, and source linkage; Validation |
 | Translation, Charon settings, or patch | `crates/rmcp/Cargo.toml` (`[package.metadata.charon]`), `formal/trusted/translation-pins.txt`, `formal/trusted/patches/`, `formal/translation/**`, the pilot record (removed from git history on 2026-11-23) | Translation, refactor, and source linkage; External axioms |
 | External model or axiom | `formal/trusted/Rmcp/*External.lean`, `formal/trusted/evidence/`, `formal/proofs/Proofs/External/` (and `formal/proofs/Proofs/Consistency/` if an axiom is added again), trusted base in `formal/docs/STATUS.md` | External axioms and the trust boundary |
@@ -368,8 +369,9 @@ Historical examples for each question are listed in the [appendix](#appendix-his
   imports only Aeneas, Mathlib, `Rmcp`, and `RmcpExternal`; `Proofs` imports `Rmcp`,
   `RmcpExternal`, and `Defs`, never `Specs`; nothing imports `Specs`. Does a draft with `sorry`
   stay in `formal/specs/Drafts/`, outside every library?
-- Is the statement in the spec file phrased only with `Defs` definitions, so its meaning does not
-  depend on proof-private definitions? Does its restated `theorem Theorems.…` have the signed-off statement text and is it proved by the spec theorem, and is it in
+- Is the statement in the spec file phrased only with `Defs` definitions (`formal/specs/Defs/` for
+  public statements; for internal ones in `formal/proofs/Proofs/Internal/` also the signed-off
+  `formal/proofs/Proofs/Defs/`), so its meaning does not depend on proof-private definitions? Does its restated `theorem Theorems.…` have the signed-off statement text and is it proved by the spec theorem, and is it in
   Rust source order with its `#guard_msgs` axiom check?
 - Does the file sit at the path the plan assigns (Phase 1: one file per Rust item,
   `Proofs/Model/RequestState{,Wire}/<Function>.lean`; Phase 2: one file per Rust type or module,

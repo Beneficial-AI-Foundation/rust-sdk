@@ -4,8 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
-import Defs.Wire
-import Defs.RequestState
+import Proofs.Defs.Wire
+import Proofs.Defs.RequestState
 import Proofs.External.String
 import Proofs.External.Std
 

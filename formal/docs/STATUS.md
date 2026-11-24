@@ -262,7 +262,8 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
   constants: `ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs`,
   `ExtModel.SerdeJsonErrorImpl` (Phase 1; S26/S27 add a fifth, see below). They add no axiom and do not appear in `#print axioms` or the
   locks: a change to a model is caught only by review of `formal/trusted/`. Their 72 laws are
-  proved (`Proofs/External/`) and restated in `Specs/External.lean`.
+  proved (`Proofs/External/`) and restated in `Specs/External.lean` (since 2026-11-24:
+  `formal/proofs/Proofs/Internal/External.lean`).
 - **Translation pin** (S21, human decision 2026-11-23): `formal/trusted/translation-pins.txt` records
   the sha256 of `formal/translation/Rmcp/Funs.lean` and the one line on which `lean-guard.sh sources`
   excuses a metaprogramming word (line 1971, the word `initialize`, the T06 literal). It is a trusted
@@ -281,7 +282,7 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
   `decDigit?`, `i64DigitLoop`, `i64FromAscii`, `sliceEq`, `sliceEqSameLength`, `beNat`, `ipv4Nats`,
   `ipv6Nats`. Stated exceptions are in each docstring (e.g. `Arc` equality has no pointer fast
   path). 43 laws (AI-drafted; review round 1: two agents, no blocking finding; signed off by the spec
-  owner 2026-11-23; proved and restated in `Specs/External.lean`, axioms at most `propext`,
+  owner 2026-11-23; proved and restated in `Specs/External.lean` (now `Proofs/Internal/External.lean`), axioms at most `propext`,
   `Classical.choice`, `Quot.sound`). Sources and evidence: `formal/trusted/evidence/README.md`; the
   differential tests of plan Section 18 were not built (stage 3 dropped by human decision,
   2026-11-23; plan Section 18 amendment), so fidelity rests on the cited source, review and the
@@ -299,7 +300,9 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
   `formal/trusted/patches/01-request-state-wire.patch` (the refactor and its tests; D2 fallback,
   2026-11-23; reviewed by two independent agents and signed off by the human on 2026-11-23, VERIFICATION.md §4). **Hand edits of the translation:** none.
   **Exclusions:** the list above (plan Section 2.3).
-- **Statements:** `formal/specs/Defs/` and `formal/specs/Specs/`.
+- **Statements:** `formal/specs/Defs/` and `formal/specs/Specs/` (public API; index
+  `formal/specs/README.md`), and `formal/proofs/Proofs/Internal/` with `formal/proofs/Proofs/Defs/`
+  (private, crate-internal and patch-only functions and the model laws; human decision 2026-11-24).
 
 External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
 `TypesExternal.lean`; sources and tests per model in `formal/trusted/evidence/README.md`:
@@ -505,6 +508,18 @@ reviewer recomputed all 35 hashes); no blocking finding; the local findings were
 proof-style ones (flexible tactics, iterator-helper duplication, proofs that unfold trusted model
 bodies instead of using the S26 laws, splitting A02 to cut its ~65 s build) are deferred to phase C.
 
+**Public and internal specifications (2026-11-24, human decision):** `formal/specs/` now holds only
+the public rmcp API (functions `pub` in upstream rmcp): `Specs/Model.lean` (M01–M05, M09–M14, the
+`_fail` companions, the Section 16.1 joint lemmas, C03) and `Specs/Model/Task.lean` (M08), with the
+definitions they use (`Defs/{Bytes,IntParse,JsonRpc}.lean`) and `formal/specs/README.md`, a
+one-page index of every guarantee in plain English. The statements about private, crate-internal
+(M06, M07) and patch-only (W01–W15) functions and the model laws moved, unchanged, to
+`formal/proofs/Proofs/Internal/<Rust path>.lean`, and the definitions only they use to
+`formal/proofs/Proofs/Defs/` (Lean names unchanged). A script confirmed that all 185 restated
+theorems, with their docstrings and `#print axioms` checks, are byte-identical (185 in all: 19
+public, 166 internal); `scripts/lean_guard.py` allows `#guard_msgs` in `proofs/Proofs/Internal/`; records
+(`spec_file`), board, plan Section 20 (amendment), `formal/README.md` and the guides updated.
+
 **Phase C proof refinement (2026-11-24, both phases; plan Section 8 "Phase C"):** with every spec
 statement frozen, the hand-written proofs were refined in two waves (`Proofs/External/*` first, then
 four parallel groups) and one fix round: about 300 flexible tactic uses (`simp`, `simp_all`,
@@ -668,6 +683,11 @@ Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evide
   `RmcpExternal` was offered at the S08/S09 sign-off and not adopted (deferred).
 
 Documents:
+- `docs/VERIFICATION.md` (kept verbatim) also differs, from 2026-11-24, in what an auditor reads:
+  its §7 says `formal/specs/` and not `formal/proofs/`; the statements about private,
+  crate-internal and patch-only functions and the model laws are now in
+  `formal/proofs/Proofs/Internal/` with their definitions in `formal/proofs/Proofs/Defs/`, which an
+  auditor reads too (plan Sections 4 and 20 amendment; human decision 2026-11-24).
 - `docs/VERIFICATION.md` differs from the project's design in nine documented places (build
   gate, `#guard_msgs` form, generated root module, reading `proofs/`, `globs`, native-code
   axioms, externals as definitions (amended), `theorem Theorems.…` instead of `recall`, and,

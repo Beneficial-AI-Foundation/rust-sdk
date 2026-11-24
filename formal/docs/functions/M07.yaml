@@ -8,7 +8,7 @@ spec: REVIEWED                # signed off by the spec owner 2026-11-24 (S24, af
 linkage: ORIGINAL  # pending S22: check passes locally on the S22 working tree (2026-11-24); not yet in CI on a commit
 proof: CHECKED  # proved 2026-11-24 (S30, incorporation of S24/S25); proof reviewed by an independent mcp-review agent 2026-11-24 (no blocking finding)
 proof_file: formal/proofs/Proofs/Model/NumberOrString.lean
-spec_file: formal/specs/Specs/Model.lean
+spec_file: formal/proofs/Proofs/Internal/Model.lean  # crate-internal (pub(crate)); moved 2026-11-24
 theorem: rmcp.model.NumberOrString.matches_response_id_spec  # restated as Theorems.model.NumberOrString.matches_response_id
 used_by: []  # Phase 2 targets/composition theorems consuming this theorem (plan Section 16)
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file

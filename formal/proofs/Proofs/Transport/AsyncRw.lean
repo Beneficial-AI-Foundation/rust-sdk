@@ -5,7 +5,7 @@ Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
 import Defs.Bytes
-import Defs.Methods
+import Proofs.Defs.Methods
 import Proofs.External.Std
 import Proofs.External.String
 

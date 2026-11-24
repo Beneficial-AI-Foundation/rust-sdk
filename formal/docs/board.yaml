@@ -4,6 +4,9 @@
 # never does. Paths are relative to the repository root; abbreviated paths in the plan's
 # Steps table are expanded from the plan's Section 5 "Files" tree and Section 8 "Steps", with
 # noted deviations (see the comments on individual files).
+# Note (2026-11-24): the `files` lists show the current paths after the public/internal
+# restructure (formal/specs/ = public API; formal/proofs/Proofs/{Internal,Defs}/ = internal), not
+# the paths when each step ran; see formal/docs/STATUS.md, "Public and internal specifications".
 steps:
   - id: S01
     day: D1
@@ -126,8 +129,8 @@ steps:
     owner: Spec drafter (mcp-spec or a person) + independent agent reviewers + spec owner
     files:
       - formal/specs/Defs.lean
-      - formal/specs/Defs/Wire.lean
-      - formal/specs/Defs/RequestState.lean
+      - formal/proofs/Proofs/Defs/Wire.lean
+      - formal/proofs/Proofs/Defs/RequestState.lean
       - formal/specs/Drafts/
       - formal/specs/Specs.lean
       - formal/proofs/Proofs.lean
@@ -151,7 +154,7 @@ steps:
       - formal/proofs/Proofs/Model/RequestStateWire/IsExpired.lean
       - formal/proofs/Proofs/Model/RequestStateWire/OpenFrame.lean
       - formal/proofs/Proofs/Model/RequestStateWire/Frame.lean
-      - formal/specs/Specs/Model/RequestStateWire.lean
+      - formal/proofs/Proofs/Internal/Model/RequestStateWire.lean
     acceptance: >-
       W01-W06, W12-W15 checked and recalled; W01 overflow domain explicit.
 
@@ -166,7 +169,7 @@ steps:
       - formal/proofs/Proofs/Model/RequestState/B64Len.lean
       - formal/proofs/Proofs/Model/RequestState/ValidateKeyLength.lean
       - formal/proofs/Proofs/Model/RequestState/ValidateConfigKid.lean
-      - formal/specs/Specs/Model/RequestState.lean
+      - formal/proofs/Proofs/Internal/Model/RequestState.lean
       - formal/specs/Drafts/Staged/RequestState.lean   # staging copy until incorporation
     acceptance: >-
       E01-E04 checked using only W theorems.
@@ -238,7 +241,7 @@ steps:
     depends_on: [S05]
     owner: Spec drafter + reviewers + spec owner
     files:
-      - formal/specs/Defs/CodecState.lean
+      - formal/proofs/Proofs/Defs/CodecState.lean
     acceptance: >-
       Codec-state invariant reviewed against the constructors.
 
@@ -272,7 +275,7 @@ steps:
     owner: Lean
     files:
       - formal/proofs/Proofs/Model/RequestState/Roundtrip.lean
-      - formal/specs/Specs/Model/RequestState.lean   # end of file
+      - formal/proofs/Proofs/Internal/Model/RequestState.lean   # end of file
     acceptance: >-
       Each round-trip theorem accepted on its own; missing ones listed OPEN.
 
@@ -357,8 +360,8 @@ steps:
       - formal/README.md
       - docs/WORKFLOW_AND_PR_GUIDE.md  # configuration text, feature flags (deferred from S20)
       - docs/AI_PR_REVIEW_QUESTIONS.md  # procedure commands, feature flags (deferred from S20)
-      - formal/specs/Specs/Model/RequestState.lean  # module docstring only: widened configuration
-      - formal/specs/Specs/Model/RequestStateWire.lean  # module docstring only: widened configuration
+      - formal/proofs/Proofs/Internal/Model/RequestState.lean  # module docstring only: widened configuration
+      - formal/proofs/Proofs/Internal/Model/RequestStateWire.lean  # module docstring only: widened configuration
       - scripts/lean_guard.py  # pinned exception for generated files (human decisions 2026-11-23)
       - formal/trusted/translation-pins.txt  # sha256 + exact-line pin (trusted)
       - scripts/lean-guard.sh  # header comment of that exception
@@ -403,8 +406,8 @@ steps:
     files:
       - formal/specs/Defs/JsonRpc.lean
       - formal/specs/Defs/IntParse.lean
-      - formal/specs/Defs/Methods.lean
-      - formal/specs/Defs/Tower.lean
+      - formal/proofs/Proofs/Defs/Methods.lean
+      - formal/proofs/Proofs/Defs/Tower.lean
       - formal/specs/Defs/Bytes.lean
       - formal/specs/Drafts/
     acceptance: >-
@@ -416,8 +419,8 @@ steps:
     depends_on: [S20]
     owner: Spec drafter + reviewers + spec owner
     files:
-      - formal/specs/Defs/Sse.lean
-      - formal/specs/Defs/Net.lean
+      - formal/proofs/Proofs/Defs/Sse.lean
+      - formal/proofs/Proofs/Defs/Net.lean
       - formal/specs/Drafts/
     acceptance: >-
       T01-T03, A01-A03, C01, C02, C04 statements reviewed by >= 2 agents and signed off.
@@ -433,7 +436,7 @@ steps:
       - formal/proofs/Proofs/External/String.lean
       - formal/proofs/Proofs/External/Std.lean
       - formal/proofs/Proofs/External/Option.lean
-      - formal/specs/Specs/External.lean
+      - formal/proofs/Proofs/Internal/External.lean
       - formal/trusted/evidence/README.md
     acceptance: >-
       Models (strings, Arc, Option, Result, slices) are definitions; laws reviewed by >= 2 agents, signed off and proved.
@@ -448,7 +451,7 @@ steps:
       - formal/trusted/Rmcp/TypesExternal.lean
       - formal/proofs/Proofs/External/Net.lean
       - formal/proofs/Proofs/External/IntParse.lean
-      - formal/specs/Specs/External.lean
+      - formal/proofs/Proofs/Internal/External.lean
       - formal/trusted/evidence/README.md
     acceptance: >-
       core::net and integer-parsing models; laws reviewed by >= 2 agents, signed off and proved; the parseI64 law after S24; no placeholder left. The differential tests were dropped (human decision 2026-11-23; plan Section 18 amendment).
@@ -476,8 +479,8 @@ steps:
     files:
       - formal/proofs/Proofs/Transport/AsyncRw.lean
       - formal/proofs/Proofs/Transport/Tower.lean
-      - formal/specs/Specs/Transport/AsyncRw.lean
-      - formal/specs/Specs/Transport/StreamableHttpServer/Tower.lean
+      - formal/proofs/Proofs/Internal/Transport/AsyncRw.lean
+      - formal/proofs/Proofs/Internal/Transport/StreamableHttpServer/Tower.lean
       - formal/trusted/native-axioms.lock
     acceptance: >-
       T04-T08, C05 checked; 30 native-lock entries (H2); #guard_msgs lists show them.
@@ -500,7 +503,7 @@ steps:
     owner: Lean
     files:
       - formal/proofs/Proofs/Transport/ClientSideSse.lean
-      - formal/specs/Specs/Transport/Common/ClientSideSse.lean
+      - formal/proofs/Proofs/Internal/Transport/Common/ClientSideSse.lean
     acceptance: >-
       T01-T03, C01, C02 checked.
 
@@ -511,7 +514,7 @@ steps:
     owner: Lean
     files:
       - formal/proofs/Proofs/Transport/Auth.lean
-      - formal/specs/Specs/Transport/Auth.lean
+      - formal/proofs/Proofs/Internal/Transport/Auth.lean
     acceptance: >-
       A01-A03, C04 checked.
 

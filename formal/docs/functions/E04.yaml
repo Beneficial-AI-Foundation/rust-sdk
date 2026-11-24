@@ -8,7 +8,7 @@ spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead de
 linkage: patch-01  # patch 01 (formal/trusted/patches/01-request-state-wire.patch), D2 fallback 2026-11-23
 proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestState/ValidateConfigKid.lean
-spec_file: formal/specs/Specs/Model/RequestState.lean
+spec_file: formal/proofs/Proofs/Internal/Model/RequestState.lean
 theorem: rmcp.model.request_state.RequestStateCodec.validate_config_kid_spec
 used_by: []  # targets whose proofs consume this theorem; used only when constructing a codec (§2.2)
 axioms: [propext, Classical.choice, Quot.sound, rmcp.model.request_state.KID_EMPTY_MSG._native.decide.ax_1, rmcp.model.request_state.KID_TOO_LONG_MSG._native.decide.ax_1]  # as printed by `#print axioms` in the spec file; the two native-code ones are the locked Aeneas toStr side conditions of the message literals (trusted/native-axioms.lock)

@@ -8,7 +8,7 @@ spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead de
 linkage: patch-01  # patch 01 (formal/trusted/patches/01-request-state-wire.patch), D2 fallback 2026-11-23
 proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestStateWire/B64Len.lean
-spec_file: formal/specs/Specs/Model/RequestStateWire.lean
+spec_file: formal/proofs/Proofs/Internal/Model/RequestStateWire.lean
 theorem: rmcp.model.request_state_wire.b64_len_spec
 used_by: [E02]  # targets whose proofs consume this theorem; E07/E08 use it only indirectly via E02 (plan §2.2 corrected (working tree): "Built on" lists E02 for them)
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file

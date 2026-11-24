@@ -51,6 +51,21 @@ import Proofs.Transport.ClientSideSse
 import Proofs.Transport.AsyncRw
 import Proofs.Transport.Tower
 import Proofs.Transport.Auth
+import Proofs.Defs.Wire
+import Proofs.Defs.CodecState
+import Proofs.Defs.RequestState
+import Proofs.Defs.Sse
+import Proofs.Defs.Net
+import Proofs.Defs.Methods
+import Proofs.Defs.Tower
+import Proofs.Internal.External
+import Proofs.Internal.Model
+import Proofs.Internal.Model.RequestState
+import Proofs.Internal.Model.RequestStateWire
+import Proofs.Internal.Transport.Common.ClientSideSse
+import Proofs.Internal.Transport.AsyncRw
+import Proofs.Internal.Transport.StreamableHttpServer.Tower
+import Proofs.Internal.Transport.Auth
 
 /-!
 # Proofs
@@ -67,4 +82,8 @@ Phase 2 (2026-11-24, S28–S32): `Proofs.Model.{JsonRpcMessage, NumberOrString, 
 SamplingContent, Reference}` (M01–M14, the joint lemmas, C03), `Proofs.Transport.{ClientSideSse,
 AsyncRw, Tower, Auth}` (T01–T08, A01–A03, C01, C02, C04, C05); the S27 law relating the integer
 parser model to `Defs.parseI64` is in `Proofs.External.IntParse`.
+
+Since 2026-11-24 it also imports the definitions used only by internal statements
+(`Proofs.Defs.*`) and the internal spec files (`Proofs.Internal.*`: statements about private,
+crate-internal and patch-only functions and the model laws, in the format of `formal/specs/Specs/`).
 -/

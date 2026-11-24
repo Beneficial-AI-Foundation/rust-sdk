@@ -4,38 +4,91 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Defs
-import Proofs
+import Proofs.Defs.Wire
+import Proofs.Model.RequestStateWire.B64Len
+import Proofs.Model.RequestStateWire.KeyLengthOk
+import Proofs.Model.RequestStateWire.CheckKidLen
+import Proofs.Model.RequestStateWire.BytesEq
+import Proofs.Model.RequestStateWire.NextDot
+import Proofs.Model.RequestStateWire.ComponentCount
+import Proofs.Model.RequestStateWire.VersionOf
+import Proofs.Model.RequestStateWire.ParseRs1
+import Proofs.Model.RequestStateWire.ParseRs2
+import Proofs.Model.RequestStateWire.TranscriptV1
+import Proofs.Model.RequestStateWire.TranscriptV2
+import Proofs.Model.RequestStateWire.DecodeExpiry
+import Proofs.Model.RequestStateWire.IsExpired
+import Proofs.Model.RequestStateWire.OpenFrame
+import Proofs.Model.RequestStateWire.Frame
 
 /-!
-# Spec file for crates/rmcp/src/model/request_state_wire.rs
+# Internal spec file for crates/rmcp/src/model/request_state_wire.rs (patch-only, W01–W15)
 
-Statements of the fifteen public wire functions of `crates/rmcp/src/model/request_state_wire.rs`
-(plan Section 2.1, W01–W15) and of the composition theorem `frame_roundtrip`, in Rust source
-order with the composition theorem last. Each is restated as a theorem
-`Theorems.request_state_wire.<function>`, proved by the spec theorem in
-`Proofs/Model/RequestStateWire/`, and followed by the assumptions its proof depends on, checked by
+These are guarantees about patch-only functions: they are `pub` only in the module
+`request_state_wire` that translation patch 01 adds, and are not upstream rmcp API; they are kept
+out of `formal/specs/`, which holds only the public API (human decision 2026-11-24). Index of all
+guarantees: `formal/specs/README.md`.
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| W01 | `b64_len` | `4 * ((len + 2) / 3)` | (a) |
+| W02 | `key_length_ok` | `true` iff `len ≥ 32` | none |
+| W03 | `check_kid_len` | `Err(Empty)` iff 0, `Err(TooLong)` iff > 255, else `Ok(())` | none |
+| W04 | `bytes_eq` | `true` iff the slices are equal byte lists | none |
+| W05 | `next_dot` | least index `≥ start` holding `.`, else `s.len()` | none |
+| W06 | `component_count` | number of `.`-components = number of `.` bytes + 1 | (b) |
+| W07 | `version_of` | `Some(V1)` iff first component `rs1`, `Some(V2)` iff `rs2` | none |
+| W08 | `parse_rs1` | `Some {body, tag}` iff the token is `rs1.body.tag` | (b) |
+| W09 | `parse_rs2` | `Some {kid, body, tag}` iff the token is `rs2.kid.body.tag` | (b) |
+| W10 | `transcript_v1` | `DOMAIN_V1 ++ be64(len ad) ++ ad ++ body` | (c) |
+| W11 | `transcript_v2` | `DOMAIN_V2 ++ be64(len kid) ++ kid ++ be64(len ad) ++ ad ++ body` | (c) |
+| W12 | `decode_expiry` | the signed (two's-complement) big-endian value of the 8 bytes | none |
+| W13 | `is_expired` | `true` iff `expiry ≠ 0` and `now_ms > expiry` | none |
+| W14 | `open_frame` | `< 8` bytes: `TooShort`; expired: `Expired`; else `Ok(body[8..])` | none |
+| W15 | `frame` | `be64(expiry as u64) ++ payload` | (c) |
+| — | `frame_roundtrip` | `open_frame(frame(e, p), now)` is `Ok(p)` | (c), (d) |
+
+Each row says that the call (for `frame_roundtrip`, the two calls in sequence) does not panic and
+that its result satisfies the guarantee. W07 gives `None` when the first component is neither;
+W08/W09 split on every `.` (exactly three, resp. four, components). Assumptions: (a) the result
+fits in `usize` (no overflow); (b) fewer than `usize::MAX` `.` bytes; (c) the result fits in
+`usize::MAX` bytes; (d) `e` is `0` or `now ≤ e`. Used by: in the patched copy, the
+`RequestStateCodec` functions of `Proofs/Internal/Model/RequestState.lean` and the excluded
+`seal_at` (W15), directly or through W04–W06, W12 and W13 (seal and open of request-state
+tokens); `formal/specs/README.md` lists the callers of each function.
+
+Statements of the fifteen wire functions (`pub` only inside the module that patch 01 adds; not
+upstream API) of `crates/rmcp/src/model/request_state_wire.rs` (plan Section 2.1, W01–W15) and of
+the composition theorem `frame_roundtrip`, in Rust source order with the composition theorem
+last. Each is restated as a theorem `Theorems.request_state_wire.<function>`, proved by the spec
+theorem (for `frame_roundtrip`, the lemma of that name) in `Proofs/Model/RequestStateWire/`, and
+followed by the assumptions its proof depends on, checked by
 `#print axioms` under `#guard_msgs`. The statements were signed off by the spec owner on
-2026-11-23 (the S05 evidence (git history at 223ff12)); their signed-off text is in `specs/Drafts/RequestStateWire.lean`
-at commit `9bd8144`, removed when they were incorporated (the W-batch incorporation procedure (git history at 223ff12)).
+2026-11-23 (the S05 evidence, git history at 223ff12); their signed-off text is in
+`specs/Drafts/RequestStateWire.lean` at commit `9bd8144`, removed when they were incorporated
+(the W-batch incorporation procedure, git history at 223ff12).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
-(widened for Phase 2, plan Section 15; the translation of this file's targets is unchanged), with `overflow-checks=true` and
-`debug-assertions=true` (every cargo call gets `--config profile.dev.overflow-checks=true` and
-`--config profile.dev.debug-assertions=true`, plan Section 1), so arithmetic overflow panics,
-which Aeneas models as failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is
-the patched copy (patch 01 on origin/main 7caec76,
-`formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23; translation
-committed at `9bd8144`). Line numbers refer to
-`request_state_wire.rs` in the patched copy, the only place the file exists.
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
+Phase 2, plan Section 15; the translation of this file's targets is unchanged), with
+`overflow-checks=true` and `debug-assertions=true` (every cargo call gets
+`--config profile.dev.overflow-checks=true` and `--config profile.dev.debug-assertions=true`,
+plan Section 1), so arithmetic overflow panics, which Aeneas models as failure. Aeneas
+`nightly-2026.08.20-5d08da4`; the translation base is the patched copy (patch 01 on origin/main
+7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23;
+translation committed at `9bd8144`). Line numbers refer to `request_state_wire.rs` in the
+patched copy, the only place the file exists.
 
-Definitions used: `Defs.Wire` (`b64Len`, `minKeyLength`, `maxKidLen`, `dot`, `components`,
+Definitions used: `Defs.Wire`, in module `Proofs.Defs.Wire` (`formal/proofs/Proofs/Defs/Wire.lean`;
+the Lean names are unchanged): `b64Len`, `minKeyLength`, `maxKidLen`, `dot`, `components`,
 `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`, `beNat`, `toInt64`, `Expired`,
-`expiryLen`, `bodyExpiry`, `frameBytes`).
+`expiryLen`, `bodyExpiry`, `frameBytes`.
 
 Opaque functions: the four functions of the module `prim` (`hmac_sha256`, `hmac_sha256_verify`,
 `b64_encode_into`, `b64_decode`) are not translated from Rust; they are opaque and modelled in
 `trusted/Rmcp/FunsExternal.lean` (plan Sections 2.1 and 4). No statement here mentions them.
+No statement here reaches a native-code assumption.
 
 Not translated from this file: the derived `Debug` impls of `KidError`, `Version`, `Rs1Parts`,
 `Rs2Parts` and `FrameError` (Charon `exclude` in `crates/rmcp/Cargo.toml`). No function of this

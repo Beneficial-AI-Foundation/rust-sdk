@@ -114,13 +114,15 @@ directions are fixed:
 | --- | --- | --- | --- |
 | `Rmcp` | `translation` | Generated `Rmcp.Types`, `Rmcp.Funs` | Aeneas, `RmcpExternal` |
 | `RmcpExternal` | `trusted` | Hand-written `Rmcp.TypesExternal`, `Rmcp.FunsExternal`: external models (definitions, structures, `opaque` constants; no axiom since S08–S09) | Aeneas, `Rmcp.Types` (the generated `FunsExternal` template imports it) |
-| `Defs` | `specs` | Pure definitions used by statements: byte-level models, transcripts, codec-state invariant | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
-| `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, laws of the external models (`Proofs/External/`; consistency models only if a trusted axiom is added again) | `Rmcp`, `RmcpExternal`, `Defs` |
-| `Specs` | `specs` | One spec file per Rust source file: each accepted statement restated as a `theorem` in `Theorems`, and its axioms | `Defs`, `Proofs` |
+| `Defs` | `specs` | Pure definitions used by public statements (`Defs.Bytes`, `Defs.IntParse`, `Defs.JsonRpc`); definitions used only by internal statements are in `Proofs/Defs/` (module `Proofs.Defs.X`, Lean namespace `Defs.X` unchanged) | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
+| `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, laws of the external models (`Proofs/External/`; consistency models only if a trusted axiom is added again); internal spec files (`Proofs/Internal/`, private API and model laws) and their definitions (`Proofs/Defs/`) | `Rmcp`, `RmcpExternal`, `Defs` |
+| `Specs` | `specs` | One spec file per Rust source file with public API: each accepted public statement restated as a `theorem` in `Theorems`, and its axioms | `Defs`, `Proofs` |
 
 - `Proofs` never imports `Specs`, and nothing imports `Specs`.
 - A statement is phrased only with `Defs` definitions (and the translated function), so that its
-  meaning never depends on a proof-private definition.
+  meaning never depends on a proof-private definition. Signed-off definitions used only by internal
+  statements live in `formal/proofs/Proofs/Defs/` (modules `Proofs.Defs.*`, Lean names `Defs.*`);
+  they count as `Defs` for this rule, and a change to them is a specification change.
 - Proof-only helpers stay in `Proofs`. Promote a helper to `Defs` only if a statement needs it.
 - `formal/specs/Drafts/` belongs to no library. Draft statements live there until their proofs are
   complete.
@@ -160,7 +162,9 @@ integer parsing; IP addresses).
 
 ## Specification Definition Guidelines
 
-`formal/specs/Defs/` holds the definitions that statements are written in.
+`formal/specs/Defs/` holds the definitions that public statements are written in (`Bytes`,
+`IntParse`, `JsonRpc`); those used only by internal statements are in `formal/proofs/Proofs/Defs/`
+(human decision 2026-11-24). The files below are named by their Lean module names `Defs.*`.
 
 - `Defs/Wire.lean`: `splitOn` components, `be64`, transcripts, framing and expiry.
 - `Defs/RequestState.lean`: codec outputs and error predicates.
@@ -302,6 +306,15 @@ Rust file's spec file.
   it covers only successful calls and does not show that any call succeeds.
 
 ## Spec Files
+
+**Public and internal (human decision 2026-11-24).** `formal/specs/Specs/` holds only statements about
+the public rmcp API (functions `pub` in upstream rmcp) and compositions of them; statements about
+private, crate-internal (`pub(crate)`) and patch-only functions, and the laws of the external
+models, are restated in the same format in `formal/proofs/Proofs/Internal/<Rust path>.lean`. Each
+file's module docstring starts with a summary table (ID, function, guarantee, assumptions), and
+`formal/specs/README.md` indexes every guarantee in plain English. The paths below are those of
+the first layout; the current locations are in `formal/docs/functions/*.yaml` (`spec_file`), and
+the model laws are in `formal/proofs/Proofs/Internal/External.lean`.
 
 `formal/specs/Specs/Model/RequestStateWire.lean` and `Specs/Model/RequestState.lean` are the spec
 files, one per Rust source file (`VERIFICATION.md` §7). Phase 2 adds one spec file per Rust source

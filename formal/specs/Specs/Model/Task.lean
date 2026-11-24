@@ -7,7 +7,18 @@ import Defs
 import Proofs.Model.Task
 
 /-!
-# Spec file for crates/rmcp/src/model/task.rs (Phase 2: M08)
+# Spec file for crates/rmcp/src/model/task.rs (Phase 2, public API: M08)
+
+Summary (index of all guarantees: `formal/specs/README.md`). The row says that the call does not
+panic and that its result satisfies the guarantee.
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| M08 | `TaskStatus::is_terminal` | `true` exactly for `Completed`, `Failed`, `Cancelled` | none |
+
+This file holds only the public API of `task.rs` (functions `pub` in upstream rmcp; human
+decision 2026-11-24); `is_terminal` is `pub`, with the Rust path
+`rmcp::model::TaskStatus::is_terminal` (`model.rs` line 38 re-exports `task` by `pub use task::*`).
 
 The statement of `TaskStatus::is_terminal` (M08, plan Section 16.1), restated as
 `Theorems.task.TaskStatus.is_terminal`, proved by the spec theorem in `Proofs/Model/Task.lean`
@@ -17,9 +28,10 @@ and followed by the assumptions its proof depends on, checked by `#print axioms`
 incorporation.
 
 Translated configuration (the proof holds only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
-(widened for Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true`
-(plan Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`.
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
+Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true` (plan
+Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`.
 
 Definitions used: none beyond plain Lean. External models used: none. Native-code assumptions
 reached: none.

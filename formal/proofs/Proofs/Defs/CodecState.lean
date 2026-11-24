@@ -6,7 +6,7 @@ Authors: Hoang Le Truong
 import Aeneas
 import Rmcp.Types
 import Rmcp.FunsExternal
-import Defs.Wire
+import Proofs.Defs.Wire
 
 /-!
 # Codec state, keys and expected opening results (E07–E11)
