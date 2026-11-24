@@ -412,7 +412,7 @@ steps:
 
   - id: S25
     day: D2-4
-    state: NOT_STARTED
+    state: IN_PROGRESS  # statements signed off by the spec owner 2026-11-24 after 4 spec-cycle rounds; awaits human acceptance
     depends_on: [S20]
     owner: Spec drafter + reviewers + spec owner
     files:

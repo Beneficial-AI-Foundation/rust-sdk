@@ -382,6 +382,17 @@ requests when the message has no `id` key (a standard, listed name gives
 ("in the core list and not in `Defs.Methods.codeOmits`"). Not yet reported upstream (see "Open
 items").
 
+**Phase 2 (S25, human decision H8, 2026-11-24): `is_disallowed_metadata_ipv4` does not block
+`240.0.0.0/4`.** `AuthorizationManager::is_disallowed_metadata_ipv4` (`auth.rs` 1343–1354,
+upstream `7caec76`) accepts addresses in the reserved block `240.0.0.0/4` (RFC 1112 §4; IANA
+special-purpose registry, "Reserved"), except the broadcast address `255.255.255.255`, which it
+blocks. A metadata URL with such an address passes the SSRF check (A02 and, through embedded
+forms, A03), and a resolved address in it is classed `Public` by the DNS-resolver filter
+(`AddressClass::of`, `auth/metadata_resolver.rs` 42–74, which calls
+`is_disallowed_metadata_ipv4` at line 52), although the module doc (lines 8–9) says reserved
+addresses are never allowed. The A02 statement describes the code (the plan's list of eleven
+ranges). Not yet reported upstream (see "Open items").
+
 Defects found in the plan, documents and tooling, with their state:
 
 1. Plan §4 said the constructors enforce "every key is at least 32 bytes"; false for
@@ -443,6 +454,7 @@ pilot is not the project's translation, which is S21.
 | H5 | Project owner and budget | **Open**: TBD (human, 2026-11-23); spec owner named: Hoang Le Truong |
 | H6 | Source of the T05/T06 method lists: union of the method names in the official MCP `schema.ts` of the five `KNOWN_VERSIONS` (22 requests, 12 notifications), since `2026-07-28` alone lacks `initialize`/`ping`. Core protocol only: extension methods (rmcp's `tasks/update`, `notifications/tasks`) are out of scope by design, not a bug; schema versions pinned (commit + sha256), list contents pinned by Lean regression checks, derivation reproduced by the command in `Defs.Methods`; a Tasks-extension list, if needed, is generated separately with capability-dependent handling checked; coverage claims say "core protocol", never "full MCP" | Decided (human, 2026-11-24, S24) |
 | H7 | T05/T06 code form: "in the core list and not in `codeOmits`" (six names); the gap is a bug ("Bugs found"). `notifications/elicitation/response` is out of scope like the extension names | Decided (human, 2026-11-24, S24) |
+| H8 | A01–A03: blocking all of `64:ff9b:1::/48` is intended; `240.0.0.0/4` (reserved, not blocked) is a bug ("Bugs found"); other special-purpose ranges outside the plan's lists, incl. `::ffff:0:0:0/96` (RFC 2765, obsoleted by RFC 6145), are a scope note | Decided (human, 2026-11-24, S25) |
 
 **Owners:** spec owner Hoang Le Truong (named for Phase 2 on 2026-11-23); project owner and budget
 TBD (H5, open by human decision 2026-11-23).
@@ -462,6 +474,19 @@ S22 check), `proof: OPEN`.
 | T04–T06 | `async_rw::{without_carriage_return, is_standard_notification, is_standard_method}` | `transport/async_rw.rs:385, 420, 396` |
 | T07, T08 | `tower::default_port`, `tower::AllowedPort::matches` | `transport/streamable_http_server/tower.rs:1146, 1164` |
 | A01–A03 | `AuthorizationManager::{embedded_ipv4, is_disallowed_metadata_ipv4, is_disallowed_metadata_ipv6}` | `transport/auth.rs:1359, 1343, 1370` |
+
+**S25 spec cycle (2026-11-24):** drafts `formal/specs/Drafts/ClientSideSse.lean` (T01–T03, C01 with
+its plan form, C02 with its prefix form) and `formal/specs/Drafts/Auth.lean` (A01–A03, C04 with a
+corollary in `Defs.Net` terms), with `Defs/Sse.lean` (limiter model plus an independent description
+from the WHATWG line rules, agreement checked on finite cases) and `Defs/Net.lean` (RFC prefixes);
+both join the `Defs` root at incorporation. Four review rounds with two fresh `mcp-review` agents
+each, three fix rounds; round 4 had no blocking or judgment finding. The reviewers proved every
+statement in scratch against the translation (axioms `propext`, `Classical.choice`, `Quot.sound`),
+compared the translated functions with the Defs on millions of inputs (0 differences) and ran
+mutation tests on both Defs. Human decision H8; a bug recorded under "Bugs found" (`240.0.0.0/4`).
+Signed off by the spec owner Hoang Le Truong on 2026-11-24. Deferred to incorporation: one more
+`Defs.Net` check pinning the outer edges of `2002::/16`, `::ffff:0:0/96` and `::/96`; the citation
+"lines 120–121" in `Defs/Sse.lean`. Candidate lemmas for S31/S32 are in plan Section 21.
 
 **Mathlib naming batch (2026-11-24, human decision):** a read-only audit of the hand-written Lean
 under `formal/` listed the names that break Mathlib conventions; the clear violations were renamed,
@@ -525,12 +550,14 @@ lines). Re-run after the review fixes: output byte-identical. `lake build` (1745
 (`$FEATURES,macros`) passes 801 library tests. The three workflows have not run on GitHub.
 
 Board: S20 `IN_PROGRESS`; S21 `IN_PROGRESS` (translated, all 25 `LEAN_OK`; human sign-off and CI pending);
-S22 `IN_PROGRESS` (linkage check written and reviewed; local evidence below; not yet in CI); S24 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S26/S27 `IN_PROGRESS` (signed off, proved); the other steps `NOT_STARTED`.
+S22 `IN_PROGRESS` (linkage check written and reviewed; local evidence below; not yet in CI); S24 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S25 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S26/S27 `IN_PROGRESS` (signed off, proved); the other steps `NOT_STARTED`.
 
 ## Open items
 
 Human decisions and actions:
 - **Phase 2 owner and budget (H5)**: not named; blocks S20 acceptance and gate G1 (plan Section 21).
+- **Report the H8 gap upstream** (S25, 2026-11-24): `240.0.0.0/4` not blocked by
+  `is_disallowed_metadata_ipv4` ("Bugs found", Phase 2). Needs the owner's go-ahead.
 - **Report the H7 gap upstream** (S24, 2026-11-24): the `async_rw` method lists miss six core MCP
   names ("Bugs found", Phase 2). Not reported yet; reporting is outward-facing and needs the
   owner's go-ahead.

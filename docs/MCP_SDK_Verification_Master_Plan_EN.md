@@ -1060,10 +1060,10 @@ Joint lemmas, stated with the targets because later phases use them as a set: M1
 
 | ID | Statement | Uses | Why it matters |
 |---|---|---|---|
-| C01 `sse_observe_append` | If `observe st a = Ok` with state `st'`, then `observe st (a ++ b)` equals `observe st' b` (result and state) | T03 | Chunk boundaries do not change the limiter's decision, including a CRLF split across chunks; this is what a later proof of `bounded_sse_stream` needs |
-| C02 `sse_observe_bound` | If `sat(retained + line) ≤ max` holds before and `observe` returns `Ok`, it holds after | T01–T03 | The limiter's memory guarantee: an accepted stream never retains more than `max_size` bytes of the current event |
+| C01 `SseEventSizeLimiter.observe_append` (plan form: `observe_append_of_observe_eq_ok`; renamed to Mathlib style 2026-11-24, was `sse_observe_append`) | Plan form: if `observe st a = Ok` with state `st'`, then `observe st (a ++ b)` equals `observe st' b` (result and state); general form (`observe_append`): `observe st (a ++ b)` is `observe st a` followed by `observe st' b` when the first call returns `Ok`; otherwise the first call's `Err` with its state | T03 | Chunk boundaries do not change the limiter's decision, including a CRLF split across chunks; this is what a later proof of `bounded_sse_stream` needs |
+| C02 `SseEventSizeLimiter.max_size_eq_and_satAdd_le_of_observe_eq_ok` (prefix form `exists_observe_eq_ok_and_max_size_eq_and_satAdd_le_of_observe_append_eq_ok`; was `sse_observe_bound`) | If `sat(retained + line) ≤ max` holds before and `observe` returns `Ok`, it holds after | T01–T03 | The limiter's memory guarantee: an accepted stream never retains more than `max_size` bytes of the current event |
 | C03 `into_result_eq` (renamed to Mathlib style 2026-11-24, was `into_result_consistent`) | `into_result m = (into_response m).map (fun (r, i) => (Ok r, some i)) <\|> (into_error m).map (fun (e, i) => (Err e, i))` | M02, M04, M05 | Routing code may use either form |
-| C04 `ipv6_embedding_no_bypass` | `embedded_ipv4 a = some v → is_disallowed_metadata_ipv6 a = is_disallowed_metadata_ipv4 v` | A01–A03 | No SSRF bypass by writing a blocked IPv4 address in IPv4-mapped, compatible, NAT64 or 6to4 form |
+| C04 `AuthorizationManager.is_disallowed_metadata_ipv6_eq_of_embedded_ipv4_eq_ok_some` (corollary in `Defs.Net` terms `is_disallowed_metadata_ipv6_of_ipv4Disallowed`; was `ipv6_embedding_no_bypass`) | `embedded_ipv4 a = some v → is_disallowed_metadata_ipv6 a = is_disallowed_metadata_ipv4 v` | A01–A03 | No SSRF bypass by writing a blocked IPv4 address in IPv4-mapped, compatible, NAT64 or 6to4 form |
 | C05 `is_standard_method_of_is_standard_notification` (renamed to Mathlib style 2026-11-24, was `notification_is_standard_method`) | `is_standard_notification m → is_standard_method m` | T05, T06 | The allow-lists are consistent |
 
 ### 16.5 Measured and not taken
@@ -1215,7 +1215,7 @@ formal/
 docs/WORKFLOW_AND_PR_GUIDE.md, STYLE_GUIDE.md, REVIEWER_GUIDE.md, AI_PR_REVIEW_QUESTIONS.md   UPDATE S20
 ```
 
-The `formal/lakefile.toml` libraries and roots do not change: new modules are imported from the existing roots `Defs.lean`, `Proofs.lean` and `Specs.lean`, so `scripts/lean-guard.sh sources` needs no change. Theorem names follow Section 5 and the committed Phase 1 spec files, `Theorems.<last module segment>.<Type>.<function>` (as in `Theorems.request_state.RequestStateCodec.open_at`). So `rmcp.model.JsonRpcMessage.into_request_spec` in `Proofs` is restated as `Theorems.model.JsonRpcMessage.into_request` in `Specs/Model.lean` with its `#guard_msgs` axiom check; likewise `Theorems.task.TaskStatus.is_terminal`, `Theorems.client_side_sse.SseEventSizeLimiter.observe`, `Theorems.async_rw.is_standard_method`, `Theorems.tower.AllowedPort.matches` and `Theorems.auth.AuthorizationManager.embedded_ipv4`. Model laws are restated as `Theorems.External.<name>` in `Specs/External.lean`, as in Phase 1. The composition theorems keep their C-names (`sse_observe_append`, …) at the end of their spec files.
+The `formal/lakefile.toml` libraries and roots do not change: new modules are imported from the existing roots `Defs.lean`, `Proofs.lean` and `Specs.lean`, so `scripts/lean-guard.sh sources` needs no change. Theorem names follow Section 5 and the committed Phase 1 spec files, `Theorems.<last module segment>.<Type>.<function>` (as in `Theorems.request_state.RequestStateCodec.open_at`). So `rmcp.model.JsonRpcMessage.into_request_spec` in `Proofs` is restated as `Theorems.model.JsonRpcMessage.into_request` in `Specs/Model.lean` with its `#guard_msgs` axiom check; likewise `Theorems.task.TaskStatus.is_terminal`, `Theorems.client_side_sse.SseEventSizeLimiter.observe`, `Theorems.async_rw.is_standard_method`, `Theorems.tower.AllowedPort.matches` and `Theorems.auth.AuthorizationManager.embedded_ipv4`. Model laws are restated as `Theorems.External.<name>` in `Specs/External.lean`, as in Phase 1. The composition theorems are restated under their Section 16.4 names (`SseEventSizeLimiter.observe_append`, …), with their C-IDs in the docstrings, at the end of their spec files.
 
 ## 21. Phase 2 process, steps and gates
 
@@ -1264,6 +1264,23 @@ Days are working days of a two-week sprint, relative to S20. Dependencies govern
 
 S37 is mandatory even if every other step fails. Phase 1's S17 (first CI run on GitHub) should be done in the same pull request as S21, since S21 is the first PR that changes all three workflows' inputs.
 
+**Notes for S31/S32 from the S25 reviews (2026-11-24; candidates, not signed-off statements).**
+S31: the agreement `∀ cap ≥ 1, Defs.Sse.observe cap (init m) h = historyOutcome cap m h` (checked
+only on finite cases in `Defs/Sse.lean`) is needed by a later "the stream rejects an oversize event"
+lemma; a scratch proof of T03 rewrote with an auto-generated `match_….eq_…` equation, which trips
+`linter.auxLemma` under `warningAsError`, so the prover needs another route. S32: a normal-form
+lemma `ipv4Disallowed (ofBigEndianDigits 256 [a,b,c,d]) = decide (<octet conditions of A02>)` for
+octets `< 256` keeps the A02 proof within about 2M heartbeats (one small `omega` fact per range; one
+`omega` over the 11-way disjunction timed out). The C04 corollary needs only
+`ipv4Disallowed w = true → w < 2^32` and evaluation of `embeddedIpv4` on the four forms. A01 and A03
+were carried by a segment-level characterisation of `embeddedIpv4`, a segment normal form of
+`ipv6DisallowedPrefixes.any`, mask lemmas (`s &&& 0xffc0 = 0xfe80 ↔ s / 64 = 1018`,
+`s &&& 0xfe00 = 0xfc00 ↔ s / 512 = 126`) and `is_loopback`/`is_unspecified` rewritten to
+`ok (decide …)`. Traps seen in the scratch proofs: `simp_all [UScalar.eq_equiv]` loops on
+hypotheses `0#16#uscalar = s` (use `simp … at *`, then `omega`), `0#16#uscalar` needs a lemma
+`(UScalar.mk (BitVec.ofNat 16 k)).val = k % 65536`, and in A01's 6to4 branch `step*` produced a
+proof the kernel rejected, while a single `step` worked.
+
 ### Gates
 
 - **G1 (end of D2):** S21 merged with all three CI workflows green and S22 passing; owner and budget named.
@@ -1291,6 +1308,7 @@ All 25 verified, plus C01–C05, is the goal.
 | H5 | **Open (TBD, human 2026-11-23).** Project owner and budget for Phase 2 (and the open Phase 1 S01). The Phase 2 spec owner is Hoang Le Truong (named 2026-11-23) | — |
 | H6 | **Decided 2026-11-24 (human, S24).** Source of the T05/T06 method lists in `Defs.Methods`: the union of the method names in the official `schema.ts` of the five versions in `ProtocolVersion::KNOWN_VERSIONS` (22 requests, 12 notifications), because the `2026-07-28` schema alone lacks `initialize` and `ping` | Union of the five versions (adopted). **Amended 2026-11-24 (human):** `notifications/elicitation/response` (rmcp core block, in no core schema) is out of scope too. Earlier amendment: the lists cover the core protocol only; extension schemas are kept separate. rmcp's Tasks-extension methods `tasks/update` and `notifications/tasks` are outside the core union by design, not a bug. The upstream schema versions are pinned (commit and sha256 in `Defs.Methods`); Lean regression checks pin the list contents, and the derivation from the schemas is reproduced by the command recorded in `Defs.Methods`. If Tasks-extension support is verified later, its method list is generated separately from the extension schema, with capability-dependent handling checked. Coverage claims say "core protocol" and never "full MCP" |
 | H7 | **Decided 2026-11-24 (human, S24).** The Rust lists of T05/T06 (`async_rw.rs` 396–433) lack six names of the core union: `tasks/get`, `tasks/result`, `tasks/cancel`, `tasks/list`, `notifications/tasks/status`, `notifications/elicitation/complete` (`Defs.Methods.codeOmits`). The T05/T06 statements take the code form "in the core list and not in `codeOmits`", with the six names listed one by one; the gap is recorded in `STATUS.md`, "Bugs found" | Code form, bug recorded (adopted) |
+| H8 | **Decided 2026-11-24 (human, S25).** A01–A03 address lists: (1) blocking the whole local-use NAT64 prefix `64:ff9b:1::/48` (RFC 8215), including addresses that carry a public IPv4 address, is intended conservative behaviour, not a bug; (2) `240.0.0.0/4` (reserved, except the broadcast address) is neither in the plan's A02 list nor blocked by rmcp: recorded as a bug in `STATUS.md`; (3) other special-purpose ranges outside the plan's lists (documentation, benchmarking and similar ranges, and `::ffff:0:0:0/96`, the IPv4-translated format of RFC 2765, obsoleted by RFC 6145 and not in the IANA registry) are a scope note: the plan's lists are the scope. The A01–A03 statements describe the code in every case | Adopted as decided |
 
 ## 22. Phase 2 acceptance and boundary cases
 
@@ -1314,7 +1332,7 @@ Boundary cases each proof must cover, and the tests (upstream, differential or H
 | A02 | first and last address of each listed range, and the addresses just outside each; a public address |
 | A03/C04 | each listed prefix boundary; an embedded blocked IPv4 in each of the four forms; a public IPv6 address |
 
-**Bugs found.** Any disagreement between an independent specification and the code is recorded in `STATUS.md`, "Bugs found", and reported to the owner. It is never resolved by weakening the specification (Section 8, "What sends work back"). Candidates the drafters must check: whether the core MCP method lists (union of the five known versions, H6) include methods missing from T05/T06 (found at S24: `tasks/get`, `tasks/result`, `tasks/cancel`, `tasks/list`, `notifications/tasks/status`, `notifications/elicitation/complete`, recorded as a bug, H7; names in no core schema, such as `tasks/update`, `notifications/tasks` and `notifications/elicitation/response`, are out of scope by H6); and whether `64:ff9b:1::/48` addresses that embed a public IPv4 address should be allowed.
+**Bugs found.** Any disagreement between an independent specification and the code is recorded in `STATUS.md`, "Bugs found", and reported to the owner. It is never resolved by weakening the specification (Section 8, "What sends work back"). Candidates the drafters must check: whether the core MCP method lists (union of the five known versions, H6) include methods missing from T05/T06 (found at S24: `tasks/get`, `tasks/result`, `tasks/cancel`, `tasks/list`, `notifications/tasks/status`, `notifications/elicitation/complete`, recorded as a bug, H7; names in no core schema, such as `tasks/update`, `notifications/tasks` and `notifications/elicitation/response`, are out of scope by H6); and whether `64:ff9b:1::/48` addresses that embed a public IPv4 address should be allowed (decided at S25: blocking is intended, H8; `240.0.0.0/4` recorded as a bug).
 
 ## 23. Reuse map: what Phase 2 unlocks
 

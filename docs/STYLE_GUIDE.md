@@ -292,8 +292,9 @@ Rust file's spec file.
 
 - Theorem names say what the result is, following the [Mathlib naming guidelines][mathlib-naming]
   and the names of plan Section 5 (`rs1_roundtrip`, `open_at_roundtrip_rs2`, ...) or plan Section 16.4
-  for Phase 2 (`sse_observe_append`, `ipv6_embedding_no_bypass`, ...), rather than
-  `<function>_spec`. They are not tagged `@[step]`.
+  for Phase 2 (`SseEventSizeLimiter.observe_append`,
+  `AuthorizationManager.is_disallowed_metadata_ipv6_eq_of_embedded_ipv4_eq_ok_some`, ...),
+  rather than `<function>_spec`. They are not tagged `@[step]`.
 - The docstring lists every premise of the round trip in words (body length, expiry, same
   associated data, key or kid conditions), and says which translated functions the theorem is
   about.
