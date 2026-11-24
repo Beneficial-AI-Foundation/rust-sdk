@@ -441,7 +441,9 @@ auditor also reads `proofs/` for instances, notation, coercions and attributes t
 a spec statement means (see "What CI checks", accepted residual limits).
 There is one translation patch, `trusted/patches/01-request-state-wire.patch` (the
 `request_state_wire` refactor and its tests on upstream `7caec76`; D2 fallback, human decision
-2026-11-23); before that date there was none. S04a part 2 started `trusted/Rmcp/` from the Aeneas templates
+2026-11-23); before that date there was none. A second, test-only patch,
+`trusted/patches/02-phase2-tests.patch` (S34, human decision H3, 2026-11-24), adds `#[cfg(test)]`
+boundary tests for Phase 2 and changes no translated item; `scripts/apply-patches.sh` applies both. S04a part 2 started `trusted/Rmcp/` from the Aeneas templates
 with placeholder axioms; since S08–S09 (accepted 2026-11-23; human decision: convert every axiom
 into a definition) it declares **no axiom**: each external type is a
 `structure`, each external function a definition with the generated name and signature

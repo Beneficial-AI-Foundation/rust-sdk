@@ -534,12 +534,14 @@ steps:
 
   - id: S34
     day: D2-9
-    state: NOT_STARTED
+    state: IN_PROGRESS  # 141 cases mapped; 96 uncovered + 8 partial covered by test-only patch 02 (human decision 2026-11-24); reviewed; accepted by the human owner 2026-11-24, becomes ACCEPTED when S21 passes CI
     depends_on: [S21]
     owner: Review
     files:
       - formal/trusted/evidence/README.md
-      - formal/trusted/patches/02-phase2-tests.patch  # only if an uncovered case needs it (H3)
+      - formal/trusted/patches/02-phase2-tests.patch  # created 2026-11-24 (H3)
+      - formal/docs/STATUS.md  # H3 process exception, "Documents"
+      - .github/workflows/patched-tests.yml  # header comment only
     acceptance: >-
       Each plan Section 22 boundary case covered by an upstream test, a differential test or (H3 exception) patch 02, and the tests pass.
 

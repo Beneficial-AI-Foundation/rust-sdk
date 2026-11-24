@@ -92,7 +92,7 @@ by `#guard_msgs in` + `#print axioms`), counted at `aacfbf7`:
 | SHA-256 of `request_state.rs` at base | `41e69cad…b416` (full value: plan Section 1) |
 | Pinned commit | upstream `origin/main` `7caec762799bece6fba38e4298b8ca7db8bac12c`; every SDK `*.rs` file is byte-identical to it (D2 fallback, 2026-11-23) |
 | Translation patch | `formal/trusted/patches/01-request-state-wire.patch`: the refactor of local commit `f8fb6a7` plus the S16 tests of `afab9d2`, applied only to `.llbc/work/` by `scripts/apply-patches.sh` |
-| Verified Rust source | the patched copy (`7caec76` + patch 01); its non-test lines equal those of `f8fb6a7`, so line numbers are unchanged |
+| Verified Rust source | the patched copy (`7caec76` + patch 01, plus the test-only patch 02 since 2026-11-24, which adds `#[cfg(test)]` code only); its non-test lines equal those of `f8fb6a7`, so line numbers are unchanged |
 | Translation | committed at `9bd8144` (from `f8fb6a7` + Charon settings); reproduced byte for byte through the patch path (2026-11-23) |
 | Aeneas | release tag `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 223ff12)) |
 
@@ -301,7 +301,10 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   prebuilt Aeneas Lean library (archive sha256 checked) and Mathlib oleans (not digest-checked).
 - **Configuration:** the translated configuration above. **Patches:** one,
   `formal/trusted/patches/01-request-state-wire.patch` (the refactor and its tests; D2 fallback,
-  2026-11-23; reviewed by two independent agents and signed off by the human on 2026-11-23, VERIFICATION.md §4). **Hand edits of the translation:** none.
+  2026-11-23; reviewed by two independent agents and signed off by the human on 2026-11-23, VERIFICATION.md §4),
+  and the test-only `02-phase2-tests.patch` (34 `#[cfg(test)]` boundary tests, S34, H3, 2026-11-24;
+  it changes no translated item, the re-translation is byte-identical; see "Documents"). **Hand
+  edits of the translation:** none.
   **Exclusions:** the list above (plan Section 2.3).
 - **Statements:** `formal/specs/Defs/` and `formal/specs/Specs/` (public API; index
   `formal/specs/README.md`), and `formal/proofs/Proofs/Internal/` with `formal/proofs/Proofs/Defs/`
@@ -713,6 +716,15 @@ Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evide
   `RmcpExternal` was offered at the S08/S09 sign-off and not adopted (deferred).
 
 Documents:
+- **Test-only patch 02 (H3, human decision 2026-11-24, S34):** `formal/trusted/patches/02-phase2-tests.patch`
+  adds 34 `#[cfg(test)]` tests for the plan Section 22 boundary cases no upstream test covers. It is
+  a further deviation from `docs/VERIFICATION.md` §4, which defines translation patches as
+  behaviour-preserving edits that make an item translate: patch 02 changes no translated item (the
+  re-translation with it is byte-identical) and exists only as test evidence, run by
+  `patched-tests.yml`. The repository's SDK `*.rs` files stay unchanged. S34 (all 141 Section 22
+  boundary cases covered: 37 by upstream tests, 96 uncovered and 8 partial by patch 02; 835 tests
+  pass; reviewed by two agents, a third pass after the fix round) was accepted by the human owner
+  on 2026-11-24, effective when S21 passes CI.
 - `docs/VERIFICATION.md` (kept verbatim) also differs, from 2026-11-24, in what an auditor reads:
   its §7 says `formal/specs/` and not `formal/proofs/`; the statements about private,
   crate-internal and patch-only functions and the model laws are now in

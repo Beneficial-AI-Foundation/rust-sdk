@@ -1,4 +1,4 @@
-# Evidence for the external models (plan steps S08–S09, S26–S27)
+# Evidence for the external models (plan steps S08–S09, S26–S27) and the Phase 2 test map (S34)
 
 `formal/trusted/Rmcp/TypesExternal.lean` and `FunsExternal.lean` model every external of the
 translation, i.e. every type and function that Charon did not translate: those of other crates
@@ -24,8 +24,10 @@ design (`formal/proofs/Proofs/Consistency/`) are unnecessary: a definition canno
 (`formal/proofs/Proofs/External/Base64.lean`). What remains to be trusted about each model is
 that it describes the Rust function; the source each one encodes is cited below (and in its
 docstring), and the Rust tests that exercise it are listed. The tests catch a mismatched model;
-they are not a proof. All tests named here are in the crate's own test modules and run with
-`cargo test -p rmcp --no-default-features --features request-state --lib model::request_state`.
+they are not a proof. All tests named in the Phase 1 sections are in the crate's own test modules
+and run with
+`cargo test -p rmcp --no-default-features --features request-state --lib model::request_state`
+(the Phase 2 map below records its own commands).
 
 Source paths: `rust-src` is
 `library/` of the pinned toolchain `nightly-2026-06-01`; crate paths are in
@@ -246,8 +248,10 @@ restated in `formal/specs/Specs/External.lean` (Phase 2 part; since 2026-11-24 i
 Section 18 were not built: stage 3 was dropped by human decision on 2026-11-23.** The
 reproducible evidence for these models is the cited `core`/`alloc` source and (after stage 6)
 the proved laws. The spot checks below are unrecorded scratch runs, with no committed harness or
-command; they are not reproducible evidence. Phase 2 adds no Rust test to the SDK (human
-decision H3, plan Section 19); the existing upstream tests per target are mapped at S34.
+command; they are not reproducible evidence. Phase 2 adds no Rust test to the SDK source (human
+decision H3, plan Section 19; the test-only patch 02 adds `#[cfg(test)]` tests to the patched
+copy only, S34); the existing upstream tests per target are mapped in "Phase 2
+boundary cases: upstream-test map (S34)" below.
 
 New trusted helper definitions (namespace `ExtModel`, in `formal/trusted/Rmcp/`, part of the
 trust base like the models that use them): `IntErrorKind` (the six variants of
@@ -378,6 +382,348 @@ of an address as natural numbers). The opaque carrier `SerdeJsonValue` is listed
   (`serde_json-1.0.154/src/value/mod.rs` 116–176, `pub enum Value`). The targets only move values
   (`ErrorData.data : Option Value`); no model creates, inspects or compares one. No evidence is
   needed beyond that observation (plan Section 18).
+
+## Phase 2 boundary cases: upstream-test map (S34)
+
+Plan step S34 (plan Sections 21 and 22; human decision H3): for each boundary case of plan
+Section 22, the existing upstream Rust tests that exercise it on the target function, either
+**direct** (the test calls the target) or **via caller** (the test calls a named caller whose
+observed result is determined by the target's result on that input). The Lean proofs cover
+every input; these tests are evidence that the translated configuration behaves as the
+statements say on the boundary cases, not a proof. Phase 2 adds no Rust test to the SDK source
+(H3), and the differential programs were dropped (plan Section 18, amendment). The cases that no
+upstream test covered (**uncovered** upstream, 96) or covered only in part (**partial**, 8) are
+covered by the test-only patch 02 (`formal/trusted/patches/02-phase2-tests.patch`, human
+decision 2026-11-24, H3 follow-up; paragraph "Patch 02" below): the Status column names its test
+(`s34_…`, a direct call of the target). **Partial**: only some targets of the row, or some of
+the inputs, are exercised by upstream tests. **Equivalent input**: the test uses an input of the
+same shape as the listed literal (named).
+
+Paths are relative to `crates/rmcp/`; the number in parentheses is the line of the test function
+in the repository's files (upstream `7caec76`; in the patched copy, `model.rs` lines after 19 are
+2 higher). Lean regression checks (`decide`, kernel-checked when the module builds):
+`Net` = `formal/proofs/Proofs/Defs/Net.lean` lines 187–296; `Sse` =
+`formal/proofs/Proofs/Defs/Sse.lean` lines 272–416; `Methods` =
+`formal/proofs/Proofs/Defs/Methods.lean` lines 194–262 (list contents only). No `Defs` regression
+check evaluates M01–M14, T04 or T07/T08; `Defs.parseI64` (`formal/specs/Defs/IntParse.lean`
+lines 80–89) names the M06 strings in its docstring only. The theorems are in
+`formal/proofs/Proofs/Model/` and `formal/proofs/Proofs/Transport/`.
+
+**Runs (2026-11-24).** Toolchain `nightly-2026-06-01` (`rustc 1.98.0-nightly (14210df0e
+2026-05-31)`, `cargo 1.98.0-nightly (fbb61be30 2026-05-26)`), the pinned nightly of
+`patched-tests.yml`; host `aarch64-apple-darwin` (CI: `x86_64-unknown-linux-gnu`). Run in a
+scratch copy of `.llbc/work/` (patch 01 applied; its `Cargo.lock` as checked by
+`scripts/aeneas-translate.sh --check-deps`), with a separate target directory and the default
+`CARGO_HOME` (CI uses an isolated one). `F` is the translated feature list
+`request-state,server,client,client-side-sse,transport-streamable-http-server,`
+`transport-streamable-http-client,auth`; every command also passes `--locked
+--no-default-features --config profile.dev.overflow-checks=true --config
+profile.dev.debug-assertions=true`, as `patched-tests.yml` does.
+
+| Command (in `crates/rmcp`) | Exit | Result |
+|---|---|---|
+| `cargo test --features "$F,macros" --lib` (the `patched-tests.yml` command) | 0 | 801 passed, 0 failed |
+| `cargo test --features "$F,macros" --test test_completion --test test_sampling --test test_task --test test_client_initialization --test test_client_lifecycle_modes --test test_async_rw_max_line_length` | 0 | 12, 36, 8, 4, 16, 7 passed (in that order), 0 failed |
+| `cargo test --features "$F,macros,transport-streamable-http-client-reqwest" --test test_custom_headers` | 0 | 39 passed, 0 failed |
+| `cargo test --features "$F,macros,transport-streamable-http-client-reqwest" --lib clear_stream_response_pending` | 0 | 2 passed, 868 filtered out |
+
+`patched-tests.yml` runs only the first command: the integration tests (`tests/*.rs`) are not
+part of the CI evidence job. Tests marked † need `transport-streamable-http-client-reqwest`,
+which is outside the translated configuration: all of `tests/test_custom_headers.rs`
+(`required-features` in `Cargo.toml`) and the two `clear_stream_response_pending` tests
+(`#[cfg(feature = ...)]`). The target functions themselves carry no `cfg` on that feature.
+
+**Patch 02 (S34, 2026-11-24).** Test-only: it adds 34 `#[test]` functions named
+`s34_<id>_<case>`, all inside `#[cfg(test)]` modules (at the end of the existing test modules of
+`model.rs`, `model/task.rs`, `async_rw.rs`, `auth.rs` and `client_side_sse.rs`, and a new
+`#[cfg(test)] mod phase2_boundary_tests` at the end of `tower.rs`); no non-test line, dependency
+or `Cargo.toml` changes. Each test cites its plan Section 22 row and the theorem it mirrors; its
+expected values are taken from the signed-off statements and their `Defs` (`Defs.parseI64`,
+`Defs.Tower.defaultPort`, the `Defs.Methods` lists, the `Defs.Sse` model and checks, the
+`Defs.Net` definitions and checks), not from running the code. The tests call the targets
+directly, so they also check the limiter state after a call (T01–T03), which no caller exposes,
+and need no feature outside the translated configuration plus `macros`. A test of a feature-gated
+item carries the item's `cfg`: `s34_m06_numeric_string_value_boundary_strings` has
+`#[cfg(any(feature = "client", feature = "server"))]` and the four `s34_m07_*` tests
+`#[cfg(feature = "client")]`, as `numeric_string_value` and `matches_response_id` (`model.rs`
+lines 321 and 329 at `7caec76`); the other tests call ungated items or sit in modules gated
+already (`transport` and its `async_rw`, `auth`, `client_side_sse`, `tower` modules), so the
+crate's tests also compile with `request-state` alone (the Phase 1 evidence command, which the
+first version of the patch broke). The limiter tests build every start state field by field
+(`s34_limiter`), never through `SseEventSizeLimiter::new`, which no signed-off statement
+covers. `scripts/apply-patches.sh` applies it after patch 01 to the copy in `.llbc/work/` only
+(file-name order, `patch -p1 -F 0`), so `patched-tests.yml` runs these tests; the SDK sources
+stay byte-identical to upstream. Every hunk is at the end of its file, so no translated item
+moves. As a test-only patch it is a process exception to VERIFICATION.md Section 4 (plan
+Section 21, H3), to be recorded in `formal/docs/STATUS.md`, "Documents". No expected value
+disagreed with the code.
+
+Runs of patch 02 (2026-11-24; same toolchain and host as above; scratch directories, a separate
+target directory; `F` as above):
+
+| Command | Exit | Result |
+|---|---|---|
+| `RMCP_LLBC_DIR=<scratch>/llbcA scripts/apply-patches.sh` (fresh directory) | 0 | applied `01-request-state-wire.patch`, then `02-phase2-tests.patch` (`patch -F 0`; applied again by hand: no fuzz or offset message) |
+| `RMCP_LLBC_DIR=<scratch>/llbcA scripts/aeneas-translate.sh --check-deps` | 0 | dependency checks passed; checked `Cargo.lock` |
+| in `<scratch>/llbcA/work/crates/rmcp`, with `CARGO_HOME=<scratch>/llbcA/cargo-home` (isolated, as in CI): `cargo test --locked --no-default-features --features "$F,macros" --lib --config profile.dev.overflow-checks=true --config profile.dev.debug-assertions=true` (the `patched-tests.yml` command) | 0 | 835 passed, 0 failed (the 801 above plus the 34 `s34_*`) |
+| same directory and flags, `--features request-state` (the Phase 1 evidence configuration) | 0 | 303 passed, 0 failed (10 `s34_*`: M01–M05, M08, M09–M12; M06/M07 and the transport tests are compiled out) |
+| same directory and flags, `--features request-state,server,macros` (M06 compiled, M07 not; `request-state,server` without `macros` fails to compile upstream tests in `tool_traits.rs`, independent of patch 02) | 0 | 399 passed, 0 failed (17 `s34_*`, incl. `s34_m06_numeric_string_value_boundary_strings`, no `s34_m07_*`) |
+| `rustfmt --check` (`nightly-2026-06-01`, the repository's `rustfmt.toml`) on the six patched files | 0 | no difference |
+| mutation: `64..=127` → `64..=126` in `is_disallowed_metadata_ipv4` (scratch copy, then restored), the `patched-tests.yml` command filtered to `s34_` | 101, then 0 | `s34_a02_range_boundaries` fails (`100.127.255.255 must be blocked`), 33 passed; after restoring, 34 passed |
+| `DYLD_FALLBACK_LIBRARY_PATH=/usr/lib RMCP_LLBC_DIR=<scratch>/llbcB RMCP_TRANSLATION_DEST=<scratch>/trans scripts/aeneas-translate.sh`, then `diff -r <scratch>/trans formal/translation` | 0, 0 | the translation with both patches is byte-identical to `formal/translation/` (`Funs.lean`, `Types.lean`, the two `External` templates, `translation.json`); `Funs.lean` matches its pin |
+| `DYLD_FALLBACK_LIBRARY_PATH=/usr/lib scripts/check-original-linkage.sh <scratch>/link` | 0 | 41, 27, 30, 9 blocks identical |
+
+### M01–M05 (`JsonRpcMessage::into_*`, `model.rs` 819–849)
+
+The five functions have no caller in the crate, so only direct calls count.
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| `Request` | `src/model.rs` `tests::test_initial_request_response_serde` (5803); `tests/test_client_initialization.rs` `test_client_init_handles_jsonrpc_error` (118) | M01 direct: `Some (request, Number 1)` (5803); `Some` on the received `initialize` request (118). M02–M05 on a `Request` (`None`): no upstream test | partial upstream (M01 pass); M01–M05 patch 02 `s34_m01_m05_request`: pass |
+| `Response` | `tests::test_initial_request_response_serde` (5803) | M02 direct: `Some (result, Number 1)`. M01, M03–M05 on a `Response`: no upstream test | partial upstream (M02 pass); M01–M05 patch 02 `s34_m01_m05_response`: pass |
+| `Notification` | none | — | patch 02 `s34_m01_m05_notification`: pass |
+| `Error`, `id = Some` | none | the client matches `Error` itself (`service/client.rs` 207–220), not through M04/M05 | patch 02 `s34_m01_m05_error_with_id`: pass |
+| `Error`, `id = None` | none | `tests/test_client_lifecycle_modes.rs` `auto_startup_falls_back_for_absent_error_id` (633) sends one, but no target is called on it | patch 02 `s34_m01_m05_error_without_id`: pass |
+
+### M06/M07 (`NumberOrString::numeric_string_value`, `matches_response_id`, `model.rs` 322–338)
+
+Callers: M07 in `expect_response` (`service/client.rs` 183–220; a mismatch fails `serve` with
+`ConflictInitResponseId`); M06 in M07, in `remove_pending_request` (`service.rs` 485–494) and in
+`clear_stream_response_pending` (`streamable_http_client.rs` 827–837). The first request id of a
+fresh client is `Number 0` (`AtomicU32Provider`, `service.rs` 497–507).
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| M06 `"0"` | `tests/test_client_initialization.rs` `client_initialization_accepts_stringified_numeric_response_id` (27); `tests/test_client_lifecycle_modes.rs` `discover_startup_accepts_stringified_numeric_response_id` (25) | via caller M07 → `expect_response`: `Number 0` matches `String "0"` only if M06 gives `some 0` | pass |
+| M06 `"+0"`, `"-0"`, `"007"`, `""`, `"+"`, `"-"`, `" 1"`, `"1 "`, `"9223372036854775807"`, `"9223372036854775808"`, `"-9223372036854775808"`, `"-9223372036854775809"`, `"١"` (13 cases) | none | patch 02 calls M06 directly on all 14 strings (with `"0"`) and on a number | patch 02 `s34_m06_numeric_string_value_boundary_strings`: pass (13) |
+| M07 `Number 1` vs `String "1"` | the two tests above | via caller `expect_response`, equivalent input `Number 0` vs `String "0"` (`true`); patch 02 `s34_m07_number_matches_numeric_string` calls M07 on the literal input | pass |
+| M07 `String "1"` vs `Number 1` | none | client request ids are numbers; no upstream test sends a string request id and a numeric response | patch 02 `s34_m07_string_does_not_match_number`: pass |
+| M07 equal strings | none | — | patch 02 `s34_m07_equal_strings_match`: pass |
+| M07 unequal strings | none | patch 02 also `String "1"` vs `String "01"` (`false`) | patch 02 `s34_m07_unequal_strings_do_not_match`: pass |
+
+Not in the Section 22 list, also exercised: M06 `"1"` → `some 1` via `remove_pending_request`
+(`tests/test_client_initialization.rs` `client_correlates_stringified_numeric_response_id`
+(68)) and via `clear_stream_response_pending` († `src/transport/streamable_http_client.rs`
+`tests::clear_stream_response_pending_accepts_stringified_numeric_id` (2834),
+`tests::clear_stream_response_pending_prefers_exact_string_id` (2853)); M07 unequal numbers
+`Number 0` vs `Number 999` → `false` (`tests/test_client_lifecycle_modes.rs`
+`auto_startup_surfaces_uncorrelated_error_id` (592)).
+
+### M08 (`TaskStatus::is_terminal`, `model/task.rs` 38)
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| `Working` | `src/task_manager.rs` `tests::cancel_is_cooperative_and_lets_the_operation_clean_up` (672) | direct: `!is_terminal()` right after `cancel_task` (line 691); the task is still `Working` (single-threaded test runtime, no pending input) | pass |
+| `InputRequired` | none | `tests::cancel_wakes_parked_input_requests` (715) reaches `InputRequired` but compares the status, not `is_terminal`; patch 02 checks all five statuses | patch 02 `s34_m08_is_terminal_each_status`: pass |
+| `Completed` | `tests::cancel_is_cooperative_and_lets_the_operation_clean_up` (672); `tests/test_task.rs` `task_lifecycle_create_poll_complete` (128) | direct: the poll loop stops at `is_terminal()` and the status is `Completed` | pass |
+| `Failed` | `tests::post_cancel_unrelated_error_settles_as_failed` (634) | direct, as above, status `Failed` | pass |
+| `Cancelled` | `tests::cancel_settles_to_cancelled_when_operation_honors_it` (606); `tests/test_task.rs` `task_cancel_acknowledged` (184) | direct, as above, status `Cancelled` | pass |
+
+### M09–M12 (`SamplingContent::{into_vec, is_empty, len, first}`, `model.rs` 2926–2963)
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| `Single` | `tests/test_sampling.rs` `test_backward_compat_sampling_message_with_image` (518), `test_content_to_sampling_content_conversion` (571), `test_sampling_message_with_tool_use` (408), `test_backward_compat_sampling_message_deserialization` (500) | M11 direct: `len() = 1` (518, 571); M12 direct: `first()` is the item (408, 500, 571). M09 and M10 are called by no upstream test | partial upstream (M11, M12 pass); M09–M12 patch 02 `s34_m09_m12_single`: pass |
+| `Multiple []` | none | — | patch 02 `s34_m09_m12_multiple_empty`: pass |
+| `Multiple [x]` | none | — | patch 02 `s34_m09_m12_multiple_one`: pass |
+| `Multiple [x, y]` | none | `test_validate_rejects_mixed_content_with_tool_result` (639) builds one but reaches only `iter` (not a target) | patch 02 `s34_m09_m12_multiple_two`: pass |
+
+### M13/M14 (`Reference::{as_prompt_name, as_resource_uri}`, `model.rs` 3741–3755)
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| `Prompt` | `tests/test_completion.rs` `test_reference_convenience_methods` (126) | direct: M13 `Some "test_prompt"`, M14 `None` | pass |
+| `Resource` | same test | direct: M14 `Some "file://path/to/resource"`, M13 `None` | pass |
+
+### T01/T02 (`SseEventSizeLimiter::{check_limit, finish_line}`, `client_side_sse.rs` 75–96)
+
+All tests below are in `src/transport/common/client_side_sse.rs` `tests` and reach the targets via
+caller: `bounded_sse_stream` (144) → `BoundedSseByteStream::poll_next` (115–141), which calls
+`observe` once per chunk and turns its `Err` into `EventTooLarge` and its `Ok` into the
+unchanged chunk; `observe` calls `finish_line` at a line end and `check_limit` after every other
+byte. The test sees only the result, not the limiter's state.
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| sum exactly at `max` | `bounded_sse_stream_passes_event_at_exact_limit` (630); `bounded_sse_stream_discards_completed_comment_lines_from_limit` (673) | via caller: `finish_line` reaches `retained = 9 = max` (630); `check_limit` at `0 + 6 = 6 = max` (673); both `Ok` | pass |
+| one above `max` | `bounded_sse_stream_rejects_unterminated_event_over_limit` (597); `bounded_sse_stream_counts_multiline_data_join_newlines` (693); `bounded_sse_stream_comments_do_not_reset_accumulated_data` (683) | via caller: `check_limit` `Err` at `17 > 16`, `10 + 9 > 18`, `8 + 7 > 14`. All three fail in `check_limit` after an ordinary byte; no test makes `finish_line` itself fail | pass |
+| saturating past `max` | none | needs sizes near `usize::MAX`; patch 02 builds limiter states directly: T01 and T02 at and past `usize::MAX`, the state after `finish_line`, T03 on a line of `usize::MAX` bytes | patch 02 `s34_t01_t02_saturating_past_max`: pass; `Sse`: `satAdd usizeMax64 usizeMax64 1`, `withinLimit` at the cap, all histories with cap 2 |
+| empty line | `bounded_sse_stream_resets_limit_after_event_terminator` (613); `skipped_events_do_not_grow_the_stack` (763) | via caller: the second event passes only because the empty line reset `retained` (613); 50,000 events under a 1024-byte limit (763) | pass |
+| comment line | `bounded_sse_stream_discards_completed_comment_lines_from_limit` (673); `bounded_sse_stream_comments_do_not_reset_accumulated_data` (683) | via caller: comment lines add nothing (else `7 > 6`, 673) and keep `retained` (683) | pass |
+| non-comment line | `bounded_sse_stream_counts_multiline_data_join_newlines` (693); `bounded_sse_stream_passes_event_at_exact_limit` (630) | via caller: `line_size + 1` is added (the error at 693 needs the joining newline) | pass |
+
+### T03/C01/C02 (`SseEventSizeLimiter::observe`, `client_side_sse.rs` 48–73)
+
+Via caller as for T01/T02; the inputs of these eight tests are also replayed in Lean (`Sse`,
+lines 299–323).
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| LF | every test of T01/T02 | via caller | pass |
+| CR (a CR not followed by LF) | none | every CR in the upstream tests is followed by LF; patch 02 checks verdict and state on the three `Sse` inputs | patch 02 `s34_t03_cr_line_ends`: pass; `Sse`: `"ab\r"`, `"ab\r\r"`, `"a\rb\n"` |
+| CRLF | `bounded_sse_stream_resets_limit_after_event_terminator` (613) | via caller: `"\r\n"` inside the second chunk | pass |
+| CRLF split across chunks (C01) | `bounded_sse_stream_handles_crlf_split_across_chunks` (658); `bounded_sse_stream_resets_limit_after_event_terminator` (613) | via caller, result only: both inputs give `Ok` whether or not the split LF counts as a second line end; the state that distinguishes them is pinned by `Sse` (`observeChunks (init 64) ["data: hello\r", "\n"]`), checked directly by patch 02 (the same state as for the unsplit chunk) | pass (result only); state: patch 02 `s34_c01_crlf_split_across_chunks_state`: pass |
+| comment that resets nothing | `bounded_sse_stream_comments_do_not_reset_accumulated_data` (683) | via caller | pass |
+| blank line resetting | `bounded_sse_stream_resets_limit_after_event_terminator` (613); `skipped_events_do_not_grow_the_stack` (763) | via caller | pass |
+| event exactly at the limit | `bounded_sse_stream_passes_event_at_exact_limit` (630) | via caller | pass |
+| oversize split across many chunks (C01) | `bounded_sse_stream_rejects_oversize_split_across_many_chunks` (640); `bounded_sse_stream_rejects_unterminated_event_over_limit` (597) | via caller: 20 chunks `"data: x"` under 32; 2 chunks under 16 | pass |
+| empty chunk | none | no upstream test yields an empty `Bytes`; patch 02 calls `observe` on an empty chunk from four states, one of them over the bound | patch 02 `s34_t03_empty_chunk`: pass; `Sse`: `observe usizeMax64 st [] = ⟨true, st⟩` |
+| error at a CR byte (state afterwards) | none | no test fails at a CR; after an `Err`, `poll_next` ends the stream, so the state is not observable through the caller; patch 02 checks it directly, and that an error stops the fold (`Sse`: `(init 1) "ab\n\n"`) | patch 02 `s34_t03_error_at_cr_state`: pass; `Sse`: `observe usizeMax64 (init 2) (bytesOf "ab\r")` |
+
+C02 (the bound is kept) is a statement about the state and is not observable through the caller;
+patch 02 checks concrete states after `Ok` calls (all within the bound) but has no test of C02
+as such.
+
+### T04 (`async_rw::without_carriage_return`, `async_rw.rs` 385)
+
+Callers: `JsonRpcMessageCodec::decode` (560) and `decode_eof` (596), `AsyncRwTransport::receive`
+(302).
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| empty | none | `receive` skips an empty line after T04 (305–308), but no test sends one; `test_decode`'s trailing empty line is never decoded (the test reads 10 items) | patch 02 `s34_t04_without_carriage_return`: pass |
+| `"\r"` | none | — | patch 02 `s34_t04_without_carriage_return`: pass |
+| `"a\r"` | none | no upstream test input contains a CR | patch 02 `s34_t04_without_carriage_return`: pass |
+| `"a\r\r"` | none | — | patch 02 `s34_t04_without_carriage_return`: pass |
+| `"a"` (no CR) | `src/transport/async_rw.rs` `test::test_decode` (641), `test::receive_ignores_parse_error` (836); `tests/test_async_rw_max_line_length.rs` `message_within_the_limit_is_delivered` (99) | via caller: the line reaches the JSON parser unchanged; dropping its last byte would make it unparsable; patch 02 `s34_t04_without_carriage_return` also calls T04 on `"a"` | pass |
+
+### T05/T06/C05 (`is_standard_notification`, `is_standard_method`, `async_rw.rs` 396–433)
+
+Tests in `src/transport/async_rw.rs` `test`. Caller: `should_ignore_notification` (437–457).
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| every listed name | `test_standard_notification_check` (717); `test_2026_07_28_standard_method_check` (744); `test_current_standard_notification_is_not_ignored` (755) | T05 direct on all 10 notification names (`true`); T06 direct on 3 of the 18 request names (`elicitation/create`, `server/discover`, `subscriptions/listen`); T06 (C05) via caller on 1 of the 10 notification names (`notifications/subscriptions/acknowledged`: `should_ignore_notification` returns `false` only if T06 is `true`). T06 on the other 15 request and 9 notification names: no upstream test. Patch 02: T05, T06 and C05 on all 22 + 12 core names of `Defs.Methods` (`false` for the six of `codeOmits`; 18 + 10 accepted) | partial upstream; patch 02 `s34_t05_t06_every_listed_name`: pass |
+| prefix of a name | none | — | patch 02 `s34_t05_t06_prefix_and_suffix`: pass |
+| suffix of a name | none | — | patch 02 `s34_t05_t06_prefix_and_suffix`: pass |
+| case variant | none | — | patch 02 `s34_t05_t06_case_variant`: pass |
+| `notifications/unknown` | `test_standard_notification_check` (717) | T05 direct, equivalent inputs `notifications/stderr`, `notifications/custom`, `notifications/debug` (`false`); T06 on an unknown notification is not determined: `test_unknown_notification_is_ignored` (766) returns `true` whatever T06 gives | partial upstream (T05 pass); T05 and T06 patch 02 `s34_t05_t06_notifications_unknown`: pass |
+| empty | none | — | patch 02 `s34_t05_t06_empty`: pass |
+
+`Methods` pins the list contents (and that the code lists are the core union minus `codeOmits`);
+it does not evaluate T05/T06 on any input.
+
+### T07/T08 (`tower::{default_port, AllowedPort::matches}`, `tower.rs` 1146–1171)
+
+All tests are † in `tests/test_custom_headers.rs` `origin_validation` and reach the targets via
+caller: `StreamableHttpService::handle` → `validate_dns_rebinding_headers` (1340) →
+`validate_origin_header` (1357) → `origin_is_allowed` (1210), which calls T08 when scheme and
+host are equal; the test sees `200` or `403`. `parse_origin_value` (1127) lowercases the scheme
+before T07/T08.
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| `"http"` | `explicit_http_default_port_allows_port_less_origin` (1325) | via caller: `Exact 80`, port `None`: allowed only if T07 `"http"` = `some 80` | pass † |
+| `"https"` | `explicit_https_default_port_allows_port_less_origin` (1316) | via caller: `Exact 443`, port `None`: needs `some 443` | pass † |
+| `"HTTP"` | none | unreachable through the callers (lowercased) | patch 02 `s34_t07_default_port_schemes`: pass |
+| `"ftp"` | none | no upstream test uses a scheme other than `http`/`https` | patch 02 `s34_t07_default_port_schemes`: pass |
+| `Any` | `wildcard_port_allows_non_default_origin_port` (1370); `wildcard_port_allows_port_less_origin` (1379) | via caller: `true` with port `Some 8443` and `None` | pass † |
+| `Unspecified` | `omitted_configured_port_allows_any_origin_port` (1361) | via caller: `true` with port `Some 8443` | pass † |
+| `Exact 443` with `None` and `https` | `explicit_https_default_port_allows_port_less_origin` (1316) | via caller: `true` | pass † |
+| `Exact 80` with `Some 8080` | `explicit_default_port_forbids_non_default_origin_port` (1343) | via caller, equivalent input `Exact 443` with `Some 8443` and `https` (`false`: an explicit port ignores the scheme default) | pass † |
+
+Patch 02 also calls T07/T08 directly in the translated configuration (no †): `"http"` and
+`"https"` (`s34_t07_default_port_schemes`), `Any` and `Unspecified` on every scheme and port tried
+(`s34_t08_any_and_unspecified_match_everything`), `Exact 443` with `None` and `https`
+(`s34_t08_exact_443_none_https`), and the literal `Exact 80` with `Some 8080`
+(`s34_t08_exact_80_some_8080`); all pass.
+
+Also exercised: `Exact 8443` with `None` → `false` (1352); `Exact 443` with `Some 443` → `true`
+(1334); `Exact 8080` with `Some 8080` → `true` (`allowlisted_origin_is_allowed`, 1194).
+
+### A01 (`AuthorizationManager::embedded_ipv4`, `auth.rs` 1359)
+
+Tests: `src/transport/auth/metadata_resolver.rs` `tests::classifies_addresses` (294), via caller
+`AddressClass::of` (`metadata_resolver.rs` 42–75): an IPv6 address is replaced by A01's IPv4
+address when there is one; a class other than `Public` on the IPv6 path needs `::1`, `fc00::/7`
+or a blocked prefix, so the class determines A01 where noted.
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| `::ffff:a.b.c.d` | `classifies_addresses` (294); `src/transport/auth.rs` `tests::metadata_url_checks_bracketed_ipv6_literals` (6817) | via caller: `::ffff:127.0.0.1` → `Loopback`, `::ffff:169.254.169.254` → `Blocked` (each needs `some`); 6817 through `is_allowed_metadata_url` → A03 → A01 | pass |
+| `64:ff9b::a.b.c.d` | `classifies_addresses` (294) | via caller: `64:ff9b::a9fe:a9fe` → `Blocked`, `64:ff9b::a00:9` → `Private` (need `some`); `64:ff9b::5db8:d822` → `Public` | pass |
+| `::a.b.c.d` | `classifies_addresses` (294) | via caller: `::169.254.169.254` → `Blocked` (needs `some`) | pass |
+| `::` | none | — | patch 02 `s34_a01_embedded_ipv4`: pass; `Net`: `embeddedIpv4 (ipv6 [0, …, 0]) = none` |
+| `::1` | `classifies_addresses` (294) | via caller: `::1` → `Loopback`; `some 0.0.0.1` would give `Blocked` | pass |
+| `2002:abcd:ef01::` | `classifies_addresses` (294) | via caller, equivalent inputs: `2002:7f00:1::` → `Loopback` (needs `some 127.0.0.1` from segments `b`, `c`), `2002:a9fe:a9fe::` → `Blocked` | pass |
+| `64:ff9b:1::1` (not embedded) | none | `64:ff9b:1::a9fe:a9fe` → `Blocked` (294) holds whether A01 gives `none` or `some 169.254.169.254`, so it does not determine A01 | patch 02 `s34_a01_embedded_ipv4`: pass; `Net`: `embeddedIpv4 (ipv6 [0x64, 0xff9b, 1, 0, 0, 0, 0, 1]) = none` |
+
+Patch 02 `s34_a01_embedded_ipv4` calls A01 directly on 15 addresses of `Net`'s A01 checks (the
+seven cases above, `::2`, the IPv4-translated `::ffff:0:a00:1`, a Teredo address, and the five
+addresses next to the four embedding prefixes); all pass.
+
+### A02 (`AuthorizationManager::is_disallowed_metadata_ipv4`, `auth.rs` 1343)
+
+Section 22 asks for the first and last address of each range and the addresses just outside it
+(19 inside, 18 outside, as enumerated by `Net`'s two A02 lists), plus a public address: 38 cases.
+Via caller `AddressClass::of` (`Public` iff A02 is `false`) and `is_allowed_metadata_url`.
+Tested addresses, all in `classifies_addresses` (294), `ip_literal_urls_follow_the_policy` (377)
+and `src/transport/auth.rs` `tests::metadata_url_allows_private_literals_only_when_opted_in`
+(6840): `0.0.0.0`, `93.184.216.34`, and the interior addresses `10.0.0.9`, `10.0.0.1`,
+`127.0.0.1`, `127.0.0.2`, `192.168.1.1`, `100.64.0.1`, `169.254.169.254`.
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| `0.0.0.0` (first of `0/8`, and the single address `0.0.0.0`) | `classifies_addresses` (294) | via caller: `Blocked` | pass |
+| a public address | `classifies_addresses` (294) | via caller: `93.184.216.34` → `Public` | pass |
+| `10/8`: `10.0.0.0`, `10.255.255.255`; outside `9.255.255.255`, `11.0.0.0` | none (interior `10.0.0.1`, `10.0.0.9` only) | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
+| `172.16/12`: `172.16.0.0`, `172.31.255.255`; `172.15.255.255`, `172.32.0.0` | none (no address in the range) | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
+| `192.168/16`: `192.168.0.0`, `192.168.255.255`; `192.167.255.255`, `192.169.0.0` | none (interior `192.168.1.1`) | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
+| `127/8`: `127.0.0.0`, `127.255.255.255`; `126.255.255.255`, `128.0.0.0` | none (interior `127.0.0.1`, `127.0.0.2`) | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
+| `169.254/16`: `169.254.0.0`, `169.254.255.255`; `169.253.255.255`, `169.255.0.0` | none (interior `169.254.169.254`) | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
+| `255.255.255.255`; outside `255.255.255.254` | none | — | patch 02 `s34_a02_range_boundaries`: pass (2) |
+| `224/4`: `224.0.0.0`, `239.255.255.255`; `223.255.255.255`, `240.0.0.0` | none | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
+| `0/8`: last `0.255.255.255`; outside `1.0.0.0` | none | — | patch 02 `s34_a02_range_boundaries`: pass (2) |
+| `100.64/10`: `100.64.0.0`, `100.127.255.255`; `100.63.255.255`, `100.128.0.0` | none (interior `100.64.0.1`) | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
+| `198.18/15`: `198.18.0.0`, `198.19.255.255`; `198.17.255.255`, `198.20.0.0` | none | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
+
+Every A02 case uncovered upstream is evaluated by `Net` (A02 lists, lines 219–232) and, with the
+same two lists (19 inside; 18 outside plus the public `8.8.8.8`), by patch 02
+`s34_a02_range_boundaries` (direct; `240.0.0.0` is not blocked: the bug recorded under H8).
+
+### A03/C04 (`AuthorizationManager::is_disallowed_metadata_ipv6`, `auth.rs` 1370)
+
+Callers: `is_allowed_metadata_url` (`auth.rs` 1412) through `is_disallowed_metadata_host`, and
+`AddressClass::of` on its IPv6 path, which it takes only when A01 gives `none`: for an address
+that embeds IPv4, `AddressClass::of` calls A01 and A02 directly and never A03. The prefix
+boundaries are the 12 inside and 10 outside addresses of `Net`'s two A03 lists (lines 240–263):
+22 cases, plus 4 embedded forms and a public address: 27 cases.
+
+| Case | Upstream test(s) | How | Status |
+|---|---|---|---|
+| `::1` | `classifies_addresses` (294); `tests::metadata_url_checks_bracketed_ipv6_literals` (6817) | via caller: `Loopback`; `[::1]` rejected for a public base | pass |
+| `::` | none | — | patch 02 `s34_a03_prefix_boundaries`: pass |
+| `ff00::/8`: `ff00::`, `ffff:…:ffff`; outside `feff:ffff:…:ffff` | none (no multicast IPv6 in any test) | — | patch 02 `s34_a03_prefix_boundaries`: pass (3) |
+| `fe80::/10`: `fe80::`, `febf:ffff:…:ffff`; outside `fe7f:ffff:…:ffff`, `fec0::` | none (interior `fe80::1`, 294, 6817) | — | patch 02 `s34_a03_prefix_boundaries`: pass (4) |
+| `fc00::/7`: `fc00::`, `fdff:ffff:…:ffff`; outside `fbff:ffff:…:ffff`, `fe00::` | none (interior `fd00::1`, 294) | — | patch 02 `s34_a03_prefix_boundaries`: pass (4) |
+| `2001::/32`: `2001::`, `2001:0:ffff:…:ffff`; outside `2000:ffff:…:ffff`, `2001:1::` | none (interior `2001:0:4136:e378::1`, 294) | — | patch 02 `s34_a03_prefix_boundaries`: pass (4) |
+| `64:ff9b:1::/48`: `64:ff9b:1::`, `64:ff9b:1:ffff:ffff:ffff:808:808`; outside `64:ff9b::1:0:0`, `64:ff9b:2::`, `64:ff9b:0:ffff:ffff:ffff:ffff:ffff` | none (interior `64:ff9b:1::a9fe:a9fe`, 294) | — | patch 02 `s34_a03_prefix_boundaries`: pass (5) |
+| embedded blocked IPv4, IPv4-mapped | `tests::metadata_url_checks_bracketed_ipv6_literals` (6817) | via caller `is_allowed_metadata_url`: `[::ffff:127.0.0.1]` rejected only if A03 is `true` (C04: equals A02 of `127.0.0.1`) | pass |
+| embedded blocked IPv4, NAT64 | `classifies_addresses` (294) | `64:ff9b::a9fe:a9fe` → `Blocked` exercises A01 and A02 (the right-hand side of C04), not A03 | partial upstream; A03 and C04 patch 02 `s34_a03_c04_embedded_forms`: pass |
+| embedded blocked IPv4, IPv4-compatible | `classifies_addresses` (294) | `::169.254.169.254`, as above | partial upstream; A03 and C04 patch 02 `s34_a03_c04_embedded_forms`: pass |
+| embedded blocked IPv4, 6to4 | `classifies_addresses` (294) | `2002:a9fe:a9fe::`, as above | partial upstream; A03 and C04 patch 02 `s34_a03_c04_embedded_forms`: pass |
+| a public IPv6 address | `classifies_addresses` (294) | via caller: `2606:4700::1111` → `Public` (A01 `none`, A03 `false`) | pass |
+
+Every A03/C04 case uncovered upstream is evaluated by `Net` (A03/C04 lists, lines 240–275).
+Patch 02 calls A03 directly on the 12 inside and 11 outside addresses of `Net`'s boundary lists
+(`s34_a03_prefix_boundaries`, with the public `2606:4700::1111`) and on 8 blocked and 4 public
+embedded forms (`s34_a03_c04_embedded_forms`: `Net`'s two embedded-form lists plus
+169.254.169.254 in the NAT64, IPv4-compatible and 6to4 forms of the partial rows), where it also
+checks C04 (A03 equals A02 of A01's address) on all 12.
+
+### Summary
+
+141 cases. Upstream tests: 6 pass directly, 31 pass via a caller (3 of them with an equivalent
+input: M07 `Number 0`/`String "0"`, T08 `Exact 443`/`Some 8443`, A01 `2002:7f00:1::`), 8
+partial, 96 uncovered. Patch 02 (34 tests, direct calls) covers the 96 uncovered cases and the
+missing parts of the 8 partial ones (M01–M05 3 + 2 partial, M06/M07 16, M08 1, M09–M12 3 + 1
+partial, T01/T02 1, T03/C01/C02 3, T04 4, T05/T06/C05 4 + 2 partial, T07/T08 2, A01 2, A02 36,
+A03/C04 21 + 3 partial), so no Section 22 case is left uncovered. No test failed and no expected
+value (taken from the statements and `Defs`) disagreed with the code. Before patch 02, the
+uncovered cases with no Lean regression check either (only the theorems) were those of M01–M05,
+M06/M07, M08 (`InputRequired`), M09–M12, T04, T05/T06/C05 and T07/T08; the uncovered T01–T03,
+A01, A02 and A03 cases are also evaluated by `Sse` or `Net`. The tests marked † still need
+`transport-streamable-http-client-reqwest`; patch 02 covers the T07/T08 cases directly without it.
 
 ## Spec statements and proofs
 

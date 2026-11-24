@@ -18,7 +18,8 @@
 # the trusted base) preserve behaviour if the D2 fallback is used. Since 2026-11-23 it is (human
 # decision): this job is the evidence for formal/trusted/patches/01-request-state-wire.patch,
 # whose tests (byte identity, codec constants, RFC 4231/4648 vectors, S16 boundary cases) exist
-# only in the patched copy. Same trigger paths as aeneas-translation.yml, plus crates/rmcp-macros/**
+# only in the patched copy. Since 2026-11-24 it also runs the test-only
+# 02-phase2-tests.patch: 34 plan Section 22 boundary tests for the Phase 2 targets (S34, H3). Same trigger paths as aeneas-translation.yml, plus crates/rmcp-macros/**
 # (compiled by the test build since S21; not part of the translation).
 #
 # Cargo.lock is not committed (plan Section 4) and apply-patches.sh never copies one, so this job
