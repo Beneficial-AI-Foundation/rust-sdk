@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
-import Proofs.Defs.Wire
+import Defs.Wire
 import Proofs.Model.RequestStateWire.NextDot
 
 /-!
@@ -47,6 +47,28 @@ theorem length_splitOnP {α : Type} (p : α → Bool) (l : List α) :
 /-- The number of `.`-components is one more than the number of `.` bytes. -/
 theorem length_components (s : List U8) : (components s).length = s.count dot + 1 := by
   rw [components, List.splitOn, length_splitOnP, List.count]
+
+/-- A byte string is its `.`-components joined by `.`: its length is the sum of the lengths of
+the components plus one for each of the (number of components − 1) dots. -/
+theorem length_eq_sum_map_length_components (s : List U8) :
+    s.length = ((components s).map List.length).sum + ((components s).length - 1) := by
+  have key : ∀ L : List (List U8),
+      ([dot].intercalate L).length = (L.map List.length).sum + (L.length - 1) := by
+    intro L
+    induction L with
+    | nil => rfl
+    | cons l L ih =>
+      cases L with
+      | nil =>
+        simp only [List.intercalate_singleton, List.map_cons, List.map_nil, List.sum_cons,
+          List.sum_nil, List.length_cons, List.length_nil]
+        omega
+      | cons l' zs =>
+        rw [List.intercalate_cons_cons, List.length_append, List.length_append, ih]
+        simp only [List.map_cons, List.sum_cons, List.length_cons, List.length_nil]
+        omega
+  conv_lhs => rw [← List.intercalate_splitOn (xs := s) dot]
+  exact key (components s)
 
 /-- `be64 n` has 8 bytes. -/
 theorem length_be64 (n : Nat) : (be64 n).length = 8 := by

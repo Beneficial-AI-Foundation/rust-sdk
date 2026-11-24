@@ -74,10 +74,14 @@ the last sentence names the excluded functions and non-targets instead.
 fallback, this count read "verified 25" with linkage `ORIGINAL` relative to local commit `f8fb6a7`;
 the proofs did not change.) If the refactor lands in the SDK source, patch 01 is deleted and the
 targets can become `ORIGINAL`. Plus 5 composition theorems. Excluded (not counted, not verified):
-the items under "Excluded functions" below. Not targets: 4 translatable wrappers.
+the items under "Excluded functions" below. Not targets: 4 translatable wrappers (since 2026-11-24
+specified and proved as R01–R08, with the `SealOptions` builder and `new_unchecked`; see "Public
+request_state.rs API").
 
 Restated theorems (`theorem Theorems.…`, each proved by the spec theorem it restates and guarded
-by `#guard_msgs in` + `#print axioms`), counted at `aacfbf7`:
+by `#guard_msgs in` + `#print axioms`), counted at `aacfbf7` (historical paths: since 2026-11-24 the
+W/E files and the model laws are in `formal/proofs/Proofs/Internal/`, and
+`formal/specs/Specs/Model/RequestState.lean` holds R01–R08):
 
 | Spec file | Theorems | Content |
 |---|---|---|
@@ -243,7 +247,8 @@ every target has a generated body that the proofs use.
 
 Consequences (plan Section 2.3): the round-trip theorems compose E07/E08 with E09–E11
 directly, with no seal wrapper verified; the codec-state invariant is permanently a hypothesis;
-`open`, `open_with`, `new` and `try_new` translate but are not targets.
+`open`, `open_with`, `new` and `try_new` translate but are not targets. (Since 2026-11-24 they and the `SealOptions` builder, `new_unchecked`, are being specified as
+R01–R08, the public `request_state.rs` API; see "Public request_state.rs API".)
 
 ## Trusted base
 
@@ -354,6 +359,12 @@ Review rules that stay in force:
   statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
   `…RequestStateCodec.open` or `…RequestStateCodec.open_with` (a variable named `now_ms`, such
   as the time parameter of E01, is not covered); opening is specified through `open_at`.
+  Exception (human decision 2026-11-24): only the spec theorems of `open` and `open_with` and their
+  `Theorems.*` restatements may name these two functions and `ExtModel.nowMs`, and only with the
+  postcondition `resultBytes result = openAt … ExtModel.nowMs.val`; their docstrings state the
+  one-reading caveat and the inherited exceptions. No other statement names `ExtModel.nowMs`, no
+  statement has a premise or conclusion about its value, and no statement involves two clock
+  readings; `now_ms` itself stays unmentioned.
 - **`HashMap::get`.** Faithful for `Hash`/`Eq` instances that agree and do not fail (only
   `K = Q = String` occurs).
 
@@ -630,6 +641,20 @@ and the lock (each re-checked the statements against the drafts with its own scr
 reviewer recomputed all 35 hashes); no blocking finding; the local findings were fixed, and the
 proof-style ones (flexible tactics, iterator-helper duplication, proofs that unfold trusted model
 bodies instead of using the S26 laws, splitting A02 to cut its ~65 s build) are deferred to phase C.
+
+**Public request_state.rs API (started 2026-11-24, human request):** verify the 17 public functions
+of `crates/rmcp/src/model/request_state.rs`. R01–R08 (`SealOptions::{new, associated_data, ttl}`,
+`RequestStateCodec::{new, new_unchecked, try_new, open, open_with}`) are translated (linkage
+`patch-01`); their statements (and an `open_with` corollary) passed two review rounds with no counterexample
+and were signed off by the spec owner on 2026-11-24; all nine are proved
+(`formal/proofs/Proofs/Model/RequestState/Public.lean`) and restated in the new public spec file
+`formal/specs/Specs/Model/RequestState.lean` (full `lake build` and the four guards pass; one
+independent proof review, no blocking finding). `open`/`open_with` are specified at the
+clock reading (human decision 2026-11-24; review rule in `formal/README.md`, "Trusted base"). The
+other nine (`new_with_keyring`, `with_rs1_signing`, `with_rs1_fallback`, `seal`, `seal_with`, and
+the four JSON wrappers; R09–R17 once translated) are excluded today (B13, B4, B9); a translation
+measurement on the pinned and the newest Aeneas is running. `Defs.Wire` and `Defs.CodecState` moved
+back to `formal/specs/Defs/` for these public statements.
 
 **Public and internal specifications (2026-11-24, human decision):** `formal/specs/` now holds only
 the public rmcp API (functions `pub` in upstream rmcp): `Specs/Model.lean` (M01–M05, M09–M14, the

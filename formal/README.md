@@ -469,7 +469,12 @@ statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now
 `…RequestStateCodec.open` or `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the
 time parameter of E01 `open_authenticated_body`, is not covered): the single opaque clock reading
 `nowMs` makes those functions pure in
-the model; opening is specified through `open_at`.
+the model; opening is specified through `open_at`. Exception (human decision 2026-11-24): only the spec theorems of `open` and `open_with` and their
+`Theorems.*` restatements may name these two functions and `ExtModel.nowMs`, and only with the
+postcondition `resultBytes result = openAt … ExtModel.nowMs.val`; their docstrings state the
+one-reading caveat and the inherited exceptions. No other statement names `ExtModel.nowMs`, no
+statement has a premise or conclusion about its value, and no statement involves two clock
+readings; `now_ms` itself stays unmentioned.
 Names in the namespace `rmcp` are banned in `trusted/`: the generated code
 works inside `namespace rmcp` and names the root-level externals and the Aeneas library functions
 unqualified, so a name `rmcp.<x>` from `trusted/` would silently take precedence over the one it

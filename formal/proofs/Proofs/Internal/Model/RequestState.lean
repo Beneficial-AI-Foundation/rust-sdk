@@ -4,9 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Defs
-import Proofs.Defs.Wire
+import Defs.Wire
 import Proofs.Defs.RequestState
-import Proofs.Defs.CodecState
+import Defs.CodecState
 import Proofs.Model.RequestState.OpenAuthenticatedBody
 import Proofs.Model.RequestState.ValidateKeyLength
 import Proofs.Model.RequestState.ValidateConfigKid
@@ -90,8 +90,8 @@ base is the patched copy (patch 01 on origin/main 7caec76,
 `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23; translation
 committed at `9bd8144`). Line numbers refer to `request_state.rs` in the patched copy.
 
-Definitions used, in the modules `Proofs.Defs.Wire`, `Proofs.Defs.RequestState` and
-`Proofs.Defs.CodecState` (`formal/proofs/Proofs/Defs/`; the Lean names are unchanged):
+Definitions used, in the modules `Defs.Wire`, `Defs.CodecState` (`formal/specs/Defs/`, used by
+public statements too) and `Proofs.Defs.RequestState` (`formal/proofs/Proofs/Defs/`):
 `Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLength`, `maxKidLen`, `b64Len`, `dot`,
 `components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`), `Defs.RequestState`
 (`StrIs`, `kidEmptyMsg`, `kidTooLongMsg`) and `Defs.CodecState` (`KeyTable`, `FallbacksKnown`,

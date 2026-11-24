@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Defs
-import Proofs.Defs.Wire
+import Defs.Wire
 import Proofs.Model.RequestStateWire.B64Len
 import Proofs.Model.RequestStateWire.KeyLengthOk
 import Proofs.Model.RequestStateWire.CheckKidLen
@@ -80,8 +80,7 @@ plan Section 1), so arithmetic overflow panics, which Aeneas models as failure. 
 translation committed at `9bd8144`). Line numbers refer to `request_state_wire.rs` in the
 patched copy, the only place the file exists.
 
-Definitions used: `Defs.Wire`, in module `Proofs.Defs.Wire` (`formal/proofs/Proofs/Defs/Wire.lean`;
-the Lean names are unchanged): `b64Len`, `minKeyLength`, `maxKidLen`, `dot`, `components`,
+Definitions used: `Defs.Wire` (`formal/specs/Defs/Wire.lean`, used by public statements too): `b64Len`, `minKeyLength`, `maxKidLen`, `dot`, `components`,
 `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`, `beNat`, `toInt64`, `Expired`,
 `expiryLen`, `bodyExpiry`, `frameBytes`.
 

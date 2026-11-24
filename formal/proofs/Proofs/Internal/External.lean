@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Defs
-import Proofs.Defs.Wire
+import Defs.Wire
 import Proofs.External.Base64
 import Proofs.External.String
 import Proofs.External.Prim
@@ -63,7 +63,7 @@ separately, on 2026-11-24 (S24 sign-off, S24/S25 spec cycle in `formal/docs/STAT
 signed-off text was in `formal/specs/Drafts/Model.lean`, removed at incorporation. Moved here
 from `formal/specs/Specs/External.lean` on 2026-11-24 (statements unchanged). Definitions from
 the moved `Defs` modules keep their Lean names (`Defs.Wire.dot`, `Defs.Wire.b64Len` are in module
-`Proofs.Defs.Wire`).
+`Defs.Wire`, back in `formal/specs/Defs/` since the request-state public specifications).
 -/
 
 /-! ## `Proofs/External/Base64.lean` -/

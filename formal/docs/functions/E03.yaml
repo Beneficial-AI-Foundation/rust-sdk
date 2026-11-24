@@ -10,7 +10,7 @@ proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestState/ValidateKeyLength.lean
 spec_file: formal/proofs/Proofs/Internal/Model/RequestState.lean
 theorem: rmcp.model.request_state.RequestStateCodec.validate_key_length_spec
-used_by: []  # targets whose proofs consume this theorem; used only when constructing a codec (§2.2)
+used_by: [R06]  # targets whose proofs consume this theorem; used when constructing a codec (§2.2)
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file
 evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 223ff12:formal/docs/evidence/<step>.md
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestState.lean (S05)

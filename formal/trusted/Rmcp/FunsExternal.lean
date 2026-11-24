@@ -215,7 +215,11 @@ and it makes every function that reads the clock (`now_ms`, `open`, `open_with`)
 rule: no spec statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
 `…RequestStateCodec.open` or `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the
 time parameter of E01 `open_authenticated_body`, is not covered; `formal/README.md`, "Trusted
-base"). -/
+base"). Exception (human decision 2026-11-24; `formal/README.md`, "Trusted base"): only the
+spec theorems of `open` and `open_with` and their restatements may name these two functions and
+`nowMs`, and only with postcondition `resultBytes result = openAt … nowMs.val`; no other statement
+names `nowMs`, no statement has a premise or conclusion about its value or involves two clock
+readings, and `now_ms` itself stays unmentioned. -/
 opaque nowMs : Std.I64
 
 end ExtModel
@@ -714,7 +718,8 @@ the clock, is excluded from the translation. Because `nowMs` is one constant, th
 are pure in the model; no spec statement may mention the functions
 `rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open` or
 `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the time parameter of E01
-`open_authenticated_body`, is not covered). -/
+`open_authenticated_body`, is not covered), except as stated at `ExtModel.nowMs` (human decision
+2026-11-24). -/
 def model.request_state.RequestStateCodec.now_ms : Result Std.I64 :=
   ok ExtModel.nowMs
 

@@ -129,7 +129,7 @@ steps:
     owner: Spec drafter (mcp-spec or a person) + independent agent reviewers + spec owner
     files:
       - formal/specs/Defs.lean
-      - formal/proofs/Proofs/Defs/Wire.lean
+      - formal/specs/Defs/Wire.lean
       - formal/proofs/Proofs/Defs/RequestState.lean
       - formal/specs/Drafts/
       - formal/specs/Specs.lean
@@ -241,7 +241,7 @@ steps:
     depends_on: [S05]
     owner: Spec drafter + reviewers + spec owner
     files:
-      - formal/proofs/Proofs/Defs/CodecState.lean
+      - formal/specs/Defs/CodecState.lean
     acceptance: >-
       Codec-state invariant reviewed against the constructors.
 

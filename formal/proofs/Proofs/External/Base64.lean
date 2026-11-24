@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Rmcp.FunsExternal
-import Proofs.Defs.Wire
+import Defs.Wire
 import Proofs.External.Byte
 
 /-!
@@ -157,6 +157,14 @@ theorem length_b64 : ∀ x : List U8, (b64 x).length = (4 * x.length + 2) / 3
   | [_, _] => by simp only [b64, List.length_cons, List.length_nil]
   | [_] => by simp only [b64, List.length_cons, List.length_nil]
   | [] => rfl
+
+/-- A Base64 text `s` that decodes to `y` has at least `4|y| / 3` symbols: `4|y| ≤ 3|s|`
+(from the round trip `b64 y = s`, `b64_of_b64Decode`, and the length of `b64`, `length_b64`). -/
+theorem four_mul_length_le_of_b64Decode (s y : List U8) (h : b64Decode s = some y) :
+    4 * y.length ≤ 3 * s.length := by
+  have hl := length_b64 y
+  rw [b64_of_b64Decode s y h] at hl
+  omega
 
 /-- The encoding is never longer than `Defs.Wire.b64Len` (`4 * ⌈n/3⌉`, the padded length that
 `wire::b64_len` computes). -/

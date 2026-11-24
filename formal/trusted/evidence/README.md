@@ -230,7 +230,9 @@ Tests: every keyring test of `codec` goes through `Zeroizing::deref` (`two_key_r
   `rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open` or
   `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the time parameter of E01
   `open_authenticated_body`, is not covered); statements about
-  opening use `open_at` with an explicit `now` (also in `formal/docs/STATUS.md`).
+  opening use `open_at` with an explicit `now` (also in `formal/docs/STATUS.md`). Exception (human
+  decision 2026-11-24): the spec theorems of the public `open`/`open_with` and their restatements,
+  as worded in `formal/README.md`, "Trusted base".
 - **Tests.** `codec::within_ttl_opens`, `codec::past_ttl_is_expired` (through `open`).
 
 ## Phase 2 externals (plan steps S26–S27)
