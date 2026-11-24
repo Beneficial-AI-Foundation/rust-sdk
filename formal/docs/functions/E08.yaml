@@ -11,7 +11,7 @@ proof_file: formal/proofs/Proofs/Model/RequestState/SealRs2.lean
 spec_file: formal/proofs/Proofs/Internal/Model/RequestState.lean
 theorem: rmcp.model.request_state.RequestStateCodec.seal_rs2_spec  # restated as Theorems.request_state.RequestStateCodec.seal_rs2 in the spec file
 used_by: []  # targets whose proofs consume this theorem; consumed by rs2_roundtrip / open_at_roundtrip_rs2 (not IDs)
-axioms: [propext, Classical.choice, Quot.sound, rmcp.model.request_state.VERSION_V2._native.decide.ax_1]  # as printed by `#print axioms` in the spec file; native-code ones are locked Aeneas toStr side conditions (trusted/native-axioms.lock)
+axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file; list changed in the Aeneas upgrade (2026-11-24, nightly-2026.11.24-fb44cb4: standard axioms added and/or native-code axioms dropped), re-signed by the spec owner in the batch re-sign-off of 2026-11-24
 evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 223ff12:formal/docs/evidence/<step>.md
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft (round 2; fix round 2 after the round-1 review; fix round 3 after the round-2 review): formal/specs/Drafts/RequestState.lean (uses only Defs.Wire and the external models), theorem rmcp.model.request_state.RequestStateCodec.seal_rs2_spec
 spec_reviews:

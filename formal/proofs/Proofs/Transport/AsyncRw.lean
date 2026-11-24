@@ -3,11 +3,15 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Bytes
-import Proofs.Defs.Methods
-import Proofs.External.Std
-import Proofs.External.String
+module
+public import Rmcp.Funs
+public import Defs.Bytes
+public import Proofs.Defs.Methods
+public import Proofs.External.Std
+public import Proofs.External.String
+public import Proofs.External.WP
+
+@[expose] public section
 
 /-!
 # Spec theorems for the line and method guards of `async_rw.rs` (T04–T06, C05)
@@ -42,9 +46,9 @@ theorem without_carriage_return_spec (s : Slice U8) :
   intro o ho
   rw [WP.spec_ok]
   cases o with
-  | some head => rw [core.option.Option.unwrap_or_some, ho, List.getLast?_concat, if_pos rfl,
+  | some head => rw [core.option.Option.unwrap_or_some, ho, List.getLast?_concat, ite_eq_left rfl,
       List.dropLast_concat]
-  | none => rw [core.option.Option.unwrap_or_none, if_neg ho]
+  | none => rw [core.option.Option.unwrap_or_none, ite_eq_right ho]
 
 /-! ## T05, T06: MCP method allow-lists (`async_rw.rs` lines 392–433)
 
@@ -60,18 +64,18 @@ private theorem spec_ite_decide_ok_true {p : Prop} [Decidable p] {Q : Prop} {x :
     (hx : x ⦃ (r : Bool) => (r = true ↔ Q) ⦄) :
     (if decide p = true then ok true else x) ⦃ (r : Bool) => (r = true ↔ p ∨ Q) ⦄ := by
   by_cases hp : p
-  · rw [if_pos (decide_eq_true hp), WP.spec_ok]
+  · rw [ite_eq_left (decide_eq_true hp), WP.spec_ok]
     exact iff_of_true rfl (Or.inl hp)
-  · simp only [hp, decide_false, Bool.false_eq_true, if_false, false_or]
+  · simp only [hp, decide_false, Bool.false_eq_true, ite_false, false_or]
     exact hx
 
 /-- The last link of the translated `||` chain. -/
 private theorem spec_ite_decide_ok_true_ok_false (p : Prop) [Decidable p] :
     (if decide p = true then ok true else ok false) ⦃ (r : Bool) => (r = true ↔ p) ⦄ := by
   by_cases hp : p
-  · rw [if_pos (decide_eq_true hp), WP.spec_ok]
+  · rw [ite_eq_left (decide_eq_true hp), WP.spec_ok]
     exact iff_of_true rfl hp
-  · rw [if_neg (mt of_decide_eq_true hp), WP.spec_ok]
+  · rw [ite_eq_right (mt of_decide_eq_true hp), WP.spec_ok]
     exact iff_of_false Bool.false_ne_true hp
 
 /-- Membership in the image of a filtered list, as the statements of T05 and T06 phrase it. -/
@@ -98,7 +102,7 @@ private theorem is_standard_notification_spec_rust (method : Str) :
   simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil, or_false,
     Proofs.External.Utf8.utf8Bytes_eq_utf8]
   unfold is_standard_notification
-  simp only [Str.Insts.CoreCmpPartialEqStr.eq_eq, Proofs.External.Utf8.toStr_val, bind_tc_ok]
+  simp only [Str.Insts.CoreCmpPartialEqStr.eq_eq, Proofs.External.Utf8.toStr_val, bind_ok]
   repeat (first | apply spec_ite_decide_ok_true_ok_false | apply spec_ite_decide_ok_true)
 
 /-- **Spec theorem for `rmcp::transport::async_rw::is_standard_notification`** (T05)
@@ -150,7 +154,7 @@ theorem is_standard_method_spec (method : Str) :
        "completion/complete", "elicitation/create", "logging/setLevel", "roots/list",
        "sampling/createMessage"] := by
     decide
-  obtain ⟨r, hr, hn⟩ := WP.spec_imp_exists (is_standard_notification_spec method)
+  obtain ⟨r, hr, hn⟩ := Proofs.External.WP.exists_ok_of_spec (is_standard_notification_spec method)
   rw [← mem_map_utf8Bytes_filter_iff, (hp.map Defs.utf8Bytes).mem_iff, ← hn]
   generalize hL : List.map Defs.utf8Bytes [Defs.Methods.handshakeRequest, "ping",
     "server/discover", "prompts/get", "prompts/list", "resources/list", "resources/read",
@@ -159,7 +163,7 @@ theorem is_standard_method_spec (method : Str) :
     "elicitation/create", "logging/setLevel", "roots/list", "sampling/createMessage"] = L
   unfold is_standard_method
   rw [hr]
-  simp only [Str.Insts.CoreCmpPartialEqStr.eq_eq, Proofs.External.Utf8.toStr_val, bind_tc_ok]
+  simp only [Str.Insts.CoreCmpPartialEqStr.eq_eq, Proofs.External.Utf8.toStr_val, bind_ok]
   refine WP.spec_bind (Pₘ := fun b => (b = true ↔ method.val ∈ L)) ?_ ?_
   · rw [← hL]
     simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil, or_false,
@@ -167,9 +171,9 @@ theorem is_standard_method_spec (method : Str) :
     repeat (first | apply spec_ite_decide_ok_true_ok_false | apply spec_ite_decide_ok_true)
   · intro b hb
     cases b
-    · rw [if_neg Bool.false_ne_true, WP.spec_ok]
+    · rw [ite_eq_right Bool.false_ne_true, WP.spec_ok]
       exact ⟨Or.inr, fun h => h.resolve_left fun hm => absurd (hb.2 hm) Bool.false_ne_true⟩
-    · rw [if_pos rfl, WP.spec_ok]
+    · rw [ite_eq_left rfl, WP.spec_ok]
       exact iff_of_true rfl (Or.inl (hb.1 rfl))
 
 /-! ## Composition theorem C05 -/
@@ -186,7 +190,7 @@ theorem is_standard_method_of_is_standard_notification (method : Str)
     is_standard_method method = ok true := by
   have hn := is_standard_notification_spec method
   rw [h, WP.spec_ok] at hn
-  obtain ⟨r, hr, hm⟩ := WP.spec_imp_exists (is_standard_method_spec method)
+  obtain ⟨r, hr, hm⟩ := Proofs.External.WP.exists_ok_of_spec (is_standard_method_spec method)
   rw [hr, hm.2 (Or.inr (hn.1 rfl))]
 
 end rmcp.transport.async_rw

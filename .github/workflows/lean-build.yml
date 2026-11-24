@@ -1,10 +1,10 @@
 # Lean project builds (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 5, "CI").
 # The gate (human decision at S03): every library in formal/lakefile.toml sets
-# `warningAsError`, and CI runs a plain `lake build`, which fails on any warning in this
+# `warningAsError`, and CI runs `lake build --wfail`, which fails on any warning in this
 # project's modules, including `sorry`, and runs every `#guard_msgs` axiom check in the
-# spec files. `--wfail` is not used: with the pinned Aeneas rev it also fails on four
-# `sorry` warnings replayed from the Aeneas library itself (Aeneas/Std/Slice.lean:363,586,
-# Aeneas/Std/StringIter.lean:12,15; the S03 evidence (git history at 223ff12)).
+# spec files. `--wfail` also fails on a warning that Lake replays from a dependency; until
+# nightly-2026.08.20-5d08da4 the Aeneas library had four `sorry` warnings, so a plain
+# `lake build` was used; nightly-2026.11.24-fb44cb4 has none (lead decision N10).
 #
 # Two jobs, because `lake build` runs code of the project (elaboration) that could rewrite
 # files of the runner, including scripts/lean-guard.sh, before a later step of the same job:
@@ -59,7 +59,7 @@ env:
   ELAN_SHA256: 0e8250aa2be86c7af929ade68db617af9edc8b9ccf6eaf5ece228250d0d032e2
   # Must equal LEAN_TOOLCHAIN in scripts/lean_guard.py (which `sources` checks against
   # formal/lean-toolchain); updated with the Aeneas rev.
-  LEAN_TOOLCHAIN: leanprover/lean4:v4.31.0
+  LEAN_TOOLCHAIN: leanprover/lean4:v4.36.0
 
 jobs:
   build:
@@ -115,7 +115,7 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
-          lake build 2>&1 | tee .lake/build.log
+          lake build --wfail 2>&1 | tee .lake/build.log
 
       # One tar file (the artifact holds exactly this file): paths build/... and build.log
       # relative to formal/.lake, as scripts/lean-guard.sh unpack-build expects.

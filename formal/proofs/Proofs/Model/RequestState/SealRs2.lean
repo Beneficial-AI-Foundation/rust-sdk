@@ -3,16 +3,19 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.External.Base64
-import Proofs.External.String
-import Proofs.External.Prim
-import Proofs.External.Std
-import Proofs.Model.RequestStateWire.TranscriptV2
-import Proofs.Model.RequestState.B64Len
-import Proofs.Model.RequestState.Common
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.External.Base64
+public import Proofs.External.String
+public import Proofs.External.Prim
+public import Proofs.External.Std
+public import Proofs.Model.RequestStateWire.TranscriptV2
+public import Proofs.Model.RequestState.B64Len
+public import Proofs.Model.RequestState.Common
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::seal_rs2` (E08)
@@ -81,8 +84,8 @@ theorem seal_rs2_spec (kid : Str) (key : Slice Std.U8) (associated_data : Slice 
   step as ⟨i4, hi4⟩
   step as ⟨i6, hi6⟩
   step as ⟨i7, hi7⟩
-  simp only [lift, bind_tc_ok]
-  have hts : (tag.to_slice).val = tag.val := rfl
+  simp only [lift]
+  have hts : (tag.to_slice).val = tag.val := Array.val_to_slice tag
   have htl : tag.val.length = 32 := tag.property
   step as ⟨i9, hi9⟩
   step as ⟨i10, hi10⟩
@@ -120,7 +123,7 @@ theorem seal_rs2_spec (kid : Str) (key : Slice Std.U8) (associated_data : Slice 
   step with model.request_state_wire.prim.b64_encode_into_spec tag.to_slice out6
     (by rw [hl6]; simp only [Slice.length, hts, htl]; omega) as ⟨out7, hout7⟩
   have hv' : v.deref.val = transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val := by
-    rw [← hs]; exact hv
+    rw [← hs, alloc.vec.Vec.deref, Slice.from_val]; exact hv
   rw [hout7, hout6', hout5, hout4', hout3, hout2', hout1', hout, val_VERSION_V2, utf8_empty, hdot,
     hts, htag, hv', hs]
   simp only [List.nil_append, List.append_assoc, List.cons_append]

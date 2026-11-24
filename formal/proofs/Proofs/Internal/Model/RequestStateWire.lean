@@ -3,23 +3,26 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.B64Len
-import Proofs.Model.RequestStateWire.KeyLengthOk
-import Proofs.Model.RequestStateWire.CheckKidLen
-import Proofs.Model.RequestStateWire.BytesEq
-import Proofs.Model.RequestStateWire.NextDot
-import Proofs.Model.RequestStateWire.ComponentCount
-import Proofs.Model.RequestStateWire.VersionOf
-import Proofs.Model.RequestStateWire.ParseRs1
-import Proofs.Model.RequestStateWire.ParseRs2
-import Proofs.Model.RequestStateWire.TranscriptV1
-import Proofs.Model.RequestStateWire.TranscriptV2
-import Proofs.Model.RequestStateWire.DecodeExpiry
-import Proofs.Model.RequestStateWire.IsExpired
-import Proofs.Model.RequestStateWire.OpenFrame
-import Proofs.Model.RequestStateWire.Frame
+module
+public import Defs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.B64Len
+public import Proofs.Model.RequestStateWire.KeyLengthOk
+public import Proofs.Model.RequestStateWire.CheckKidLen
+public import Proofs.Model.RequestStateWire.BytesEq
+public import Proofs.Model.RequestStateWire.NextDot
+public import Proofs.Model.RequestStateWire.ComponentCount
+public import Proofs.Model.RequestStateWire.VersionOf
+public import Proofs.Model.RequestStateWire.ParseRs1
+public import Proofs.Model.RequestStateWire.ParseRs2
+public import Proofs.Model.RequestStateWire.TranscriptV1
+public import Proofs.Model.RequestStateWire.TranscriptV2
+public import Proofs.Model.RequestStateWire.DecodeExpiry
+public import Proofs.Model.RequestStateWire.IsExpired
+public import Proofs.Model.RequestStateWire.OpenFrame
+public import Proofs.Model.RequestStateWire.Frame
+
+@[expose] public section
 
 /-!
 # Internal spec file for crates/rmcp/src/model/request_state_wire.rs (patch-only, W01–W15)
@@ -75,7 +78,7 @@ Phase 2, plan Section 15; the translation of this file's targets is unchanged), 
 `overflow-checks=true` and `debug-assertions=true` (every cargo call gets
 `--config profile.dev.overflow-checks=true` and `--config profile.dev.debug-assertions=true`,
 plan Section 1), so arithmetic overflow panics, which Aeneas models as failure. Aeneas
-`nightly-2026.08.20-5d08da4`; the translation base is the patched copy (patch 01 on origin/main
+`nightly-2026.11.24-fb44cb4` (until 2026-11-24 `nightly-2026.08.20-5d08da4`); the translation base is the patched copy (patch 01 on origin/main
 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23;
 translation committed at `9bd8144`). Line numbers refer to `request_state_wire.rs` in the
 patched copy, the only place the file exists.

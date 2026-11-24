@@ -3,9 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Bytes
-import Proofs.External.String
+module
+public import Rmcp.Funs
+public import Defs.Bytes
+public import Proofs.External.String
+public import Proofs.External.WP
+
+@[expose] public section
 
 /-!
 # Spec theorems for `Reference` (M13, M14)
@@ -39,9 +43,9 @@ theorem as_prompt_name_spec (self : model.Reference)
   match self with
   | .Resource _ => simp only [as_prompt_name, WP.spec_ok]
   | .Prompt p =>
-    obtain ⟨s, hs, hv⟩ := WP.spec_imp_exists
+    obtain ⟨s, hs, hv⟩ := Proofs.External.WP.exists_ok_of_spec
       (alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec p.«name» (h_size p rfl))
-    simp only [as_prompt_name, hs, bind_tc_ok, WP.spec_ok]
+    simp only [as_prompt_name, hs, bind_ok, WP.spec_ok]
     exact ⟨s, rfl, hv⟩
 
 /-- M13, failing case: a prompt reference whose name has more than `Usize.max` bytes (a Lean
@@ -51,7 +55,8 @@ theorem as_prompt_name_fail (p : model.PromptReference)
     (h_big : Usize.max < p.«name».utf8ByteSize) :
     as_prompt_name (.Prompt p) = fail .maximumSizeExceeded := by
   simp only [as_prompt_name,
-    alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_fail p.«name» h_big, bind_tc_fail]
+    alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_fail p.«name» h_big,
+    bind_fail]
 
 /-- **Spec theorem for `rmcp::model::Reference::as_resource_uri`** (M14)
 
@@ -70,9 +75,9 @@ theorem as_resource_uri_spec (self : model.Reference)
   match self with
   | .Prompt _ => simp only [as_resource_uri, WP.spec_ok]
   | .Resource r =>
-    obtain ⟨s, hs, hv⟩ := WP.spec_imp_exists
+    obtain ⟨s, hs, hv⟩ := Proofs.External.WP.exists_ok_of_spec
       (alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec r.uri (h_size r rfl))
-    simp only [as_resource_uri, hs, bind_tc_ok, WP.spec_ok]
+    simp only [as_resource_uri, hs, bind_ok, WP.spec_ok]
     exact ⟨s, rfl, hv⟩
 
 /-- M14, failing case: a resource reference whose URI has more than `Usize.max` bytes gives
@@ -81,6 +86,7 @@ theorem as_resource_uri_fail (r : model.ResourceTemplateReference)
     (h_big : Usize.max < r.uri.utf8ByteSize) :
     as_resource_uri (.Resource r) = fail .maximumSizeExceeded := by
   simp only [as_resource_uri,
-    alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_fail r.uri h_big, bind_tc_fail]
+    alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_fail r.uri h_big,
+    bind_fail]
 
 end rmcp.model.Reference

@@ -3,10 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Aeneas
-import Rmcp.Types
-import Rmcp.TypesExternal
-import Defs.IntParse
+module
+public import Aeneas
+public import Rmcp.Types
+public import Rmcp.TypesExternal
+public import Defs.IntParse
+
+@[expose] public section
 
 /-!
 # Definitions for the JSON-RPC message model statements (M01–M07, C03)

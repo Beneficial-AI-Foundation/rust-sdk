@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Proofs.External.Byte
+module
+public import Rmcp.Funs
+public import Proofs.External.Byte
+
+@[expose] public section
 
 /-!
 # Laws of the Phase 2 external models: Net (plan steps S26/S27, stage 6)
@@ -46,7 +49,8 @@ open Proofs.External.Net
 `core/src/net/ip_addr.rs` lines 74–76). -/
 theorem core.net.ip_addr.Ipv4Addr.exists_octets (a : core.net.ip_addr.Ipv4Addr) :
     ∃ o0 o1 o2 o3 : U8, a.addrOctets.val = [o0, o1, o2, o3] := by
-  obtain ⟨⟨l, hl⟩⟩ := a
+  have hl : a.addrOctets.val.length = 4 := by simp
+  generalize a.addrOctets.val = l at hl ⊢
   match l, hl with
   | [o0, o1, o2, o3], _ => exact ⟨o0, o1, o2, o3, rfl⟩
 
@@ -82,7 +86,7 @@ theorem core.net.ip_addr.Ipv4Addr.is_private_spec (self : core.net.ip_addr.Ipv4A
               Bool.and_eq_true, decide_eq_true_eq, Nat.reduceDiv, OfNat.ofNat_ne_one, and_self,
               or_true, imp_false, not_and, forall_apply_eq_imp_iff, forall_apply_eq_imp_iff₂,
               Bool.false_eq_true, false_iff, not_false_eq_true, implies_true]
-  all_goals omega
+  omega
 
 /-- **Spec theorem for `Ipv4Addr::is_loopback`**: `127.0.0.0/8`.
 
@@ -181,7 +185,8 @@ theorem core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from_spec (ip : U32) 
         ∀ o0 o1 o2 o3 : U8, result.addrOctets.val = [o0, o1, o2, o3] →
           o0.val * 2 ^ 24 + o1.val * 2 ^ 16 + o2.val * 2 ^ 8 + o3.val = ip.val ⦄ := by
   have hip : ip.val < 2 ^ 32 := by scalar_tac
-  simp only [core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from, WP.spec_ok]
+  simp only [core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from, WP.spec_ok,
+    Array.from_val]
   refine ⟨?_, ?_⟩
   · simp only [List.map_cons, List.map_nil, byte_val, List.cons.injEq, and_true]
     omega
@@ -208,7 +213,7 @@ theorem core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from_u32_segments
   have hg : g.val < 2 ^ 16 := by scalar_tac
   have hh : h.val < 2 ^ 16 := by scalar_tac
   simp only [core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from, WP.spec_ok,
-    List.map_cons, List.map_nil, byte_val, List.cons.injEq, and_true]
+    Array.from_val, List.map_cons, List.map_nil, byte_val, List.cons.injEq, and_true]
   omega
 
 /-- Every `Ipv6Addr` has eight segments (the model's `Array U16 8#usize`; Rust stores 16
@@ -218,7 +223,8 @@ big-endian `u16`, lines 1495–1510: the stated change of representation of
 theorem core.net.ip_addr.Ipv6Addr.exists_segments (a : core.net.ip_addr.Ipv6Addr) :
     ∃ s0 s1 s2 s3 s4 s5 s6 s7 : U16,
       a.addrSegments.val = [s0, s1, s2, s3, s4, s5, s6, s7] := by
-  obtain ⟨⟨l, hl⟩⟩ := a
+  have hl : a.addrSegments.val.length = 8 := by simp
+  generalize a.addrSegments.val = l at hl ⊢
   match l, hl with
   | [s0, s1, s2, s3, s4, s5, s6, s7], _ => exact ⟨s0, s1, s2, s3, s4, s5, s6, s7, rfl⟩
 

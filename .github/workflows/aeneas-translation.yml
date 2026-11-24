@@ -96,7 +96,7 @@ env:
   # The Rust channel of the pinned bundle's rust-toolchain, used only as a cache path here; it
   # must equal the channel hard-coded next to RUSTC_VV_PINNED in scripts/aeneas-translate.sh
   # (checked by the first step), and is updated with the Aeneas rev.
-  RUST_NIGHTLY: nightly-2026-06-01
+  RUST_NIGHTLY: nightly-2026-09-17
 
 jobs:
   translate:

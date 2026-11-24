@@ -3,11 +3,14 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Proofs.External.Byte
-import Proofs.External.WP
-import Proofs.External.Base64
-import Defs.Bytes
+module
+public import Rmcp.Funs
+public import Proofs.External.Byte
+public import Proofs.External.WP
+public import Proofs.External.Base64
+public import Defs.Bytes
+
+@[expose] public section
 
 /-!
 # UTF-8 facts for the `String` models
@@ -41,7 +44,6 @@ theorem byteArray_toList_loop (bs : ByteArray) (i : Nat) (r : List UInt8) :
     rw [List.drop_eq_getElem_cons h', List.reverse_cons, List.append_assoc, List.singleton_append]
     congr 2
     rw [ByteArray.get!, getElem!_pos bs.data i h, Array.getElem_toList]
-    rfl
   | case2 i r h =>
     have h' : bs.data.toList.length ≤ i := by
       rw [Array.length_toList]; exact Nat.le_of_not_lt h
@@ -86,7 +88,7 @@ theorem bytes_utf8 (s : String) :
 
 /-- `strOfBytes?` inverts `utf8`. -/
 theorem strOfBytes?_utf8 (s : String) : strOfBytes? (utf8 s) = some s := by
-  rw [strOfBytes?, bytes_utf8, String.fromUTF8?, dif_pos s.isValidUTF8]
+  rw [strOfBytes?, bytes_utf8, String.fromUTF8?, dite_eq_left s.isValidUTF8]
   rfl
 
 /-- `strOfBytes? l = some s` exactly when `l` is the UTF-8 encoding of `s`. -/
@@ -127,10 +129,10 @@ theorem utf8_injective {s t : String} (h : utf8 s = utf8 t) : s = t := by
 theorem utf8EncodeChar_ofNat {n : Nat} (h : n < 128) :
     String.utf8EncodeChar (Char.ofNat n) = [UInt8.ofNat n] := by
   have hv : (Char.ofNat n).val.toNat = n := by
-    rw [Char.ofNat, dif_pos (Or.inl (by omega))]
+    rw [Char.ofNat, dite_eq_left (Or.inl (by omega))]
     simp only [Char.ofNatAux, UInt32.ofBitVec_ofNatLT, UInt32.toNat_ofNatLT]
   simp only [String.utf8EncodeChar, hv]
-  rw [if_pos (by omega)]
+  rw [ite_eq_left (by omega)]
 
 /-- ASCII bytes, as characters, encode to themselves. -/
 theorem utf8_ofList_ascii (l : List U8) (h : ∀ b ∈ l, b.val < 128) :
@@ -180,7 +182,7 @@ theorem utf8_ofList_singleton_ascii (ch : Char) (h : ch.toNat < 128) :
 /-- The bytes of the Aeneas `toStr` of a literal are its `utf8` bytes. -/
 theorem toStr_val (s : String) (h : s.toByteArray.size ≤ U32.max) :
     (toStr s h).val = utf8 s := by
-  rw [toStr, utf8]
+  rw [toStr, utf8, Slice.from_val]
   apply List.map_congr_left
   intro x _
   apply UScalar.eq_of_val_eq
@@ -232,8 +234,8 @@ theorem alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec
       result.val = utf8 self ⦄ := by
   rw [← length_utf8] at h
   simp only [alloc.string.String.Insts.CoreOpsDerefDerefStr.deref, alloc.string.String.as_bytes,
-    dif_pos h]
-  exact (WP.spec_ok (p := fun result : Str => result.val = utf8 self) _).2 rfl
+    dite_eq_left h]
+  exact (WP.spec_ok (p := fun result : Str => result.val = utf8 self) _).2 (Slice.from_val _ _)
 
 /-- `<String as Deref>::deref` on a Lean `String` longer than `Usize.max` bytes (no Rust
 `String` is): `fail maximumSizeExceeded`. -/
@@ -242,7 +244,7 @@ theorem alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_fail
     alloc.string.String.Insts.CoreOpsDerefDerefStr.deref self = fail Error.maximumSizeExceeded := by
   rw [← length_utf8] at h
   simp only [alloc.string.String.Insts.CoreOpsDerefDerefStr.deref, alloc.string.String.as_bytes,
-    dif_neg (Nat.not_le.2 h)]
+    dite_eq_right (Nat.not_le.2 h)]
   rfl
 
 /-- **Spec theorem for `<Arc<T> as Deref>::deref`**: the shared value, for every `T` and every
@@ -278,4 +280,4 @@ theorem alloc.sync.Arc.data_val_inj {a b : alloc.sync.Arc Str} :
     a.data.val = b.data.val ↔ a = b := by
   obtain ⟨x⟩ := a
   obtain ⟨y⟩ := b
-  exact ⟨fun h => congrArg alloc.sync.Arc.mk (Subtype.ext h), fun h => by cases h; rfl⟩
+  exact ⟨fun h => congrArg alloc.sync.Arc.mk (Slice.ext _ _ h), fun h => by cases h; rfl⟩

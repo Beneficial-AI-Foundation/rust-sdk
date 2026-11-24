@@ -3,10 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.Model.RequestStateWire.OpenFrame
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.Model.RequestStateWire.OpenFrame
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::open_authenticated_body` (E01)
@@ -67,11 +70,11 @@ theorem open_authenticated_body_spec (body : alloc.vec.Vec Std.U8) (now_ms : Std
   step
   split
   · step
-    simp_all only [Slice.length, alloc.vec.Vec.deref, Subtype.coe_eta, not_false_eq_true, and_self]
+    simp_all only [Slice.length, alloc.vec.Vec.deref, Slice.from_val, alloc.vec.Vec.val,
+      not_false_eq_true, and_self]
   · rename_i fe
-    cases fe <;> simp_all only [Slice.length, alloc.vec.Vec.deref, Subtype.coe_eta,
-      not_true_eq_false, false_and, and_false, true_and, WP.spec_ok, reduceCtorEq, or_false,
-      or_true]
+    cases fe <;> simp_all only [Slice.length, alloc.vec.Vec.deref, Slice.from_val,
+      and_false, WP.spec_ok, reduceCtorEq, or_false, and_true, false_or]
 
 /-- E01 in the form used by E09 and E10: the result of `open_authenticated_body`, as
 `Defs.CodecState.resultBytes`, is `Defs.CodecState.openBody` of the body bytes. -/
@@ -84,12 +87,12 @@ theorem open_authenticated_body_openBody (body : alloc.vec.Vec Std.U8) (now_ms :
   unfold Defs.CodecState.openBody
   rcases r with p | e
   · obtain ⟨h1, h2, h3⟩ := hr
-    rw [if_neg (by omega), if_neg h2, ← h3]
+    rw [ite_eq_right (by omega), ite_eq_right h2, ← h3]
     rfl
   · rcases hr with ⟨h1, rfl⟩ | ⟨h1, h2, rfl⟩
-    · rw [if_pos h1]
+    · rw [ite_eq_left h1]
       rfl
-    · rw [if_neg (by omega), if_pos h2]
+    · rw [ite_eq_right (by omega), ite_eq_left h2]
       rfl
 
 end rmcp.model.request_state.RequestStateCodec

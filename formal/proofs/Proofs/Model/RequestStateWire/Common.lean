@@ -3,9 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.NextDot
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.NextDot
+public import Proofs.External.WP
+
+@[expose] public section
 
 /-!
 # Shared lemmas for the `request_state_wire` proofs
@@ -41,12 +45,12 @@ theorem length_splitOnP {α : Type} (p : α → Bool) (l : List α) :
   | nil =>
     simp only [List.splitOnP_nil, List.length_cons, List.length_nil, zero_add, List.countP_nil]
   | cons x xs ih =>
-    rw [List.splitOnP_cons_eq_if_modifyHead, List.countP_cons]
+    rw [List.splitOnP_cons_eq_ite_modifyHead, List.countP_cons]
     split <;> simp_all only [Bool.not_eq_true, List.length_cons, List.length_modifyHead, add_zero]
 
 /-- The number of `.`-components is one more than the number of `.` bytes. -/
 theorem length_components (s : List U8) : (components s).length = s.count dot + 1 := by
-  rw [components, List.splitOn, length_splitOnP, List.count]
+  rw [components, List.splitOn_eq_splitOnP, length_splitOnP, List.count]
 
 /-- A byte string is its `.`-components joined by `.`: its length is the sum of the lengths of
 the components plus one for each of the (number of components − 1) dots. -/
@@ -114,21 +118,17 @@ theorem extend_from_slice_spec (v : alloc.vec.Vec U8) (s : Slice U8)
     alloc.vec.Vec.extend_from_slice core.clone.CloneU8 v s ⦃ (r : alloc.vec.Vec U8) =>
       r.val = v.val ++ s.val ⦄ := by
   unfold alloc.vec.Vec.extend_from_slice
-  rw [dif_pos h]
-  obtain ⟨s', hs', heq⟩ := WP.spec_imp_exists
-    (Slice.clone_spec (clone := core.clone.CloneU8.clone) (s := s) (fun _ _ => rfl))
-  subst heq
-  split
-  · simp_all only [ok.injEq, WP.spec_ok]
-  · simp_all only [alloc.vec.Vec.length, Slice.length, reduceCtorEq]
-  · simp_all only [alloc.vec.Vec.length, Slice.length, reduceCtorEq]
+  rw [dite_eq_left h]
+  apply WP.spec_bind (List.clone_spec (clone := core.clone.CloneU8.clone) (fun _ _ => rfl))
+  intro l hl
+  rw [WP.spec_ok, alloc.vec.Vec.from_val, hl.1]
 
 /-- The big-endian bytes of a 64-bit bit vector: byte `i` is `v / 256 ^ (7 - i)` mod 256. -/
 theorem toBEBytes_eq (v : BitVec 64) :
     v.toBEBytes = (List.range 8).map fun i => BitVec.ofNat 8 (v.toNat / 256 ^ (7 - i)) := by
   rw [BitVec.toBEBytes]
   iterate 9 (rw [BitVec.toLEBytes]; simp only [gt_iff_lt, Nat.reduceSub, Nat.lt_irrefl,
-    Nat.ofNat_pos, if_true, if_false])
+    Nat.ofNat_pos, ite_true, ite_false])
   simp only [List.reverse_cons, List.reverse_nil, List.range_succ, List.range_zero,
     List.map_cons, List.map_nil, List.nil_append, List.cons_append]
   have hv : v.toNat < 2 ^ 64 := v.isLt
@@ -147,8 +147,8 @@ theorem map_mk_toBEBytes (x : U64) :
   rfl
 
 /-- The bytes of `u64::to_be_bytes x` are `be64 x.val`. -/
-theorem val_to_be_bytes (x : U64) : (core.num.U64.to_be_bytes x).val = be64 x.val :=
-  map_mk_toBEBytes x
+theorem val_to_be_bytes (x : U64) : (core.num.U64.to_be_bytes x).val = be64 x.val := by
+  rw [core.num.U64.to_be_bytes, Array.from_val, map_mk_toBEBytes]
 
 /-- The slice `(x.to_be_bytes())[..]` passed to `extend_from_slice` in `frame`, `transcript_v1`
 and `transcript_v2` (`Array.to_slice` in `Rmcp.Funs`) holds the bytes `be64 x.val`. -/
@@ -178,18 +178,13 @@ theorem next_dot_le_length (s : Slice U8) (start : Usize) :
 /-! ## Splitting on `.` and the results of `next_dot` (for S10: W07–W09) -/
 
 /-- A byte string without `.` is its own single component. -/
-theorem components_eq_singleton (l : List U8) (h : ∀ x ∈ l, x ≠ dot) : components l = [l] := by
-  rw [components, List.splitOn_eq_splitOnP]
-  exact List.splitOnP_eq_singleton fun x hx => by
-    simpa only [beq_eq_false_iff_ne, ne_eq, UScalar.neq_to_neq_val] using h x hx
+theorem components_eq_singleton (l : List U8) (h : ∀ x ∈ l, x ≠ dot) : components l = [l] :=
+  List.splitOn_eq_singleton fun hm => h dot hm rfl
 
 /-- Splitting at the first `.`: the part before it is the first component. -/
 theorem components_append_dot (a b : List U8) (h : ∀ x ∈ a, x ≠ dot) :
-    components (a ++ dot :: b) = a :: components b := by
-  rw [components, List.splitOn_eq_splitOnP]
-  exact List.splitOnP_append_cons_of_forall_mem (fun x hx => by
-    simpa only [beq_eq_false_iff_ne, ne_eq, UScalar.neq_to_neq_val] using h x hx) dot
-    (by simp only [BEq.rfl]) b
+    components (a ++ dot :: b) = a :: components b :=
+  List.splitOn_append_cons_self_of_not_mem (fun hm => h dot hm rfl) b
 
 /-- A byte string with exactly one component is that component. -/
 theorem components_eq_singleton_of_length_eq_one (l : List U8) (h : (components l).length = 1) :

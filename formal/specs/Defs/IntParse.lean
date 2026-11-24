@@ -3,7 +3,10 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Aeneas
+module
+public import Aeneas
+
+@[expose] public section
 
 /-!
 # Rust's decimal grammar for `i64` (M06)
@@ -14,7 +17,9 @@ not from the model of `i64::from_str` in `trusted/Rmcp/FunsExternal.lean` (plan 
 "M06 (integer parsing)"): an optional single `+` or `-`, then at least one ASCII digit, and
 nothing else; leading zeros are allowed; values outside `[-2^63, 2^63 - 1]` are rejected.
 
-Sources, at the pinned toolchain `nightly-2026-06-01` (`rust-src`, `library/core/src/num/`):
+Sources, at the toolchain `nightly-2026-06-01` pinned until the Aeneas upgrade of 2026-11-24
+(`rust-src`, `library/core/src/num/`; re-checking the citations against `nightly-2026-09-17` is
+part of the model review of that upgrade):
 - `mod.rs` lines 1592–1606, the doc comment of `FromStr for i64` (generator
   `from_str_int_impl`, signed case): "The characters are expected to be an optional `+` or
   `-` sign followed by only digits. Leading and trailing non-digit characters (including

@@ -3,7 +3,10 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
+module
+public import Rmcp.Funs
+
+@[expose] public section
 
 /-!
 # Laws of the Phase 2 external models: Option (plan steps S26/S27, stage 6)

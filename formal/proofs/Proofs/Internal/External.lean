@@ -3,15 +3,18 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Defs.Wire
-import Proofs.External.Base64
-import Proofs.External.String
-import Proofs.External.Prim
-import Proofs.External.Std
-import Proofs.External.Option
-import Proofs.External.IntParse
-import Proofs.External.Net
+module
+public import Defs
+public import Defs.Wire
+public import Proofs.External.Base64
+public import Proofs.External.String
+public import Proofs.External.Prim
+public import Proofs.External.Std
+public import Proofs.External.Option
+public import Proofs.External.IntParse
+public import Proofs.External.Net
+
+@[expose] public section
 
 /-!
 # Internal spec file for the external models (S08–S09, S26–S27)
@@ -64,6 +67,17 @@ signed-off text was in `formal/specs/Drafts/Model.lean`, removed at incorporatio
 from `formal/specs/Specs/External.lean` on 2026-11-24 (statements unchanged). Definitions from
 the moved `Defs` modules keep their Lean names (`Defs.Wire.dot`, `Defs.Wire.b64Len` are in module
 `Defs.Wire`, back in `formal/specs/Defs/` since the request-state public specifications).
+
+Aeneas upgrade (2026-11-24, `nightly-2026.11.24-fb44cb4`; pending review and the human batch
+re-sign-off): four functions are defined in the Aeneas library instead of by a project model
+(`core::borrow::Borrow`, `Option::ok_or`, `Result::map_err`, `Vec::is_empty`; lead decision N8);
+forced restatements, name-only: the `Borrow` rename (`Aeneas.Std.core.borrow.Borrow`), the arity
+of `alloc.vec.Vec.is_empty_spec` and the `Slice.from` form in `hash_eq`. The model of
+`RangeInclusive::contains` follows `nightly-2026-09-17` (an exhausted range contains nothing), and
+`contains_u8_spec` and `contains_eq_match_le` are restated exactly for it (exhausted branch
+`item < start`; human decision 2026-11-24); `new_contains_u8_spec` is unchanged. 46
+`#print axioms` lists below changed in that upgrade (standard axioms added); every list is within
+`propext`, `Classical.choice`, `Quot.sound`.
 -/
 
 /-! ## `Proofs/External/Base64.lean` -/
@@ -526,7 +540,7 @@ theorem Theorems.External.core.borrow.Borrow.Blanket.borrow_spec {T : Type} (sel
   _root_.core.borrow.Borrow.Blanket.borrow_spec self
 
 /--
-info: 'Theorems.External.core.borrow.Borrow.Blanket.borrow_spec' depends on axioms: [propext]
+info: 'Theorems.External.core.borrow.Borrow.Blanket.borrow_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.borrow.Borrow.Blanket.borrow_spec
@@ -541,7 +555,7 @@ theorem Theorems.External.core.option.Option.ok_or_spec
   _root_.core.option.Option.ok_or_spec self err
 
 /--
-info: 'Theorems.External.core.option.Option.ok_or_spec' depends on axioms: [propext]
+info: 'Theorems.External.core.option.Option.ok_or_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.option.Option.ok_or_spec
@@ -553,7 +567,9 @@ theorem Theorems.External.core.option.Option.Insts.CoreDefaultDefault.default_sp
   _root_.core.option.Option.Insts.CoreDefaultDefault.default_spec T
 
 /--
-info: 'Theorems.External.core.option.Option.Insts.CoreDefaultDefault.default_spec' depends on axioms: [propext]
+info: 'Theorems.External.core.option.Option.Insts.CoreDefaultDefault.default_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.option.Option.Insts.CoreDefaultDefault.default_spec
@@ -568,7 +584,7 @@ theorem Theorems.External.core.result.Result.is_err_spec
   _root_.core.result.Result.is_err_spec self
 
 /--
-info: 'Theorems.External.core.result.Result.is_err_spec' depends on axioms: [propext]
+info: 'Theorems.External.core.result.Result.is_err_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.result.Result.is_err_spec
@@ -581,7 +597,7 @@ theorem Theorems.External.core.result.Result.map_err_ok {T E F O : Type}
   _root_.core.result.Result.map_err_ok inst t op
 
 /--
-info: 'Theorems.External.core.result.Result.map_err_ok' does not depend on any axioms
+info: 'Theorems.External.core.result.Result.map_err_ok' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.result.Result.map_err_ok
@@ -595,7 +611,7 @@ theorem Theorems.External.core.result.Result.map_err_err {T E F O : Type}
   _root_.core.result.Result.map_err_err inst e op
 
 /--
-info: 'Theorems.External.core.result.Result.map_err_err' does not depend on any axioms
+info: 'Theorems.External.core.result.Result.map_err_err' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.result.Result.map_err_err
@@ -607,7 +623,9 @@ theorem Theorems.External.Shared0Slice.Insts.CoreDefaultDefault.default_spec (T 
   _root_.Shared0Slice.Insts.CoreDefaultDefault.default_spec T
 
 /--
-info: 'Theorems.External.Shared0Slice.Insts.CoreDefaultDefault.default_spec' depends on axioms: [propext]
+info: 'Theorems.External.Shared0Slice.Insts.CoreDefaultDefault.default_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.Shared0Slice.Insts.CoreDefaultDefault.default_spec
@@ -618,7 +636,7 @@ theorem Theorems.External.core.str.Str.len_spec (self : Str) :
   _root_.core.str.Str.len_spec self
 
 /--
-info: 'Theorems.External.core.str.Str.len_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.core.str.Str.len_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.str.Str.len_spec
@@ -629,7 +647,7 @@ theorem Theorems.External.core.str.Str.as_bytes_spec (self : Str) :
   _root_.core.str.Str.as_bytes_spec self
 
 /--
-info: 'Theorems.External.core.str.Str.as_bytes_spec' depends on axioms: [propext]
+info: 'Theorems.External.core.str.Str.as_bytes_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.str.Str.as_bytes_spec
@@ -642,7 +660,7 @@ theorem Theorems.External.alloc.string.String.with_capacity_spec (capacity : Usi
   _root_.alloc.string.String.with_capacity_spec capacity h
 
 /--
-info: 'Theorems.External.alloc.string.String.with_capacity_spec' depends on axioms: [propext]
+info: 'Theorems.External.alloc.string.String.with_capacity_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.string.String.with_capacity_spec
@@ -654,7 +672,7 @@ theorem Theorems.External.alloc.string.String.with_capacity_fail (capacity : Usi
   _root_.alloc.string.String.with_capacity_fail capacity h
 
 /--
-info: 'Theorems.External.alloc.string.String.with_capacity_fail' depends on axioms: [propext]
+info: 'Theorems.External.alloc.string.String.with_capacity_fail' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.string.String.with_capacity_fail
@@ -735,7 +753,7 @@ theorem Theorems.External.alloc.string.String.as_bytes_spec
   _root_.alloc.string.String.as_bytes_spec self h
 
 /--
-info: 'Theorems.External.alloc.string.String.as_bytes_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.alloc.string.String.as_bytes_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.string.String.as_bytes_spec
@@ -776,7 +794,9 @@ theorem Theorems.External.alloc.string.String.Insts.CoreCmpPartialEqString.eq_sp
   _root_.alloc.string.String.Insts.CoreCmpPartialEqString.eq_spec self other
 
 /--
-info: 'Theorems.External.alloc.string.String.Insts.CoreCmpPartialEqString.eq_spec' depends on axioms: [propext]
+info: 'Theorems.External.alloc.string.String.Insts.CoreCmpPartialEqString.eq_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.string.String.Insts.CoreCmpPartialEqString.eq_spec
@@ -788,7 +808,9 @@ theorem Theorems.External.alloc.string.String.Insts.CoreCmpEq.assert_fields_are_
   _root_.alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq_spec self
 
 /--
-info: 'Theorems.External.alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq_spec' depends on axioms: [propext]
+info: 'Theorems.External.alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq_spec
@@ -800,7 +822,9 @@ theorem Theorems.External.alloc.string.String.Insts.CoreCloneClone.clone_spec (s
   _root_.alloc.string.String.Insts.CoreCloneClone.clone_spec self
 
 /--
-info: 'Theorems.External.alloc.string.String.Insts.CoreCloneClone.clone_spec' depends on axioms: [propext]
+info: 'Theorems.External.alloc.string.String.Insts.CoreCloneClone.clone_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.string.String.Insts.CoreCloneClone.clone_spec
@@ -811,24 +835,26 @@ theorem Theorems.External.alloc.string.String.Insts.CoreHashHash.hash_eq {H : Ty
     (h : self.utf8ByteSize ≤ Usize.max) :
     alloc.string.String.Insts.CoreHashHash.hash inst self state =
       (do
-        let state ← inst.write state ⟨utf8 self, by rw [length_utf8]; exact h⟩
-        inst.write state ⟨[byte 255], by scalar_tac⟩) :=
+        let state ← inst.write state (Slice.from (utf8 self) (by rw [length_utf8]; exact h))
+        inst.write state (Slice.from [byte 255] (by scalar_tac))) :=
   _root_.alloc.string.String.Insts.CoreHashHash.hash_eq inst self state h
 
 /--
-info: 'Theorems.External.alloc.string.String.Insts.CoreHashHash.hash_eq' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.alloc.string.String.Insts.CoreHashHash.hash_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.string.String.Insts.CoreHashHash.hash_eq
 
 /-- **Spec theorem for `Vec::is_empty`**: `true` exactly for the empty vector. -/
 theorem Theorems.External.alloc.vec.Vec.is_empty_spec
-    {T : Type} (A : Type) (self : alloc.vec.Vec T) :
-    alloc.vec.Vec.is_empty A self ⦃ (result : Bool) => result = decide (self.val = []) ⦄ :=
-  _root_.alloc.vec.Vec.is_empty_spec A self
+    {T : Type} (self : alloc.vec.Vec T) :
+    alloc.vec.Vec.is_empty self ⦃ (result : Bool) => result = decide (self.val = []) ⦄ :=
+  _root_.alloc.vec.Vec.is_empty_spec self
 
 /--
-info: 'Theorems.External.alloc.vec.Vec.is_empty_spec' depends on axioms: [propext]
+info: 'Theorems.External.alloc.vec.Vec.is_empty_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.vec.Vec.is_empty_spec
@@ -841,7 +867,9 @@ theorem Theorems.External.std.hash.random.RandomState.Insts.CoreCloneClone.clone
   _root_.std.hash.random.RandomState.Insts.CoreCloneClone.clone_spec self
 
 /--
-info: 'Theorems.External.std.hash.random.RandomState.Insts.CoreCloneClone.clone_spec' depends on axioms: [propext]
+info: 'Theorems.External.std.hash.random.RandomState.Insts.CoreCloneClone.clone_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.std.hash.random.RandomState.Insts.CoreCloneClone.clone_spec
@@ -856,7 +884,9 @@ theorem Theorems.External.std.hash.random.RandomState.Insts.CoreHashBuildHasherD
   _root_.std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher_spec self
 
 /--
-info: 'Theorems.External.std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher_spec' depends on axioms: [propext]
+info: 'Theorems.External.std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher_spec
@@ -870,7 +900,9 @@ theorem Theorems.External.std.hash.random.DefaultHasher.Insts.CoreHashHasher.wri
   _root_.std.hash.random.DefaultHasher.Insts.CoreHashHasher.write_spec self msg
 
 /--
-info: 'Theorems.External.std.hash.random.DefaultHasher.Insts.CoreHashHasher.write_spec' depends on axioms: [propext]
+info: 'Theorems.External.std.hash.random.DefaultHasher.Insts.CoreHashHasher.write_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.std.hash.random.DefaultHasher.Insts.CoreHashHasher.write_spec
@@ -894,7 +926,7 @@ info: 'Theorems.External.std.hash.random.DefaultHasher.Insts.CoreHashHasher.fini
 hashing instances. -/
 theorem Theorems.External.std.collections.hash.map.HashMap.get_eq
     {K V S A Q Clause2_Hasher : Type} (eqK : core.cmp.Eq K) (hashK : core.hash.Hash K)
-    (bh : rmcp.core.hash.BuildHasher S Clause2_Hasher) (borrow : rmcp.core.borrow.Borrow K Q)
+    (bh : rmcp.core.hash.BuildHasher S Clause2_Hasher) (borrow : Aeneas.Std.core.borrow.Borrow K Q)
     (hashQ : core.hash.Hash Q) (eqQ : core.cmp.Eq Q)
     (self : std.collections.hash.map.HashMap K V S A) (k : Q) :
     std.collections.hash.map.HashMap.get eqK hashK bh borrow hashQ eqQ self k =
@@ -902,7 +934,7 @@ theorem Theorems.External.std.collections.hash.map.HashMap.get_eq
   _root_.std.collections.hash.map.HashMap.get_eq eqK hashK bh borrow hashQ eqQ self k
 
 /--
-info: 'Theorems.External.std.collections.hash.map.HashMap.get_eq' depends on axioms: [propext]
+info: 'Theorems.External.std.collections.hash.map.HashMap.get_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.std.collections.hash.map.HashMap.get_eq
@@ -919,7 +951,7 @@ theorem Theorems.External.std.collections.hash.map.HashMap.get_string_spec {V A 
     std.collections.hash.map.HashMap.get rmcp.alloc.string.String.Insts.CoreCmpEq
       rmcp.alloc.string.String.Insts.CoreHashHash
       rmcp.std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
-      (rmcp.core.borrow.Borrow.Blanket String) rmcp.alloc.string.String.Insts.CoreHashHash
+      (Aeneas.Std.core.borrow.Borrow.Blanket String) rmcp.alloc.string.String.Insts.CoreHashHash
       rmcp.alloc.string.String.Insts.CoreCmpEq self k ⦃ (result : Option V) =>
         result = (self.entries.find? (fun e => decide (e.1 = k))).map Prod.snd ⦄ :=
   _root_.std.collections.hash.map.HashMap.get_string_spec self k
@@ -993,7 +1025,9 @@ theorem Theorems.External.std.collections.hash.map.HashMap.Insts.CoreCloneClone.
   _root_.std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_eq cK cV cS cA self
 
 /--
-info: 'Theorems.External.std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_eq' does not depend on any axioms
+info: 'Theorems.External.std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_eq
@@ -1006,7 +1040,7 @@ theorem Theorems.External.zeroize.Zeroizing.new_spec
   _root_.zeroize.Zeroizing.new_spec inst value
 
 /--
-info: 'Theorems.External.zeroize.Zeroizing.new_spec' depends on axioms: [propext]
+info: 'Theorems.External.zeroize.Zeroizing.new_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.zeroize.Zeroizing.new_spec
@@ -1019,7 +1053,9 @@ theorem Theorems.External.zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref_spec {
   _root_.zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref_spec inst self
 
 /--
-info: 'Theorems.External.zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref_spec' depends on axioms: [propext]
+info: 'Theorems.External.zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref_spec
@@ -1033,7 +1069,9 @@ theorem Theorems.External.zeroize.Zeroizing.Insts.CoreCloneClone.clone_eq
   _root_.zeroize.Zeroizing.Insts.CoreCloneClone.clone_eq inst cZ self
 
 /--
-info: 'Theorems.External.zeroize.Zeroizing.Insts.CoreCloneClone.clone_eq' does not depend on any axioms
+info: 'Theorems.External.zeroize.Zeroizing.Insts.CoreCloneClone.clone_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.zeroize.Zeroizing.Insts.CoreCloneClone.clone_eq
@@ -1046,7 +1084,7 @@ theorem Theorems.External.zeroize.Zeroize.Blanket.zeroize_eq
   _root_.zeroize.Zeroize.Blanket.zeroize_eq inst self
 
 /--
-info: 'Theorems.External.zeroize.Zeroize.Blanket.zeroize_eq' does not depend on any axioms
+info: 'Theorems.External.zeroize.Zeroize.Blanket.zeroize_eq' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.zeroize.Zeroize.Blanket.zeroize_eq
@@ -1060,7 +1098,9 @@ theorem Theorems.External.alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq
   _root_.alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq inst self
 
 /--
-info: 'Theorems.External.alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq' depends on axioms: [propext]
+info: 'Theorems.External.alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq
@@ -1080,7 +1120,7 @@ theorem Theorems.External.Str.Insts.CoreCmpPartialEqStr.eq_spec (self : Str) (ot
   _root_.Str.Insts.CoreCmpPartialEqStr.eq_spec self other
 
 /--
-info: 'Theorems.External.Str.Insts.CoreCmpPartialEqStr.eq_spec' depends on axioms: [propext]
+info: 'Theorems.External.Str.Insts.CoreCmpPartialEqStr.eq_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.Str.Insts.CoreCmpPartialEqStr.eq_spec
@@ -1095,7 +1135,9 @@ theorem Theorems.External.alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_s
   _root_.alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec self h
 
 /--
-info: 'Theorems.External.alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec
@@ -1123,7 +1165,9 @@ theorem Theorems.External.alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec {T :
   _root_.alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec A self
 
 /--
-info: 'Theorems.External.alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec' depends on axioms: [propext]
+info: 'Theorems.External.alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec
@@ -1138,7 +1182,7 @@ theorem Theorems.External.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq {T : Ty
   _root_.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq A corecmpPartialEqInst self other
 
 /--
-info: 'Theorems.External.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq' does not depend on any axioms
+info: 'Theorems.External.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq
@@ -1153,7 +1197,9 @@ theorem Theorems.External.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec (
   _root_.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec A self other
 
 /--
-info: 'Theorems.External.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec' depends on axioms: [propext]
+info: 'Theorems.External.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec
@@ -1168,7 +1214,7 @@ theorem Theorems.External.core.option.Option.or_else_some {T : Type} {F : Type}
   _root_.core.option.Option.or_else_some opsfunctionFnOnceFTupleOptionInst x f
 
 /--
-info: 'Theorems.External.core.option.Option.or_else_some' does not depend on any axioms
+info: 'Theorems.External.core.option.Option.or_else_some' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.option.Option.or_else_some
@@ -1184,7 +1230,7 @@ theorem Theorems.External.core.option.Option.or_else_none {T : Type} {F : Type}
   _root_.core.option.Option.or_else_none opsfunctionFnOnceFTupleOptionInst f
 
 /--
-info: 'Theorems.External.core.option.Option.or_else_none' does not depend on any axioms
+info: 'Theorems.External.core.option.Option.or_else_none' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.option.Option.or_else_none
@@ -1205,7 +1251,7 @@ theorem Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_eq 
   _root_.core.option.Option.Insts.CoreCmpPartialEqOption.eq_eq cmpPartialEqInst l r
 
 /--
-info: 'Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_eq' does not depend on any axioms
+info: 'Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_eq' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_eq
@@ -1222,7 +1268,9 @@ theorem Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_spe
   _root_.core.option.Option.Insts.CoreCmpPartialEqOption.eq_spec cmpPartialEqInst self other h_inst
 
 /--
-info: 'Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_spec
@@ -1236,7 +1284,9 @@ theorem Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64
   _root_.core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_spec self other
 
 /--
-info: 'Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_spec
@@ -1251,7 +1301,7 @@ theorem Theorems.External.core.result.Result.ok_spec
   _root_.core.result.Result.ok_spec self
 
 /--
-info: 'Theorems.External.core.result.Result.ok_spec' depends on axioms: [propext]
+info: 'Theorems.External.core.result.Result.ok_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.result.Result.ok_spec
@@ -1264,7 +1314,7 @@ theorem Theorems.External.core.slice.Slice.first_spec {T : Type} (self : Slice T
   _root_.core.slice.Slice.first_spec self
 
 /--
-info: 'Theorems.External.core.slice.Slice.first_spec' depends on axioms: [propext]
+info: 'Theorems.External.core.slice.Slice.first_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.slice.Slice.first_spec
@@ -1277,7 +1327,9 @@ theorem Theorems.External.Array.Insts.CoreSliceSlicePattern.as_slice_spec {T : T
   _root_.Array.Insts.CoreSliceSlicePattern.as_slice_spec self
 
 /--
-info: 'Theorems.External.Array.Insts.CoreSliceSlicePattern.as_slice_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.Array.Insts.CoreSliceSlicePattern.as_slice_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.Array.Insts.CoreSliceSlicePattern.as_slice_spec
@@ -1386,18 +1438,22 @@ info: 'Theorems.External.core.slice.Slice.strip_suffix_u8_single_spec' depends o
 
 /-- **Spec theorem for `RangeInclusive<u8>::contains`** at the instances of the translation
 (`core.cmp.PartialOrdU8`): `start ≤ item ≤ end` for a range that is not exhausted,
-`start ≤ item < end` for an exhausted one; never fails. -/
+`start ≤ item < start` (so never) for an exhausted one; never fails. Rust:
+`core/src/ops/range.rs` lines 539–545, 886–900 and 1142–1157 (exhausted end bound
+`Excluded(start)`). -/
 theorem Theorems.External.core.ops.range.RangeInclusive.contains_u8_spec
     (self : core.ops.range.RangeInclusive U8) (item : U8) :
     core.ops.range.RangeInclusive.contains core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
         core.cmp.PartialOrdU8 self item ⦃ (result : Bool) =>
       (result = true ↔ self.start.val ≤ item.val ∧
-        (if self.exhausted then item.val < self.«end».val
+        (if self.exhausted then item.val < self.start.val
          else item.val ≤ self.«end».val)) ⦄ :=
   _root_.core.ops.range.RangeInclusive.contains_u8_spec self item
 
 /--
-info: 'Theorems.External.core.ops.range.RangeInclusive.contains_u8_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.core.ops.range.RangeInclusive.contains_u8_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.ops.range.RangeInclusive.contains_u8_spec
@@ -1414,16 +1470,19 @@ theorem Theorems.External.core.ops.range.RangeInclusive.new_contains_u8_spec (a 
   _root_.core.ops.range.RangeInclusive.new_contains_u8_spec a b item
 
 /--
-info: 'Theorems.External.core.ops.range.RangeInclusive.new_contains_u8_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.core.ops.range.RangeInclusive.new_contains_u8_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.ops.range.RangeInclusive.new_contains_u8_spec
 
 /-- `RangeInclusive::contains`, for every instance: `start <= item` is evaluated first; if it
 fails or diverges that propagates, if it is `false` the result is `false` without a second
-call, and if it is `true` the result is `item < end` (exhausted) or `item <= end` (not
+call, and if it is `true` the result is `item < start` (exhausted) or `item <= end` (not
 exhausted), including its failure. The four cases cover every result of the first call (same
-model and Rust lines as `contains_u8_spec`; `&&` short-circuits). -/
+model and Rust lines as `contains_u8_spec`; `&&` short-circuits; the exhausted end bound is
+`Excluded(start)`, `core/src/ops/range.rs` lines 1142–1157). -/
 theorem Theorems.External.core.ops.range.RangeInclusive.contains_eq_match_le {Idx : Type} {U : Type}
     (cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
     (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U)
@@ -1441,13 +1500,15 @@ theorem Theorems.External.core.ops.range.RangeInclusive.contains_eq_match_le {Id
     (cmpPartialOrdInst1.le self.start item = ok true →
       core.ops.range.RangeInclusive.contains cmpPartialOrdInst cmpPartialOrdInst1
         cmpPartialOrdInst2 self item =
-        if self.exhausted then cmpPartialOrdInst2.lt item self.«end»
+        if self.exhausted then cmpPartialOrdInst2.lt item self.start
         else cmpPartialOrdInst2.le item self.«end») :=
   _root_.core.ops.range.RangeInclusive.contains_eq_match_le cmpPartialOrdInst cmpPartialOrdInst1
     cmpPartialOrdInst2 self item
 
 /--
-info: 'Theorems.External.core.ops.range.RangeInclusive.contains_eq_match_le' does not depend on any axioms
+info: 'Theorems.External.core.ops.range.RangeInclusive.contains_eq_match_le' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.ops.range.RangeInclusive.contains_eq_match_le
@@ -1462,7 +1523,7 @@ theorem Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_e
   _root_.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_empty src h
 
 /--
-info: 'Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_empty' depends on axioms: [propext]
+info: 'Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_empty' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_empty
@@ -1475,7 +1536,8 @@ theorem Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_l
   _root_.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_lone_sign src c h hc
 
 /--
-info: 'Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_lone_sign' depends on axioms: [propext]
+info: 'Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_lone_sign' depends on axioms: [propext,
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_lone_sign
@@ -1563,7 +1625,7 @@ theorem Theorems.External.core.str.Str.parse_eq {F : Type} {Clause0_Err : Type}
   _root_.core.str.Str.parse_eq traitsFromStrInst self
 
 /--
-info: 'Theorems.External.core.str.Str.parse_eq' depends on axioms: [propext]
+info: 'Theorems.External.core.str.Str.parse_eq' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.str.Str.parse_eq

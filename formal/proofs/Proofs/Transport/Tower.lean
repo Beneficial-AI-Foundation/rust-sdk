@@ -3,11 +3,15 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Bytes
-import Proofs.Defs.Tower
-import Proofs.External.Option
-import Proofs.External.String
+module
+public import Rmcp.Funs
+public import Defs.Bytes
+public import Proofs.Defs.Tower
+public import Proofs.External.Option
+public import Proofs.External.String
+public import Proofs.External.WP
+
+@[expose] public section
 
 /-!
 # Spec theorems for the origin ports of `tower.rs` (T07, T08)
@@ -38,15 +42,15 @@ theorem default_port_spec (scheme : Str) :
       result = Defs.Tower.defaultPort scheme.val ⦄ := by
   simp only [default_port, Str.Insts.CoreCmpPartialEqStr.eq_eq, Proofs.External.Utf8.toStr_val,
     Defs.Tower.defaultPort, Defs.Tower.http, Defs.Tower.https,
-    Proofs.External.Utf8.utf8Bytes_eq_utf8, bind_tc_ok]
+    Proofs.External.Utf8.utf8Bytes_eq_utf8]
   have hne : ExtModel.utf8 "https" ≠ ExtModel.utf8 "http" := fun h =>
     absurd (Proofs.External.Utf8.utf8_injective h) (by decide)
   by_cases h₁ : scheme.val = ExtModel.utf8 "http"
-  · simp only [h₁, decide_true, ↓reduceIte, WP.spec_ok]
+  · simp only [h₁, decide_true, bind_ok, ↓reduceIte, WP.spec_ok]
   · by_cases h₂ : scheme.val = ExtModel.utf8 "https"
-    · simp only [h₂, hne, decide_false, Bool.false_eq_true, ↓reduceIte, decide_true,
+    · simp only [h₂, hne, decide_false, bind_ok, Bool.false_eq_true, ↓reduceIte, decide_true,
         WP.spec_ok]
-    · simp only [h₁, decide_false, Bool.false_eq_true, ↓reduceIte, h₂, WP.spec_ok]
+    · simp only [h₁, decide_false, bind_ok, Bool.false_eq_true, ↓reduceIte, h₂, WP.spec_ok]
 
 /-- **Spec theorem for `rmcp::transport::streamable_http_server::tower::AllowedPort::matches`**
 (T08)
@@ -75,11 +79,11 @@ theorem AllowedPort.matches_spec (self : AllowedPort) (scheme : Str) (port : Opt
         ok (port <|> Defs.Tower.defaultPort scheme.val) := by
       cases port with
       | none =>
-        obtain ⟨r, hr, hp⟩ := WP.spec_imp_exists (default_port_spec scheme)
+        obtain ⟨r, hr, hp⟩ := Proofs.External.WP.exists_ok_of_spec (default_port_spec scheme)
         rw [core.option.Option.or_else_none]
         exact hr.trans (by rw [hp]; rfl)
       | some p => exact core.option.Option.or_else_some _ p scheme
-    simp only [AllowedPort.matches, hor, bind_tc_ok]
+    simp only [AllowedPort.matches, hor, bind_ok]
     apply core.option.Option.Insts.CoreCmpPartialEqOption.eq_spec
     intro l r _ _
     simp only [liftFun2, core.cmp.impls.PartialEqU16.eq, WP.spec_ok, decide_eq_true_eq]

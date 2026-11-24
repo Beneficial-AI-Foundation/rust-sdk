@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Aeneas
-import Rmcp.Types
+module
+public import Aeneas
+public import Rmcp.Types
+
+@[expose] public section
 
 /-!
 # Definitions for the SSE event-size limiter statements (T01–T03, C01, C02)

@@ -96,16 +96,18 @@ refer to.
    cd formal
    ../scripts/lean-guard.sh sources
    lake exe cache get
-   set -o pipefail; lake build 2>&1 | tee .lake/build.log
+   set -o pipefail; lake build --wfail 2>&1 | tee .lake/build.log
    ../scripts/lean-guard.sh build-log .lake/build.log
    ../scripts/lean-guard.sh axioms
    ../scripts/lean-guard.sh aeneas-archive
    ```
 
-   Every library sets `warningAsError`; `--wfail` is not used because the pinned Aeneas library
-   has four replayed `sorry` warnings (`WORKFLOW_AND_PR_GUIDE.md`, "Building and Checking"). The
-   guard's rules and limits are listed there: `sources` is textual, `build-log` is an exact
-   allowlist, `axioms` trusts only the axioms declared in the `RmcpExternal` roots
+   Every library sets `warningAsError`, and the build runs with `--wfail`, which also fails on a
+   warning replayed from a dependency (`WORKFLOW_AND_PR_GUIDE.md`, "Building and Checking"; until
+   the Aeneas upgrade of 2026-11-24 `--wfail` was not used, because the Aeneas library of
+   `nightly-2026.08.20-5d08da4` had four replayed `sorry` warnings). The guard's rules and limits
+   are listed there: `sources` is textual, `build-log` is an exact allowlist, empty since that
+   upgrade (no `warning:` or `error:` line is allowed), `axioms` trusts only the axioms declared in the `RmcpExternal` roots
    (`Rmcp.TypesExternal`, `Rmcp.FunsExternal`) and replays every project constant in the kernel.
    In CI these checks run in a separate job on the uploaded build output, which cannot show that
    the output was compiled from these sources; check hand-written Lean for metaprogramming
@@ -399,7 +401,7 @@ The commands are in the [procedure](#procedure). These questions interpret their
   module? Was the generated Lean built in `formal/`, not against an unrelated Aeneas library build?
 - Do the three workflows run on the paths the plan lists, for fork and branch PRs, and preserve
   failing exit codes through pipes? Does every `[[lean_lib]]` set
-  `leanOptions = { warningAsError = true }`, and does `lean-build.yml` run `lake build` with
+  `leanOptions = { warningAsError = true }`, and does `lean-build.yml` run `lake build --wfail` with
   `pipefail` plus the four `scripts/lean-guard.sh` checks (`sources`, `build-log`, `axioms`,
   `aeneas-archive`)? Has each check been shown to fail once — on a hand edit to `Funs.lean`, a new
   axiom, a `sorry`, and a failing patched test (plan S17)?
@@ -576,7 +578,7 @@ original and adapted code and found them byte-identical, covering `Ok`, `Integri
 treating such a comparison as complete. (Adapter checklist; Validation)
 
 **Build against the intended library.** The pilot compiled generated Lean against an existing
-Aeneas library build at `6e167c9b`. Under `backends/lean/`, the pinned `5d08da45` adds
+Aeneas library build at `6e167c9b`. Under `backends/lean/`, the then-pinned `5d08da45` (until 2026-11-24) adds
 `ExtractLeanKeywords.lean` and changes `lakefile.lean` (one new `lean_exe`); the `Aeneas` library
 sources are identical. The in-repo build in `formal/` (B10) was still
 outstanding.

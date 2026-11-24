@@ -21,8 +21,10 @@
                                     uses are in LOCK (formal/trusted/native-axioms.lock), with
                                     the locked module and statement hash (see
                                     check_native_lock).
-  lean_guard.py build-log FILE      every `warning:`/`error:` line of the `lake build` log is
-                                    one of the four recorded Aeneas-library lines.
+  lean_guard.py build-log FILE      the `lake build` log has a "Build completed successfully"
+                                    line and no `warning:`/`error:` line.
+  lean_guard.py selftest            self-tests of the two exact `sources` exemptions (generated
+                                    macro-site docstrings; the one dupNamespace option).
   lean_guard.py archive PKG ARCHIVE PKG/.lake/build and the Lake release ARCHIVE hold the same
                                     regular files with the same bytes, *.hash and *.trace
                                     excepted (see check_archive).
@@ -78,35 +80,35 @@ REQUIRED_DEFAULTS = {"Defs", "Proofs", "Specs"}
 
 # formal/lake-manifest.json: the commit of every package Lake fetches. The Aeneas entry must
 # match the lakefile (url = git, inputRev = rev) and the commit of the pinned tag
-# (nightly-2026.08.20-5d08da4, docs/WORKFLOW_AND_PR_GUIDE.md "Pinned toolchain"); the other
+# (nightly-2026.11.24-fb44cb4, docs/WORKFLOW_AND_PR_GUIDE.md "Pinned toolchain"); the other
 # packages (Mathlib and its dependencies, inherited from the Aeneas package) must have the
 # commits recorded at S03. Changing the Aeneas rev means updating this table in the same PR.
-AENEAS_COMMIT = "5d08da45a405913bbee6fd544e01debf8154ac9d"
+AENEAS_COMMIT = "fb44cb400eb6bfe7dce97422ebe8fa748b7e4f9b"
 # formal/lean-toolchain must be exactly this line (the Lean toolchain of the pinned Aeneas
 # rev, backends/lean/lean-toolchain of the bundle, copied by scripts/aeneas-install.sh).
 # elan runs whatever toolchain that file names, so it is checked before any `lean`/`lake`
 # runs (CI runs `sources` before installing elan). Updated in the same PR as the Aeneas rev.
-LEAN_TOOLCHAIN = "leanprover/lean4:v4.31.0"
+LEAN_TOOLCHAIN = "leanprover/lean4:v4.36.0"
 MANIFEST_PACKAGES = {
     "aeneas": ("https://github.com/AeneasVerif/aeneas", AENEAS_COMMIT),
     "mathlib": ("https://github.com/leanprover-community/mathlib4.git",
-                "fabf563a7c95a166b8d7b6efca11c8b4dc9d911f"),
+                "fc4f59e577feb1a4956671bc04ac18aaaf8cd842"),
     "plausible": ("https://github.com/leanprover-community/plausible",
-                  "63045536fe95024e6c18fc7b48e03f506701c5bc"),
+                  "054b228ce0ac61d767c6e71ba73a24728f191b72"),
     "LeanSearchClient": ("https://github.com/leanprover-community/LeanSearchClient",
-                         "c5d5b8fe6e5158def25cd28eb94e4141ad97c843"),
+                         "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9"),
     "importGraph": ("https://github.com/leanprover-community/import-graph",
-                    "5c7542ed018c78194f1e2b903eaf6a792b74c03d"),
+                    "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0"),
     "proofwidgets": ("https://github.com/leanprover-community/ProofWidgets4",
-                     "24b0d9dc081c5423f8eec7e866c441e5184f29d9"),
+                     "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203"),
     "aesop": ("https://github.com/leanprover-community/aesop",
-              "e3cb2f741431ce31bf73549fb52316a57368b06f"),
+              "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a"),
     "Qq": ("https://github.com/leanprover-community/quote4",
-           "f46324995fca5f0483b742e4eb4daec7f4ee50d2"),
+           "ff055a2fcc835935e0ae607339b455a5f5896b4b"),
     "batteries": ("https://github.com/leanprover-community/batteries",
-                  "fa08db58b30eb033edcdab331bba000827f9f785"),
+                  "b4b25a3886a16daacaf6615c2eea7170a6e8f458"),
     "Cli": ("https://github.com/leanprover/lean4-cli",
-            "92564e5770e4d09f2d86dfbf8ada1e9c715b384c"),
+            "50810f72af7618bee62fe9800dc26e806c188703"),
 }
 
 
@@ -642,6 +644,46 @@ def lineno(text, pos):
     return text.count("\n", 0, pos) + 1
 
 
+# Two exact exemptions (human decision 2026-11-24, Aeneas upgrade to nightly-2026.11.24-fb44cb4;
+# exercised by `lean_guard.py selftest`).
+# (1) Generated files: Aeneas adds to the `Source:` field of a docstring, for an item generated
+# from a Rust macro, the phrase MACRO_SITE_PHRASE. The word `macro` is excused only inside that
+# phrase, and only on a line that is exactly such a `Source:` line (MACRO_SITE_LINE). Such a
+# line (`Source: '…', lines …; …`) is not valid Lean outside a comment, so the word cannot be
+# a command there.
+MACRO_SITE_PHRASE = "this code is generated from a macro invocation at:"
+MACRO_SITE_LINE = re.compile(r"[ ]*Source: '[^'\n]*', lines [0-9:-]+; "
+                             + re.escape(MACRO_SITE_PHRASE) + r" '[^'\n]*', lines [0-9:-]+( -/)?")
+# (2) trusted/: exactly one `set_option linter.dupNamespace false in`, in DUPNS_FILE, directly
+# before the docstring, attributes and `def` of DUPNS_DECL (the Aeneas name repeats `zeroize`,
+# which the Lean 4.36 linter rejects; the name is fixed by the `rust_fun` mapping).
+DUPNS_FILE = "trusted/Rmcp/FunsExternal.lean"
+DUPNS_LINE = "set_option linter.dupNamespace false in"
+DUPNS_DECL = "zeroize.Zeroize.Blanket.zeroize"
+# The docstring and the attribute lines may not contain `/-`: a nested comment opened there
+# (Lean nests block comments) would extend the comment past the `def` line, and the option would
+# then apply to a later declaration (review finding upg-a-2).
+DUPNS_NEXT = re.compile(r"\n/--(?:(?!-/|/-).)*-/\n(?:@\[(?:(?!/-)[^\]\n])*\]\n)*def "
+                        + re.escape(DUPNS_DECL) + r"[ \n]", re.S)
+
+
+def macro_site_excused(text, pos):
+    """The `macro` hit at POS lies inside MACRO_SITE_PHRASE on a MACRO_SITE_LINE."""
+    line = line_at(text, pos)
+    a = text.rfind("\n", 0, pos) + 1
+    off = line.find(MACRO_SITE_PHRASE)
+    return (MACRO_SITE_LINE.fullmatch(line) is not None and off >= 0
+            and pos - a == off + MACRO_SITE_PHRASE.index("macro"))
+
+
+def dupns_excused(rel, text, pos):
+    """The linter hit at POS is the one allowed DUPNS_LINE before DUPNS_DECL in DUPNS_FILE."""
+    a = text.rfind("\n", 0, pos) + 1
+    b = text.find("\n", pos)
+    return (rel == DUPNS_FILE and a == pos and text[a:b] == DUPNS_LINE
+            and DUPNS_NEXT.match(text, b) is not None)
+
+
 def check_sources(formal):
     formal = os.path.abspath(formal)
     errs, nfiles = [], 0
@@ -704,9 +746,16 @@ def check_sources(formal):
                     errs.append(f"{rel}: note: sha256 differs from its pin in {PINS_FILE}; "
                                 "the strict rule applies (update the pin in a reviewed PR)")
             used = set()
+            dupns = 0
             for name, rx in rules:
                 for m in rx.finditer(text):
                     n = lineno(text, m.start())
+                    if generated and name == "macro" and macro_site_excused(text, m.start()):
+                        continue
+                    if (name, rx) == RULE_LINTER and dupns_excused(rel, text, m.start()):
+                        dupns += 1
+                        if dupns == 1:
+                            continue
                     if ((name, rx) in RULES_META and n in pinned and pinned[n][0] == name
                             and line_at(text, m.start()) == pinned[n][1]):
                         used.add(n)
@@ -747,13 +796,10 @@ def check_sources(formal):
 # ---------------------------------------------------------------------------------------
 # build log
 
-# The four warnings Lake replays from the pinned Aeneas library (the S03 evidence (git history at 223ff12)).
-ALLOWED_LOG_LINES = {
-    "warning: Aeneas/Std/Slice.lean:363:4: declaration uses `sorry`",
-    "warning: Aeneas/Std/Slice.lean:586:8: declaration uses `sorry`",
-    "warning: Aeneas/Std/StringIter.lean:12:4: declaration uses `sorry`",
-    "warning: Aeneas/Std/StringIter.lean:15:4: declaration uses `sorry`",
-}
+# Lake replayed four `sorry` warnings of the Aeneas library up to nightly-2026.08.20-5d08da4
+# (Aeneas/Std/Slice.lean, Aeneas/Std/StringIter.lean); nightly-2026.11.24-fb44cb4 has none, so no
+# warning or error line is allowed (lead decision N10 of the Aeneas upgrade).
+ALLOWED_LOG_LINES = set()
 LOG_FLAG = re.compile(r"warning:|error:")
 
 
@@ -773,8 +819,8 @@ def check_build_log(path):
     if not any(line.startswith("Build completed successfully") for line in lines):
         bad.append(f"{path}: no 'Build completed successfully' line")
     if bad:
-        fail(bad + ["build log has warning/error lines other than the four recorded Aeneas lines"])
-    print(f"[lean-guard] build log: only the recorded Aeneas warnings ({allowed} line(s))")
+        fail(bad + ["build log has warning/error lines (none is allowed)"])
+    print("[lean-guard] build log: no warning or error line")
 
 
 # ---------------------------------------------------------------------------------------
@@ -1050,7 +1096,69 @@ def check_native_lock(lock, got):
           f"and unlocked; matching {base}")
 
 
-COMMANDS = {"fresh": (check_fresh, 1), "axiom-lock": (check_axiom_lock, 2),
+def selftest():
+    """Positive and negative cases of the two exact exemptions of check_sources, run on
+    temporary formal/ trees (each case: files to write, expected pass, expected message)."""
+    import tempfile
+    src_line = ("    Source: 'crates/rmcp/src/model.rs', lines 91:8-91:25; " + MACRO_SITE_PHRASE
+                + " 'crates/rmcp/src/model.rs', lines 144:0-144:40 -/")
+    gen = "translation/Rmcp/Types.lean"
+    zero = ("/-- doc -/\n@[rust_fun \"zeroize::{zeroize::Zeroize<@Z>}::zeroize\"]\ndef "
+            + DUPNS_DECL + " {Z : Type} : Z → Z := id\n")
+    cases = [
+        ("macro site in generated docstring", {gen: "/-- [x]\n" + src_line + "\n"}, True, None),
+        ("macro site line with extra text", {gen: "/-- [x]\n" + src_line + " macro\n"}, False, "banned: macro"),
+        ("macro phrase in code position", {gen: "def f := 1 -- " + MACRO_SITE_PHRASE + "\nmacro \"x\" : term => `(1)\n"},
+         False, "banned: macro"),
+        ("macro site in a hand-written file", {"proofs/Proofs/X.lean": "/-- [x]\n" + src_line + "\n"},
+         False, "banned: macro"),
+        ("second macro on a site line", {gen: src_line.replace("Source:", "Source: macro") + "\n"},
+         False, "banned: macro"),
+        ("dupNamespace option on the one declaration", {DUPNS_FILE: DUPNS_LINE + "\n" + zero}, True, None),
+        ("dupNamespace option twice", {DUPNS_FILE: DUPNS_LINE + "\n" + DUPNS_LINE + "\n" + zero}, False,
+         "banned: set_option linter"),
+        ("dupNamespace option on another declaration",
+         {DUPNS_FILE: DUPNS_LINE + "\n/-- doc -/\ndef other.zeroize.x : Nat := 1\n"}, False,
+         "banned: set_option linter"),
+        ("dupNamespace option in another trusted file", {"trusted/Rmcp/TypesExternal.lean": DUPNS_LINE + "\n" + zero},
+         False, "banned: set_option linter"),
+        ("dupNamespace option, nested comment in the docstring hides the def (upg-a-2)",
+         {DUPNS_FILE: DUPNS_LINE + "\n/-- /- -/\ndef " + DUPNS_DECL + " : Nat := 1\n-/\ndef other.x : Nat := 1\n"},
+         False, "banned: set_option linter"),
+        ("dupNamespace option, nested comment opened in an attribute line",
+         {DUPNS_FILE: DUPNS_LINE + "\n/-- doc -/\n@[simp /-]\ndef " + DUPNS_DECL + " : Nat := 1\n-/]\ndef other.x : Nat := 1\n"},
+         False, "banned: set_option linter"),
+        ("dupNamespace option, nested comment closed inside the docstring",
+         {DUPNS_FILE: DUPNS_LINE + "\n/-- a /- b -/ c -/\ndef " + DUPNS_DECL + " : Nat := 1\n"},
+         False, "banned: set_option linter"),
+        ("other linter option on the declaration",
+         {DUPNS_FILE: "set_option linter.unusedVariables false in\n" + zero}, False, "banned: set_option linter"),
+    ]
+    bad = []
+    for name, files, ok, msg in cases:
+        with tempfile.TemporaryDirectory() as d:
+            for rel, content in files.items():
+                os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
+                with open(os.path.join(d, rel), "w", encoding="utf-8") as f:
+                    f.write(content)
+            import io, contextlib
+            err, out = io.StringIO(), io.StringIO()
+            try:
+                with contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
+                    check_sources(d)
+                passed = True
+            except SystemExit as e:
+                passed = e.code == 0
+            if passed != ok or (msg and msg not in err.getvalue()):
+                bad.append(f"selftest case {name!r}: expected {'pass' if ok else 'fail'}"
+                           f"{' with ' + repr(msg) if msg else ''}, got {'pass' if passed else 'fail'}: "
+                           f"{err.getvalue().strip()[:300]}")
+    if bad:
+        fail(bad + ["selftest failed"])
+    print(f"[lean-guard] selftest: {len(cases)} cases of the sources exemptions pass")
+
+
+COMMANDS = {"selftest": (selftest, 0), "fresh": (check_fresh, 1), "axiom-lock": (check_axiom_lock, 2),
             "native-lock": (check_native_lock, 2),
             "lakefile": (check_lakefile, 1), "sources": (check_sources, 1),
             "build-log": (check_build_log, 1), "archive": (check_archive, 2),

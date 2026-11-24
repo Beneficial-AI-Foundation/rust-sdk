@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Proofs.Model.RequestState.Public
+module
+public import Defs
+public import Proofs.Model.RequestState.Public
+
+@[expose] public section
 
 /-!
 # Spec file for crates/rmcp/src/model/request_state.rs (public API: R01–R08)
@@ -48,7 +51,7 @@ Translated configuration (the proofs hold only for it): target `x86_64-unknown-l
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
 `transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (plan
 Section 15), with `overflow-checks=true` and `debug-assertions=true` (plan Section 1). Aeneas
-`nightly-2026.08.20-5d08da4`. The translation base is the patched copy (patch 01 on origin/main
+`nightly-2026.11.24-fb44cb4` (until 2026-11-24 `nightly-2026.08.20-5d08da4`). The translation base is the patched copy (patch 01 on origin/main
 `7caec76`, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23). Each
 clause cites the line in the patched copy ("patched") and at upstream `7caec76` ("upstream").
 The eight functions have the same text in both, ten lines lower upstream (patch 01 removes
@@ -73,9 +76,12 @@ of R07 uses the laws `Proofs.External.Base64.b64_of_b64Decode` and
 `Proofs.External.Base64.length_b64`, the corollary of R08 the bound
 `ExtModel.b64Decode_length_le`.
 
-Native-code assumption: R07, R08 and the corollary reach
+Native-code assumptions: none since the Aeneas upgrade of 2026-11-24 (its `toStr` checks the
+length of a literal in the kernel; `formal/trusted/native-axioms.lock` is empty). Until then R07,
+R08 and the corollary reached
 `rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`
-(through E11; locked in `formal/trusted/native-axioms.lock`). R01–R06 reach none.
+(through E11). 8 of the 9 `#print axioms` lists below changed in that upgrade (native-code assumption
+dropped, standard axioms added), re-signed by the spec owner in the batch of 2026-11-24.
 
 **Clock (human decision 2026-11-24; `formal/README.md`, "Trusted base"; plan Section 4, row
 "Clock").** This file is the exception to the rule that no statement names
@@ -136,7 +142,7 @@ theorem Theorems.request_state.SealOptions.new :
   rmcp.model.request_state.SealOptions.new_spec
 
 /--
-info: 'Theorems.request_state.SealOptions.new' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.request_state.SealOptions.new' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.SealOptions.new
@@ -151,7 +157,7 @@ theorem Theorems.request_state.SealOptions.associated_data (self : SealOptions)
   rmcp.model.request_state.SealOptions.impl.associated_data_spec self associated_data
 
 /--
-info: 'Theorems.request_state.SealOptions.associated_data' depends on axioms: [propext]
+info: 'Theorems.request_state.SealOptions.associated_data' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.SealOptions.associated_data
@@ -165,7 +171,7 @@ theorem Theorems.request_state.SealOptions.ttl (self : SealOptions) (ttl : core.
   rmcp.model.request_state.SealOptions.impl.ttl_spec self ttl
 
 /--
-info: 'Theorems.request_state.SealOptions.ttl' depends on axioms: [propext]
+info: 'Theorems.request_state.SealOptions.ttl' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.SealOptions.ttl
@@ -182,7 +188,7 @@ theorem Theorems.request_state.RequestStateCodec.new {T0 : Type}
   rmcp.model.request_state.RequestStateCodec.new_spec coreconvertIntoT0VecU8Inst key v h_into
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.new' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.request_state.RequestStateCodec.new' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.new
@@ -200,7 +206,7 @@ theorem Theorems.request_state.RequestStateCodec.new_unchecked {T0 : Type}
     h_into
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.new_unchecked' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.request_state.RequestStateCodec.new_unchecked' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.new_unchecked
@@ -241,10 +247,7 @@ theorem Theorems.request_state.RequestStateCodec.open (self : RequestStateCodec)
   rmcp.model.request_state.RequestStateCodec.open_spec self sealed h_fallbacks
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.open' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+info: 'Theorems.request_state.RequestStateCodec.open' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.open
@@ -270,10 +273,7 @@ theorem Theorems.request_state.RequestStateCodec.open_with (self : RequestStateC
     h_len2 h_fallbacks
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.open_with' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+info: 'Theorems.request_state.RequestStateCodec.open_with' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.open_with
@@ -297,8 +297,7 @@ theorem Theorems.request_state.RequestStateCodec.open_with_of_length_le
 /--
 info: 'Theorems.request_state.RequestStateCodec.open_with_of_length_le' depends on axioms: [propext,
  Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.open_with_of_length_le

@@ -3,12 +3,15 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Aeneas
-import Defs.Bytes
-import Defs.IntParse
-import Defs.JsonRpc
-import Defs.Wire
-import Defs.CodecState
+module
+public import Aeneas
+public import Defs.Bytes
+public import Defs.IntParse
+public import Defs.JsonRpc
+public import Defs.Wire
+public import Defs.CodecState
+
+@[expose] public section
 
 /-!
 # Defs

@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Proofs.External.Std
+module
+public import Rmcp.Funs
+public import Proofs.External.Std
+
+@[expose] public section
 
 /-!
 # Spec theorems for `SamplingContent` (M09–M12 and their joint lemmas)
@@ -35,8 +38,8 @@ theorem into_vec_spec {T : Type} (self : model.SamplingContent T) :
       | .Multiple v => result = v ⦄ := by
   match self with
   | .Single x =>
-    simp only [into_vec, lift, Array.to_slice, Array.make, alloc.slice.Slice.into_vec, bind_tc_ok,
-      WP.spec_ok]
+    simp only [into_vec, lift, Array.to_slice, Array.make, alloc.slice.Slice.into_vec, bind_ok,
+      WP.spec_ok, alloc.vec.Vec.val, Slice.from_val, Array.from_val]
   | .Multiple v => simp only [into_vec, WP.spec_ok]
 
 /-- **Spec theorem for `rmcp::model::SamplingContent::is_empty`** (M10)
@@ -53,7 +56,7 @@ theorem is_empty_spec {T : Type} (self : model.SamplingContent T) :
   match self with
   | .Single _ => simp only [is_empty, WP.spec_ok]
   | .Multiple v =>
-    obtain ⟨b, hb, hbv⟩ := exists_ok_of_spec (alloc.vec.Vec.is_empty_spec Global v)
+    obtain ⟨b, hb, hbv⟩ := exists_ok_of_spec (alloc.vec.Vec.is_empty_spec v)
     simp only [is_empty, hb, hbv, WP.spec_ok, decide_eq_true_eq]
 
 /-- **Spec theorem for `rmcp::model::SamplingContent::len`** (M11)
@@ -88,7 +91,7 @@ theorem first_spec {T : Type} (self : model.SamplingContent T) :
     obtain ⟨r, hr, hrv⟩ :=
       exists_ok_of_spec (core.slice.Slice.first_spec (alloc.vec.Vec.deref v))
     simp only [first, hr, hrv, WP.spec_ok]
-    rfl
+    rw [alloc.vec.Vec.deref, Slice.from_val]
 
 /-- Joint lemma M10 `= (M11 = 0)`: `is_empty` is `len = 0` (plan Section 16.1; `model.rs` lines
 2934–2947). -/
@@ -96,11 +99,11 @@ theorem is_empty_eq_len_eq_zero {T : Type} (self : model.SamplingContent T) :
     is_empty self = (do let n ← len self; ok (decide (n.val = 0))) := by
   match self with
   | .Single _ =>
-    simp only [is_empty, len, bind_tc_ok, UScalar.ofNatCore_val_eq, one_ne_zero, decide_false]
+    simp only [is_empty, len, bind_ok, UScalar.ofNatCore_val_eq, one_ne_zero, decide_false]
   | .Multiple v =>
-    obtain ⟨b, hb, hbv⟩ := exists_ok_of_spec (alloc.vec.Vec.is_empty_spec Global v)
-    simp only [is_empty, hb, hbv, List.length_eq_zero_iff, len, alloc.vec.Vec.len, bind_tc_ok,
-      Usize.ofNatCore_val_eq]
+    obtain ⟨b, hb, hbv⟩ := exists_ok_of_spec (alloc.vec.Vec.is_empty_spec v)
+    simp only [is_empty, hb, hbv, len, alloc.vec.Vec.len, bind_ok, Usize.ofNatCore_val_eq,
+      List.length_eq_zero_iff]
 
 /-- Joint lemma M12 `= (M09).head?`: `first` is the first element of `into_vec` (plan Section
 16.1; `model.rs` lines 2926–2931 and 2958–2963). In Rust `first` borrows and `into_vec`
@@ -110,12 +113,12 @@ theorem first_eq_head?_into_vec {T : Type} (self : model.SamplingContent T) :
   match self with
   | .Single x =>
     simp only [first, into_vec, lift, Array.to_slice, Array.make, alloc.slice.Slice.into_vec,
-      bind_tc_ok, List.head?_cons]
+      bind_ok, alloc.vec.Vec.val, Slice.from_val, Array.from_val, List.head?_cons]
   | .Multiple v =>
     obtain ⟨r, hr, hrv⟩ :=
       exists_ok_of_spec (core.slice.Slice.first_spec (alloc.vec.Vec.deref v))
-    simp only [first, hr, hrv, into_vec, bind_tc_ok]
-    rfl
+    simp only [first, hr, hrv, into_vec, bind_ok]
+    rw [alloc.vec.Vec.deref, Slice.from_val]
 
 /-- Joint lemma M11 `= (M09).length`: `len` is the length of `into_vec` (plan Section 16.1;
 `model.rs` lines 2926–2931 and 2942–2947). -/
@@ -124,8 +127,8 @@ theorem len_eq_len_into_vec {T : Type} (self : model.SamplingContent T) :
   match self with
   | .Single x =>
     simp only [len, into_vec, lift, Array.to_slice, Array.make, alloc.slice.Slice.into_vec,
-      bind_tc_ok, alloc.vec.Vec.len, List.length_cons, List.length_nil, zero_add, ok.injEq]
+      alloc.vec.Vec.len, bind_ok, alloc.vec.Vec.val, Slice.from_val, Array.from_val]
     rfl
-  | .Multiple v => simp only [len, alloc.vec.Vec.len, into_vec, bind_tc_ok]
+  | .Multiple v => simp only [len, alloc.vec.Vec.len, into_vec, bind_ok]
 
 end rmcp.model.SamplingContent

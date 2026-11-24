@@ -33,9 +33,14 @@
 #   - a nonzero Charon exit, or an LLBC file flagged with errors,
 #   - [package.metadata.charon] with a key other than start_from, hide_marker_traits,
 #     exclude, opaque, or with an empty or missing start_from/exclude/opaque list,
-#   - Charon options recorded in the LLBC that differ from those lists, or that widen the
-#     translation (rustc_args, include, start_from_if_exists, start_from_attribute,
-#     extract_opaque_bodies, start_from_pub), or a target other than TARGET_TRIPLE,
+#   - an LLBC whose preset is not Aeneas, without overflow checks, or for a target other than
+#     TARGET_TRIPLE (Charon >= 0.1.324 no longer records its options in the LLBC; the lists of
+#     [package.metadata.charon] are checked on the translation instead, below),
+#   - a translated item (translation.json) that matches an exclude pattern, a function, type or
+#     global that matches an opaque pattern but has a body, a local (rmcp) item without a body
+#     that matches no opaque pattern, or a start_from pattern that matches no translated item
+#     (widening options cannot be set: the metadata keys are restricted as above, the command
+#     line is fixed here and CHARON_* variables are refused),
 #   - a nonzero Aeneas exit,
 #   - a target missing from Funs.lean, a Phase 2 `_` glob matching other than exactly one
 #     definition, or any `sorry` in the generated files.
@@ -351,18 +356,18 @@ if [[ "$MODE" == full ]]; then
   RUST_CHANNEL="$(sed -n 's/^channel[[:space:]]*=[[:space:]]*"\(.*\)"/\1/p' "$BUNDLE/rust-toolchain")"
   CHANNEL_FROM="bundle channel"
 else
-  RUST_CHANNEL="${RUSTUP_TOOLCHAIN:-nightly-2026-06-01}"
+  RUST_CHANNEL="${RUSTUP_TOOLCHAIN:-nightly-2026-09-17}"
   CHANNEL_FROM="RUSTUP_TOOLCHAIN"
 fi
 export RUSTUP_TOOLCHAIN="$RUST_CHANNEL"
 # The toolchain actually selected (RUSTUP_HOME may point at any rustup home): the `rustc` on
 # PATH, which cargo runs and whose sysroot provides the librustc_driver that charon-driver
 # loads, must report the pinned nightly; Charon must have been built for the same channel.
-# RUSTC_VV_PINNED is the `rustc -vV` of nightly-2026-06-01 (commit date 2026-05-31); it
+# RUSTC_VV_PINNED is the `rustc -vV` of nightly-2026-09-17 (commit date 2026-09-16); it
 # changes with the Aeneas rev ("Pinned toolchain").
-[[ "$RUST_CHANNEL" == "nightly-2026-06-01" ]] \
-  || die "$CHANNEL_FROM $RUST_CHANNEL, but RUSTC_VV_PINNED is for nightly-2026-06-01 (update it with the Aeneas rev)"
-RUSTC_VV_PINNED="commit-hash: 14210df0e27ccd7d9e6a05b8085cbd438e4bbc65 commit-date: 2026-05-31 release: 1.98.0-nightly"
+[[ "$RUST_CHANNEL" == "nightly-2026-09-17" ]] \
+  || die "$CHANNEL_FROM $RUST_CHANNEL, but RUSTC_VV_PINNED is for nightly-2026-09-17 (update it with the Aeneas rev)"
+RUSTC_VV_PINNED="commit-hash: 923c95cdf5ba65cea505aa2ea829f578e1506ed8 commit-date: 2026-09-16 release: 1.100.0-nightly"
 command -v rustc >/dev/null 2>&1 || die "rustc not found"
 rustc_vv="$(rustc -vV)" || die "rustc -vV failed for toolchain $RUST_CHANNEL${RUSTUP_HOME:+ (RUSTUP_HOME=$RUSTUP_HOME)}"
 got_vv="$(awk -F': ' '$1 == "release" || $1 == "commit-hash" || $1 == "commit-date" { printf "%s%s: %s", (n++ ? " " : ""), $1, $2 }' <<<"$rustc_vv")"
@@ -552,30 +557,32 @@ set -e
 [[ $rc -eq 0 ]] || die "charon exited with $rc"
 [[ "$(jq -r '.has_errors' "$LLBC_FILE")" == "false" ]] || die "charon reported errors in $LLBC_FILE"
 # The build script ran for the target and printed nothing (no cfg, flag or env directive).
+# Old cargo layout: build/rmcp-<hash>/output; the build-dir layout of cargo 1.100
+# (nightly-2026-09-17): build/rmcp/<hash>/run/stdout.
 outs=()
 while IFS= read -r f; do outs+=("$f"); done \
-  < <(find "$CARGO_TARGET_DIR/$TARGET_TRIPLE" -path '*/build/rmcp-*/output' -type f 2>/dev/null | sort)
+  < <(find "$CARGO_TARGET_DIR/$TARGET_TRIPLE" \( -path '*/build/rmcp-*/output' -o -path '*/build/rmcp/*/run/stdout' \) -type f 2>/dev/null | sort)
 [[ ${#outs[@]} -gt 0 ]] || die "no build-script output of rmcp under $CARGO_TARGET_DIR/$TARGET_TRIPLE"
 for f in "${outs[@]}"; do
   [[ ! -s "$f" ]] || { cat "$f" >&2; die "rmcp build script emitted directives ($f)"; }
 done
 
-# The options recorded in the LLBC (translated.options) must be exactly those lists ...
-for key in start_from opaque exclude; do
-  want="$(jq -c --arg k "$key" '.[$k] | sort' <<<"$meta")"
-  got="$(jq -c --arg k "$key" '.translated.options[$k] | sort' "$LLBC_FILE")"
-  [[ "$want" == "$got" ]] || die "charon option $key is $got, but Cargo.toml says $want"
-done
-# ... with nothing that widens the translation ...
-for check in 'rustc_args == []' 'include == []' 'start_from_if_exists == []' \
-             'start_from_attribute == []' 'extract_opaque_bodies == false' 'start_from_pub == false'; do
-  jq -e ".translated.options | .$check" "$LLBC_FILE" >/dev/null \
-    || die "charon option check failed: $check (got $(jq -c ".translated.options.${check%% *}" "$LLBC_FILE"))"
-done
+# Charon >= 0.1.324 no longer records its options in the LLBC (translated.options); it keeps only
+# the preset and the runtime checks. Charon reads its options from [package.metadata.charon]
+# (whose keys are restricted above to start_from, hide_marker_traits, exclude and opaque, so no
+# widening option such as include, start_from_pub or extract_opaque_bodies can be set there),
+# from the command line fixed by this script, and from no environment variable (CHARON_* is
+# refused). That Charon applied the three lists is checked on the translated items after Aeneas
+# (step 6, check_charon_settings, lead decision N1 of the Aeneas upgrade). Here: the preset and
+# the overflow checks recorded in the LLBC ...
+[[ "$(jq -r '.translated.preset' "$LLBC_FILE")" == "Aeneas" ]] \
+  || die "LLBC preset is $(jq -c '.translated.preset' "$LLBC_FILE"), expected \"Aeneas\""
+jq -e '.translated.runtime_checks.overflow_checks == true' "$LLBC_FILE" >/dev/null \
+  || die "LLBC runtime_checks: overflow_checks is not true ($(jq -c '.translated.runtime_checks' "$LLBC_FILE"))"
 # ... and for the fixed target only.
 targets="$(jq -c '[.translated.target_information[].key]' "$LLBC_FILE")"
 [[ "$targets" == "[\"$TARGET_TRIPLE\"]" ]] || die "LLBC target information is $targets, expected [\"$TARGET_TRIPLE\"]"
-log "charon applied [package.metadata.charon] (start_from, opaque, exclude); no widening options; target $TARGET_TRIPLE"
+log "LLBC: preset Aeneas, overflow checks on, target $TARGET_TRIPLE"
 
 # 5. Aeneas, into a scratch directory; formal/translation/ is replaced only on success.
 OUT="$LLBC/out"
@@ -587,6 +594,64 @@ set +e
 rc=$?
 set -e
 [[ $rc -eq 0 ]] || die "aeneas exited with $rc"
+
+# 5b. Charon applied [package.metadata.charon] (lead decision N1): checked on every item of the
+# translation, by its Rust name in translation.json (Aeneas's record of the LLBC items, in
+# Charon's name-pattern syntax). A pattern matches a name with the same leading path elements
+# (`_` matches any one element), i.e. the item itself and the items below it, as in Charon.
+#  - exclude: no translated item matches an exclude pattern;
+#  - opaque: every function matching an opaque pattern has no body (is_opaque), and every local
+#    (rmcp) function without a body matches an opaque pattern (no body is silently dropped); the
+#    same for types and globals, whose opacity is their file (an *External_Template.lean);
+#  - start_from: every pattern matches at least one translated item.
+python3 -I - "$OUT/translation.json" "$meta" <<'PY' || die "Charon settings check on the translation failed"
+import json, sys
+meta = json.loads(sys.argv[2])
+tr = json.load(open(sys.argv[1], encoding="utf-8"))
+def elems(name):
+    out, depth, cur, i = [], 0, "", 0
+    while i < len(name):
+        if name.startswith("::", i) and depth == 0:
+            out.append(cur); cur = ""; i += 2; continue
+        c = name[i]
+        depth += (c in "{<[(") - (c in "}>])")
+        cur += c; i += 1
+    out.append(cur)
+    return out
+def matches(pat, name):
+    p, n = elems(pat), elems(name)
+    return len(n) >= len(p) and all(a == "_" or a == b for a, b in zip(p, n))
+items = [(k, d) for k in ("functions", "types", "globals", "trait_decls", "trait_impls") for d in tr.get(k, [])]
+errs = []
+for d_kind, d in items:
+    for pat in meta["exclude"]:
+        if matches(pat, d["rust_name"]):
+            errs.append(f"excluded by {pat!r} but translated: {d['rust_name']}")
+for d in tr.get("functions", []):
+    op = [p for p in meta["opaque"] if matches(p, d["rust_name"])]
+    if op and not d.get("is_opaque"):
+        errs.append(f"opaque by {op[0]!r} but has a body: {d['rust_name']}")
+    if d.get("is_local") and d.get("is_opaque") and not op:
+        errs.append(f"local function without a body, not in opaque: {d['rust_name']}")
+# Types and globals carry no is_opaque: Aeneas emits an opaque one into an External template.
+for k in ("types", "globals"):
+    for d in tr.get(k, []):
+        op = [p for p in meta["opaque"] if matches(p, d["rust_name"])]
+        ext = d.get("lean_file", "").endswith("External_Template.lean")
+        if op and not ext:
+            errs.append(f"opaque by {op[0]!r} but translated with a definition: {d['rust_name']}")
+        if d.get("is_local") and ext and not op:
+            errs.append(f"local {k[:-1]} emitted as external, not in opaque: {d['rust_name']}")
+for pat in meta["start_from"]:
+    if not any(matches(pat, d["rust_name"]) for _, d in items):
+        errs.append(f"start_from {pat!r} matches no translated item")
+for e in errs:
+    print(f"[aeneas-translate] {e}", file=sys.stderr)
+if errs:
+    sys.exit(1)
+print(f"[aeneas-translate] charon settings applied: {len(items)} translated items; none excluded, "
+      f"opaque items bodiless, {len(meta['start_from'])} start_from patterns matched")
+PY
 
 # 6. Output checks, then install. rsync --delete replaces DEST; as a second guard (besides the
 # path checks at the top) DEST must be absent, empty, or hold only an earlier output

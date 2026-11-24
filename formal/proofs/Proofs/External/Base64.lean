@@ -3,9 +3,12 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.FunsExternal
-import Defs.Wire
-import Proofs.External.Byte
+module
+public import Rmcp.FunsExternal
+public import Defs.Wire
+public import Proofs.External.Byte
+
+@[expose] public section
 
 /-!
 # Laws of the Base64url model
@@ -61,14 +64,14 @@ theorem b64Decode_b64 : ∀ x : List U8, b64Decode (b64 x) = some x
       b64Val_b64Sym (show a.val % 4 * 16 + b.val / 16 < 64 by omega),
       b64Val_b64Sym (show b.val % 16 * 4 < 64 by omega),
       Option.bind_eq_bind, Option.bind_some]
-    rw [if_pos (by omega)]
+    rw [ite_eq_left (by omega)]
     simp only [Option.some.injEq, List.cons.injEq]
     refine ⟨byte_eq ?_, byte_eq ?_, trivial⟩ <;> omega
   | [a] => by
     have ha := val_lt a
     simp only [b64, b64Decode, b64Val_b64Sym (show a.val / 4 < 64 by omega),
       b64Val_b64Sym (show a.val % 4 * 16 < 64 by omega), Option.bind_eq_bind, Option.bind_some]
-    rw [if_pos (by omega)]
+    rw [ite_eq_left (by omega)]
     simp only [Option.some.injEq, List.cons.injEq]
     exact ⟨byte_eq (by omega), trivial⟩
   | [] => rfl

@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
+module
+public import Rmcp.Funs
+public import Defs.Wire
+
+@[expose] public section
 
 /-!
 # Spec theorem for `next_dot` (W05)

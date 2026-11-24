@@ -3,10 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.Common
-import Proofs.Model.RequestStateWire.OpenFrame
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.Common
+public import Proofs.Model.RequestStateWire.OpenFrame
+
+@[expose] public section
 
 /-!
 # Spec theorem for `frame` (W15) and `frame_roundtrip`
@@ -42,11 +45,16 @@ theorem frame_spec (expiry : I64) (payload : Slice U8)
   rw [length_frameBytes] at h_len
   unfold frame
   step*
-  have hi : i.val = (expiry.val % 2 ^ 64).toNat := by
-    rw [UScalar.val, i_post]
-    exact IScalar.hcast_val_eq UScalarTy.U64 expiry
-  rw [result_post, body_post, s_post, List.nil_append, Array.val_to_slice, a_post,
-    map_mk_toBEBytes, hi, frameBytes, be64OfInt]
+  all_goals
+    have hb : body.val = be64 i.val := by
+      rw [body_post, s_post, alloc.vec.Vec.from_val, List.nil_append, Array.val_to_slice, a_post,
+        map_mk_toBEBytes]
+  · rw [alloc.vec.Vec.length, hb, length_be64]
+    exact h_len
+  · have hi : i.val = (expiry.val % 2 ^ 64).toNat := by
+      rw [UScalar.val, i_post]
+      exact IScalar.hcast_val_eq UScalarTy.U64 expiry
+    rw [result_post, hb, hi, frameBytes, be64OfInt]
 
 /-- **Frame round trip** (W15 then W14)
 
@@ -68,13 +76,14 @@ theorem frame_roundtrip (expiry : I64) (payload : Slice U8) (now_ms : I64)
   have hE : bodyExpiry (frameBytes expiry.val payload.val) = expiry.val :=
     bodyExpiry_frameBytes _ _ (by scalar_tac) (by scalar_tac)
   step*
-  have hd : (alloc.vec.Vec.deref body).val = frameBytes expiry.val payload.val := body_post
+  have hd : (alloc.vec.Vec.deref body).val = frameBytes expiry.val payload.val := by
+    rw [alloc.vec.Vec.deref, Slice.from_val, body_post]
   have hlen : (alloc.vec.Vec.deref body).length = 8 + payload.length := by
     simp only [Slice.length, hd, length_frameBytes]
   rcases result with p' | e
   · obtain ⟨-, -, hp⟩ := result_post
     rw [hd, frameBytes, expiryLen, List.drop_left' (by rw [be64OfInt, length_be64])] at hp
-    rw [Subtype.ext hp]
+    rw [Slice.ext p' payload hp]
   · cases e with
     | TooShort =>
       simp only [hlen, expiryLen] at result_post

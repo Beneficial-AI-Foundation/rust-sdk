@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Proofs.Transport.ClientSideSse
+module
+public import Defs
+public import Proofs.Transport.ClientSideSse
+
+@[expose] public section
 
 /-!
 # Internal spec file for crates/rmcp/src/transport/common/client_side_sse.rs
@@ -58,8 +61,8 @@ Translated configuration (the proofs hold only for it): target `x86_64-unknown-l
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
 `transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (the widened
 feature list of plan Section 15, human decision H1), with `overflow-checks=true`
-and `debug-assertions=true` (plan Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers
-refer to `client_side_sse.rs` at upstream `7caec76`, unmodified (the file is not touched by
+and `debug-assertions=true` (plan Section 1). Aeneas `nightly-2026.11.24-fb44cb4` (until
+2026-11-24 `nightly-2026.08.20-5d08da4`). Line numbers refer to `client_side_sse.rs` at upstream `7caec76`, unmodified (the file is not touched by
 patch 01). All arithmetic of these functions saturates (`usize::saturating_add`), so no
 statement has a premise about overflow.
 
@@ -127,7 +130,7 @@ theorem Theorems.client_side_sse.SseEventSizeLimiter.check_limit (self : SseEven
   rmcp.transport.common.client_side_sse.SseEventSizeLimiter.check_limit_spec self
 
 /--
-info: 'Theorems.client_side_sse.SseEventSizeLimiter.check_limit' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.client_side_sse.SseEventSizeLimiter.check_limit' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.client_side_sse.SseEventSizeLimiter.check_limit

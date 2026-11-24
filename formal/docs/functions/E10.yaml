@@ -11,7 +11,7 @@ proof_file: formal/proofs/Proofs/Model/RequestState/OpenRs2At.lean
 spec_file: formal/proofs/Proofs/Internal/Model/RequestState.lean
 theorem: rmcp.model.request_state.RequestStateCodec.open_rs2_at_spec  # restated as Theorems.request_state.RequestStateCodec.open_rs2_at in the spec file
 used_by: [E11]  # targets whose proofs consume this theorem; also consumed by the rs2 round trips (not IDs)
-axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file; native-code ones are locked Aeneas toStr side conditions (trusted/native-axioms.lock)
+axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file; list unchanged in the Aeneas upgrade (2026-11-24); it had no native-code axiom before (native-axioms.lock is now empty)
 evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 223ff12:formal/docs/evidence/<step>.md
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft (round 2; fix round 2 after the round-1 review; fix round 3 after the round-2 review): formal/specs/Drafts/RequestState.lean (definitions in the draft module formal/specs/Defs/CodecState.lean (moved to formal/proofs/Proofs/Defs/ and back to formal/specs/Defs/CodecState.lean on 2026-11-24)), theorem rmcp.model.request_state.RequestStateCodec.open_rs2_at_spec
 spec_reviews:

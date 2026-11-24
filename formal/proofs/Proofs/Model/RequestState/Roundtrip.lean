@@ -3,17 +3,20 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.External.Base64
-import Proofs.External.String
-import Proofs.Model.RequestStateWire.Common
-import Proofs.Model.RequestState.SealRs1
-import Proofs.Model.RequestState.SealRs2
-import Proofs.Model.RequestState.OpenRs1At
-import Proofs.Model.RequestState.OpenRs2At
-import Proofs.Model.RequestState.OpenAt
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.External.Base64
+public import Proofs.External.String
+public import Proofs.Model.RequestStateWire.Common
+public import Proofs.Model.RequestState.SealRs1
+public import Proofs.Model.RequestState.SealRs2
+public import Proofs.Model.RequestState.OpenRs1At
+public import Proofs.Model.RequestState.OpenRs2At
+public import Proofs.Model.RequestState.OpenAt
+
+@[expose] public section
 
 /-!
 # Round trips of the request-state codec (S15)
@@ -145,7 +148,7 @@ theorem openRs2_eq_ok (self : RequestStateCodec) (tok kid key ad body : List U8)
 
 /-- An HMAC SHA-256 tag has 32 bytes. -/
 theorem length_hmacSha256 (key msg : List U8) : (ExtModel.hmacSha256 key msg).val.length = 32 := by
-  simp only [List.Vector.length_val, UScalar.ofNatCore_val_eq]
+  simp only [Array.property, UScalar.ofNatCore_val_eq]
 
 end Proofs.RequestState.Roundtrip
 
@@ -184,7 +187,7 @@ theorem rs1_roundtrip (self : RequestStateCodec) (key : Slice Std.U8)
         resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ := by
   apply WP.spec_mono (seal_rs1_spec key associated_data body h_len h_cap)
   intro token htok
-  refine ⟨⟨⟨ExtModel.utf8 token, ?_⟩, rfl⟩, fun sealed hs => ?_⟩
+  refine ⟨⟨Slice.from (ExtModel.utf8 token) ?_, Slice.from_val _ _⟩, fun sealed hs => ?_⟩
   · have h1 := Proofs.External.Base64.length_b64_le_b64Len body.val
     have h2 := Proofs.External.Base64.length_b64_le_b64Len
       (ExtModel.hmacSha256 key.val (transcriptV1 associated_data.val body.val)).val
@@ -243,7 +246,7 @@ theorem rs2_roundtrip (self : RequestStateCodec) (kid : Str) (key : Slice Std.U8
         resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ := by
   apply WP.spec_mono (seal_rs2_spec kid key associated_data body h_len h_cap)
   intro token htok
-  refine ⟨⟨⟨ExtModel.utf8 token, ?_⟩, rfl⟩, fun sealed hs => ?_⟩
+  refine ⟨⟨Slice.from (ExtModel.utf8 token) ?_, Slice.from_val _ _⟩, fun sealed hs => ?_⟩
   · have h0 := Proofs.External.Base64.length_b64_le_b64Len (kid : Slice U8).val
     have h1 := Proofs.External.Base64.length_b64_le_b64Len body.val
     have h2 := Proofs.External.Base64.length_b64_le_b64Len
@@ -300,7 +303,7 @@ theorem open_at_roundtrip_rs1 (self : RequestStateCodec) (key : Slice Std.U8)
         resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ := by
   apply WP.spec_mono (seal_rs1_spec key associated_data body h_len h_cap)
   intro token htok
-  refine ⟨⟨⟨ExtModel.utf8 token, ?_⟩, rfl⟩, fun sealed hs => ?_⟩
+  refine ⟨⟨Slice.from (ExtModel.utf8 token) ?_, Slice.from_val _ _⟩, fun sealed hs => ?_⟩
   · have h1 := Proofs.External.Base64.length_b64_le_b64Len body.val
     have h2 := Proofs.External.Base64.length_b64_le_b64Len
       (ExtModel.hmacSha256 key.val (transcriptV1 associated_data.val body.val)).val
@@ -361,7 +364,7 @@ theorem open_at_roundtrip_rs2 (self : RequestStateCodec) (kid : Str) (key : Slic
         resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ := by
   apply WP.spec_mono (seal_rs2_spec kid key associated_data body h_len h_cap)
   intro token htok
-  refine ⟨⟨⟨ExtModel.utf8 token, ?_⟩, rfl⟩, fun sealed hs => ?_⟩
+  refine ⟨⟨Slice.from (ExtModel.utf8 token) ?_, Slice.from_val _ _⟩, fun sealed hs => ?_⟩
   · have h0 := Proofs.External.Base64.length_b64_le_b64Len (kid : Slice U8).val
     have h1 := Proofs.External.Base64.length_b64_le_b64Len body.val
     have h2 := Proofs.External.Base64.length_b64_le_b64Len

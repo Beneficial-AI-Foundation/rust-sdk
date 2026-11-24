@@ -91,8 +91,8 @@ env:
   # It must equal the channel hard-coded next to RUSTC_VV_PINNED in scripts/aeneas-translate.sh
   # (checked by the first step), and is updated with the Aeneas rev. RUSTUP_TOOLCHAIN selects
   # it for every rustup proxy, over the rust-toolchain.toml copied into .llbc/work/.
-  RUST_NIGHTLY: nightly-2026-06-01
-  RUSTUP_TOOLCHAIN: nightly-2026-06-01
+  RUST_NIGHTLY: nightly-2026-09-17
+  RUSTUP_TOOLCHAIN: nightly-2026-09-17
   CARGO_TERM_COLOR: always
 
 jobs:

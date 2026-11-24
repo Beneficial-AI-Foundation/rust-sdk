@@ -3,13 +3,16 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.External.Base64
-import Proofs.Model.RequestStateWire.Common
-import Proofs.Model.RequestState.ValidateKeyLength
-import Proofs.Model.RequestState.OpenAt
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.External.Base64
+public import Proofs.Model.RequestStateWire.Common
+public import Proofs.Model.RequestState.ValidateKeyLength
+public import Proofs.Model.RequestState.OpenAt
+
+@[expose] public section
 
 /-!
 # Spec theorems for the public API of `request_state.rs` (R01–R08)
@@ -52,7 +55,7 @@ theorem new_spec :
       result.associated_data.val = [] ∧
       result.ttl = none ⦄ := by
   simp only [new, Insts.CoreDefaultDefault.default, Shared0Slice.Insts.CoreDefaultDefault.default,
-    Slice.new, core.option.Option.Insts.CoreDefaultDefault.default, bind_tc_ok, WP.spec_ok,
+    Slice.new_val, core.option.Option.Insts.CoreDefaultDefault.default, bind_ok, WP.spec_ok,
     and_self]
 
 /-- **R02. Spec theorem for `rmcp::model::request_state::SealOptions::associated_data`**
@@ -106,7 +109,7 @@ theorem new_spec {T0 : Type} (coreconvertIntoT0VecU8Inst : core.convert.Into T0
     new coreconvertIntoT0VecU8Inst key ⦃ (result : RequestStateCodec) =>
       result.keys = Keys.Single { inner := v } ∧
       CodecValid result ⦄ := by
-  simp only [new, new_unchecked, h_into, zeroize.Zeroizing.new, bind_tc_ok, CodecValid,
+  simp only [new, new_unchecked, h_into, zeroize.Zeroizing.new, bind_ok, CodecValid,
     WP.spec_ok, and_self]
 
 /-- **R05. Spec theorem for `rmcp::model::request_state::RequestStateCodec::new_unchecked`**
@@ -122,7 +125,7 @@ theorem new_unchecked_spec {T0 : Type} (coreconvertIntoT0VecU8Inst : core.conver
     new_unchecked coreconvertIntoT0VecU8Inst key ⦃ (result : RequestStateCodec) =>
       result.keys = Keys.Single { inner := v } ∧
       CodecValid result ⦄ := by
-  simp only [new_unchecked, h_into, zeroize.Zeroizing.new, bind_tc_ok, CodecValid, WP.spec_ok,
+  simp only [new_unchecked, h_into, zeroize.Zeroizing.new, bind_ok, CodecValid, WP.spec_ok,
     and_self]
 
 /-- **R06. Spec theorem for `rmcp::model::request_state::RequestStateCodec::try_new`**
@@ -155,14 +158,16 @@ theorem try_new_spec {T0 : Type} (coreconvertIntoT0VecU8Inst : core.convert.Into
           minimum.val = minKeyLength ∧ actual.val = v.val.length ⦄ := by
   unfold try_new
   simp only [h_into, zeroize.Zeroizing.new, zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref,
-    bind_tc_ok, alloc.vec.Vec.deref]
+    bind_ok, alloc.vec.Vec.deref]
   step as ⟨r, hr⟩
   rcases r with _ | e
-  · simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_tc_ok, WP.spec_ok]
+  · simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_ok, WP.spec_ok]
+    simp only [Slice.from_val] at hr
     simp only [hr, CodecValid, and_self]
-  · simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_tc_ok,
-      core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+  · simp only [core.result.Result.Insts.CoreOpsTry.branch, bind_ok, bind_tc_ok,
+      core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual,
       core.convert.FromSame.from, WP.spec_ok]
+    simp only [Slice.from_val] at hr
     exact hr
 
 /-! ## Opening (patched lines 476–501, upstream 486–511)
@@ -195,9 +200,8 @@ before `open_at`, so even for a malformed token); (H) a transcript of at least `
 or a key of at least `2^61` bytes (SHA-256 bit counter); (V) a transcript above `isize::MAX`
 bytes (the `Vec` is modelled up to `usize::MAX`).
 
-Native-code assumption reached (through E11):
-`rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`
-(`formal/trusted/native-axioms.lock`). -/
+Native-code assumptions: none since the Aeneas upgrade of 2026-11-24; until then (through E11)
+`rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`. -/
 @[step]
 theorem open_with_spec (self : RequestStateCodec) (sealed : Str)
     (associated_data : Slice Std.U8)
@@ -214,7 +218,7 @@ theorem open_with_spec (self : RequestStateCodec) (sealed : Str)
       resultBytes result =
         openAt self (sealed : Slice Std.U8).val associated_data.val ExtModel.nowMs.val ⦄ := by
   unfold open_with model.request_state.RequestStateCodec.now_ms
-  simp only [bind_tc_ok]
+  simp only [bind_ok]
   exact open_at_spec self sealed associated_data ExtModel.nowMs h_len1 h_len2 h_fallbacks
 
 /-- **R08, corollary. `open_with` under a length premise on its arguments**
@@ -231,7 +235,7 @@ lengths of `Defs.Wire` (`transcriptV1`, `transcriptV2`; `transcript_v1`/`transcr
 `|ad| + |sealed| + 36` bytes. For `rs1` the same count gives `34 + |ad| + |body|` and a token of
 `5 + |b| + |t|` bytes, so at most `|ad| + |sealed| + 29`. With this coarse length law 36 is the
 least constant that works for `rs2`. Premise (F), the inherited exceptions (K), (H), (V) and
-the native-code assumption are those of R08.
+the (until 2026-11-24) native-code assumption are those of R08.
 
 Not tagged `@[step]`, so that `step` keeps selecting R08 for `open_with`. -/
 theorem open_with_spec_of_length_le (self : RequestStateCodec) (sealed : Str)
@@ -294,9 +298,8 @@ before `open_at`, so even for a malformed token); (H) a transcript of at least `
 or a key of at least `2^61` bytes (SHA-256 bit counter). (V) does not arise: the transcript has
 at most `42 + 3n/4` bytes for a token of `n ≤ isize::MAX` bytes.
 
-Native-code assumption reached (through E11):
-`rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`
-(`formal/trusted/native-axioms.lock`). -/
+Native-code assumptions: none since the Aeneas upgrade of 2026-11-24; until then (through E11)
+`rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`. -/
 @[step]
 theorem open_spec (self : RequestStateCodec) (sealed : Str)
     (h_fallbacks : (components (sealed : Slice Std.U8).val).head? = some versionV1 →
@@ -305,7 +308,7 @@ theorem open_spec (self : RequestStateCodec) (sealed : Str)
         core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
       resultBytes result = openAt self (sealed : Slice Std.U8).val [] ExtModel.nowMs.val ⦄ := by
   unfold RequestStateCodec.open
-  simp only [lift, bind_tc_ok]
+  simp only [lift, bind_ok]
   have hU := Usize.cMax_bound_concrete.1
   have hs : (sealed : Slice Std.U8).val.length ≤ Usize.max := sealed.property
   have had : (Array.to_slice (Std.Array.empty Std.U8)).val = [] := rfl

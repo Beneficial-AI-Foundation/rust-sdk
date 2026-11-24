@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Proofs.Transport.Auth
+module
+public import Defs
+public import Proofs.Transport.Auth
+
+@[expose] public section
 
 /-!
 # Internal spec file for crates/rmcp/src/transport/auth.rs (Phase 2: A01–A03, C04)
@@ -47,8 +50,8 @@ Translated configuration (the proofs hold only for it): target `x86_64-unknown-l
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
 `transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
 Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true` (plan
-Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`
-(the file is not touched by patch 01).
+Section 1). Aeneas `nightly-2026.11.24-fb44cb4` (until 2026-11-24 `nightly-2026.08.20-5d08da4`).
+Line numbers refer to upstream `7caec76` (the file is not touched by patch 01).
 
 Definitions used: `Defs.Net`, in module `Proofs.Defs.Net` (`formal/proofs/Proofs/Defs/Net.lean`;
 the Lean names are unchanged): `ipv4Value`, `ipv6Value`, `ipv4Disallowed`, `embeddedIpv4`,
@@ -61,7 +64,7 @@ External models used (S26/S27, `trusted/Rmcp/{Types,Funs}External.lean`, section
 `core.net.ip_addr.Ipv6Addr` (`addrSegments`, `segments`, `is_loopback`, `is_unspecified`,
 `is_multicast`), `RangeInclusive::contains` on `u8`, and, for A03 (`segments[..2] == [0x2001,
 0]`, `segments[..3] == [0x64, 0xff9b, 1]`), `<[T] as PartialEq<[U; N]>>::eq`
-(`Slice.Insts.CoreCmpPartialEqArray.eq`, `FunsExternal.lean` line 904, on
+(`Slice.Insts.CoreCmpPartialEqArray.eq`, `FunsExternal.lean` line 861, on
 `ExtModel.sliceEqSameLength`); their laws are `Theorems.External.core.net.ip_addr.*`,
 `Theorems.External.core.ops.range.RangeInclusive.*` and
 `Theorems.External.Slice.Insts.CoreCmpPartialEqArray.eq_spec` and `eq_u16_spec` in

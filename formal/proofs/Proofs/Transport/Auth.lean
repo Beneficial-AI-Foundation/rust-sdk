@@ -3,10 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Proofs.Defs.Net
-import Proofs.External.Net
-import Proofs.External.Std
+module
+public import Rmcp.Funs
+public import Proofs.Defs.Net
+public import Proofs.External.Net
+public import Proofs.External.Std
+
+@[expose] public section
 
 /-!
 # Spec theorems for the SSRF address guard of `AuthorizationManager` (A01–A03, C04)
@@ -303,18 +306,18 @@ theorem ipv6Disallowed_of_ipv4Disallowed (V w : Nat) (h_dis : ipv4Disallowed w =
       sixToFour_eq, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, bne_iff_ne, ne_eq]
     rcases h_form with h | h | h | ⟨low, hlow, h⟩
     · left
-      rw [if_pos (by omega)]
+      rw [ite_eq_left (by omega)]
       simp only [Option.some.injEq]; omega
     · left
-      rw [if_pos (by omega)]
+      rw [ite_eq_left (by omega)]
       simp only [Option.some.injEq]; omega
     · by_cases h01 : V = 0 ∨ V = 1
       · right; exact h01
       · left
-        rw [if_neg (by omega), if_pos (by omega)]
+        rw [ite_eq_right (by omega), ite_eq_left (by omega)]
         simp only [Option.some.injEq]; omega
     · left
-      rw [if_neg (by omega), if_neg (by omega), if_pos (by omega)]
+      rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left (by omega)]
       simp only [Option.some.injEq]; omega
   rcases key with h | h | h
   · simp only [ipv6Disallowed, h, h_dis]
@@ -330,20 +333,20 @@ theorem bind_if_ok_true_spec {f rest : Result Bool} {P : Prop} [Decidable P] {q 
     (hf : f ⦃ b => (b = true ↔ P) ⦄) (hrest : rest ⦃ r => r = q ⦄) :
     (do let b ← f; if b then ok true else rest) ⦃ r => r = (decide P || q) ⦄ := by
   obtain ⟨b, hb, hp⟩ := Proofs.External.WP.exists_ok_of_spec hf
-  rw [hb, bind_tc_ok]
+  rw [hb, bind_ok]
   cases b
   · have hP : ¬ P := fun h => Bool.false_ne_true (hp.mpr h)
-    rw [if_neg Bool.false_ne_true, decide_eq_false hP, Bool.false_or]
+    rw [ite_eq_right Bool.false_ne_true, decide_eq_false hP, Bool.false_or]
     exact hrest
-  · rw [if_pos rfl, decide_eq_true (hp.mp rfl), Bool.true_or, WP.spec_ok]
+  · rw [ite_eq_left rfl, decide_eq_true (hp.mp rfl), Bool.true_or, WP.spec_ok]
 
 /-- A decidable test followed by an early `return true`: the result is the test or the rest. -/
 theorem ite_ok_true_spec {c P : Prop} [Decidable c] [Decidable P] {rest : Result Bool} {q : Bool}
     (hc : c ↔ P) (hrest : rest ⦃ r => r = q ⦄) :
     (if c then ok true else rest) ⦃ r => r = (decide P || q) ⦄ := by
   by_cases h : c
-  · rw [if_pos h, decide_eq_true (hc.mp h), Bool.true_or, WP.spec_ok]
-  · rw [if_neg h, decide_eq_false (mt hc.mpr h), Bool.false_or]
+  · rw [ite_eq_left h, decide_eq_true (hc.mp h), Bool.true_or, WP.spec_ok]
+  · rw [ite_eq_right h, decide_eq_false (mt hc.mpr h), Bool.false_or]
     exact hrest
 
 /-- An arm of A01 returning `none`, when no branch of `embeddedIpv4` applies. -/
@@ -352,7 +355,7 @@ theorem ok_none_spec {P Q R : Prop} [Decidable P] [Decidable Q] [Decidable R] {x
     (ok none : Result (Option core.net.ip_addr.Ipv4Addr)) ⦃ r =>
       r.map (fun v4 => ipv4Value v4.addrOctets.val) =
         if P then some x else if Q then some y else if R then some z else none ⦄ := by
-  rw [if_neg hP, if_neg hQ, if_neg hR, WP.spec_ok, Option.map_none]
+  rw [ite_eq_right hP, ite_eq_right hQ, ite_eq_right hR, WP.spec_ok, Option.map_none]
 
 /-! ## A02 over the octets -/
 
@@ -405,7 +408,7 @@ theorem is_disallowed_metadata_ipv4_octets_spec (addr : core.net.ip_addr.Ipv4Add
         have := hb6.mp h6
         omega
       next h6 =>
-        rw [if_neg (by rw [UScalar.eq_equiv, UScalar.ofNatCore_val_eq]; omega), WP.spec_ok,
+        rw [ite_eq_right (by rw [UScalar.eq_equiv, UScalar.ofNatCore_val_eq]; omega), WP.spec_ok,
           eq_comm, decide_eq_false_iff_not]
         have := mt hb6.mpr h6
         omega
@@ -486,7 +489,7 @@ theorem embedded_ipv4_spec (addr : core.net.ip_addr.Ipv6Addr) :
   simp only [ha, List.getElem_cons_zero, List.getElem_cons_succ] at h_a1 h_b h_c h_d
   simp only [ha, List.getElem_cons_succ, List.getElem_cons_zero] at h_e h_f h_g h_h
   subst h_a1 h_b h_c h_d h_e h_f h_g h_h
-  simp only [lift, bind_tc_ok]
+  simp only [lift]
   step as ⟨i1, h_i1, h_i1'⟩
   step with core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from_spec as ⟨low, h_low, h_low'⟩
   have hlow : ipv4Value low.addrOctets.val = g.val * 2^16 + h.val := by
@@ -515,7 +518,7 @@ theorem embedded_ipv4_spec (addr : core.net.ip_addr.Ipv6Addr) :
             step as ⟨i9, h_i9⟩
             split
             · have n5 : f.val = 65535 % 65536 := u16_val_eq_of_mk_eq h_i9
-              rw [if_pos (by omega), WP.spec_ok, Option.map_some, hlow]
+              rw [ite_eq_left (by omega), WP.spec_ok, Option.map_some, hlow]
             · have n5 : f.val = 0 % 65536 := u16_val_eq_of_mk_eq h_i9
               step with core.net.ip_addr.Ipv6Addr.is_loopback_spec addr a1 b c d e f g h hs
                 as ⟨b1, h_b1⟩
@@ -533,7 +536,7 @@ theorem embedded_ipv4_spec (addr : core.net.ip_addr.Ipv6Addr) :
                   exact ok_none_spec (by omega) (by omega) (by omega)
                 next hu =>
                   have := mt h_b2.mpr hu
-                  rw [if_neg (by omega), if_pos (by omega), WP.spec_ok, Option.map_some, hlow]
+                  rw [ite_eq_right (by omega), ite_eq_left (by omega), WP.spec_ok, Option.map_some, hlow]
             next h65535 h0 =>
               have : f.val ≠ 65535 % 65536 := u16_val_ne_of_ne_mk h_i9 h65535
               have : f.val ≠ 0 % 65536 := u16_val_ne_of_ne_mk h_i9 h0
@@ -566,7 +569,7 @@ theorem embedded_ipv4_spec (addr : core.net.ip_addr.Ipv6Addr) :
             step as ⟨i9, h_i9⟩
             split
             · have n5 : f.val = 0 % 65536 := u16_val_eq_of_mk_eq h_i9
-              rw [if_pos (by omega), WP.spec_ok, Option.map_some, hlow]
+              rw [ite_eq_left (by omega), WP.spec_ok, Option.map_some, hlow]
             next hne =>
               have : f.val ≠ 0 % 65536 := u16_val_ne_of_ne_mk h_i9 hne
               exact ok_none_spec (by omega) (by omega) (by omega)
@@ -585,7 +588,7 @@ theorem embedded_ipv4_spec (addr : core.net.ip_addr.Ipv6Addr) :
   · have n0 : a1.val = 8194 % 65536 := u16_val_eq_of_mk_eq h_i4
     step as ⟨i6, h_i6, h_i6'⟩
     step with core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from_spec as ⟨ia, h_ia, h_ia'⟩
-    rw [if_neg (by omega), if_neg (by omega), if_pos (by omega), Option.map_some,
+    rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left (by omega), Option.map_some,
       ipv4Value_eq_of_octets_map _ _ h_ia, or_from_val_eq _ _ _ h_i6]
   next h0 h100 h8194 =>
     have : a1.val ≠ 0 % 65536 := u16_val_ne_of_ne_mk h_i4 h0
@@ -629,23 +632,23 @@ theorem is_disallowed_metadata_ipv6_spec (addr : core.net.ip_addr.Ipv6Addr) :
     step as ⟨i, h_i⟩
     simp only [hseg, List.getElem_cons_zero] at h_i
     subst h_i
-    simp only [lift, bind_tc_ok]
+    simp only [lift, bind_ok]
     apply ite_ok_true_spec (and_65472_eq_65152_iff _)
     apply ite_ok_true_spec (and_65024_eq_64512_iff _)
     step as ⟨s, h_s, h_s'⟩
     have h2 :
         s.val = (Array.make 2#usize [8193#u16, 0#u16]).val ↔ i.val = 8193 ∧ t1.val = 0 := by
       simp only [h_s, Array.val_to_slice, hseg, List.slice_zero_j, List.take_succ_cons,
-        List.take_zero, Array.make, List.cons.injEq, UScalar.eq_equiv, UScalar.ofNatCore_val_eq,
-        and_true]
+        List.take_zero, Array.make, Array.from_val, List.cons.injEq, UScalar.eq_equiv,
+        UScalar.ofNatCore_val_eq, and_true]
     apply bind_if_ok_true_spec (WP.spec_mono
       (Slice.Insts.CoreCmpPartialEqArray.eq_u16_spec _ _) fun _ hb => hb.trans h2)
     step as ⟨s1, h_s1, h_s1'⟩
     have h3 : s1.val = (Array.make 3#usize [100#u16, 65435#u16, 1#u16]).val ↔
         i.val = 100 ∧ t1.val = 65435 ∧ t2.val = 1 := by
       simp only [h_s1, Array.val_to_slice, hseg, List.slice_zero_j, List.take_succ_cons,
-        List.take_zero, Array.make, List.cons.injEq, UScalar.eq_equiv, UScalar.ofNatCore_val_eq,
-        and_true]
+        List.take_zero, Array.make, Array.from_val, List.cons.injEq, UScalar.eq_equiv,
+        UScalar.ofNatCore_val_eq, and_true]
     apply WP.spec_mono (Slice.Insts.CoreCmpPartialEqArray.eq_u16_spec _ _)
     intro r hr
     exact Bool.eq_iff_iff.mpr ((hr.trans h3).trans decide_eq_true_iff.symm)
@@ -675,7 +678,7 @@ theorem is_disallowed_metadata_ipv6_eq_of_embedded_ipv4_eq_ok_some
     (h : embedded_ipv4 addr = ok (some v)) :
     is_disallowed_metadata_ipv6 addr = is_disallowed_metadata_ipv4 v := by
   unfold is_disallowed_metadata_ipv6
-  rw [h, bind_tc_ok]
+  rw [h, bind_ok]
 
 /-- **C04, corollary in `Defs.Net` terms**: no SSRF bypass through an embedded address. Let
 `w` be a 32-bit address blocked by A02 (`Defs.Net.ipv4Disallowed w = true`, which implies

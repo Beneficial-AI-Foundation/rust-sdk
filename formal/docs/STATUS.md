@@ -7,6 +7,10 @@ the S19 evidence (git history at 223ff12).
 
 Phase 2 results: see "Phase 2" → "Phase 2 results (S37, 2026-11-24)".
 
+**Aeneas upgrade (2026-11-24), reviewed and re-signed by the spec owner 2026-11-24:** see "Aeneas upgrade
+(2026-11-24)" below. The results sections below record the state before it (Aeneas
+`nightly-2026.08.20-5d08da4`, 35 native-code axioms); "Trusted base" is updated to the current state.
+
 Last updated 2026-11-23: S19 final status report, written at local commit `aacfbf7` (branch
 `docs/verification-guides`, not pushed). S19 was accepted by the human owner on 2026-11-23 (`board.yaml`).
 Updated 2026-11-23 for the D2 fallback (human decision 2026-11-23): the SDK `*.rs` files are
@@ -23,6 +27,116 @@ GitHub); S19 is this report.
 Updated 2026-11-23 for **Phase 2** (plan Part II, Sections 13–25): S20 started; human decisions
 H1–H4 accepted, H5 (owner and budget) open; 25 Phase 2 records added; board tasks S20–S37 added.
 See "Phase 2" below. Nothing about the Phase 1 results changes.
+
+## Aeneas upgrade (2026-11-24)
+
+**State: reviewed and re-signed by the spec owner 2026-11-24.** Human decision 2026-11-24 ("option 1: full
+migration"); base `d61356a`, branch `upgrade/aeneas-fb44cb4`, not committed. Decisions:
+lead N1–N15, human A1, A2 and the axiom-list, restatement, guard-exemption and module decisions
+below. Nothing here changes a signed-off statement except the forced restatements listed.
+
+**Toolchain.**
+
+| Component | Before (until 2026-11-24) | After |
+|---|---|---|
+| Aeneas | `nightly-2026.08.20-5d08da4` | `nightly-2026.11.24-fb44cb4` (commit `fb44cb40`) |
+| Charon | `0.1.235` | `0.1.324` |
+| Lean / Mathlib | `v4.31.0` / `v4.31.0` | `v4.36.0` / `v4.36.0` (`fc4f59e5`) |
+| Rust | `nightly-2026-06-01` | `nightly-2026-09-17` (`1.100.0-nightly`, commit date 2026-09-16) |
+
+**Trust-base changes.**
+- **0 native-code axioms** (was 35: 5 Phase 1, 30 Phase 2): the new `toStr` proves the length
+  side condition of a literal in the kernel; `formal/trusted/native-axioms.lock` is emptied (lead
+  decision N5, a shrink). Open problem 8 ("Bugs found") is resolved.
+- **`core.fmt.Formatter` is no longer an axiom** of the Aeneas library (it is an `opaque` type).
+  No target used it; re-adding the excluded items it blocked (B19, derived `Debug`) is a separate
+  step after the migration (N15).
+- **Four models moved into the Aeneas library** and were removed from
+  `formal/trusted/Rmcp/FunsExternal.lean`: `Borrow::borrow` (blanket; now
+  `Aeneas.Std.core.borrow.Borrow`), `Option::ok_or`, `Result::map_err`, `Vec::is_empty` (lead
+  decision N8; the records and "Trusted base" are updated).
+- **`RangeInclusive::contains` model changed** to the `nightly-2026-09-17` behaviour (human
+  decisions A2, 2026-11-24): an exhausted range has end bound `Excluded(start)`, so it contains
+  nothing (until then: `item < end` for an exhausted range). The laws `contains_u8_spec` and
+  `contains_eq_match_le` (and their `Theorems.External.*` restatements) were false under the new
+  model (counterexample: `1..=5` exhausted, item 2) and were restated exactly (exhausted branch
+  `item < start`); `new_contains_u8_spec` is unchanged. A02 applies `contains_u8_spec` to a
+  freshly built range (not exhausted), so its statement is unaffected. **Review done** (one fresh reviewer, model and laws, 2026-11-24): the
+  model is exact; one blocking finding (the `Theorems.External…new_contains_u8_spec` restatement
+  had been dropped in a merge) was fixed by restoring it, and one docstring citation was fixed.
+  `formal/trusted/evidence/README.md` marks the old spot check as run on `nightly-2026-06-01`
+  only and records two vectors that separate the old and new model, verified on
+  `nightly-2026-09-17`.
+  Re-sign-off of the two laws in the batch below.
+- **All 39 model citations** are to be re-checked against the `nightly-2026-09-17` `rust-src`
+  (lead decision N9, model review; `FunsExternal.lean` already cites the new line numbers).
+- **Two exact guard exemptions** (human decision 2026-11-24, pinned in `scripts/lean_guard.py` with
+  self-tests): the Aeneas phrase "this code is generated from a macro invocation at:" in generated
+  docstrings (the macro-site path is checked against the allowed sources, N13), and exactly one
+  `set_option linter.dupNamespace false in` on `zeroize.Zeroize.Blanket.zeroize` in
+  `trusted/Rmcp/FunsExternal.lean`.
+- **Charon settings check (N1)**: Charon `0.1.324` no longer records its options in the LLBC
+  (`translated.options`); `scripts/aeneas-translate.sh` checks the preset and overflow checks in
+  the LLBC and that `exclude`, `opaque` and `start_from` were applied on the translated items
+  (`translation.json`). Both cargo build-script output layouts are accepted (N2).
+- **Lean modules (N12)**: the project Lean files are converted to the module system (header and
+  visibility only, no statement change); the Defs rename is mechanical (N14). One accepted
+  construct of the module system: `import all Aeneas.Std.Scalar.SaturatingOps` in
+  `Proofs/Transport/ClientSideSse.lean` (the saturating-add lemmas it needs are private in the
+  library module); the axiom audit and the kernel replay run at the private level, so it changes
+  nothing in the trust base. The axiom audit's
+  kernel replay uses `Lean.Kernel.Environment.replay` (N11).
+
+**`#print axioms` lists** (re-sign table, generated mechanically against `d61356a`; one-time
+exception, human decision 2026-11-24: lists may gain only `propext`, `Classical.choice`,
+`Quot.sound`, re-signed as one batch; shrink-only again afterwards): 194 blocks before and after,
+**110 unchanged, 84 changed, 0 added, 0 removed**. Of the 84: 66 only gain standard axioms, 18
+only lose `_native` axioms; **no exception** (no other axiom added, no non-native axiom removed).
+Every list is now within `[propext, Classical.choice, Quot.sound]` (75 of the changed lists are
+exactly these three, 9 are `[propext, Quot.sound]`). By file: `Proofs/Internal/External.lean` 46,
+`Specs/Model.lean` 13, `Proofs/Internal/Model/RequestState.lean` 10,
+`Specs/Model/RequestState.lean` 8, `Proofs/Internal/Transport/AsyncRw.lean` 3,
+`…/StreamableHttpServer/Tower.lean` 2, `…/Common/ClientSideSse.lean` 1, `Specs/Model/Task.lean` 1.
+Function records: 28 of 58 `axioms` fields changed (`formal/docs/functions/*.yaml`, each with a
+note).
+
+**Statement changes** (theorem/lemma signatures, proofs ignored; 520 unchanged, 14 changed, none
+added or removed): N7 forced restatements, name-only batch re-sign (human decision 2026-11-24):
+`alloc.vec.Vec.is_empty_spec` (no allocator argument), `String…CoreHashHash.hash_eq` (`Slice.from`
+instead of the anonymous constructor), `HashMap.get_eq`, `HashMap.get_string_spec` and the helper
+`Proofs.External.HashMap.find_string` (`Aeneas.Std.core.borrow.Borrow`), with their
+`Theorems.External.*` restatements; the RangeInclusive laws `contains_u8_spec`,
+`contains_eq_match_le` and restatements (above). Also named explicitly: the helper lemma `Proofs.ClientSideSse.from_residual_eq` (proof file, no
+record, no `#print axioms`) names a translated instance renamed by the new Charon/Aeneas
+(`CoreOpsTryTraitFromResidualResultInfallible` → `CoreOpsTry_traitFromResidualResult`; the
+upgrade reviewer confirmed the same Rust impl with the same body). **Definition change** (`Defs`,
+112 declarations unchanged, 1 changed): `Defs.CodecState.KeyTable`, allocator argument `Global` →
+`alloc.alloc.Global` (the Aeneas library's name; name-only, N7/N14).
+A `Theorems.External…new_contains_u8_spec` restatement dropped in a merge was restored by the lead
+(statement unchanged).
+
+**Build and guards** (working tree, 2026-11-24): `lake build --wfail` exit 0 (3767 jobs, no warning);
+`lean-guard.sh axioms` exit 0 (3908 constants in 76 project modules; 0 trusted, 0 native-code
+axioms; kernel replay of 3883 constants accepted, 25 unsafe/partial skipped); `aeneas-archive`
+and `build-log` pass; `sources` fails only on the four stale entries of
+`formal/trusted/translation-pins.txt` (lines 29 and 157 of `Funs.lean`, 134 of
+`FunsExternal_Template.lean`, 199 of `Types.lean`), which the human edits by hand (A1).
+
+**Reviews and sign-off.** Round 1: two independent reviewers (trust base and tooling; statements,
+axiom lists, proofs and records); every finding fixed, including the blocking one (stale
+`rust-src` citations in `trusted/Rmcp/`; the N9 citation re-check is now a full mechanical sweep,
+no model behaviour changed except `RangeInclusive::contains`). Round 2: a fresh reviewer
+re-checked every round-1 finding (all fixed, no regression). The RangeInclusive model and laws
+had their own review (above). **Human batch re-sign-off, spec owner Hoang Le Truong,
+2026-11-24:** the 84 changed `#print axioms` lists, the 9 forced restatements, the 4
+RangeInclusive laws, the `Defs.CodecState.KeyTable` rename, the `from_residual_eq` helper rename
+and the `RangeInclusive::contains` model (re-sign table, recorded in the run log).
+
+**Pending:** the `translation-pins.txt` edit (human; until then `lean-guard.sh sources` fails on
+its 4 stale entries); a clean `aeneas-archive` run (stale `*.trace.nobuild` files written by an
+editor Lean server still on v4.31); the commit (human approval); patch 03 (R09–R12), parked in
+`stash@{0}`, resumed after the commit; re-adding excluded items as separate steps (N15); CI on
+GitHub.
 
 ## Results
 
@@ -101,7 +215,7 @@ W/E files and the model laws are in `formal/proofs/Proofs/Internal/`, and
 | Translation patch | `formal/trusted/patches/01-request-state-wire.patch`: the refactor of local commit `f8fb6a7` plus the S16 tests of `afab9d2`, applied only to `.llbc/work/` by `scripts/apply-patches.sh` |
 | Verified Rust source | the patched copy (`7caec76` + patch 01, plus the test-only patch 02 since 2026-11-24, which adds `#[cfg(test)]` code only); its non-test lines equal those of `f8fb6a7`, so line numbers are unchanged |
 | Translation | committed at `9bd8144` (from `f8fb6a7` + Charon settings); reproduced byte for byte through the patch path (2026-11-23) |
-| Aeneas | release tag `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 223ff12)) |
+| Aeneas | release tag `nightly-2026.11.24-fb44cb4` since the Aeneas upgrade of 2026-11-24 (reviewed and re-signed by the spec owner 2026-11-24); until then `nightly-2026.08.20-5d08da4` (the S03 evidence (git history at 223ff12)) |
 
 `request_state.rs` at `7caec76` has the base SHA-256 above (unchanged since `0e2396f`).
 History: SHA-256 of the target files at `f8fb6a7`: `request_state.rs` `a09f02e3…f076`,
@@ -239,8 +353,10 @@ every target has a generated body that the proofs use.
 - `Debug`/`Display` for `RequestStateError`, `Debug` for `RequestStateCodec`: B13, Aeneas type
   assertion and internal error; `exclude`.
 - derived `Debug` for `KidError`, `Version`, `FrameError`, `Rs1Parts`, `Rs2Parts`, `SealMode`,
-  `SealOptions`: not a blocker; they depend on `Aeneas.Std.core.fmt.Formatter` and native-code
-  string axioms, and no target uses them (human decision 2026-11-22); `exclude`.
+  `SealOptions`: not a blocker; they depended on `Aeneas.Std.core.fmt.Formatter` and native-code
+  string axioms (until the Aeneas upgrade of 2026-11-24; since then `Formatter` is an `opaque`
+  type of the Aeneas library and no native-code axiom is declared), and no target uses them
+  (human decision 2026-11-22); `exclude`.
 - `seal_json`, `seal_json_with`, `open_json`, `open_json_with`, `Error` for `RequestStateError`:
   B9, `serde` signatures, `Error::source` not modelled; `exclude`.
 - crates `serde`, `serde_core` (crate level): B9; only the excluded JSON wrappers use them.
@@ -252,21 +368,28 @@ R01–R08, the public `request_state.rs` API; see "Public request_state.rs API".
 
 ## Trusted base
 
-Checked at `3ded001` by `scripts/lean-guard.sh axioms` (exit 0; 4047 constants in 74 project
+Current state after the Aeneas upgrade of 2026-11-24 (reviewed and re-signed by the spec owner 2026-11-24; see
+"Aeneas upgrade (2026-11-24)"): `scripts/lean-guard.sh axioms` exit 0 with 0 native-code axioms
+on the working tree of branch `upgrade/aeneas-fb44cb4`. Before the upgrade: checked at `3ded001`
+by `scripts/lean-guard.sh axioms` (exit 0; 4047 constants in 74 project
 modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23 review
 2026-11-24; first recorded at `aacfbf7` with 2110 constants in 46 modules):
 
 - **Trusted axioms: 0.** `formal/trusted/axioms.lock` has no entry; the `RmcpExternal` roots
   declare no axiom (human decision 2026-11-23). Allowed builtins: `propext`, `Classical.choice`,
   `Quot.sound`.
-- **Native-code axioms: 35**, all reached, used and locked in `formal/trusted/native-axioms.lock`
+- **Native-code axioms: 0** since the Aeneas upgrade of 2026-11-24 (lead decision N5):
+  `formal/trusted/native-axioms.lock` is empty, because the `toStr` of
+  `nightly-2026.11.24-fb44cb4` proves the length side condition of a literal in the kernel; the
+  lock's rules stay in force for any native-code axiom that appears again. **Until then: 35**,
+  all reached, used and locked in `formal/trusted/native-axioms.lock`
   (separate trust class, human decision 2026-11-22). Phase 1 (5): the Aeneas `toStr` side
   conditions of the string literals `VERSION_V1` ("rs1"), `VERSION_V2` ("rs2"), `KID_EMPTY_MSG`,
   `KID_TOO_LONG_MSG` and the `expect` message of `rs1_fallbacks_verify`. Phase 2 (30, human
   decision H2, locked 2026-11-24 at S29): the 18 request and 10 notification method-name literals
   of `async_rw.rs` (`is_standard_method` lines 399–416, `is_standard_notification` lines 423–432)
   and `"http"`/`"https"` of `tower.rs` `default_port` (lines 1148–1149), used by T05–T08 and C05. Each side condition
-  also has a kernel proof, so an upstream Aeneas `toStr` fix would remove them (open item).
+  also had a kernel proof; the Aeneas `toStr` of the upgrade uses it, which removed them.
 - **External models** (accepted at S08/S09, human approval 2026-11-23; in use by the proofs): the
   41 placeholder externals of S04a part 2 are replaced by definitions (functions) and structures
   (types) with the generated names; what cannot be computed is one of exactly four `opaque`
@@ -277,14 +400,18 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   `formal/proofs/Proofs/Internal/External.lean`).
 - **Translation pin** (S21, human decision 2026-11-23): `formal/trusted/translation-pins.txt` records
   the sha256 of `formal/translation/Rmcp/Funs.lean` and the one line on which `lean-guard.sh sources`
-  excuses a metaprogramming word (line 1971, the word `initialize`, the T06 literal). It is a trusted
+  excuses a metaprogramming word (line 1971 before the Aeneas upgrade, the word `initialize`, the
+  T06 literal; the entries are stale after the re-translation of 2026-11-24 and are being updated
+  by the human by hand, decision A1). It is a trusted
   file: the guard cannot see lexical context, so a pin whose hash is updated together with an edited
   `Funs.lean` excuses whatever stands at the pinned line; only the byte-for-byte regeneration of
   `aeneas-translation.yml` and review (each pinned line read in context) catch that. A legitimate
   re-translation must update it in a reviewed PR.
 - **Phase 2 external models** (S26/S27, 2026-11-23; reviewed, signed off by the spec owner,
   laws proved): the 26 S21 placeholders are definitions transcribed from `core`/`alloc` of
-  nightly-2026-06-01 (strings and `Arc`; `Option`, `Result`, slices, ranges; `i64::from_str`;
+  nightly-2026-06-01 (the citations are re-checked against nightly-2026-09-17 in the model review
+  of the Aeneas upgrade, lead decision N9; `RangeInclusive::contains` changed, see "Aeneas
+  upgrade (2026-11-24)") (strings and `Arc`; `Option`, `Result`, slices, ranges; `i64::from_str`;
   `Ipv4Addr`/`Ipv6Addr` predicates), and 5 of the 6 placeholder types are structures or
   inductives (`Ipv4Addr` over 4 octets, `Ipv6Addr` over 8 segments where Rust stores 16 octets,
   `ParseIntError` with all six `IntErrorKind` variants, `Arc` holding its value, `MaybeUninit`);
@@ -305,8 +432,12 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   `CodecFallbacksKnown`, E09a `FallbacksKnown`, E10 and rs2 nothing. `CodecValid` implies
   `CodecFallbacksKnown`. The excluded constructors are what establish it in Rust; they are not
   verified.
-- **Tools:** Charon `0.1.235` and Aeneas (`nightly-2026.08.20-5d08da4`), Lean `v4.31.0` kernel,
-  prebuilt Aeneas Lean library (archive sha256 checked) and Mathlib oleans (not digest-checked).
+- **Tools:** Charon `0.1.324` and Aeneas (`nightly-2026.11.24-fb44cb4`), Lean `v4.36.0` kernel
+  (Mathlib `v4.36.0`), Rust `nightly-2026-09-17`, since the Aeneas upgrade of 2026-11-24 (until
+  then Charon `0.1.235`, Aeneas `nightly-2026.08.20-5d08da4`, Lean `v4.31.0`, Rust
+  `nightly-2026-06-01`); prebuilt Aeneas Lean library (archive sha256 checked) and Mathlib oleans
+  (not digest-checked). The Aeneas library builds without warnings, so the gate is
+  `lake build --wfail` and the build-log allowlist is empty (N10).
 - **Configuration:** the translated configuration above. **Patches:** one,
   `formal/trusted/patches/01-request-state-wire.patch` (the refactor and its tests; D2 fallback,
   2026-11-23; reviewed by two independent agents and signed off by the human on 2026-11-23, VERIFICATION.md §4),
@@ -330,7 +461,7 @@ External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
 | Clock (`now_ms`, opaque) | `ok nowMs`, `opaque ExtModel.nowMs` | accepted (S09) |
 | `serde_json::Error` (type) | structure, `opaque ExtModel.SerdeJsonErrorImpl` | accepted (S09) |
 | Codec state | `Defs.CodecState` hypotheses (above) | accepted (S12) |
-| Phase 2: strings, `Arc`, `Option`, `Result`, slices, ranges | definitions (S26) | signed off 2026-11-23; 22 laws proved |
+| Phase 2: strings, `Arc`, `Option`, `Result`, slices, ranges | definitions (S26) | signed off 2026-11-23; 22 laws proved; `RangeInclusive::contains` model changed 2026-11-24 (Aeneas upgrade, human decision A2; one fresh model review, no defect; two laws restated exactly, re-signed 2026-11-24) |
 | Phase 2: `i64::from_str`, `Ipv4Addr`/`Ipv6Addr` | definitions, structures (S27) | signed off 2026-11-23; 21 laws proved |
 | `serde_json::Value` (type) | `opaque ExtModel.SerdeJsonValue` (S27) | signed off 2026-11-23 (no law: only moved) |
 
@@ -342,13 +473,17 @@ Details:
 - Base64url: strict decoding; round trip, canonicity, URL-safe alphabet (no `.`) and length laws
   proved (`Proofs/External/Base64.lean`); differential check against `base64 0.23.1`: 25,682,976
   comparisons, 0 mismatches (S18 re-run with the differential toolchain pinned to Rust 1.96).
-- Standard library: `Borrow::borrow` (blanket), `Option::ok_or`, `Option` `Default`,
-  `Result::is_err`, `Result::map_err`, `&[T]` `Default`, `str::len`, `str::as_bytes`,
+- Standard library: `Option` `Default`,
+  `Result::is_err`, `&[T]` `Default`, `str::len`, `str::as_bytes`,
   `String::{with_capacity, push_str, push, as_bytes, from_utf8}`, `String` `PartialEq::eq`,
-  `Eq::assert_fields_are_eq`, `Clone`, `Hash::hash`, `Vec::is_empty`, `RandomState` `Clone` and
+  `Eq::assert_fields_are_eq`, `Clone`, `Hash::hash`, `RandomState` `Clone` and
   `build_hasher`, `DefaultHasher` `write` and `finish`, `HashMap::get` (first entry with an equal
   key, no hashing), `HashMap` `Clone`; structures `Duration`, `FromUtf8Error`, `HashMap`
-  (association list), `RandomState`, `DefaultHasher` (with `opaque ExtModel.sipHash13`).
+  (association list), `RandomState`, `DefaultHasher` (with `opaque ExtModel.sipHash13`). Until the
+  Aeneas upgrade of 2026-11-24 also `Borrow::borrow` (blanket), `Option::ok_or`,
+  `Result::map_err` and `Vec::is_empty`; these four are now defined in the Aeneas library (lead
+  decision N8), part of the Aeneas trust item, and their laws are unchanged up to the forced
+  renames.
 - Clock: environmental assumption, not modelled: `Utc::now` panics if the clock is before 1970
   or outside chrono's range.
 - Allocation failure is not modelled: `ok` from a `String`/`Vec` model means "returns, or aborts
@@ -441,8 +576,9 @@ Defects found in the plan, documents and tooling, with their state:
    a plain Mac. Found at S03. **Worked around** (`DYLD_FALLBACK_LIBRARY_PATH=/usr/lib`); not
    reported upstream.
 8. Aeneas `toStr` discharges its side condition with `decide +native` although a kernel proof
-   exists, adding the five native-code axioms. Found at S03/S04a. **Open** (upstream issue to be
-   filed by a human).
+   exists, adding the five native-code axioms. Found at S03/S04a. **Resolved** by the Aeneas
+   upgrade of 2026-11-24: the `toStr` of `nightly-2026.11.24-fb44cb4` checks it in the kernel, no
+   native-code axiom remains (reviewed and re-signed by the spec owner 2026-11-24 of the upgrade).
 9. Lean's `#print axioms` can omit axioms reached through inductive/constructor cycles. Found at
    S03. **Worked around**: the project's audit (`scripts/lean-axiom-audit.lean`) walks all
    constants and computes a superset.
@@ -846,8 +982,8 @@ Human decisions and actions:
   transitive crates could differ between the jobs. Committing a verification lockfile shared by
   both jobs is a human decision.
 - **Mathlib oleans** fetched by `lake exe cache get` are not digest-checked (scope decision).
-- **Upstream Aeneas `toStr` issue** (`Aeneas/Std/String.lean`): to be filed by a human; after a
-  fix and a rev bump, `native-axioms.lock` can be emptied.
+- **Upstream Aeneas `toStr` issue** (`Aeneas/Std/String.lean`): resolved upstream; the Aeneas
+  upgrade of 2026-11-24 emptied `native-axioms.lock` (reviewed and re-signed by the spec owner 2026-11-24).
 
 Accepted limits, still open (`formal/README.md`, "What CI checks"; the S03 evidence (git history at 223ff12)):
 - S03 X4: `Specs` imports `Proofs`, so a global instance or notation in `proofs/` could change a

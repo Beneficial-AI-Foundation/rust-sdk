@@ -3,13 +3,16 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.Model.RequestStateWire.Common
-import Proofs.Model.RequestStateWire.VersionOf
-import Proofs.Model.RequestState.OpenRs1At
-import Proofs.Model.RequestState.OpenRs2At
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.Model.RequestStateWire.Common
+public import Proofs.Model.RequestStateWire.VersionOf
+public import Proofs.Model.RequestState.OpenRs1At
+public import Proofs.Model.RequestState.OpenRs2At
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::open_at` (E11)

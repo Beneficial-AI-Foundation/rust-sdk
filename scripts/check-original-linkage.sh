@@ -181,14 +181,18 @@ python3 -I - "$SCR/out/Rmcp" "$ROOT/formal/translation/Rmcp" <<'PY'
 import os, re, sys
 scratch, committed = sys.argv[1:]
 src = re.compile(r"Source: '([^']*)', lines [0-9:-]+")
+macro_src = re.compile(r"macro invocation at: '([^']*)', lines [0-9:-]+")
 ALLOWED_SRC = ("crates/rmcp/src/", "/rustc/", "/cargo/registry/")
 head = re.compile(r"^(?:@\[.*?\]\s*)*(?:noncomputable |private |partial |unsafe )*"
-                  r"(def|theorem|axiom|opaque|structure|inductive|class|instance|abbrev)\b\s*(\S*)",
+                  r"(def|theorem|axiom|opaque|structure|inductive|class|instance|abbrev|impl_def)\b\s*(\S*)",
                   re.M | re.S)
-HEADER = re.compile(r"^(--|/-|import |open |set_option |namespace |end |noncomputable section|section)")
+HEADER = re.compile(r"^(--|/-|module$|import |public import |@\[expose\] public section$|open |set_option |namespace |end |noncomputable section|section)")
 def blocks(path):
     raw = open(path, encoding="utf-8").read()
-    return raw, [b for b in src.sub("Source: <normalised>", raw).split("\n\n") if b.strip()]
+    # Aeneas >= nightly-2026.11.24 adds "this code is generated from a macro invocation at: '…',
+    # lines …" to the Source field; its line numbers shift with patch 01 like the Source lines.
+    norm = macro_src.sub("macro invocation at: <normalised>", src.sub("Source: <normalised>", raw))
+    return raw, [b for b in norm.split("\n\n") if b.strip()]
 def heads(b):
     return [h[1] or "?" for h in head.findall(b)]
 FILES = ("Funs.lean", "Types.lean", "FunsExternal_Template.lean", "TypesExternal_Template.lean")
@@ -207,7 +211,7 @@ for fname in FILES:
         if not os.path.exists(p):
             sys.exit(f"[linkage] error: {p} missing (the templates: run scripts/aeneas-translate.sh first)")
     raw, mine = blocks(mine_path)
-    for path in src.findall(raw):
+    for path in src.findall(raw) + macro_src.findall(raw):   # both cited paths (N13)
         if "Template" in fname and path.startswith("crates/rmcp/src/"):
             sys.exit(f"[linkage] error: {fname} of the unmodified source declares an SDK item as "
                      f"external ({path!r}): its body is hidden from this check; reassess the Phase 2 "

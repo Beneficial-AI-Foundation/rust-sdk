@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Proofs.Model.NumberOrString
+module
+public import Defs
+public import Proofs.Model.NumberOrString
+
+@[expose] public section
 
 /-!
 # Internal spec file for crates/rmcp/src/model.rs (crate-internal functions: M06, M07)
@@ -33,18 +36,18 @@ Translated configuration (the proofs hold only for it): target `x86_64-unknown-l
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
 `transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
 Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true` (plan
-Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`,
-unmodified (plan Section 13).
+Section 1). Aeneas `nightly-2026.11.24-fb44cb4` (until 2026-11-24 `nightly-2026.08.20-5d08da4`).
+Line numbers refer to upstream `7caec76`, unmodified (plan Section 13).
 
 Definitions used: `Defs.JsonRpc` (`numericValue`) and `Defs.IntParse` (`Defs.parseI64`, through
 `numericValue`), both in the `Defs` library (`formal/specs/Defs/`).
 
 External models used (`trusted/Rmcp/FunsExternal.lean`): the models of the `Arc` deref (line
-761), `str::parse` (line 1023), `i64::from_str` (line 1009, through the S27 deferred law
+718), `str::parse` (line 985), `i64::from_str` (line 971, through the S27 deferred law
 `Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64` in
-`Proofs/Internal/External.lean`) and `Result::ok` (`core.result.Result.ok`, line 828); M07 also
-uses `Option`'s `PartialEq` (line 811) and the `Arc<str>` `PartialEq` (line 780), which calls the
-`str` equality `Str.Insts.CoreCmpPartialEqStr.eq` (line 735), and the derived `PartialEq` of
+`Proofs/Internal/External.lean`) and `Result::ok` (`core.result.Result.ok`, line 785); M07 also
+uses `Option`'s `PartialEq` (line 768) and the `Arc<str>` `PartialEq` (line 737), which calls the
+`str` equality `Str.Insts.CoreCmpPartialEqStr.eq` (line 692), and the derived `PartialEq` of
 `NumberOrString` (translated from line 304; no statement is about it). No statement reaches a
 native-code assumption.
 

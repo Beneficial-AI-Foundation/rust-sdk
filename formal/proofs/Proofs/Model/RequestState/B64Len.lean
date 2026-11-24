@@ -3,9 +3,12 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.B64Len
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.B64Len
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::b64_len` (E02)

@@ -3,10 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Proofs.Model.JsonRpcMessage
-import Proofs.Model.SamplingContent
-import Proofs.Model.Reference
+module
+public import Defs
+public import Proofs.Model.JsonRpcMessage
+public import Proofs.Model.SamplingContent
+public import Proofs.Model.Reference
+
+@[expose] public section
 
 /-!
 # Spec file for crates/rmcp/src/model.rs (Phase 2, public API: M01–M05, M09–M14, C03)
@@ -57,19 +60,21 @@ Translated configuration (the proofs hold only for it): target `x86_64-unknown-l
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
 `transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
 Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true` (plan
-Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`,
-unmodified (plan Section 13); the generated `Source:` lines of `model.rs` are two higher
+Section 1). Aeneas `nightly-2026.11.24-fb44cb4` (until 2026-11-24 `nightly-2026.08.20-5d08da4`).
+Line numbers refer to upstream `7caec76`, unmodified (plan Section 13); the generated `Source:` lines of `model.rs` are two higher
 (patch 01).
 
 Definitions used: `Defs.JsonRpc` (`kind`, `MessageKind`, `request`, `response`, `notification`,
 `error`) and `Defs.Bytes` (`Defs.utf8Bytes`).
 
 External models used (`trusted/Rmcp/FunsExternal.lean`): M13/M14 use the `String` deref model
-(line 749), which fails with `maximumSizeExceeded` for a Lean `String` of more than `Usize.max`
+(line 706), which fails with `maximumSizeExceeded` for a Lean `String` of more than `Usize.max`
 bytes (no Rust `String` is), hence their size premises and `_fail` companions; M10 uses
-`Vec::is_empty` (`alloc.vec.Vec.is_empty`, line 637) and M12 `<[T]>::first`
-(`core.slice.Slice.first`, line 842). No statement reaches a native-code assumption
-(`…_native.decide.ax_<n>`).
+`Vec::is_empty` (`alloc.vec.Vec.is_empty`; until 2026-11-24 a project model, since the Aeneas
+upgrade the Aeneas library's definition) and M12 `<[T]>::first` (`core.slice.Slice.first`,
+line 799). No statement reaches a native-code assumption (`…_native.decide.ax_<n>`); none
+exists since the Aeneas upgrade of 2026-11-24. 13 of the 18 `#print axioms` lists below changed
+in that upgrade (standard axioms added), re-signed by the spec owner in the batch of 2026-11-24.
 
 From the Aeneas library (`Aeneas/Std/Vec.lean`; definitions, not trusted models): M09 uses
 `<[T]>::into_vec` (`alloc.slice.Slice.into_vec`), M11 `Vec::len` (`alloc.vec.Vec.len`) and M12
@@ -104,7 +109,7 @@ theorem Theorems.model.JsonRpcMessage.into_request
   rmcp.model.JsonRpcMessage.into_request_spec self
 
 /--
-info: 'Theorems.model.JsonRpcMessage.into_request' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.JsonRpcMessage.into_request' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.JsonRpcMessage.into_request
@@ -120,7 +125,7 @@ theorem Theorems.model.JsonRpcMessage.into_response
   rmcp.model.JsonRpcMessage.into_response_spec self
 
 /--
-info: 'Theorems.model.JsonRpcMessage.into_response' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.JsonRpcMessage.into_response' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.JsonRpcMessage.into_response
@@ -135,7 +140,7 @@ theorem Theorems.model.JsonRpcMessage.into_notification {Req Resp Noti : Type}
   rmcp.model.JsonRpcMessage.into_notification_spec self
 
 /--
-info: 'Theorems.model.JsonRpcMessage.into_notification' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.JsonRpcMessage.into_notification' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.JsonRpcMessage.into_notification
@@ -151,7 +156,7 @@ theorem Theorems.model.JsonRpcMessage.into_error
   rmcp.model.JsonRpcMessage.into_error_spec self
 
 /--
-info: 'Theorems.model.JsonRpcMessage.into_error' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.JsonRpcMessage.into_error' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.JsonRpcMessage.into_error
@@ -171,7 +176,7 @@ theorem Theorems.model.JsonRpcMessage.into_result
   rmcp.model.JsonRpcMessage.into_result_spec self
 
 /--
-info: 'Theorems.model.JsonRpcMessage.into_result' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.JsonRpcMessage.into_result' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.JsonRpcMessage.into_result
@@ -199,7 +204,7 @@ theorem Theorems.model.SamplingContent.is_empty {T : Type} (self : model.Samplin
   rmcp.model.SamplingContent.is_empty_spec self
 
 /--
-info: 'Theorems.model.SamplingContent.is_empty' depends on axioms: [propext]
+info: 'Theorems.model.SamplingContent.is_empty' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.SamplingContent.is_empty
@@ -227,7 +232,7 @@ theorem Theorems.model.SamplingContent.first {T : Type} (self : model.SamplingCo
   rmcp.model.SamplingContent.first_spec self
 
 /--
-info: 'Theorems.model.SamplingContent.first' depends on axioms: [propext]
+info: 'Theorems.model.SamplingContent.first' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.SamplingContent.first
@@ -243,7 +248,7 @@ theorem Theorems.model.Reference.as_prompt_name (self : model.Reference)
   rmcp.model.Reference.as_prompt_name_spec self h_size
 
 /--
-info: 'Theorems.model.Reference.as_prompt_name' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.Reference.as_prompt_name' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.Reference.as_prompt_name
@@ -256,7 +261,7 @@ theorem Theorems.model.Reference.as_prompt_name_fail (p : model.PromptReference)
   rmcp.model.Reference.as_prompt_name_fail p h_big
 
 /--
-info: 'Theorems.model.Reference.as_prompt_name_fail' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.Reference.as_prompt_name_fail' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.Reference.as_prompt_name_fail
@@ -272,7 +277,7 @@ theorem Theorems.model.Reference.as_resource_uri (self : model.Reference)
   rmcp.model.Reference.as_resource_uri_spec self h_size
 
 /--
-info: 'Theorems.model.Reference.as_resource_uri' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.Reference.as_resource_uri' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.Reference.as_resource_uri
@@ -285,7 +290,7 @@ theorem Theorems.model.Reference.as_resource_uri_fail (r : model.ResourceTemplat
   rmcp.model.Reference.as_resource_uri_fail r h_big
 
 /--
-info: 'Theorems.model.Reference.as_resource_uri_fail' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.Reference.as_resource_uri_fail' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.Reference.as_resource_uri_fail
@@ -345,7 +350,7 @@ theorem Theorems.model.JsonRpcMessage.exactly_one_some
   rmcp.model.JsonRpcMessage.exactly_one_some self
 
 /--
-info: 'Theorems.model.JsonRpcMessage.exactly_one_some' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.model.JsonRpcMessage.exactly_one_some' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.JsonRpcMessage.exactly_one_some
@@ -363,7 +368,7 @@ theorem Theorems.model.into_result_eq {Req Resp Noti : Type}
   rmcp.model.into_result_eq m
 
 /--
-info: 'Theorems.model.into_result_eq' depends on axioms: [propext]
+info: 'Theorems.model.into_result_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.model.into_result_eq

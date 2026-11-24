@@ -3,12 +3,15 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Defs.RequestState
-import Proofs.External.Std
-import Proofs.Model.RequestStateWire.CheckKidLen
-import Proofs.Model.RequestState.Common
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Defs.RequestState
+public import Proofs.External.Std
+public import Proofs.Model.RequestStateWire.CheckKidLen
+public import Proofs.Model.RequestState.Common
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::validate_config_kid` (E04)

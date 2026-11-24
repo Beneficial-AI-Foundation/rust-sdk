@@ -3,10 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Aeneas
-import Rmcp.Types
-import Rmcp.FunsExternal
-import Defs.Wire
+module
+public import Aeneas
+public import Rmcp.Types
+public import Rmcp.FunsExternal
+public import Defs.Wire
+
+@[expose] public section
 
 /-!
 # Codec state, keys and expected opening results (E07–E11)
@@ -39,7 +42,7 @@ open Defs.Wire
 an association list `entries`). -/
 abbrev KeyTable : Type :=
   std.collections.hash.map.HashMap String (zeroize.Zeroizing (alloc.vec.Vec U8))
-    std.hash.random.RandomState Global
+    std.hash.random.RandomState alloc.alloc.Global
 
 /-- The key ids of a key table, in table order. -/
 def keyIds (keys : KeyTable) : List String := keys.entries.map Prod.fst

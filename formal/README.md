@@ -7,16 +7,24 @@ the day-to-day rules are in [`docs/WORKFLOW_AND_PR_GUIDE.md`](../docs/WORKFLOW_A
 In short (S19, 2026-11-23): all 25 targets are specified, signed off and proved, about the
 patched copy: upstream `origin/main` `7caec76` plus translation patch
 `trusted/patches/01-request-state-wire.patch` (D2 fallback, human decision 2026-11-23; every
-target `patch-01`); the trusted base has that patch, no trusted axiom and five locked native-code
-axioms; see "Results" in `docs/STATUS.md`.
+target `patch-01`); the trusted base has that patch and no trusted axiom (until 2026-11-24 also
+five locked native-code axioms); see "Results" in `docs/STATUS.md`.
 
 Phase 2 (S37, 2026-11-24): 25 more existing SDK functions (M01–M14, T01–T08, A01–A03) are
 specified, signed off and proved on **unmodified** upstream `7caec76` (linkage `ORIGINAL`, checked
 by `scripts/check-original-linkage.sh`, locally so far), with the composition theorems C01–C05;
 the trusted base adds the `core::net`, integer-parsing and string/`Option` models (still no trusted
-axiom), 30 more locked `toStr` native-code axioms (35 in all) and the test-only patch 02; two
-bugs were found (H7, H8). Start reading at [`specs/README.md`](specs/README.md); full report:
+axiom) and the test-only patch 02 (until 2026-11-24 also 30 more locked `toStr` native-code
+axioms, 35 in all); two bugs were found (H7, H8). Start reading at [`specs/README.md`](specs/README.md); full report:
 "Phase 2" → "Phase 2 results" in `docs/STATUS.md`.
+
+Aeneas upgrade (2026-11-24, human decision "full migration"; **pending review and human
+re-sign-off**): the toolchain moved from Aeneas `nightly-2026.08.20-5d08da4` / Lean 4.31 / Rust
+`nightly-2026-06-01` to Aeneas `nightly-2026.11.24-fb44cb4` (Charon `0.1.324`) / Lean and Mathlib
+4.36 / Rust `nightly-2026-09-17`. The new Aeneas `toStr` needs no native code, so no project
+constant depends on a native-code axiom and `trusted/native-axioms.lock` is empty; every
+`#print axioms` list is now within `[propext, Classical.choice, Quot.sound]`. See "Aeneas upgrade
+(2026-11-24)" in `docs/STATUS.md`.
 
 ## Translated configuration
 
@@ -50,9 +58,9 @@ change the build, so the script also refuses to run when:
 - the toolchain actually selected is not the pinned nightly: after setting `RUSTUP_TOOLCHAIN`
   to the bundle's channel, `rustc -vV` (the `rustc` cargo runs, whose sysroot provides the
   `librustc_driver` that `charon-driver` loads) must report commit-hash
-  `14210df0e27ccd7d9e6a05b8085cbd438e4bbc65`, commit-date `2026-05-31`, release
-  `1.98.0-nightly` (nightly-2026-06-01), and `charon toolchain-version` must print the bundle's
-  channel. This catches a `RUSTUP_HOME` whose `nightly-2026-06-01` is another toolchain; a fake
+  `923c95cdf5ba65cea505aa2ea829f578e1506ed8`, commit-date `2026-09-16`, release
+  `1.100.0-nightly` (nightly-2026-09-17), and `charon toolchain-version` must print the bundle's
+  channel. This catches a `RUSTUP_HOME` whose `nightly-2026-09-17` is another toolchain; a fake
   `rustc` that prints exactly these lines is not caught by asking it (`charon-driver` would then
   not find its `librustc_driver`);
 - a `.cargo/config` or `.cargo/config.toml` exists in the source (`apply-patches.sh` refuses it
@@ -80,29 +88,39 @@ settings (`start_from`, `exclude`, `opaque`) are in `[package.metadata.charon]` 
 `crates/rmcp/Cargo.toml`, each entry with its reason (plan Section 9). The pinned Charon reads
 them itself. The translate script fails if that table has any other key (Charon would ignore a
 misspelt key, and accepts keys such as `include` or `rustc.flags` that widen the translation)
-or an empty list, if the options recorded in the LLBC file differ from the lists or widen the
-translation, or if the LLBC was produced for another target.
+or an empty list, or if the LLBC was produced for another target. Since Charon `0.1.324` (Aeneas
+upgrade of 2026-11-24, lead decision N1) the LLBC no longer records Charon's options
+(`translated.options`, which the script compared with the lists until then); instead the script
+requires the LLBC to record the preset `Aeneas` and `runtime_checks.overflow_checks = true`, and
+checks the translated items in `translation.json` against the lists: no item matches an
+`exclude` pattern, every function matching an `opaque` pattern has no body and every local
+function without a body matches an `opaque` pattern, every type or global matching an `opaque`
+pattern is emitted into an `*External_Template.lean` file and every local one emitted there
+matches an `opaque` pattern, and every `start_from` pattern matches at
+least one item. Charon reads no other source of options (`CHARON_*` is refused and the command
+line is fixed by the script).
 
 ## Toolchain
 
 The toolchain pin is the Aeneas release tag in `lakefile.toml` (`rev`), at present
-`nightly-2026.08.20-5d08da4`; the bundle components below follow from it. The Lean
+`nightly-2026.11.24-fb44cb4` (until 2026-11-24 `nightly-2026.08.20-5d08da4`); the bundle
+components below follow from it. The Lean
 dependencies are pinned by commit in `lake-manifest.json`, and `scripts/lean-guard.sh sources`
 fails unless the manifest lists exactly the recorded packages at the recorded commits: Aeneas at
-`5d08da45a405913bbee6fd544e01debf8154ac9d` with `url`, `inputRev` and `subDir` equal to the
-lakefile's `git`, `rev` and `subDir`; Mathlib at `fabf563a7c95a166b8d7b6efca11c8b4dc9d911f`
-(`v4.31.0`); and the eight packages Mathlib brings in (`MANIFEST_PACKAGES` in
+`fb44cb400eb6bfe7dce97422ebe8fa748b7e4f9b` with `url`, `inputRev` and `subDir` equal to the
+lakefile's `git`, `rev` and `subDir`; Mathlib at `fc4f59e577feb1a4956671bc04ac18aaaf8cd842`
+(`v4.36.0`); and the eight packages Mathlib brings in (`MANIFEST_PACKAGES` in
 `scripts/lean_guard.py`, updated in the same PR as the Aeneas rev), and unless `lean-toolchain` is
-exactly `leanprover/lean4:v4.31.0` (`LEAN_TOOLCHAIN`, same rule). Whether the Mathlib pin and
+exactly `leanprover/lean4:v4.36.0` (`LEAN_TOOLCHAIN`, same rule). Whether the Mathlib pin and
 its prebuilt oleans belong to the trusted base, and how they are checked, is an open scope
 question for the human (the S03 evidence (git history at 223ff12), open items).
 
 | Component | Version | Source |
 |---|---|---|
-| Aeneas | `nightly-2026.08.20-5d08da4` (commit `5d08da45`) | `rev` in `lakefile.toml` |
-| Charon | `0.1.235` (commit `f5208b1c`) | release bundle |
-| Rust | `nightly-2026-06-01` | the bundle's `rust-toolchain` |
-| Lean | `v4.31.0` (Mathlib `v4.31.0`) | the bundle's `backends/lean/lean-toolchain`, copied to `lean-toolchain` |
+| Aeneas | `nightly-2026.11.24-fb44cb4` (commit `fb44cb40`) | `rev` in `lakefile.toml` |
+| Charon | `0.1.324` (commit `695be3d6`) | release bundle |
+| Rust | `nightly-2026-09-17` | the bundle's `rust-toolchain` |
+| Lean | `v4.36.0` (Mathlib `v4.36.0`) | the bundle's `backends/lean/lean-toolchain`, copied to `lean-toolchain` |
 
 The release assets are checked against the sha256 values committed in
 `trusted/aeneas-bundle.sha256` (see Trusted base, Tools).
@@ -163,7 +181,7 @@ In `formal/`:
 ```bash
 lake exe cache get
 ../scripts/lean-guard.sh sources
-set -o pipefail; lake build 2>&1 | tee .lake/build.log    # .lake/ is git-ignored
+set -o pipefail; lake build --wfail 2>&1 | tee .lake/build.log    # .lake/ is git-ignored
 ../scripts/lean-guard.sh build-log .lake/build.log
 ../scripts/lean-guard.sh axioms            # only after a successful lake build
 ../scripts/lean-guard.sh aeneas-archive
@@ -178,11 +196,11 @@ source hash recorded in Lake's `.trace` file with the current file), but an `.ol
 an earlier build of a module that the roots no longer import is simply not audited, and a
 failed build can leave older `.olean` files of the modules it did not reach.
 
-The build gate (decided at S03): every library sets `warningAsError`, and CI runs a plain
-`lake build`, which fails on any warning in this project's modules, including `sorry`.
-`lake build --wfail` is not used because the pinned Aeneas Lean library has four `sorry`
-warnings that Lake replays on every build (`Aeneas/Std/Slice.lean:363,586`,
-`Aeneas/Std/StringIter.lean:12,15`; the S03 evidence (git history at 223ff12)) and `--wfail` fails on them.
+The build gate (decided at S03): every library sets `warningAsError`, and CI runs
+`lake build --wfail`, which fails on any warning in this project's modules, including `sorry`,
+and on any warning replayed from a dependency. Up to Aeneas `nightly-2026.08.20-5d08da4` the
+library had four `sorry` warnings and a plain `lake build` was used; `nightly-2026.11.24-fb44cb4`
+has none (lead decision N10).
 
 A file could switch `warningAsError` off, hide messages (`#guard_msgs (drop all) in`) or use a
 construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the checks are in
@@ -196,7 +214,7 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
   `leanOptions` or `moreLeanArgs`-style key at any level); or if `lakefile.lean` exists;
 - `lake-manifest.json` does not list exactly the recorded packages at the recorded commits (see
   Toolchain);
-- `lean-toolchain` is not exactly `leanprover/lean4:v4.31.0` (`LEAN_TOOLCHAIN` in
+- `lean-toolchain` is not exactly `leanprover/lean4:v4.36.0` (`LEAN_TOOLCHAIN` in
   `scripts/lean_guard.py`, updated in the same PR as the Aeneas rev; elan runs whatever toolchain
   this file names, so CI checks it before elan is installed); git tracks anything under a `.lake`
   directory below `formal/` (Lake loads a committed `.lake/config/<idx>/lakefile.olean` as
@@ -259,19 +277,21 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
 - a file under `trusted/` contains, outside comments, string and character literals, an
   identifier whose first component is `rmcp` (also `_root_.rmcp…`, `«rmcp»…`) or the keyword
   `export`, except in a line that is exactly `open rmcp` (see "Trusted base");
-- the `lake build` log has a line with `warning:` or `error:` other than the four Aeneas lines
-  above, or no "Build completed successfully" line;
+- the `lake build` log has any line with `warning:` or `error:` (the allowlist, until 2026-11-24
+  the four Aeneas-library `sorry` lines, is empty), or no "Build completed successfully" line;
 - (`axioms`) `.lake/build/lib/lean` holds anything but modules named `Rmcp`, `Defs`, `Proofs`,
   `Specs` or below them; a project `.olean` is stale; the constants declared in the modules of
   this project reached from the default targets depend (one order-independent walk over all of
   them, through types, values and whole inductive blocks; a superset of what `#print axioms`
   reports) on an axiom other than `propext`, `Classical.choice`, `Quot.sound`, the axioms declared
-  in the roots of `RmcpExternal` and the `toStr` native-code axioms of `Rmcp.Types`/`Rmcp.Funs`
-  (next item; locked if used; nothing else native) (this catches `sorryAx`, also when inherited
+  in the roots of `RmcpExternal` and `toStr` native-code axioms of `Rmcp.Types`/`Rmcp.Funs`
+  (next item; locked if used; nothing else native; since Aeneas `nightly-2026.11.24-fb44cb4` the
+  translation declares none) (this catches `sorryAx`, also when inherited
   from the Aeneas library, and the `_native` axioms of `native_decide`/`decide +native`); a root of
   `RmcpExternal` declares a name in the namespace `rmcp` or adds an
   alias (see "Trusted base"); or the kernel rejects a project constant when all of them are replayed
-  (`Lean.Environment.replay`, the check `leanchecker` runs) onto the non-project modules they
+  (`Lean.Kernel.Environment.replay` since the Lean 4.36 port, lead decision N11; the check
+  `leanchecker` runs) onto the non-project modules they
   import. The replay catches declarations that were added without a kernel check (for example
   through `debug.skipKernelTC` set from a metaprogram, the S03 evidence (git history at 223ff12), V1) and altered
   `.olean` files. The audit reads the `.olean` files without running any code from them
@@ -316,7 +336,7 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
   `native_decide` declare, or `Lean.trustCompiler`) is a trust item of its own, listed
   separately in the audit output. The project constants may reach one (by the walk of the
   previous item over all of them) only if its statement is exactly the side condition of the
-  pinned Aeneas `toStr` for one string literal,
+  Aeneas `toStr` (as declared up to `nightly-2026.08.20-5d08da4`) for one string literal,
   `decide ("…".toByteArray.size ≤ Aeneas.Std.U32.max) = true`, and it is declared in
   `Rmcp.Types` or `Rmcp.Funs` (the generated modules; any other native-code axiom, including a
   `toStr` side condition from hand-written code in `Proofs`, `Specs`, `Defs` or `trusted/`,
@@ -338,12 +358,13 @@ construct the kernel does not check, so `scripts/lean-guard.sh` (run by CI; the 
   entries for `Rmcp.Types`/`Rmcp.Funs` are reported as not checked (entries for any other module
   fail) and any `axioms.lock` entry fails as stale, even when `.olean` files of `Rmcp` exist from
   an explicit `lake build Rmcp RmcpExternal`. Since S06 the proof modules import `Rmcp.Funs`, so
-  both are audited (S19: 46 project modules, 2110 constants). The lock holds the five string
-  literals of the target code (`VERSION_V1`, `VERSION_V2`, `KID_EMPTY_MSG`, `KID_TOO_LONG_MSG`,
-  the `expect` message in `rs1_fallbacks_verify`). These side conditions also have a kernel proof
-  (`simp only [U32.max, U32.numBits, UScalarTy.numBits]; decide`, axioms `[propext]`), so an
-  upstream Aeneas `toStr` fix and a rev bump would remove the axioms; that is preferred to a
-  local replacement (open item, the S04a evidence (git history at 223ff12));
+  both are audited (S19: 46 project modules, 2110 constants). The lock is **empty** since the
+  Aeneas upgrade of 2026-11-24 (lead decision N5): the `toStr` of `nightly-2026.11.24-fb44cb4`
+  discharges the length side condition in the kernel, so the translation declares no native-code
+  axiom. Until then it held the `toStr` side conditions of the string literals of the target code
+  (five in Phase 1: `VERSION_V1`, `VERSION_V2`, `KID_EMPTY_MSG`, `KID_TOO_LONG_MSG`, the `expect`
+  message in `rs1_fallbacks_verify`; 30 more in Phase 2, 35 in all); the rules of this item still
+  apply to any native-code axiom that appears again;
 - the Aeneas Lean-library archive downloaded by Lake does not match its committed sha256, the
   installed Aeneas build and the archive do not hold the same regular files with the same bytes
   (every file except `*.hash` and `*.trace`: `.olean`, `.olean.private`, `.olean.server`,
@@ -360,7 +381,7 @@ and elaboration can run code that rewrites files of the runner (a `#eval` writin
   under a `.lake` directory) and `lean-guard.sh sources` (lean-toolchain, lakefile, manifest,
   sources), both plain Python before elan is installed and before any `lean` or `lake`
   command; pinned elan, and the Lean toolchain installed by its name
-  (`leanprover/lean4:v4.31.0`, not read from the file); `lake exe cache get`, `lake build` into
+  (`leanprover/lean4:v4.36.0`, not read from the file); `lake exe cache get`, `lake build --wfail` into
   `.lake/build.log`, then `.lake/build` and the log are uploaded as one tar file. Only this job
   restores the `.lake/packages` cache; `.lake/build` is never cached.
 - `check` (`needs: build`): a fresh runner and checkout, so the scripts come from git; `fresh`
@@ -504,8 +525,8 @@ code without any `rmcp` name. Reviewers of `trusted/` check imports, notation an
 until this is enforced. The exclusions and opaque items are those of plan Section 2.3 and
 Section 9 (S04a part 2 adds the derived `Debug` impls to `exclude`, human decision
 2026-11-22). The trusted-base section of `docs/STATUS.md` is authoritative (current counts: 0
-trusted axioms, 35 locked native-code axioms (5 Phase 1, 30 Phase 2, H2), 5 `opaque` constants
-since S26/S27).
+trusted axioms, 0 native-code axioms (35 locked until the Aeneas upgrade of 2026-11-24: 5 Phase 1,
+30 Phase 2, H2), 5 `opaque` constants since S26/S27).
 
 ### Tools
 

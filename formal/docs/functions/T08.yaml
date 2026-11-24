@@ -11,7 +11,7 @@ proof_file: formal/proofs/Proofs/Transport/Tower.lean
 spec_file: formal/proofs/Proofs/Internal/Transport/StreamableHttpServer/Tower.lean
 theorem: rmcp.transport.streamable_http_server.tower.AllowedPort.matches_spec  # restated as Theorems.tower.AllowedPort.matches
 used_by: []  # Phase 2 targets/composition theorems consuming this theorem (plan Section 16)
-axioms: [propext, Classical.choice, Quot.sound, rmcp.transport.streamable_http_server.tower.default_port._native.decide.ax_1, rmcp.transport.streamable_http_server.tower.default_port._native.decide.ax_2]  # as printed by `#print axioms` in the spec file
+axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file; list changed in the Aeneas upgrade (2026-11-24, nightly-2026.11.24-fb44cb4: standard axioms added and/or native-code axioms dropped), re-signed by the spec owner in the batch re-sign-off of 2026-11-24
 evidence: [formal/docs/STATUS.md]
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/Transport.lean (S24)
 spec_reviews:

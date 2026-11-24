@@ -3,21 +3,24 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Defs.Wire
-import Proofs.Defs.RequestState
-import Defs.CodecState
-import Proofs.Model.RequestState.OpenAuthenticatedBody
-import Proofs.Model.RequestState.ValidateKeyLength
-import Proofs.Model.RequestState.ValidateConfigKid
-import Proofs.Model.RequestState.B64Len
-import Proofs.Model.RequestState.OpenAt
-import Proofs.Model.RequestState.SealRs1
-import Proofs.Model.RequestState.SealRs2
-import Proofs.Model.RequestState.OpenRs1At
-import Proofs.Model.RequestState.Rs1FallbacksVerify
-import Proofs.Model.RequestState.OpenRs2At
-import Proofs.Model.RequestState.Roundtrip
+module
+public import Defs
+public import Defs.Wire
+public import Proofs.Defs.RequestState
+public import Defs.CodecState
+public import Proofs.Model.RequestState.OpenAuthenticatedBody
+public import Proofs.Model.RequestState.ValidateKeyLength
+public import Proofs.Model.RequestState.ValidateConfigKid
+public import Proofs.Model.RequestState.B64Len
+public import Proofs.Model.RequestState.OpenAt
+public import Proofs.Model.RequestState.SealRs1
+public import Proofs.Model.RequestState.SealRs2
+public import Proofs.Model.RequestState.OpenRs1At
+public import Proofs.Model.RequestState.Rs1FallbacksVerify
+public import Proofs.Model.RequestState.OpenRs2At
+public import Proofs.Model.RequestState.Roundtrip
+
+@[expose] public section
 
 /-!
 # Internal spec file for crates/rmcp/src/model/request_state.rs (Phase 1: E01–E11, round trips)
@@ -85,8 +88,8 @@ Translated configuration (the proofs hold only for it): target `x86_64-unknown-l
 `transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (widened for
 Phase 2, plan Section 15; the translation of this file's targets is unchanged), with
 `overflow-checks=true` and `debug-assertions=true` (plan Section 1), so arithmetic overflow
-panics, which Aeneas models as failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation
-base is the patched copy (patch 01 on origin/main 7caec76,
+panics, which Aeneas models as failure. Aeneas `nightly-2026.11.24-fb44cb4` (until 2026-11-24
+`nightly-2026.08.20-5d08da4`); the translation base is the patched copy (patch 01 on origin/main 7caec76,
 `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23; translation
 committed at `9bd8144`). Line numbers refer to `request_state.rs` in the patched copy.
 
@@ -99,10 +102,12 @@ public statements too) and `Proofs.Defs.RequestState` (`formal/proofs/Proofs/Def
 `lookupKey`).
 
 External models used (S08–S09, `trusted/Rmcp/FunsExternal.lean`): E04 uses the model of
-`core.str.Str.len` (the byte length of the `Str`). E04 also depends on the native-code
-assumptions `KID_EMPTY_MSG._native.decide.ax_1` and `KID_TOO_LONG_MSG._native.decide.ax_1`, which
-the pinned Aeneas `toStr` declares for the two message literals of the translation (listed in
-`trusted/native-axioms.lock`; any statement about `validate_config_kid` reaches them).
+`core.str.Str.len` (the byte length of the `Str`). Until the Aeneas upgrade of 2026-11-24, E04
+also depended on the native-code assumptions `KID_EMPTY_MSG._native.decide.ax_1` and
+`KID_TOO_LONG_MSG._native.decide.ax_1`, which the Aeneas `toStr` of `nightly-2026.08.20-5d08da4`
+declared for the two message literals of the translation; the `toStr` of
+`nightly-2026.11.24-fb44cb4` checks the length in the kernel and declares none
+(`trusted/native-axioms.lock` is empty).
 
 External models used by E07–E11 and E09a: `ExtModel.utf8`, `ExtModel.b64`, `ExtModel.b64Decode`,
 `ExtModel.hmacSha256`, `ExtModel.maxStringBytes`, `ExtModel.strOfBytes?`. Stated exceptions (plan
@@ -113,11 +118,13 @@ transcript `Vec` is modelled up to `Usize.max` bytes where Rust panics above `is
 such inputs a statement promises a result where the Rust code panics. In E07/E08, `h_len` is (T),
 the bound of the Lean model of `Vec::extend_from_slice` on the transcript, and `h_cap` is (C), the
 `String` capacity limit `isize::MAX` above which `String::with_capacity` panics (capacity
-overflow); it also keeps the `usize` sum from overflowing. E07 and E08 reach the
+overflow); it also keeps the `usize` sum from overflowing. No statement here reaches a
+native-code assumption since the Aeneas upgrade of 2026-11-24. Until then E07 and E08 reached the
 locked native-code assumptions `VERSION_V1._native.decide.ax_1` and
-`VERSION_V2._native.decide.ax_1`;
-E09, E09a and E11 reach `RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`;
-E10 reaches none (all in `trusted/native-axioms.lock`).
+`VERSION_V2._native.decide.ax_1`, and E09, E09a and E11 reached
+`RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`; E10 reached none. The 10
+`#print axioms` lists below that changed in that upgrade (native-code assumptions dropped) await
+the human batch re-sign-off.
 
 Statements here, in Rust source order: E11 (line 559), E07 (572), E08 (585), E09 (607),
 E09a (644), E10 (659) (S11, S13, S14), then E01 (695), E03 (704), E04 (714), E02 (725) (S07).
@@ -130,10 +137,11 @@ Composition theorems last (S15, proofs in `Proofs/Model/RequestState/Roundtrip.l
 sealing terminates, that some `Str` holds the token's bytes, and that opening any such `Str`
 returns `Ok (body[8..])`, under the plan Section 3 round-trip conditions and the seal statements'
 own size premises. Signed off by the spec owner on 2026-11-23 after two review rounds
-(the S15 evidence, git history at 223ff12). The rs1 ones reach `VERSION_V1._native.decide.ax_1`
-and `RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`; `rs2_roundtrip`
-reaches `VERSION_V2._native.decide.ax_1`; `open_at_roundtrip_rs2` reaches both `VERSION_V2…` and
-`…ax_3`.
+(the S15 evidence, git history at 223ff12). Until the Aeneas upgrade of 2026-11-24 the rs1 ones
+reached `VERSION_V1._native.decide.ax_1` and
+`RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`, `rs2_roundtrip`
+reached `VERSION_V2._native.decide.ax_1` and `open_at_roundtrip_rs2` both `VERSION_V2…` and
+`…ax_3`; since then they reach no native-code assumption.
 -/
 
 open Aeneas Aeneas.Std Result
@@ -165,10 +173,7 @@ theorem Theorems.request_state.RequestStateCodec.open_at
     h_len1 h_len2 h_fallbacks
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.open_at' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+info: 'Theorems.request_state.RequestStateCodec.open_at' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.open_at
@@ -191,10 +196,7 @@ theorem Theorems.request_state.RequestStateCodec.seal_rs1 (key : Slice Std.U8)
   rmcp.model.request_state.RequestStateCodec.seal_rs1_spec key associated_data body h_len h_cap
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.seal_rs1' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V1._native.decide.ax_1]
+info: 'Theorems.request_state.RequestStateCodec.seal_rs1' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.seal_rs1
@@ -221,10 +223,7 @@ theorem Theorems.request_state.RequestStateCodec.seal_rs2 (kid : Str) (key : Sli
     h_cap
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.seal_rs2' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V2._native.decide.ax_1]
+info: 'Theorems.request_state.RequestStateCodec.seal_rs2' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.seal_rs2
@@ -247,10 +246,7 @@ theorem Theorems.request_state.RequestStateCodec.open_rs1_at (self : RequestStat
     h_count h_len h_fallbacks
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.open_rs1_at' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+info: 'Theorems.request_state.RequestStateCodec.open_rs1_at' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.open_rs1_at
@@ -270,8 +266,7 @@ theorem Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify (keys : Ke
 /--
 info: 'Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify' depends on axioms: [propext,
  Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify
@@ -367,9 +362,7 @@ theorem Theorems.request_state.RequestStateCodec.validate_config_kid (kid : Str)
 /--
 info: 'Theorems.request_state.RequestStateCodec.validate_config_kid' depends on axioms: [propext,
  Classical.choice,
- Quot.sound,
- KID_EMPTY_MSG._native.decide.ax_1,
- KID_TOO_LONG_MSG._native.decide.ax_1]
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.validate_config_kid
@@ -415,11 +408,7 @@ theorem Theorems.request_state.RequestStateCodec.rs1_roundtrip (self : RequestSt
     h_len h_cap h_body h_expiry h_key h_fallbacks
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.rs1_roundtrip' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V1._native.decide.ax_1,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+info: 'Theorems.request_state.RequestStateCodec.rs1_roundtrip' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.rs1_roundtrip
@@ -453,10 +442,7 @@ theorem Theorems.request_state.RequestStateCodec.rs2_roundtrip (self : RequestSt
     now_ms kidStr h_len h_cap h_body h_expiry h_kid_utf8 h_kid_len h_key
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.rs2_roundtrip' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V2._native.decide.ax_1]
+info: 'Theorems.request_state.RequestStateCodec.rs2_roundtrip' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.rs2_roundtrip
@@ -490,9 +476,7 @@ theorem Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1 (self : R
 /--
 info: 'Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1' depends on axioms: [propext,
  Classical.choice,
- Quot.sound,
- VERSION_V1._native.decide.ax_1,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1
@@ -528,9 +512,7 @@ theorem Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2 (self : R
 /--
 info: 'Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2' depends on axioms: [propext,
  Classical.choice,
- Quot.sound,
- VERSION_V2._native.decide.ax_1,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+ Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2

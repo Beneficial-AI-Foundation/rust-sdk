@@ -3,10 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.DecodeExpiry
-import Proofs.Model.RequestStateWire.IsExpired
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.DecodeExpiry
+public import Proofs.Model.RequestStateWire.IsExpired
+
+@[expose] public section
 
 /-!
 # Spec theorem for `open_frame` (W14)
@@ -52,15 +55,16 @@ theorem open_frame_spec (body : Slice U8) (now_ms : I64) :
       rw [i9_post, bodyExpiry, expiryLen]
       congr 2
       apply List.ext_getElem
-      · simp only [List.length_take, List.Vector.length_val, UScalar.ofNatCore_val_eq, inf_eq_left]
+      · simp only [List.length_take, Array.make_val, List.length_cons, List.length_nil]
+        simp only [Slice.length] at hlen
         omega
       · intro n h1 h2
         simp only [List.length_take] at h1
         have : n < 8 := by omega
         rcases n with _ | _ | _ | _ | _ | _ | _ | _ | n
-        all_goals first | omega | simp only [zero_add, Nat.reduceAdd, List.getElem_take, Array.make,
-          List.getElem_cons_succ, List.getElem_cons_zero, i1_post, i2_post, i3_post, i4_post,
-          i5_post, i6_post, i7_post, i8_post]
+        all_goals first | omega | simp only [zero_add, Nat.reduceAdd, List.getElem_take,
+          Array.make_val, i1_post, i2_post, i3_post, i4_post, i5_post, i6_post, i7_post, i8_post,
+          List.getElem_cons_zero, List.getElem_cons_succ]
     rw [hE]
     simp_all only [true_eq_decide_iff, false_eq_decide_iff, Bool.not_eq_true, Slice.length,
       List.length_drop, expiryLen, not_false_eq_true, and_self]

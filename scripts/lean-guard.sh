@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Guards around `lake build` for the Lean project in formal/ (plan Section 5, "CI").
 #
-# The build gate is `warningAsError` in every library plus a plain `lake build`
-# (`--wfail` is unusable: it fails on four `sorry` warnings replayed from the pinned
-# Aeneas library). A file could switch the option off, hide messages, add declarations
+# The build gate is `warningAsError` in every library plus `lake build --wfail` (usable
+# again since Aeneas nightly-2026.11.24-fb44cb4, whose library replays no warning). A file could switch the option off, hide messages, add declarations
 # without a kernel check, or run code during the build, so CI also runs the subcommands
 # below. The checks are in scripts/lean_guard.py (run with `python3 -I`, Python >= 3.11) and
 # scripts/lean-axiom-audit.lean. In CI (.github/workflows/lean-build.yml) both jobs run
@@ -20,7 +19,9 @@
 #       its trace is loaded and run by Lake at its first command).
 #
 #   scripts/lean-guard.sh sources
-#       0. formal/lean-toolchain is exactly leanprover/lean4:v4.31.0 (LEAN_TOOLCHAIN in
+#       First `lean_guard.py selftest` (the two exact exemptions of step 3: the Aeneas
+#       macro-site phrase in generated docstrings and the one dupNamespace option in trusted/).
+#       0. formal/lean-toolchain is exactly leanprover/lean4:v4.36.0 (LEAN_TOOLCHAIN in
 #          lean_guard.py, updated with the Aeneas rev); git tracks nothing under a `.lake`
 #          directory below formal/ (skipped with a note outside a git work tree); no `.lake`
 #          directory below formal/ other than formal/.lake; no file named with a case
@@ -35,8 +36,8 @@
 #          formal/lakefile.lean (Lake would prefer it).
 #       2. formal/lake-manifest.json lists exactly the ten packages recorded in
 #          lean_guard.py (MANIFEST_PACKAGES) with their git url and commit: aeneas at
-#          5d08da45a405913bbee6fd544e01debf8154ac9d with url, inputRev and subDir equal to the
-#          lakefile's git, rev and subDir; mathlib at fabf563a7c95a166b8d7b6efca11c8b4dc9d911f;
+#          fb44cb400eb6bfe7dce97422ebe8fa748b7e4f9b with url, inputRev and subDir equal to the
+#          lakefile's git, rev and subDir; mathlib at fc4f59e577feb1a4956671bc04ac18aaaf8cd842;
 #          and the eight packages Mathlib brings in.
 #       3. Every .lean file under formal/ except formal/.lake/ and formal/specs/Drafts/ fails
 #          on the rules of lean_guard.py (check_sources; the full lists, and how the list of
@@ -63,10 +64,9 @@
 #
 #   scripts/lean-guard.sh build-log FILE
 #       FILE is the output of `lake build` (`set -o pipefail; lake build 2>&1 | tee FILE`).
-#       Fails unless it has a "Build completed successfully" line and every line containing
-#       `warning:` or `error:` is exactly one of the four recorded Aeneas-library lines
-#       (Aeneas/Std/Slice.lean:363:4 and :586:8, Aeneas/Std/StringIter.lean:12:4 and :15:4,
-#       "declaration uses `sorry`").
+#       Fails unless it has a "Build completed successfully" line and no line containing
+#       `warning:` or `error:` (up to nightly-2026.08.20-5d08da4 the Aeneas library replayed
+#       four `sorry` warnings, which were allowed; nightly-2026.11.24-fb44cb4 has none).
 #
 #   scripts/lean-guard.sh axioms
 #       Only after a successful `lake build`. Fails if formal/.lake/build/lib/lean holds
@@ -146,6 +146,7 @@ command -v python3 >/dev/null 2>&1 || die "python3 not found"
 py() { python3 -I "$ROOT/scripts/lean_guard.py" "$@"; }
 
 guard_sources() {
+  py selftest
   py lakefile "$F"
   py sources "$F"
 }

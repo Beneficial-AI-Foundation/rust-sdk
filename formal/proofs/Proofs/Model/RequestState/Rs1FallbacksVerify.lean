@@ -3,12 +3,15 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.External.Iter
-import Proofs.External.Prim
-import Proofs.External.Std
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.External.Iter
+public import Proofs.External.Prim
+public import Proofs.External.Std
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::rs1_fallbacks_verify` (E09a)
@@ -57,10 +60,11 @@ counter of SHA-256 overflows, a panic under `overflow-checks`, for a `transcript
 `2^61 − 64` bytes or a fallback key of at least `2^61` bytes. For such inputs the statement
 promises a result where the Rust code panics.
 
-Assumptions: the statement reaches the locked native-code assumption
+Assumptions: no native-code assumption since the Aeneas upgrade of 2026-11-24 (its `toStr`
+checks the length of a literal in the kernel). Until then the statement reached the locked
+native-code assumption
 `rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`
-(`toStr "validated rs1 fallback key"`, the `expect` message of line 652;
-`formal/trusted/native-axioms.lock`), so its `#print axioms` list will include it. -/
+(`toStr "validated rs1 fallback key"`, the `expect` message of line 652). -/
 @[step]
 theorem rs1_fallbacks_verify_spec (keys : KeyTable) (rs1_fallbacks : Slice String)
     (transcript : Slice Std.U8) (tag : Slice Std.U8)
@@ -69,7 +73,8 @@ theorem rs1_fallbacks_verify_spec (keys : KeyTable) (rs1_fallbacks : Slice Strin
       -- lines 650–656: `verified |= hmac_sha256_verify(key, transcript, tag)` over all ids
       result = decide (Rs1Verifies keys rs1_fallbacks.val transcript.val tag.val) ⦄ := by
   unfold rs1_fallbacks_verify rs1_fallbacks_verify_loop
-  simp only [SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter, bind_tc_ok]
+  simp only [SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter]
+  rw [bind_ok]
   apply loop.spec_decr_nat
     (measure := fun (p : core.slice.iter.Iter String × Bool) => rs1_fallbacks.length - p.1.i)
     (inv := fun p => p.1.slice = rs1_fallbacks ∧ p.1.i ≤ rs1_fallbacks.length ∧
@@ -90,13 +95,13 @@ theorem rs1_fallbacks_verify_spec (keys : KeyTable) (rs1_fallbacks : Slice Strin
         rw [hkid]; exact h_known _ (List.getElem_mem _)
       obtain ⟨o1, hget, ho1⟩ := Proofs.External.WP.exists_ok_of_spec
         (_root_.std.collections.hash.map.HashMap.get_string_spec keys kid)
-      rw [hget, bind_tc_ok]
+      rw [hget, bind_ok]
       have hsome := (Proofs.External.HashMap.find?_key_isSome_iff keys.entries kid).2 hmem
       rw [← ho1] at hsome
       replace ho1 := ho1.symm
       rcases o1 with _ | key
       · cases hsome
-      simp only [core.option.Option.expect, Result.ofOption, bind_tc_ok]
+      simp only [core.option.Option.expect, Result.ofOption, bind_ok]
       step as ⟨v1, hv1⟩
       step as ⟨m, hm⟩
       subst hv1 hm
@@ -111,12 +116,11 @@ theorem rs1_fallbacks_verify_spec (keys : KeyTable) (rs1_fallbacks : Slice Strin
       · simp only
         rw [List.take_add_one, List.getElem?_eq_getElem hlt', hv, ← hkid]
         simp only [Rs1Verifies, Option.mem_def, Defs.CodecState.TagVerifies, alloc.vec.Vec.deref,
-          Subtype.coe_eta, Option.toList_some, List.mem_append, List.mem_cons, List.not_mem_nil,
+          Slice.from_val, Option.toList_some, List.mem_append, List.mem_cons, List.not_mem_nil,
           or_false, or_and_right, exists_or, ↓existsAndEq, hl, Option.some.injEq,
           exists_eq_left', true_and, Bool.decide_or]
       · simp only [Slice.length] at hlt' ⊢; omega
-    · simp only [Prod.mk.injEq] at hr
-      obtain ⟨ho, hit⟩ := hr
+    · obtain ⟨ho, hit⟩ := hr
       rcases o with _ | kid
       swap
       · cases ho

@@ -3,7 +3,10 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Aeneas
+module
+public import Aeneas
+
+@[expose] public section
 
 /-!
 # Spec of the slice iterator `next`
@@ -24,7 +27,7 @@ theorem core.slice.iter.IteratorSliceIter.next_eq_some_of_lt {T : Type} (s : Sli
     (h : i < s.val.length) :
     core.slice.iter.IteratorSliceIter.next (⟨s, i⟩ : core.slice.iter.Iter T) =
       ok (some s.val[i], ⟨s, i + 1⟩) := by
-  rw [core.slice.iter.IteratorSliceIter.next, dif_pos (by rw [Slice.len_val]; exact h)]
+  rw [core.slice.iter.IteratorSliceIter.next, dite_eq_left (by rw [Slice.len_val]; exact h)]
   rfl
 
 /-- At or beyond the end of the slice, `next` yields `none` and leaves the iterator unchanged.
@@ -34,7 +37,7 @@ theorem core.slice.iter.IteratorSliceIter.next_eq_none_of_le {T : Type} (s : Sli
     core.slice.iter.IteratorSliceIter.next (⟨s, i⟩ : core.slice.iter.Iter T) =
       ok (none, ⟨s, i⟩) := by
   rw [core.slice.iter.IteratorSliceIter.next,
-    dif_neg (by rw [Slice.len_val]; exact Nat.not_lt.2 h)]
+    dite_eq_right (by rw [Slice.len_val]; exact Nat.not_lt.2 h)]
 
 /-- **Spec theorem for `core::slice::iter::{impl Iterator for Iter<'_, T>}::next`**
 

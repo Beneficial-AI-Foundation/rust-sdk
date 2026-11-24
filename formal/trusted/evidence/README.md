@@ -30,7 +30,8 @@ and run with
 (the Phase 2 map below records its own commands).
 
 Source paths: `rust-src` is
-`library/` of the pinned toolchain `nightly-2026-06-01`; crate paths are in
+`library/` of the pinned toolchain `nightly-2026-09-17` (since the Aeneas upgrade of 2026-11-24;
+the runs recorded below used `nightly-2026-06-01`); crate paths are in
 `~/.cargo/registry/src/index.crates.io-*/`, at the versions pinned by
 `scripts/aeneas-translate.sh` (`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`,
 `zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`; plan Section 4), and std's
@@ -150,13 +151,20 @@ tested as compiled code (their laws are the theorems of `Proofs/External/Base64.
 
 ## Standard library
 
+Line numbers in this table and the Phase 2 table below are those cited when the models were
+written (`rust-src` of `nightly-2026-06-01`); the current citations, re-checked against
+`nightly-2026-09-17` in the Aeneas upgrade of 2026-11-24 (lead decision N9), are those in the
+docstrings of `formal/trusted/Rmcp/FunsExternal.lean`, which are authoritative. Rows marked
+"moved" are no longer project models: since that upgrade the Aeneas library defines them (lead
+decision N8; the upgrade review found the semantics identical); the row is kept as history.
+
 | External | Model | Source (`rust-src`) | Tests |
 |---|---|---|---|
-| `Borrow::borrow` (blanket) | identity | `core/src/borrow.rs` 214–216 | through `HashMap::get` below |
-| `Option::ok_or` | `Some v ↦ Ok v`, `None ↦ Err e` | `core/src/option.rs` 1334–1339 | `codec::non_base64_sections_are_invalid_encoding` |
+| `Borrow::borrow` (blanket) — **moved to the Aeneas library** (N8) | identity | `core/src/borrow.rs` 214–216 | through `HashMap::get` below |
+| `Option::ok_or` — **moved to the Aeneas library** (N8) | `Some v ↦ Ok v`, `None ↦ Err e` | `core/src/option.rs` 1334–1339 | `codec::non_base64_sections_are_invalid_encoding` |
 | `Option` `Default` | `None` | `core/src/option.rs` 2313–2315 | (non-target) |
 | `Result::is_err` | `true` iff `Err` | `core/src/result.rs` 646–648 | `codec::maximum_length_kid_roundtrips_and_oversized_wire_kid_is_rejected` |
-| `Result::map_err` | `Err e ↦ Err (op e)` via `FnOnce` | `core/src/result.rs` 962–970 | `codec::parser_rejects_invalid_tokens_and_unavailable_keys` (non-UTF-8 kid) |
+| `Result::map_err` — **moved to the Aeneas library** (N8) | `Err e ↦ Err (op e)` via `FnOnce` | `core/src/result.rs` 962–970 | `codec::parser_rejects_invalid_tokens_and_unavailable_keys` (non-UTF-8 kid) |
 | `&[T]` `Default` | empty slice | `core/src/slice/mod.rs` 5637–5639 | (non-target) |
 | `str::len` | byte count (any `Str`) | `core/src/str/mod.rs` 153–155 | `wire::check_kid_len_counts_utf8_bytes`, `codec::constructor_invariants_are_enforced` |
 | `str::as_bytes` | same bytes (any `Str`) | `core/src/str/mod.rs` 498–501 | every `codec` open test |
@@ -167,7 +175,7 @@ tested as compiled code (their laws are the theorems of `Proofs/External/Base64.
 | `String::from_utf8` | `Ok s` iff bytes are `utf8 s`, else `Err {bytes}` | `alloc/src/string.rs` 569–574 | `codec::parser_rejects_invalid_tokens_and_unavailable_keys` (kid `[0xff]` ↦ `InvalidKeyId`) |
 | `String` `PartialEq::eq`, `Eq::assert_fields_are_eq`, `Clone` | equality; `()`; identity | `alloc/src/string.rs` 350, 2364–2366 | through `HashMap::get` |
 | `String` `Hash::hash` | write bytes, then `0xff` | `alloc/src/string.rs` 2740–2742; `core/src/hash/mod.rs` 550–553, 862–866; for `DefaultHasher`: `std/src/hash/random.rs` 135–137 → `core/src/hash/sip.rs` 237–239 → override 303–308 (`write(bytes); write_u8(0xFF)`), `write_u8` not overridden (note at 248) so default `write(&[i])` (`core/src/hash/mod.rs` 362–364) | (unused by the `get` model) |
-| `Vec::is_empty` | `len == 0` | `alloc/src/vec/mod.rs` 3085–3087 | `codec::pinned_tokens_and_open_results_are_unchanged` (case `rs1 ring no fallbacks: UnknownKeyId`) |
+| `Vec::is_empty` — **moved to the Aeneas library** (N8) | `len == 0` | `alloc/src/vec/mod.rs` 3085–3087 | `codec::pinned_tokens_and_open_results_are_unchanged` (case `rs1 ring no fallbacks: UnknownKeyId`) |
 | `RandomState` (type, `Clone`, `build_hasher`) | `{k0, k1}`; identity; keys + empty stream | `std/src/hash/random.rs` 34–38, 83–85 | — |
 | `DefaultHasher` (type, `write`, `finish`) | keys + written bytes; append; `sipHash13` | `std/src/hash/random.rs` 94, 125–142 | — |
 | `HashMap` (type), `HashMap::get` | association list; first entry with an equal key | `std/src/collections/hash/map.rs` 246–251, 1035–1041; hashbrown 0.17.1 `src/map.rs` (`get`, `Equivalent`) | `codec::rotation_keeps_previous_rs2_key_verifiable` (found and `UnknownKeyId`), `codec::multiple_legacy_fallbacks_are_supported`, `codec::kid_is_authenticated_even_when_ids_share_key_bytes` |
@@ -241,8 +249,12 @@ The Phase 2 translation (plan step S21) added 26 external functions and 6 extern
 first as `opaque` placeholders that asserted nothing. S26/S27 (stage 1) replaced each by the
 model below (plan Section 18); all are definitions, `structure`s or inductive types, and the only
 new `opaque` constant is the carrier `ExtModel.SerdeJsonValue`. Sources are `rust-src` of the
-pinned toolchain `nightly-2026-06-01` (read in
-`~/.rustup/toolchains/nightly-2026-06-01-aarch64-apple-darwin/lib/rustlib/src/rust/library/`).
+pinned toolchain `nightly-2026-09-17` (read in
+`~/.rustup/toolchains/nightly-2026-09-17-aarch64-apple-darwin/lib/rustlib/src/rust/library/`;
+until the Aeneas upgrade of 2026-11-24, `nightly-2026-06-01`). The line numbers in the table
+below are those of `nightly-2026-06-01`, except the `RangeInclusive::contains` row; the current
+citations are in the docstrings of `formal/trusted/Rmcp/FunsExternal.lean` (see the note above
+the Standard library table).
 The model laws (plan Section 18, "Evidence" column): 43 statements, signed off by the spec owner on
 2026-11-23, proved (`formal/proofs/Proofs/External/{String,Option,Std,IntParse,Net}.lean`) and
 restated in `formal/specs/Specs/External.lean` (Phase 2 part; since 2026-11-24 in
@@ -292,7 +304,7 @@ of an address as natural numbers). The opaque carrier `SerdeJsonValue` is listed
 | `slice::strip_suffix` | `as_slice`, `split_at(len − n)`, `tail == suffix` | `core/src/slice/mod.rs` 2719–2733 |
 | `[T] == [U; N]` | `false` unless length `N`, else element-wise `ne` loop | `core/src/array/equality.rs` 48–53, 10–12, 143–145; `core/src/slice/mod.rs` 851–861 (`as_array`); `core/src/slice/cmp.rs` 125–140 |
 | `SlicePattern::as_slice` for `[T; N]` | the same elements as a slice | `core/src/slice/mod.rs` 5678–5680 |
-| `RangeInclusive::contains` | `start <= item`, then `item <= end` (`item < end` if exhausted), short-circuit | `core/src/ops/range.rs` 522–528, 868–882, 1124–1137 |
+| `RangeInclusive::contains` | `start <= item`, then `item <= end` (`item < start` if exhausted, i.e. empty; changed in the Aeneas upgrade, human decision 2026-11-24; one fresh review of model and laws: model exact, one blocking finding (a dropped restatement) fixed; laws re-signed 2026-11-24; up to `nightly-2026-06-01`: `item < end`), short-circuit | `core/src/ops/range.rs` 539–545, 886–900, 1142–1157 (`nightly-2026-09-17`) |
 | `MaybeUninit<T>` (type) | `uninit` or `value v` (the two union fields) | `core/src/mem/maybe_uninit.rs` 355–358 |
 
 - **Stated exceptions.** The `BytewiseEq` specializations of slice and array equality
@@ -305,7 +317,19 @@ of an address as natural numbers). The opaque carrier `SerdeJsonValue` is listed
   not reproducible evidence; Lean `#eval` against `rustc +nightly-2026-06-01`, identical
   results):** `strip_suffix(&[13u8])` of `[1, 2, 13]`, `[1, 2]` and `[]`; `[u8] ==
   [u8; 2]` with equal and unequal lengths; `(64..=127).contains` at `127` (fresh, and exhausted
-  by iteration in Rust / `exhausted = true` in Lean) and at `63`.
+  by iteration in Rust / `exhausted = true` in Lean) and at `63`. **Run on `nightly-2026-06-01`
+  only** (the toolchain before the Aeneas upgrade of 2026-11-24). Its exhausted case does not
+  separate the old model (`item < end`) from the new one (`item < start`), and on
+  `nightly-2026-09-17` iterating `64u8..=127` to the end leaves `128..=127` with
+  `exhausted = false` (`core/src/iter/range.rs` about lines 1538–1546), so that Rust state is no
+  longer an exhausted range.
+- **Vectors separating the old and new `RangeInclusive::contains` model (2026-11-24, verified on
+  `rustc +nightly-2026-09-17` by the reviewer of the changed model; Rust state as printed by
+  `{:?}`, model `contains core.cmp.PartialOrdU8 …` on `⟨start, end, exhausted⟩`):**
+  - `250u8..=255` iterated to the end → state `0..=255 (exhausted)`; `.contains(&3)` = `false`;
+    model `⟨0, 255, true⟩` at `3` → `ok false` (the old model, `item < end`, gave `true`).
+  - `(64u8..=127).nth(250)` → state `59..=127 (exhausted)`; `.contains(&100)` = `false`; model
+    `⟨59, 127, true⟩` at `100` → `ok false` (the old model gave `true`).
 - **Planned evidence.** Laws in `Proofs/External/Option.lean` (`Option`, `Result`) and
   `Proofs/External/Std.lean` (slices, ranges), stage 2.
 

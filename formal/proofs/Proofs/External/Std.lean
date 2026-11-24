@@ -3,14 +3,27 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Proofs.External.String
+module
+public import Rmcp.Funs
+public import Proofs.External.String
+public import Proofs.External.WP
+
+@[expose] public section
 
 /-!
 # Specs of the standard-library, `HashMap`, `zeroize` and clock externals
 
 Spec theorems for the models in `formal/trusted/Rmcp/FunsExternal.lean` (sections Standard
-library and Clock). Each covers success and, where the model can fail, the failure. Names follow
+library and Clock). Since the Aeneas upgrade of 2026-11-24 four of the functions specified here
+are defined in the Aeneas library, no longer by a project model (lead decision N8):
+`core::borrow::Borrow` (`core.borrow.Borrow.Blanket.borrow`), `Option::ok_or`,
+`Result::map_err` and `Vec::is_empty`. Forced restatements in that upgrade (name-only, human
+decision 2026-11-24): the arity of `alloc.vec.Vec.is_empty_spec` (no allocator argument); the
+`Borrow` rename (`Aeneas.Std.core.borrow.Borrow`) in `std.collections.hash.map.HashMap.get_eq`,
+`get_string_spec` and the helper `Proofs.External.HashMap.find_string`; and `Slice.from` instead
+of the anonymous constructor in `alloc.string.String.Insts.CoreHashHash.hash_eq`. `RangeInclusive::contains` follows
+`nightly-2026-09-17` since that upgrade: an exhausted range contains nothing (exhausted branch
+`item < start`; human decision 2026-11-24). Each covers success and, where the model can fail, the failure. Names follow
 the style guide: the full generated name of the external with `_spec`; equation lemmas for
 functions that take a trait instance whose behaviour is not fixed (`map_err`, `clone`, ...), and
 for `ok_or` and `is_err` (`ok_or_eq`, `is_err_eq`, from their spec theorems, for rewriting inside
@@ -27,13 +40,15 @@ open ExtModel Proofs.External.Utf8 Proofs.External.Base64
 
 /-! ## `core` -/
 
-/-- **Spec theorem for `core::borrow::{impl Borrow<T> for T}::borrow`**: the identity. -/
+/-- **Spec theorem for `core::borrow::{impl Borrow<T> for T}::borrow`**: the identity (the Aeneas
+library's definition since the Aeneas upgrade of 2026-11-24). -/
 @[step]
 theorem core.borrow.Borrow.Blanket.borrow_spec {T : Type} (self : T) :
     core.borrow.Borrow.Blanket.borrow self ⦃ (result : T) => result = self ⦄ := by
   simp only [core.borrow.Borrow.Blanket.borrow, WP.spec_ok]
 
-/-- **Spec theorem for `core::option::Option::ok_or`**: `Some v ↦ Ok v`, `None ↦ Err err`. -/
+/-- **Spec theorem for `core::option::Option::ok_or`**: `Some v ↦ Ok v`, `None ↦ Err err` (the
+Aeneas library's definition since the Aeneas upgrade of 2026-11-24). -/
 @[step]
 theorem core.option.Option.ok_or_spec {T : Type} {E : Type} (self : Option T) (err : E) :
     core.option.Option.ok_or self err ⦃ (result : core.result.Result T E) =>
@@ -82,7 +97,8 @@ theorem core.result.Result.is_err_eq {T E : Type} (r : core.result.Result T E) :
     Proofs.External.WP.exists_ok_of_spec (core.result.Result.is_err_spec r)
   rw [hb, h]
 
-/-- `core::result::Result::map_err` on `Ok`: unchanged, the closure is not called. -/
+/-- `core::result::Result::map_err` on `Ok`: unchanged, the closure is not called (the Aeneas
+library's definition since the Aeneas upgrade of 2026-11-24). -/
 @[simp]
 theorem core.result.Result.map_err_ok {T E F O : Type}
     (inst : core.ops.function.FnOnce O E F) (t : T) (op : O) :
@@ -102,7 +118,7 @@ theorem core.result.Result.map_err_err {T E F O : Type}
 theorem Shared0Slice.Insts.CoreDefaultDefault.default_spec (T : Type) :
     Shared0Slice.Insts.CoreDefaultDefault.default T ⦃ (result : Slice T) =>
       result.val = [] ⦄ := by
-  simp only [Shared0Slice.Insts.CoreDefaultDefault.default, Slice.new, WP.spec_ok]
+  simp only [Shared0Slice.Insts.CoreDefaultDefault.default, WP.spec_ok, Slice.new_val]
 
 /-- **Spec theorem for `core::str::str::len`**: the number of bytes; for every `Str`. -/
 @[step]
@@ -114,7 +130,7 @@ theorem core.str.Str.len_spec (self : Str) :
 @[step]
 theorem core.str.Str.as_bytes_spec (self : Str) :
     core.str.Str.as_bytes self ⦃ (result : Slice U8) => result.val = self.val ⦄ := by
-  simp only [core.str.Str.as_bytes, WP.spec_ok]
+  exact (WP.spec_ok (p := fun result : Slice U8 => result.val = self.val) _).2 rfl
 
 /-! ## `alloc::string::String` -/
 
@@ -142,7 +158,7 @@ theorem alloc.string.String.push_str_spec (self : String) (string : Str) (t : St
       result = self ++ t ∧ utf8 result = utf8 self ++ string.val ⦄ := by
   have hlen : (self ++ t).utf8ByteSize ≤ maxStringBytes := by
     rw [String.utf8ByteSize_append, ← length_utf8 t, ← ht]; exact h
-  simp only [alloc.string.String.push_str, ht, strOfBytes?_utf8, growString, if_pos hlen,
+  simp only [alloc.string.String.push_str, ht, strOfBytes?_utf8, growString, ite_eq_left hlen,
     WP.spec_ok, utf8_append, true_and]
 
 /-- `String::push_str` with a result beyond `isize::MAX` bytes panics. -/
@@ -151,7 +167,7 @@ theorem alloc.string.String.push_str_fail (self : String) (string : Str) (t : St
     alloc.string.String.push_str self string = fail Error.panic := by
   have hlen : ¬ (self ++ t).utf8ByteSize ≤ maxStringBytes := by
     rw [String.utf8ByteSize_append, ← length_utf8 t, ← ht]; omega
-  simp only [alloc.string.String.push_str, ht, strOfBytes?_utf8, growString, if_neg hlen]
+  simp only [alloc.string.String.push_str, ht, strOfBytes?_utf8, growString, ite_eq_right hlen]
 
 /-- `String::push_str` with bytes that are not UTF-8 (no Rust `&str`) is outside the Rust
 domain: `fail undef`. -/
@@ -172,7 +188,7 @@ theorem alloc.string.String.push_spec (self : String) (ch : Char)
   have hp : self.push ch = self ++ String.ofList [ch] := by
     apply String.toByteArray_inj.1
     rw [String.toByteArray_push, String.toByteArray_append, String.toByteArray_ofList]
-  simp only [alloc.string.String.push, growString, if_pos hlen, WP.spec_ok, true_and]
+  simp only [alloc.string.String.push, growString, ite_eq_left hlen, WP.spec_ok, true_and]
   rw [hp, utf8_append]
 
 /-- `String::push` with a result beyond `isize::MAX` bytes panics. -/
@@ -181,7 +197,7 @@ theorem alloc.string.String.push_fail (self : String) (ch : Char)
     alloc.string.String.push self ch = fail Error.panic := by
   have hlen : ¬ (self.push ch).utf8ByteSize ≤ maxStringBytes := by
     rw [String.utf8ByteSize_push]; omega
-  simp only [alloc.string.String.push, growString, if_neg hlen]
+  simp only [alloc.string.String.push, growString, ite_eq_right hlen]
 
 /-- **Spec theorem for `String::as_bytes`**: the UTF-8 bytes. The precondition holds for every
 Rust `String` (at most `isize::MAX` bytes); see `as_bytes_fail`. -/
@@ -189,7 +205,7 @@ Rust `String` (at most `isize::MAX` bytes); see `as_bytes_fail`. -/
 theorem alloc.string.String.as_bytes_spec (self : String) (h : self.utf8ByteSize ≤ Usize.max) :
     alloc.string.String.as_bytes self ⦃ (result : Slice U8) => result.val = utf8 self ⦄ := by
   rw [← length_utf8] at h
-  simp only [alloc.string.String.as_bytes, h, ↓reduceDIte, WP.spec_ok]
+  simp only [alloc.string.String.as_bytes, h, ↓reduceDIte, WP.spec_ok, Slice.from_val]
 
 /-- `String::as_bytes` on a Lean `String` longer than `Usize.max` bytes (no Rust `String`). -/
 theorem alloc.string.String.as_bytes_fail (self : String) (h : Usize.max < self.utf8ByteSize) :
@@ -238,18 +254,19 @@ theorem alloc.string.String.Insts.CoreHashHash.hash_eq {H : Type}
     (h : self.utf8ByteSize ≤ Usize.max) :
     alloc.string.String.Insts.CoreHashHash.hash inst self state =
       (do
-        let state ← inst.write state ⟨utf8 self, by rw [length_utf8]; exact h⟩
-        inst.write state ⟨[byte 255], by scalar_tac⟩) := by
+        let state ← inst.write state (Slice.from (utf8 self) (by rw [length_utf8]; exact h))
+        inst.write state (Slice.from [byte 255] (by scalar_tac))) := by
   have h' : (utf8 self).length ≤ Usize.max := by rw [length_utf8]; exact h
   simp only [alloc.string.String.Insts.CoreHashHash.hash, alloc.string.String.as_bytes, h',
-    ↓reduceDIte, bind_tc_ok]
+    ↓reduceDIte, bind_ok]
 
 /-! ## `Vec`, hashing, `HashMap` -/
 
-/-- **Spec theorem for `Vec::is_empty`**: `true` exactly for the empty vector. -/
+/-- **Spec theorem for `Vec::is_empty`**: `true` exactly for the empty vector (the Aeneas library's
+definition since the Aeneas upgrade of 2026-11-24, without the allocator argument). -/
 @[step]
-theorem alloc.vec.Vec.is_empty_spec {T : Type} (A : Type) (self : alloc.vec.Vec T) :
-    alloc.vec.Vec.is_empty A self ⦃ (result : Bool) => result = decide (self.val = []) ⦄ := by
+theorem alloc.vec.Vec.is_empty_spec {T : Type} (self : alloc.vec.Vec T) :
+    alloc.vec.Vec.is_empty self ⦃ (result : Bool) => result = decide (self.val = []) ⦄ := by
   simp only [alloc.vec.Vec.is_empty, List.length_eq_zero_iff, WP.spec_ok]
 
 /-- **Spec theorem for `<RandomState as Clone>::clone`**: the same value. -/
@@ -292,7 +309,7 @@ theorem std.hash.random.DefaultHasher.Insts.CoreHashHasher.finish_spec
 hashing instances. -/
 theorem std.collections.hash.map.HashMap.get_eq
     {K V S A Q Clause2_Hasher : Type} (eqK : core.cmp.Eq K) (hashK : core.hash.Hash K)
-    (bh : rmcp.core.hash.BuildHasher S Clause2_Hasher) (borrow : rmcp.core.borrow.Borrow K Q)
+    (bh : rmcp.core.hash.BuildHasher S Clause2_Hasher) (borrow : Aeneas.Std.core.borrow.Borrow K Q)
     (hashQ : core.hash.Hash Q) (eqQ : core.cmp.Eq Q)
     (self : std.collections.hash.map.HashMap K V S A) (k : Q) :
     std.collections.hash.map.HashMap.get eqK hashK bh borrow hashQ eqQ self k =
@@ -303,15 +320,15 @@ namespace Proofs.External.HashMap
 /-- Lookup with the `String` instances is `List.find?` by key equality. -/
 theorem find_string {V : Type} (q : String) :
     ∀ entries : List (String × V),
-      ExtModel.HashMap.find (rmcp.core.borrow.Borrow.Blanket String)
+      ExtModel.HashMap.find (Aeneas.Std.core.borrow.Borrow.Blanket String)
         rmcp.alloc.string.String.Insts.CoreCmpEq q entries =
       ok ((entries.find? (fun e => decide (e.1 = q))).map Prod.snd)
   | [] => rfl
   | (k, v) :: rest => by
-    simp only [ExtModel.HashMap.find, rmcp.core.borrow.Borrow.Blanket,
+    simp only [ExtModel.HashMap.find, Aeneas.Std.core.borrow.Borrow.Blanket,
       core.borrow.Borrow.Blanket.borrow, rmcp.alloc.string.String.Insts.CoreCmpEq,
       rmcp.alloc.string.String.Insts.CoreCmpPartialEqString,
-      alloc.string.String.Insts.CoreCmpPartialEqString.eq, bind_tc_ok, List.find?_cons]
+      alloc.string.String.Insts.CoreCmpPartialEqString.eq, bind_ok, List.find?_cons]
     by_cases h : q = k
     · subst h; simp only [decide_true, ↓reduceIte, Option.map_some]
     · simp only [h, decide_false, Bool.false_eq_true, ↓reduceIte, Ne.symm h]
@@ -332,7 +349,7 @@ theorem std.collections.hash.map.HashMap.get_string_spec {V A : Type}
     std.collections.hash.map.HashMap.get rmcp.alloc.string.String.Insts.CoreCmpEq
       rmcp.alloc.string.String.Insts.CoreHashHash
       rmcp.std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
-      (rmcp.core.borrow.Borrow.Blanket String) rmcp.alloc.string.String.Insts.CoreHashHash
+      (Aeneas.Std.core.borrow.Borrow.Blanket String) rmcp.alloc.string.String.Insts.CoreHashHash
       rmcp.alloc.string.String.Insts.CoreCmpEq self k ⦃ (result : Option V) =>
         result = (self.entries.find? (fun e => decide (e.1 = k))).map Prod.snd ⦄ := by
   rw [std.collections.hash.map.HashMap.get_eq, Proofs.External.HashMap.find_string]
@@ -455,7 +472,8 @@ theorem Array.Insts.CoreSliceSlicePattern.as_slice_spec {T : Type} {N : Usize}
     (self : Array T N) :
     Array.Insts.CoreSliceSlicePattern.as_slice self ⦃ (result : Slice T) =>
       result.val = self.val ⦄ := by
-  simp only [Array.Insts.CoreSliceSlicePattern.as_slice, Array.to_slice, WP.spec_ok]
+  simp only [Array.Insts.CoreSliceSlicePattern.as_slice, Array.to_slice, WP.spec_ok,
+    Slice.from_val]
 
 namespace Proofs.External.Slice
 
@@ -477,15 +495,15 @@ theorem sliceEqSameLength_spec {T U : Type} (inst : core.cmp.PartialEq T U) (R :
     | nil => exact absurd hlen (Nat.succ_ne_zero _)
     | cons b r =>
       obtain ⟨d, hd, hP⟩ :=
-        WP.spec_imp_exists (h_ne a List.mem_cons_self b List.mem_cons_self)
-      simp only [ExtModel.sliceEqSameLength, hd, bind_tc_ok, List.forall₂_cons]
+        Proofs.External.WP.exists_ok_of_spec (h_ne a List.mem_cons_self b List.mem_cons_self)
+      simp only [ExtModel.sliceEqSameLength, hd, bind_ok, List.forall₂_cons]
       cases d with
       | true =>
         simp only [↓reduceIte, WP.spec_ok, Bool.false_eq_true, false_iff, not_and]
         exact fun hR => absurd hR (hP.1 rfl)
       | false =>
         have hR : R a b := by simpa only [Bool.false_eq_true, false_iff, not_not] using hP
-        simp only [Bool.false_eq_true, ↓reduceIte, hR, true_and]
+        simp only [hR, true_and]
         exact ih r (Nat.succ.inj hlen)
           (fun x hx y hy => h_ne x (List.mem_cons_of_mem a hx) y (List.mem_cons_of_mem b hy))
 
@@ -540,23 +558,23 @@ theorem core.slice.Slice.strip_suffix_spec {T : Type} {P : Type}
         | none =>
           ¬ ∃ head tail, self.val = head ++ tail ∧ List.Forall₂ R tail suf.val ⦄ := by
   unfold core.slice.Slice.strip_suffix
-  simp only [h_suf, bind_tc_ok]
+  simp only [h_suf, bind_ok]
   split
   · rename_i hle
     have hle' : suf.val.length ≤ self.val.length := by
       have := hle; simp only [UScalar.le_equiv, Slice.len_val] at this; exact this
-    obtain ⟨mid, hmid, hmv, -⟩ := WP.spec_imp_exists (Usize.sub_spec hle)
+    obtain ⟨mid, hmid, hmv, -⟩ := Proofs.External.WP.exists_ok_of_spec (Usize.sub_spec hle)
     have hsl : ∀ s : Slice T, s.length = s.val.length := fun _ => rfl
     simp only [Slice.len_val, hsl] at hmv
     have hmle : mid.val ≤ self.length := by rw [hmv, hsl]; omega
     have hdrop : (self.val.drop mid.val).length = suf.val.length := by
       rw [List.length_drop, hmv]; omega
     obtain ⟨⟨head, tail⟩, hsp, hP⟩ :=
-      WP.spec_imp_exists (core.slice.Slice.split_at.spec self mid hmle)
+      Proofs.External.WP.exists_ok_of_spec (core.slice.Slice.split_at.spec self mid hmle)
     simp only [WP.uncurry'_pair] at hP
     obtain ⟨-, -, hhead, htail⟩ := hP
     have hdrop' : tail.val.length = suf.val.length := by rw [htail]; exact hdrop
-    rw [hmid, bind_tc_ok, hsp, bind_tc_ok]
+    rw [hmid, bind_ok, hsp, bind_ok]
     show (do
       let b ← ExtModel.sliceEq cmpPartialEqInst tail.val suf.val
       if b then ok (some head) else ok none) ⦃ (result : Option (Slice T)) =>
@@ -564,11 +582,11 @@ theorem core.slice.Slice.strip_suffix_spec {T : Type} {P : Type}
         | some head => ∃ tail, self.val = head.val ++ tail ∧ List.Forall₂ R tail suf.val
         | none =>
           ¬ ∃ head tail, self.val = head ++ tail ∧ List.Forall₂ R tail suf.val ⦄
-    rw [ExtModel.sliceEq, if_pos hdrop']
-    obtain ⟨b, hb, hbP⟩ := WP.spec_imp_exists (Proofs.External.Slice.sliceEqSameLength_spec
+    rw [ExtModel.sliceEq, ite_eq_left hdrop']
+    obtain ⟨b, hb, hbP⟩ := Proofs.External.WP.exists_ok_of_spec (Proofs.External.Slice.sliceEqSameLength_spec
       cmpPartialEqInst R _ _ hdrop'
       (fun x hx y hy => h_ne x (by rw [htail] at hx; exact List.mem_of_mem_drop hx) y hy))
-    rw [hb, bind_tc_ok]
+    rw [hb, bind_ok]
     cases b with
     | true =>
       simp only [↓reduceIte, WP.spec_ok]
@@ -605,11 +623,9 @@ theorem core.slice.Slice.strip_suffix_fail {T : Type} {P : Type}
       core.slice.Slice.strip_suffix SlicePatternInst cmpPartialEqInst self suffix = div) := by
   constructor
   · intro e h
-    rw [core.slice.Slice.strip_suffix, h]
-    rfl
+    rw [core.slice.Slice.strip_suffix, h, bind_fail]
   · intro h
-    rw [core.slice.Slice.strip_suffix, h]
-    rfl
+    rw [core.slice.Slice.strip_suffix, h, bind_div]
 
 /-- **Spec theorem for `[u8]::strip_suffix(&[c])`** at the instances of the translation (the
 pattern `[u8; 1]`, `core.cmp.PartialEqU8`): `Some head` with `self = head ++ [c]` when the last
@@ -645,20 +661,24 @@ theorem core.slice.Slice.strip_suffix_u8_single_spec (self : Slice U8) (c : U8) 
 
 /-- **Spec theorem for `RangeInclusive<u8>::contains`** at the instances of the translation
 (`core.cmp.PartialOrdU8`): `start ≤ item ≤ end` for a range that is not exhausted,
-`start ≤ item < end` for an exhausted one; never fails. -/
+`start ≤ item < start` (so never) for an exhausted one; never fails. `contains`
+(`core/src/ops/range.rs` lines 539–545) calls `RangeBounds::contains`, `start_bound <= item &&
+item <= / < end_bound` (lines 886–900), with bounds `Included(start)` and `Included(end)`, or
+`Excluded(start)` when `exhausted` (lines 1142–1157). -/
 @[step]
 theorem core.ops.range.RangeInclusive.contains_u8_spec
     (self : core.ops.range.RangeInclusive U8) (item : U8) :
     core.ops.range.RangeInclusive.contains core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
         core.cmp.PartialOrdU8 self item ⦃ (result : Bool) =>
       (result = true ↔ self.start.val ≤ item.val ∧
-        (if self.exhausted then item.val < self.«end».val
+        (if self.exhausted then item.val < self.start.val
          else item.val ≤ self.«end».val)) ⦄ := by
   unfold core.ops.range.RangeInclusive.contains
   cases hx : self.exhausted <;> by_cases h1 : self.start.val ≤ item.val <;>
     simp only [liftFun2, core.cmp.impls.PartialOrdU8.le, h1, decide_true, Bool.false_eq_true,
-      ↓reduceIte, bind_tc_ok, true_and, WP.spec_ok, decide_eq_true_eq, decide_false, false_and,
-      iff_false, Bool.not_eq_true, core.cmp.impls.PartialOrdU8.lt]
+      ↓reduceIte, true_and, decide_false, false_and,
+      iff_false, Bool.not_eq_true, core.cmp.impls.PartialOrdU8.lt, bind_ok, WP.spec_ok,
+      decide_eq_true_eq]
 
 /-- **`(a..=b).contains(&x)` for `u8`**: `a ≤ x ≤ b`. -/
 theorem core.ops.range.RangeInclusive.new_contains_u8_spec (a b item : U8) :
@@ -667,13 +687,15 @@ theorem core.ops.range.RangeInclusive.new_contains_u8_spec (a b item : U8) :
       core.ops.range.RangeInclusive.contains core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
         core.cmp.PartialOrdU8 r item) ⦃ (result : Bool) =>
       (result = true ↔ a.val ≤ item.val ∧ item.val ≤ b.val) ⦄ := by
-  rw [core.ops.range.RangeInclusive.new, bind_tc_ok]
+  simp only [core.ops.range.RangeInclusive.new, bind_ok]
   exact core.ops.range.RangeInclusive.contains_u8_spec ⟨a, b, false⟩ item
 
 /-- `RangeInclusive::contains`, for every instance: `start <= item` is evaluated first; if it
 fails or diverges that propagates, if it is `false` the result is `false` without a second
-call, and if it is `true` the result is `item < end` (exhausted) or `item <= end` (not
-exhausted), including its failure. -/
+call, and if it is `true` the result is `item < start` (exhausted) or `item <= end` (not
+exhausted), including its failure. Rust: `RangeBounds::contains` (`core/src/ops/range.rs`
+lines 886–900, `&&` short-circuits) with `end_bound` = `Excluded(&self.start)` if `exhausted`,
+else `Included(&self.end)` (lines 1142–1157). -/
 theorem core.ops.range.RangeInclusive.contains_eq_match_le {Idx : Type} {U : Type}
     (cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
     (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U)
@@ -691,7 +713,8 @@ theorem core.ops.range.RangeInclusive.contains_eq_match_le {Idx : Type} {U : Typ
     (cmpPartialOrdInst1.le self.start item = ok true →
       core.ops.range.RangeInclusive.contains cmpPartialOrdInst cmpPartialOrdInst1
         cmpPartialOrdInst2 self item =
-        if self.exhausted then cmpPartialOrdInst2.lt item self.«end»
+        if self.exhausted then cmpPartialOrdInst2.lt item self.start
         else cmpPartialOrdInst2.le item self.«end») := by
   refine ⟨fun e h => ?_, fun h => ?_, fun h => ?_, fun h => ?_⟩ <;>
-    rw [core.ops.range.RangeInclusive.contains, h] <;> rfl
+    simp only [core.ops.range.RangeInclusive.contains, h, bind_fail, bind_div, bind_ok,
+      Bool.false_eq_true, ↓reduceIte]

@@ -1390,3 +1390,55 @@ D10 count for Phase 2: verified on original code `[n]`, proved with a translatio
 - The Phase 3 candidates of Section 23.
 - Upstreaming the Phase 2 models.
 - Specifications for the translatable non-targets of Phase 1 (`open`, `open_with`, `new`, `try_new`).
+
+## 26. Amendment (2026-11-24): Aeneas upgrade to `nightly-2026.11.24-fb44cb4`
+
+**Amendment (human decision 2026-11-24, "full migration"; pending review and human batch
+re-sign-off).** This section amends earlier sections without rewriting them; where they
+disagree, this section is current. Details and counts: `formal/docs/STATUS.md`, "Aeneas upgrade
+(2026-11-24)".
+
+- **Toolchain (amends Sections 5 and 15, the pilot environment of Section 14 stays as
+  recorded).** Aeneas `nightly-2026.11.24-fb44cb4` (commit `fb44cb40`), Charon `0.1.324`, Lean
+  and Mathlib `v4.36.0`, Rust `nightly-2026-09-17`; until 2026-11-24 Aeneas
+  `nightly-2026.08.20-5d08da4`, Charon `0.1.235`, Lean `4.31.0`, Rust `nightly-2026-06-01`. The
+  build gate is `lake build --wfail` again (Section 5): the new Aeneas library has none of the
+  four `sorry` warnings, and the build-log allowlist is empty (lead decision N10).
+- **Native-code axioms (amends Sections 4 and 18, H2).** The new Aeneas `toStr` proves the
+  length side condition of a string literal in the kernel, so the translation declares no
+  native-code axiom; `formal/trusted/native-axioms.lock` is empty (lead decision N5; it held 35
+  entries, 5 Phase 1 and 30 Phase 2). The rules of Section 4 for native-code axioms stay in force
+  for any that appears again. Every `#print axioms` list is now within `propext`,
+  `Classical.choice`, `Quot.sound`. One-time exception (human decision 2026-11-24): lists may gain
+  only these three standard axioms in this upgrade; all changed lists are re-signed as one batch.
+  The shrink-only rule applies again afterwards.
+- **Aeneas library axiom `core.fmt.Formatter` (amends B19, Sections 16.5 and 24).** In the new
+  library `core.fmt.Formatter` is an `opaque` type, not an axiom. Whether the B19 items become
+  translatable is a separate question for after the migration (lead decision N15).
+- **External models (amends Section 18).** Four models moved into the Aeneas library and were
+  removed from `formal/trusted/Rmcp/FunsExternal.lean`: `core::borrow::Borrow` (blanket
+  `borrow`), `Option::ok_or`, `Result::map_err` and `Vec::is_empty` (lead decision N8). The model
+  of `RangeInclusive::contains` follows `nightly-2026-09-17` (an exhausted range has end bound
+  `Excluded(start)`, so it contains nothing; human decision 2026-11-24; one fresh review of the
+  model and laws: model exact, one blocking finding (a dropped restatement) fixed); all 39 model citations are to be re-checked against the `nightly-2026-09-17`
+  `rust-src` (lead decision N9, model review).
+- **Statements.** Forced restatements only (human decision 2026-11-24, name-only batch
+  re-sign): the `Borrow` rename, the arity of `Vec.is_empty_spec`, the `Slice.from` constructor
+  form in `hash_eq`, and their restatements; the `RangeInclusive` laws `contains_u8_spec` and
+  `contains_eq_match_le` (and restatements) restated exactly for the new model (exhausted branch
+  `item < start`); `new_contains_u8_spec` unchanged. Also named explicitly: the `Defs` change
+  `Defs.CodecState.KeyTable` (allocator `Global` → `alloc.alloc.Global`, name-only) and the helper
+  lemma `Proofs.ClientSideSse.from_residual_eq` (translated instance renamed to
+  `CoreOpsTry_traitFromResidualResult`; same Rust impl, same body).
+- **Translation and CI (amends Sections 5, 15 and 19).** Charon `0.1.324` no longer records its
+  options in the LLBC; the check of the Charon settings runs on the translated items instead
+  (lead decision N1); both cargo build-script output layouts are accepted (N2). Two exact
+  `lean-guard.sh sources` exemptions (human decision 2026-11-24): the Aeneas phrase "this code is
+  generated from a macro invocation at:" in generated docstrings, and one
+  `set_option linter.dupNamespace false in` on `zeroize.Zeroize.Blanket.zeroize`; the
+  macro-site paths are checked against the allowed sources (N13). The kernel replay of the axiom
+  audit uses `Lean.Kernel.Environment.replay` (N11). The project Lean files are modules (N12;
+  header and visibility only, no statement change).
+- **Deferred (amends Section 25).** "The Aeneas bump" is done by this amendment; re-adding
+  excluded items (for example `new_with_keyring`, R15) happens after the
+  migration as separate steps (N15). Patch 03 (R09–R12) is parked until the upgrade is accepted.

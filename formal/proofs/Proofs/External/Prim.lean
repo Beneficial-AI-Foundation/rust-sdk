@@ -3,9 +3,12 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.FunsExternal
-import Proofs.External.Base64
-import Proofs.External.String
+module
+public import Rmcp.FunsExternal
+public import Proofs.External.Base64
+public import Proofs.External.String
+
+@[expose] public section
 
 /-!
 # Specs of the `prim` externals (HMAC-SHA256, Base64url)
@@ -74,7 +77,7 @@ theorem b64_encode_into_spec (input : Slice U8) (out : String)
   have hlen : (out ++ String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))
       ).utf8ByteSize ≤ maxStringBytes := by
     rw [← length_utf8, utf8_append, hb, List.length_append, length_utf8, length_b64]; exact h
-  simp only [b64_encode_into, growString, if_pos hlen, WP.spec_ok, utf8_append, hb]
+  simp only [b64_encode_into, growString, ite_eq_left hlen, WP.spec_ok, utf8_append, hb]
 
 /-- Beyond the `String` limit, `b64_encode_into` panics. -/
 theorem b64_encode_into_fail (input : Slice U8) (out : String)
@@ -86,7 +89,7 @@ theorem b64_encode_into_fail (input : Slice U8) (out : String)
       ).utf8ByteSize ≤ maxStringBytes := by
     rw [← length_utf8, utf8_append, hb, List.length_append, length_utf8, length_b64]
     simp only [Slice.length] at h; omega
-  simp only [b64_encode_into, growString, if_neg hlen]
+  simp only [b64_encode_into, growString, ite_eq_right hlen]
 
 /-- **Spec theorem for `rmcp::model::request_state_wire::prim::b64_decode`**
 
@@ -97,7 +100,7 @@ theorem b64_decode_spec (input : Slice U8) :
     b64_decode input ⦃ (result : Option (alloc.vec.Vec U8)) =>
       result.map (fun v => v.val) = b64Decode input.val ⦄ := by
   unfold b64_decode
-  split <;> simp_all only [Option.map_eq_none_iff, WP.spec_ok, Option.map_eq_some_iff,
-              Option.some.injEq, exists_eq_left']
+  split <;> simp_all only [Option.map_eq_none_iff, WP.spec_ok, Option.map_some,
+              alloc.vec.Vec.from_val]
 
 end model.request_state_wire.prim

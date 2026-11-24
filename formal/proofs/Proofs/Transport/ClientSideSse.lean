@@ -3,9 +3,14 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Proofs.Defs.Sse
-import Proofs.External.Iter
+module
+public import Rmcp.Funs
+public import Proofs.Defs.Sse
+public import Proofs.External.Iter
+-- module system: `saturating_add_val` unfolds these library definitions, not exposed by Aeneas
+import all Aeneas.Std.Scalar.SaturatingOps
+
+@[expose] public section
 
 /-!
 # Spec theorems for `SseEventSizeLimiter` (T01–T03, C01, C02)
@@ -68,21 +73,21 @@ theorem withinLimit_step (st : Defs.Sse.State) (x : U8)
       (Defs.Sse.step Usize.max st x).state.maxSize = st.maxSize := by
   unfold Defs.Sse.step at hok ⊢
   by_cases h1 : st.previousWasCr = true ∧ x.val = 10
-  · rw [if_pos h1]; exact ⟨hb, rfl⟩
-  rw [if_neg h1] at hok ⊢
+  · rw [ite_eq_left h1]; exact ⟨hb, rfl⟩
+  rw [ite_eq_right h1] at hok ⊢
   by_cases h13 : x.val = 13
-  · rw [if_pos h13] at hok ⊢
+  · rw [ite_eq_left h13] at hok ⊢
     simp only at hok ⊢
     by_cases ho : (Defs.Sse.finishLine Usize.max { st with previousWasCr := false }).ok = true
-    · rw [if_pos ho] at hok ⊢
+    · rw [ite_eq_left ho] at hok ⊢
       exact ⟨ho, rfl⟩
-    · rw [if_neg ho] at hok; exact absurd hok ho
-  rw [if_neg h13] at hok ⊢
+    · rw [ite_eq_right ho] at hok; exact absurd hok ho
+  rw [ite_eq_right h13] at hok ⊢
   simp only at hok ⊢
   by_cases h10 : x.val = 10
-  · rw [if_pos h10] at hok ⊢
+  · rw [ite_eq_left h10] at hok ⊢
     exact ⟨hok, rfl⟩
-  · rw [if_neg h10] at hok ⊢
+  · rw [ite_eq_right h10] at hok ⊢
     exact ⟨hok, rfl⟩
 
 /-- A successful `Defs.Sse.observe` from a state within the bound leaves a state within the
@@ -98,7 +103,7 @@ theorem withinLimit_observe (st : Defs.Sse.State) (l : List U8)
     simp only [Defs.Sse.observe] at hok ⊢
     split at hok
     · rename_i hs
-      rw [if_pos hs]
+      rw [ite_eq_left hs]
       obtain ⟨h1, h2⟩ := withinLimit_step st x hb hs
       obtain ⟨h3, h4⟩ := ih _ h1 hok
       exact ⟨h3, h4.trans h2⟩
@@ -111,12 +116,20 @@ theorem check_limit_eq (self : SseEventSizeLimiter) :
     SseEventSizeLimiter.check_limit self =
       ok (Defs.Sse.toResult (Defs.Sse.withinLimit Usize.max (Defs.Sse.ofLimiter self))) := by
   unfold SseEventSizeLimiter.check_limit
-  simp only [lift, bind_tc_ok, Defs.Sse.toResult, Defs.Sse.withinLimit, Defs.Sse.ofLimiter]
+  simp only [lift, bind_ok]
+  have hw : Defs.Sse.withinLimit Usize.max (Defs.Sse.ofLimiter self) =
+      decide
+        ¬(core.num.Usize.saturating_add self.retained_size self.line_size > self.max_size) := by
+    unfold Defs.Sse.withinLimit
+    exact decide_eq_decide.mpr (by
+      simp only [Defs.Sse.ofLimiter, gt_iff_lt, UScalar.lt_equiv, saturating_add_val, not_lt])
+  rw [hw]
   split
-  · simp_all only [gt_iff_lt, UScalar.lt_equiv, saturating_add_val, decide_eq_true_eq, ok.injEq,
-      right_eq_ite_iff, reduceCtorEq, imp_false, not_le]
-  · simp_all only [gt_iff_lt, UScalar.lt_equiv, saturating_add_val, not_lt, decide_true,
+  · rename_i h
+    simp only [Defs.Sse.toResult, h, not_true_eq_false, decide_false, Bool.false_eq_true,
       ↓reduceIte]
+  · rename_i h
+    simp only [Defs.Sse.toResult, h, not_false_eq_true, decide_true, ↓reduceIte]
 
 /-- `finish_line` returns the verdict of `Defs.Sse.finishLine` and a state whose model is the
 state of `Defs.Sse.finishLine`. -/
@@ -141,14 +154,17 @@ theorem finish_line_eq (self : SseEventSizeLimiter) :
     refine ⟨{ self with retained_size := i, line_size := 0#usize, line_is_comment := false },
       ?_, ?_⟩
     · rw [check_limit_eq]
-      simp only [Defs.Sse.ofLimiter, hi, UScalar.ofNatCore_val_eq, bind_tc_ok,
-        Defs.Sse.finishLine]
+      simp only [Defs.Sse.ofLimiter, hi, UScalar.ofNatCore_val_eq,
+        Defs.Sse.finishLine, bind_ok]
+      rfl
     · simp only [Defs.Sse.ofLimiter, hi, UScalar.ofNatCore_val_eq, Defs.Sse.finishLine]
+      rfl
   split
-  · apply key; simp_all only [UScalar.ofNatCore_val_eq, ↓reduceIte]
+  · rw [bind_ok]; apply key; simp_all only [UScalar.ofNatCore_val_eq, ↓reduceIte]
   · split
-    · apply key; simp_all only [↓reduceIte, UScalar.neq_to_neq_val, UScalar.ofNatCore_val_eq]
-    · simp only [lift, bind_tc_ok]; apply key
+    · rw [bind_ok]; apply key
+      simp_all only [↓reduceIte, UScalar.neq_to_neq_val, UScalar.ofNatCore_val_eq]
+    · simp only [lift, bind_ok]; apply key
       simp_all only [Bool.false_eq_true, ↓reduceIte, UScalar.neq_to_neq_val,
         UScalar.ofNatCore_val_eq, Bool.not_eq_true, saturating_add_val]
 
@@ -162,9 +178,10 @@ theorem branch_eq (x : core.result.Result Unit Unit) :
 
 /-- The residual of `?` converts back to `Err(())`. -/
 theorem from_residual_eq (e : Unit) :
-    CoreOpsTryTraitFromResidualResultInfallible.from_residual Unit (core.convert.FromSame Unit)
+    CoreOpsTry_traitFromResidualResult.from_residual Unit (core.convert.FromSame Unit)
       (.Err e) = ok (.Err ()) := by
-  rfl
+  simp only [CoreOpsTry_traitFromResidualResult.from_residual, core.convert.FromSame.from,
+    bind_tc_ok]
 
 /-- One iteration of the translated loop on a byte `b` is one `Defs.Sse.step`: it continues
 with the stepped state when the step succeeds, and stops with `Err(())` and that state when it
@@ -178,7 +195,7 @@ theorem observe_loop_body_eq (iter iter1 : core.slice.iter.Iter U8) (b : U8)
             then .cont (iter1, st') else .done (.Err (), st')) := by
   unfold SseEventSizeLimiter.observe_loop.body
   rw [hnext]
-  simp only [bind_tc_ok, uncurry_apply_pair]
+  simp only [bind_ok, uncurry_apply_pair]
   obtain ⟨s1, hfl1, hs1⟩ := finish_line_eq { st with previous_was_cr := false }
   rcases st with ⟨m, r, l, c, p⟩
   simp only [Defs.Sse.ofLimiter] at hs1 hfl1 ⊢
@@ -196,7 +213,7 @@ theorem observe_loop_body_eq (iter iter1 : core.slice.iter.Iter U8) (b : U8)
             ok (ControlFlow.cont (iter1,
               if setCr then { s2 with previous_was_cr := true } else s2))
           | core.ops.control_flow.ControlFlow.Break residual => do
-            let r1 ← CoreOpsTryTraitFromResidualResultInfallible.from_residual
+            let r1 ← CoreOpsTry_traitFromResidualResult.from_residual
                 Unit (core.convert.FromSame Unit) residual
             ok (ControlFlow.done (r1, s2))) =
         ok (if (let o := Defs.Sse.finishLine Usize.max st0
@@ -211,11 +228,11 @@ theorem observe_loop_body_eq (iter iter1 : core.slice.iter.Iter U8) (b : U8)
     -- The check passed and the line ended at CR: the code sets `previous_was_cr`.
     case true.true =>
       exact ⟨{ s2 with previous_was_cr := true }, by simp only at hs2 ⊢; rw [← hs2]; rfl,
-        by simp only [Defs.Sse.toResult, ↓reduceIte, branch_eq, bind_tc_ok]⟩
+        by simp only [Defs.Sse.toResult, ↓reduceIte, branch_eq, bind_ok]⟩
     -- Otherwise (the check failed, or no CR) the state is `s2`.
     all_goals
       exact ⟨s2, by simpa only [Bool.false_eq_true, ↓reduceIte] using hs2,
-        by simp only [Defs.Sse.toResult, Bool.false_eq_true, ↓reduceIte, branch_eq, bind_tc_ok,
+        by simp only [Defs.Sse.toResult, Bool.false_eq_true, ↓reduceIte, branch_eq, bind_ok,
           from_residual_eq]⟩
   have h13v : b ≠ 13#u8 → b.val ≠ 13 := by
     intro hb hv; apply hb; apply UScalar.eq_of_val_eq
@@ -256,7 +273,7 @@ theorem observe_loop_body_eq (iter iter1 : core.slice.iter.Iter U8) (b : U8)
         | core.ops.control_flow.ControlFlow.Continue _ =>
           ok (ControlFlow.cont (iter1, (⟨m, r, i, b, false⟩ : SseEventSizeLimiter)))
         | core.ops.control_flow.ControlFlow.Break residual => do
-          let r1 ← CoreOpsTryTraitFromResidualResultInfallible.from_residual
+          let r1 ← CoreOpsTry_traitFromResidualResult.from_residual
               Unit (core.convert.FromSame Unit) residual
           ok (ControlFlow.done (r1, (⟨m, r, i, b, false⟩ : SseEventSizeLimiter)))) =
       ok (if (Defs.Sse.step Usize.max ⟨m.val, r.val, l.val, c, p⟩ b).ok
@@ -267,45 +284,47 @@ theorem observe_loop_body_eq (iter iter1 : core.slice.iter.Iter U8) (b : U8)
     have hif : (if l = 0#usize then ok (decide (b = 58#u8)) else ok c : Result Bool) =
         ok (if l = 0#usize then decide (b = 58#u8) else c) := by split <;> rfl
     rw [hif]
-    simp only [bind_tc_ok, lift, hcl]
+    simp only [bind_ok, lift, hcl]
     have helper : ∀ (x : Bool) (R : SseEventSizeLimiter),
         (do
           let cf ← CoreOpsTry.branch (Defs.Sse.toResult x)
           match cf with
           | core.ops.control_flow.ControlFlow.Continue _ => ok (ControlFlow.cont (iter1, R))
           | core.ops.control_flow.ControlFlow.Break residual => do
-            let r1 ← CoreOpsTryTraitFromResidualResultInfallible.from_residual
+            let r1 ← CoreOpsTry_traitFromResidualResult.from_residual
                 Unit (core.convert.FromSame Unit) residual
             ok (ControlFlow.done (r1, R))) =
         ok (if x = true then .cont (iter1, R) else .done (.Err (), R)) := by
-      intro x R; cases x <;> rfl
+      intro x R
+      cases x <;> simp only [Defs.Sse.toResult, branch_eq, bind_ok, from_residual_eq,
+        Bool.false_eq_true, ↓reduceIte]
     exact helper _ _
   cases p
-  · simp only [Bool.false_eq_true, if_false]
+  · simp only [Bool.false_eq_true, ite_false]
     by_cases h13 : b = 13#u8
     · subst h13
       obtain ⟨s2, hfl2, hs2⟩ := finish_line_eq ⟨m, r, l, c, false⟩
-      rw [hfl2]
+      simp only [hfl2, bind_ok]
       exact finCase true _ s2 hs2
     by_cases h10 : b = 10#u8
     · subst h10
       obtain ⟨s2, hfl2, hs2⟩ := finish_line_eq ⟨m, r, l, c, false⟩
-      rw [hfl2]
+      simp only [hfl2, bind_ok]
       exact finCase false _ s2 hs2
     -- `b` is neither CR nor LF: the default arm of the match on `byte`
     split
     · contradiction
     · contradiction
     · exact otherCase false h13 h10
-  · simp only [if_true]
+  · simp only [ite_true]
     by_cases h10 : b = 10#u8
     · subst h10
       refine ⟨⟨m, r, l, c, false⟩, rfl, ?_⟩
       rfl
-    simp only [h10, if_false]
+    simp only [h10, ite_false]
     by_cases h13 : b = 13#u8
     · subst h13
-      rw [hfl1]
+      simp only [hfl1, bind_ok]
       exact finCase true _ s1 hs1
     split
     · contradiction
@@ -331,9 +350,9 @@ theorem observe_loop_eq (s : Slice U8) : ∀ n i st, s.val.length - i = n →
       rw [SseEventSizeLimiter.observe_loop, loop]
       have hb : SseEventSizeLimiter.observe_loop.body ⟨s, i⟩ st = ok (.done (.Ok (), st)) := by
         unfold SseEventSizeLimiter.observe_loop.body
-        rw [core.slice.iter.IteratorSliceIter.next_eq_none_of_le s i hge]
+        rw [core.slice.iter.IteratorSliceIter.next_eq_none_of_le s i hge, bind_ok]
         rfl
-      simp only [hb, List.drop_eq_nil_of_le hge]
+      simp only [hb, bind_ok, List.drop_eq_nil_of_le hge]
       rfl
     · rw [List.drop_eq_nil_of_le (by omega)]; rfl
   | succ n ih =>
@@ -348,14 +367,14 @@ theorem observe_loop_eq (s : Slice U8) : ∀ n i st, s.val.length - i = n →
     simp only [hb]
     cases hok : (Defs.Sse.step Usize.max (Defs.Sse.ofLimiter st) s.val[i]).ok
     · refine ⟨st1, ?_, ?_⟩
-      · simp only [hok, if_false, Bool.false_eq_true]; rfl
-      · simp only [if_false, Bool.false_eq_true]; exact hst1
+      · simp only [hok, ite_false, Bool.false_eq_true, bind_ok]; rfl
+      · simp only [ite_false, Bool.false_eq_true]; exact hst1
     · obtain ⟨st2, h2, h3⟩ := ih (i + 1) st1 (by omega)
       refine ⟨st2, ?_, ?_⟩
-      · simp only [if_true]
+      · simp only [ite_true, bind_ok]
         rw [← hst1]
         exact h2
-      · simp only [if_true]
+      · simp only [ite_true]
         rw [← hst1]; exact h3
 
 /-- `observe` returns the verdict of `Defs.Sse.observe` and a state whose model is the state of
@@ -369,8 +388,10 @@ theorem observe_eq (self : SseEventSizeLimiter) (chunk : Slice U8) :
   unfold SseEventSizeLimiter.observe
   obtain ⟨st', h1, h2⟩ := observe_loop_eq chunk _ 0 self rfl
   simp only [SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter,
-    bind_tc_ok, h1, List.drop_zero] at h2 ⊢
-  exact ⟨st', rfl, h2⟩
+    List.drop_zero] at h2 ⊢
+  refine ⟨st', ?_, h2⟩
+  rw [bind_ok]
+  exact h1
 
 end Proofs.ClientSideSse
 
@@ -462,14 +483,14 @@ theorem observe_append (self : SseEventSizeLimiter) (a b ab : Slice U8)
   obtain ⟨sa, ha, hsa⟩ := Proofs.ClientSideSse.observe_eq self a
   rw [h_ab, Defs.Sse.observe_append] at hab hsab
   rw [hab, ha]
-  simp only [bind_tc_ok, uncurry_apply_pair]
+  simp only [bind_ok]
   revert hsab
   cases hoka : (Defs.Sse.observe Usize.max (Defs.Sse.ofLimiter self) a.val).ok
-  · simp only [hoka, Bool.false_eq_true, if_false]
+  · simp only [hoka, Bool.false_eq_true, ite_false]
     intro hsab
     have : sab = sa := Proofs.ClientSideSse.ofLimiter_injective (hsab.trans hsa.symm)
     subst this; rfl
-  · simp only [hoka, if_true]
+  · simp only [hoka, ite_true]
     intro hsab
     obtain ⟨sb, hb, hsb⟩ := Proofs.ClientSideSse.observe_eq sa b
     show _ = observe sa b
@@ -489,7 +510,8 @@ theorem observe_append_of_observe_eq_ok (self self' : SseEventSizeLimiter) (a b 
     (h_ab : ab.val = a.val ++ b.val)
     (h_a : observe self a = ok (.Ok (), self')) :
     observe self ab = observe self' b := by
-  rw [observe_append self a b ab h_ab, h_a]; rfl
+  rw [observe_append self a b ab h_ab, h_a, bind_ok]
+  rfl
 
 /-- **C02** (former plan name `sse_observe_bound`): the limiter's memory guarantee at each chunk
 boundary. If the bound `sat(retained_size + line_size) ≤ max_size` (saturating at
@@ -523,12 +545,12 @@ theorem max_size_eq_and_satAdd_le_of_observe_eq_ok (self self' : SseEventSizeLim
     revert hr
     cases (Defs.Sse.observe Usize.max (Defs.Sse.ofLimiter self) chunk.val).ok <;>
       simp only [Defs.Sse.toResult, Bool.false_eq_true, ↓reduceIte, reduceCtorEq, imp_self]
-  have hb : Defs.Sse.withinLimit Usize.max (Defs.Sse.ofLimiter self) = true := by
-    simpa only [Defs.Sse.withinLimit, Defs.Sse.ofLimiter, decide_eq_true_eq] using h_bound
+  have hb : Defs.Sse.withinLimit Usize.max (Defs.Sse.ofLimiter self) = true :=
+    decide_eq_true h_bound
   obtain ⟨h3, h4⟩ := Proofs.ClientSideSse.withinLimit_observe _ _ hb hok
   rw [← h2] at h3 h4
   refine ⟨UScalar.eq_of_val_eq (by simpa only [Defs.Sse.ofLimiter] using h4), ?_⟩
-  simpa only [Defs.Sse.withinLimit, Defs.Sse.ofLimiter, decide_eq_true_eq] using h3
+  exact of_decide_eq_true h3
 
 /-- **C02, prefix form** (plan Section 16.4, C02 and C01): if the bound holds for `self` and
 `observe` on `ab = a ++ b` returns `Ok(())`, then `observe` on the prefix `a` also returns
@@ -552,8 +574,11 @@ theorem exists_observe_eq_ok_and_max_size_eq_and_satAdd_le_of_observe_append_eq_
   rw [ha] at h_ok ⊢
   revert h_ok
   cases hk : (Defs.Sse.observe Usize.max (Defs.Sse.ofLimiter self) a.val).ok
-  · simp only [Defs.Sse.toResult, Bool.false_eq_true, ↓reduceIte, bind_tc_ok, uncurry_apply_pair,
-      ok.injEq, Prod.mk.injEq, reduceCtorEq, false_and, exists_false, imp_self]
+  · simp only [Defs.Sse.toResult, Bool.false_eq_true, ↓reduceIte, bind_ok]
+    intro h
+    have h' : (ok (.Err (), sa) : Result (core.result.Result Unit Unit × SseEventSizeLimiter)) =
+        ok (.Ok (), self'') := h
+    simp only [ok.injEq, Prod.mk.injEq, reduceCtorEq, false_and] at h'
   · intro _
     refine ⟨sa, by simp only [Defs.Sse.toResult, ↓reduceIte], ?_⟩
     exact max_size_eq_and_satAdd_le_of_observe_eq_ok self sa a h_bound

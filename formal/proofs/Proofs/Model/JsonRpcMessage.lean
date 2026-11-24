@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.JsonRpc
+module
+public import Rmcp.Funs
+public import Defs.JsonRpc
+
+@[expose] public section
 
 /-!
 # Spec theorems for `JsonRpcMessage` (M01–M05, C03, joint lemma `exactly_one_some`)
@@ -136,20 +139,20 @@ theorem exactly_one_some {Req Resp Noti : Type} (self : model.JsonRpcMessage Req
       ⦃ (result : List Bool) => result.count true = 1 ⦄ := by
   match self with
   | .Request _ =>
-    simp only [into_request, into_response, into_notification, into_error, bind_tc_ok,
-      Option.isSome_none, Option.isSome_some, WP.spec_ok]
+    simp only [into_request, into_response, into_notification, into_error, bind_ok, WP.spec_ok,
+      Option.isSome_some, Option.isSome_none]
     decide
   | .Response _ =>
-    simp only [into_request, into_response, into_notification, into_error, bind_tc_ok,
-      Option.isSome_none, Option.isSome_some, WP.spec_ok]
+    simp only [into_request, into_response, into_notification, into_error, bind_ok, WP.spec_ok,
+      Option.isSome_some, Option.isSome_none]
     decide
   | .Notification _ =>
-    simp only [into_request, into_response, into_notification, into_error, bind_tc_ok,
-      Option.isSome_none, Option.isSome_some, WP.spec_ok]
+    simp only [into_request, into_response, into_notification, into_error, bind_ok, WP.spec_ok,
+      Option.isSome_some, Option.isSome_none]
     decide
   | .Error _ =>
-    simp only [into_request, into_response, into_notification, into_error, bind_tc_ok,
-      Option.isSome_none, Option.isSome_some, WP.spec_ok]
+    simp only [into_request, into_response, into_notification, into_error, bind_ok, WP.spec_ok,
+      Option.isSome_some, Option.isSome_none]
     decide
 
 end rmcp.model.JsonRpcMessage
@@ -170,9 +173,21 @@ theorem into_result_eq {Req Resp Noti : Type}
       ok ((r.map fun (x, i) => (core.result.Result.Ok x, some i)) <|>
         (e.map fun (x, i) => (core.result.Result.Err x, i)))) := by
   match m with
-  | .Request _ => rfl
-  | .Response _ => rfl
-  | .Notification _ => rfl
-  | .Error _ => rfl
+  | .Request _ =>
+    simp only [JsonRpcMessage.into_result, JsonRpcMessage.into_response,
+      JsonRpcMessage.into_error, bind_ok]
+    rfl
+  | .Response _ =>
+    simp only [JsonRpcMessage.into_result, JsonRpcMessage.into_response,
+      JsonRpcMessage.into_error, bind_ok]
+    rfl
+  | .Notification _ =>
+    simp only [JsonRpcMessage.into_result, JsonRpcMessage.into_response,
+      JsonRpcMessage.into_error, bind_ok]
+    rfl
+  | .Error _ =>
+    simp only [JsonRpcMessage.into_result, JsonRpcMessage.into_response,
+      JsonRpcMessage.into_error, bind_ok]
+    rfl
 
 end rmcp.model

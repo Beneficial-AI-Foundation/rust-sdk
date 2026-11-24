@@ -3,10 +3,14 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.JsonRpc
-import Proofs.External.IntParse
-import Proofs.External.Option
+module
+public import Rmcp.Funs
+public import Defs.JsonRpc
+public import Proofs.External.IntParse
+public import Proofs.External.Option
+public import Proofs.External.WP
+
+@[expose] public section
 
 /-!
 # Spec theorems for `NumberOrString` (M06, M07)
@@ -43,13 +47,13 @@ theorem numeric_string_value_spec (self : model.NumberOrString) :
   match self with
   | .Number n => simp only [numeric_string_value, numericValue, Option.map_eq_none_iff, WP.spec_ok]
   | .String a =>
-    obtain ⟨r, hr, hp⟩ := WP.spec_imp_exists
+    obtain ⟨r, hr, hp⟩ := Proofs.External.WP.exists_ok_of_spec
       (I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64 a.data)
-    obtain ⟨d, hd, hdv⟩ :=
-      WP.spec_imp_exists (alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec Global a)
-    obtain ⟨o, ho, hov⟩ := WP.spec_imp_exists (core.result.Result.ok_spec r)
-    simp only [numeric_string_value, hd, hdv, core.str.Str.parse_eq, hr, ho, bind_tc_ok,
-      numericValue, WP.spec_ok, hov, ← hp]
+    obtain ⟨d, hd, hdv⟩ := Proofs.External.WP.exists_ok_of_spec
+      (alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec alloc.alloc.Global a)
+    obtain ⟨o, ho, hov⟩ := Proofs.External.WP.exists_ok_of_spec (core.result.Result.ok_spec r)
+    simp only [numeric_string_value, hd, hdv, core.str.Str.parse_eq,
+      numericValue, ← hp, bind_ok, hr, ho, hov, WP.spec_ok]
     rcases r with n | e <;> rfl
 
 /-- **Spec theorem for `rmcp::model::NumberOrString::matches_response_id`** (M07)
@@ -70,42 +74,46 @@ theorem matches_response_id_spec (self response_id : model.NumberOrString) :
       (result = true ↔
         self = response_id ∨
           ∃ n : I64, self = .Number n ∧ numericValue response_id = some n.val) ⦄ := by
-  obtain ⟨o, ho, hpo⟩ := WP.spec_imp_exists (numeric_string_value_spec response_id)
+  obtain ⟨o, ho, hpo⟩ :=
+    Proofs.External.WP.exists_ok_of_spec (numeric_string_value_spec response_id)
   match self, response_id with
   | .Number n, .Number m =>
-    obtain ⟨c, hc, hcv⟩ := WP.spec_imp_exists
+    obtain ⟨c, hc, hcv⟩ := Proofs.External.WP.exists_ok_of_spec
       (core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_some_spec o n)
     rw [hpo] at hcv
     simp only [numericValue, reduceCtorEq, iff_false, Bool.not_eq_true] at hcv
     simp only [matches_response_id, Insts.CoreCmpPartialEqNumberOrString.eq, read_discriminant,
-      ↓reduceIte, lift, core.cmp.impls.PartialEqI64.eq, ho, hc, hcv, bind_tc_ok,
-      Bool.false_eq_true, decide_eq_true_eq, Number.injEq, numericValue, reduceCtorEq, and_false,
+      ↓reduceIte, lift, core.cmp.impls.PartialEqI64.eq, ho,
+      Number.injEq, numericValue, reduceCtorEq, and_false,
       exists_const, or_false]
-    by_cases h : n = m <;>
-      simp only [h, ↓reduceIte, iff_true, iff_false, Bool.not_eq_true, WP.spec_ok]
+    by_cases h : n = m
+    · subst h
+      simp only [iff_true, decide_true, bind_ok, ↓reduceIte, WP.spec_ok]
+    · simp only [h, iff_false, Bool.not_eq_true, decide_false, bind_ok, hc, hcv,
+        Bool.false_eq_true, ↓reduceIte, WP.spec_ok]
   | .Number n, .String b =>
-    obtain ⟨c, hc, hcv⟩ := WP.spec_imp_exists
+    obtain ⟨c, hc, hcv⟩ := Proofs.External.WP.exists_ok_of_spec
       (core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_some_spec o n)
     rw [hpo] at hcv
     simp only [matches_response_id, Insts.CoreCmpPartialEqNumberOrString.eq, read_discriminant,
       Int.not_eq, IScalar.ofInt_val_eq, ne_eq, zero_ne_one, not_false_eq_true, one_ne_zero,
       zero_lt_one, Int.reduceLT, or_false, or_self, IScalar.val_not_eq_imp_not_eq, ↓reduceIte, ho,
-      hc, bind_tc_ok, Bool.false_eq_true, reduceCtorEq, Number.injEq, exists_eq_left', false_or]
+      reduceCtorEq, Number.injEq, exists_eq_left', false_or, bind_ok, hc]
     cases c <;> simpa only [Bool.false_eq_true, ↓reduceIte, true_iff, false_iff, WP.spec_ok]
       using hcv
   | .String a, .Number m =>
     simp only [matches_response_id, Insts.CoreCmpPartialEqNumberOrString.eq, read_discriminant,
       Int.not_eq, IScalar.ofInt_val_eq, ne_eq, one_ne_zero, not_false_eq_true, zero_ne_one,
       Int.reduceLT, zero_lt_one, or_true, or_self, IScalar.val_not_eq_imp_not_eq, ↓reduceIte,
-      bind_tc_ok, Bool.false_eq_true, reduceCtorEq, false_and, exists_const, iff_false,
-      Bool.not_eq_true, WP.spec_ok]
+      reduceCtorEq, false_and, exists_const, iff_false,
+      Bool.not_eq_true, bind_ok, WP.spec_ok]
   | .String a, .String b =>
     simp only [matches_response_id, Insts.CoreCmpPartialEqNumberOrString.eq, read_discriminant,
       ↓reduceIte, String.injEq, reduceCtorEq, false_and, exists_const, or_false]
-    obtain ⟨c, hc, hcv⟩ := WP.spec_imp_exists
-      (alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec Global a b)
+    obtain ⟨c, hc, hcv⟩ := Proofs.External.WP.exists_ok_of_spec
+      (alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec alloc.alloc.Global a b)
     rw [alloc.sync.Arc.data_val_inj] at hcv
-    simp only [hc, bind_tc_ok]
+    simp only [hc, bind_ok]
     cases c <;> simpa only [Bool.false_eq_true, ↓reduceIte, true_iff, false_iff, WP.spec_ok]
       using hcv
 

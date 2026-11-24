@@ -3,7 +3,8 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Aeneas
+module
+public import Aeneas
 
 /-!
 External types of the `rmcp` translation (`Rmcp.Types` imports this module).
@@ -26,10 +27,14 @@ is a definition over the `opaque` carrier `ExtModel.SerdeJsonValue`. This module
 axiom.
 
 The `@[rust_type]` names and the source lines in the docstrings are those Aeneas generated.
-Source paths: `/rustc/library/…` is the `rust-src` of the pinned toolchain `nightly-2026-06-01`;
+Source paths: `/rustc/library/…` is the `rust-src` of the pinned toolchain `nightly-2026-09-17`
+(Aeneas upgrade, 2026-11-24: every cited `rust-src` range was compared with `nightly-2026-06-01`
+and renumbered; no change of behaviour, only comments of `ArcInner` and the renaming of
+`i64::from_ascii_radix` to `from_ascii_bytes_radix_impl`);
 `/cargo/registry/…` is the crate at the version in the path. The justification of each model is
 also recorded in `formal/trusted/evidence/README.md`.
 -/
+@[expose] public section
 open Aeneas Aeneas.Std Result ControlFlow Error
 
 /-- [core::time::Duration]
@@ -50,7 +55,7 @@ structure core.time.Duration : Type where
   nanos_lt : nanos.val < 1000000000
 
 /-- [std::collections::hash::map::HashMap]
-    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 246:0-251:1
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 245:0-250:1
 
 **Model: association list.** `entries` lists the key-value pairs of the map; `hash_builder`
 is the `S` value the Rust map stores and `alloc` the allocator of its table (std wraps
@@ -187,7 +192,7 @@ structure core.net.ip_addr.Ipv4Addr : Type where
 
 **Model: the eight 16-bit segments.** The Rust struct is `pub struct Ipv6Addr { octets: [u8;
 16] }` (`ip_addr.rs` lines 168–170). Stated deviation of representation (plan Section 18): the
-model stores the segments that `Ipv6Addr::segments` computes from the octets (lines 1495–1510:
+model stores the segments that `Ipv6Addr::segments` computes from the octets (lines 1525–1540:
 segment `i` is the big-endian `u16` of octets `2i` and `2i + 1`). That map is a bijection
 between `[u8; 16]` and `[u16; 8]`, and the translated code reads an address only through
 `segments`, `is_loopback`, `is_unspecified` and `is_multicast`, whose models
@@ -200,9 +205,9 @@ structure core.net.ip_addr.Ipv6Addr : Type where
   addrSegments : Std.Array Std.U16 8#usize
 
 /-- The kinds of integer parsing error: Rust's `pub enum IntErrorKind` (`core/src/num/error.rs`
-lines 93–129, `#[non_exhaustive]`), all six variants in source order. `i64::from_str` produces
+lines 88–124, `#[non_exhaustive]`), all six variants in source order. `i64::from_str` produces
 only `Empty`, `InvalidDigit`, `PosOverflow` and `NegOverflow` (`core/src/num/mod.rs`, lines
-1756–1844). A helper type of the model of `ParseIntError`: Aeneas did not need the Rust type, so
+1775–1863, `from_ascii_bytes_radix_impl`). A helper type of the model of `ParseIntError`: Aeneas did not need the Rust type, so
 it has no generated name. -/
 inductive ExtModel.IntErrorKind : Type where
   /-- The input is empty. -/
@@ -219,20 +224,20 @@ inductive ExtModel.IntErrorKind : Type where
   | NotAPowerOfTwo
 
 /-- [core::num::error::ParseIntError]
-    Source: '/rustc/library/core/src/num/error.rs', lines 74:0-74:24
+    Source: '/rustc/library/core/src/num/error.rs', lines 69:0-69:24
 
 **Model: the one field of the Rust struct** `pub struct ParseIntError { pub(super) kind:
-IntErrorKind }` (`error.rs` lines 74–76), with `IntErrorKind` as `ExtModel.IntErrorKind`. -/
+IntErrorKind }` (`error.rs` lines 69–71), with `IntErrorKind` as `ExtModel.IntErrorKind`. -/
 @[rust_type "core::num::error::ParseIntError"]
 structure core.num.error.ParseIntError : Type where
-  /-- The kind of the error (`ParseIntError::kind`, lines 136–138). -/
+  /-- The kind of the error (`ParseIntError::kind`, lines 131–133). -/
   kind : ExtModel.IntErrorKind
 
 /-- [alloc::sync::Arc]
-    Source: '/rustc/library/alloc/src/sync.rs', lines 269:0-272:1
+    Source: '/rustc/library/alloc/src/sync.rs', lines 274:0-277:1
 
-**Model: a structure holding the shared value.** The Rust struct (`sync.rs` lines 269–276)
-holds a pointer to an `ArcInner<T> { strong, weak, data: T }` (lines 388–397) and the
+**Model: a structure holding the shared value.** The Rust struct (`sync.rs` lines 274–281)
+holds a pointer to an `ArcInner<T> { strong, weak, data: T }` (lines 400–413) and the
 allocator. The value model keeps `data` only: the reference counts, the pointer identity and the
 allocator (only `Global`, a unit struct, occurs) are not modelled. The translated code never
 mutates the shared value, so sharing is not observable in it. One stated consequence, in the

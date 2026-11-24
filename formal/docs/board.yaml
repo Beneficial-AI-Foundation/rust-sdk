@@ -72,7 +72,8 @@ steps:
       - formal/specs/Specs.lean     # placeholder (S03)
       - formal/proofs/Proofs.lean   # placeholder (S03)
     acceptance: >-
-      aeneas-install.sh installs nightly-2026.08.20-5d08da4 and is a no-op on rerun; bundle
+      aeneas-install.sh installs nightly-2026.08.20-5d08da4 (since the Aeneas upgrade of
+      2026-11-24: nightly-2026.11.24-fb44cb4) and is a no-op on rerun; bundle
       versions match Section 5; the pinned Charon reads [package.metadata.charon] (otherwise
       the script passes the same lists as flags, recorded in the evidence); the empty project
       builds in CI (B10); aeneas-translate.sh fails on a nonzero Aeneas exit, a missing
@@ -482,7 +483,10 @@ steps:
       - formal/proofs/Proofs/Transport/Tower.lean
       - formal/proofs/Proofs/Internal/Transport/AsyncRw.lean
       - formal/proofs/Proofs/Internal/Transport/StreamableHttpServer/Tower.lean
-      - formal/trusted/native-axioms.lock
+      - formal/trusted/native-axioms.lock  # emptied by the Aeneas upgrade 2026-11-24
+    # Aeneas upgrade 2026-11-24 (reviewed and re-signed by the spec owner 2026-11-24): the 30 entries were removed,
+    # native-axioms.lock is empty (lead decision N5) and the #guard_msgs lists no longer show
+    # native-code axioms; the acceptance below records the step as run.
     acceptance: >-
       T04-T08, C05 checked; 30 native-lock entries (H2); #guard_msgs lists show them.
 
@@ -553,6 +557,8 @@ steps:
     files:
     acceptance: >-
       Linkage check (part (a): a change under crates/; part (b): a seeded translation patch), missing target and removed native-lock entry each shown to fail once on a throwaway branch.
+    # Aeneas upgrade 2026-11-24: native-axioms.lock is empty, so "removed native-lock entry" cannot
+    # be shown as written; the lead decides the replacement check (e.g. a seeded native-code axiom).
 
   - id: S36
     day: D9-10
@@ -573,3 +579,53 @@ steps:
       - formal/README.md
     acceptance: >-
       Phase 2 results (plan Section 25), trusted-base delta, bugs found, open items, cost; Phase 3 scope.
+
+  - id: AEN-UPG  # not a plan step; Aeneas upgrade, plan Section 26 (amendment 2026-11-24)
+    day: 2026-11-24
+    state: IN_PROGRESS  # migrated; reviewed (2 rounds + RangeInclusive review, all findings
+    # fixed); human batch re-sign-off 2026-11-24 (spec owner). Pending: translation-pins.txt hand
+    # edit (sources guard), a clean aeneas-archive run, and the commit (human approval)
+    depends_on: [S37]
+    owner: Lead + human owner
+    files:  # full scope: `git diff --name-only d61356a` (2026-11-24), grouped
+      # toolchain pins
+      - formal/lakefile.toml
+      - formal/lake-manifest.json
+      - formal/lean-toolchain
+      # translation (regenerated)
+      - formal/translation/Rmcp/Funs.lean
+      - formal/translation/Rmcp/Types.lean
+      - formal/translation/translation.json
+      # trusted base
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/native-axioms.lock  # emptied (N5)
+      - formal/trusted/aeneas-bundle.sha256
+      - formal/trusted/translation-pins.txt  # edited by the human (A1)
+      - formal/trusted/evidence/README.md
+      # scripts and CI
+      - scripts/aeneas-translate.sh  # N1, N2, Rust pin
+      - scripts/check-original-linkage.sh
+      - scripts/lean-axiom-audit.lean  # N11
+      - scripts/lean-guard.sh
+      - scripts/lean_guard.py  # pins, N3/N4 exemptions, N10, N13
+      - .github/workflows/aeneas-translation.yml
+      - .github/workflows/lean-build.yml
+      - .github/workflows/patched-tests.yml
+      # Lean sources: 72 files (module conversion N12, forced restatements N7, axiom lists, docstrings)
+      - formal/specs/**/*.lean
+      - formal/proofs/**/*.lean
+      # records and documents
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/docs/functions/*.yaml  # 29 records: 28 axiom lists and the E10 comment
+      - formal/README.md
+      - formal/specs/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Section 26 (amendment)
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+      - docs/AI_PR_REVIEW_QUESTIONS.md
+    acceptance: >-
+      Aeneas nightly-2026.11.24-fb44cb4 / Lean 4.36 / Rust nightly-2026-09-17; lake build --wfail
+      and all lean-guard.sh checks pass; every changed #print axioms list only gains propext,
+      Classical.choice or Quot.sound or loses native-code axioms; forced restatements name-only
+      (N7) or the reviewed RangeInclusive laws; human batch re-sign-off recorded by the human.

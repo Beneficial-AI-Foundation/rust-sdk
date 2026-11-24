@@ -7,13 +7,16 @@
 > (`Specs/`), 50 about private, crate-internal or patch-only functions and 116 are laws of the
 > trusted models (`../proofs/Proofs/Internal/`): 194 restated theorems. The public
 > `request_state.rs` API is partly covered: 8 of its 17 public functions (R09–R14 in progress via
-> translation patch 03; R15 `new_with_keyring` waits for an Aeneas upgrade; R16–R17 `seal_json*`
+> translation patch 03, parked during the Aeneas upgrade of 2026-11-24; R15 `new_with_keyring`
+> waited for an Aeneas upgrade, re-adding it is a separate step after the migration; R16–R17 `seal_json*`
 > excluded, blocked upstream). Main trust items: Charon/Aeneas/Lean, the translated
-> configuration, patch 01, the hand-written models (including the one clock reading of `open`)
-> and 35 locked native-code assumptions. Two bugs found: H7 (`async_rw` method lists) and H8 (`240.0.0.0/4` not blocked).
+> configuration, patch 01, the hand-written models (including the one clock reading of `open`);
+> no native-code assumption remains (35 were locked until the Aeneas upgrade of 2026-11-24, which is
+> reviewed and re-signed by the spec owner 2026-11-24). Two bugs found: H7 (`async_rw` method lists) and H8 (`240.0.0.0/4` not blocked).
 
 **What, against what.** Each guarantee below is a Lean theorem about the
 [Aeneas](https://github.com/AeneasVerif/aeneas) translation of the Rust code of `rmcp` (Charon
+`0.1.324`, Aeneas `nightly-2026.11.24-fb44cb4`, Lean `v4.36.0`; until 2026-11-24 Charon
 `0.1.235`, Aeneas `nightly-2026.08.20-5d08da4`, Lean `v4.31.0`). Phase 2 (IDs M, T, A, C) is
 about upstream rmcp commit `7caec76`, **unmodified**. This rests on
 `scripts/check-original-linkage.sh`, which checks that the committed translation, generated from
@@ -32,8 +35,9 @@ are named `Theorems.<module>.<Type>.<function>` and most are proved by its `…_
 [`../proofs/`](../proofs/); the failing-case companions (`…_fail`), the joint lemmas and the
 compositions are named after their statement (e.g. `Theorems.model.into_result_eq`) and proved by
 the lemma of the same name. Under each theorem, `#guard_msgs in #print axioms` pins the logical
-assumptions it uses: Lean's standard `propext`, `Classical.choice`, `Quot.sound`, and for some
-statements the locked native-code assumptions below. Status and history:
+assumptions it uses: Lean's standard `propext`, `Classical.choice`, `Quot.sound` and nothing
+else (until the Aeneas upgrade of 2026-11-24 some statements also listed native-code assumptions,
+see "What you must trust"). Status and history:
 [`../docs/STATUS.md`](../docs/STATUS.md).
 
 This directory holds only the **public API** (functions `pub` in upstream rmcp); guarantees about
@@ -245,13 +249,14 @@ Rust documentation. Used by: the proofs of all statements above.
 
 ## What you must trust
 
-> - **Tools:** Charon `0.1.235`, Aeneas `nightly-2026.08.20-5d08da4` and the Lean `v4.31.0`
->   kernel; the prebuilt Aeneas Lean library (archive digest checked) and Mathlib oleans (not
+> - **Tools:** Charon `0.1.324`, Aeneas `nightly-2026.11.24-fb44cb4` and the Lean `v4.36.0`
+>   kernel (since the Aeneas upgrade of 2026-11-24, reviewed and re-signed by the spec owner 2026-11-24);
+>   the prebuilt Aeneas Lean library (archive digest checked) and Mathlib oleans (not
 >   digest-checked).
 > - **The translated configuration:** target `x86_64-unknown-linux-gnu`,
 >   `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`,
 >   `overflow-checks=true` and `debug-assertions=true` (overflow panics), Rust
->   `nightly-2026-06-01`, the Charon settings in `crates/rmcp/Cargo.toml`. Other targets,
+>   `nightly-2026-09-17`, the Charon settings in `crates/rmcp/Cargo.toml`. Other targets,
 >   features or release builds without overflow checks are not covered.
 > - **Translation patch 01** (Phase 1 and R01–R08): the `request_state_wire` refactor on
 >   `7caec76`, reviewed and signed off; its equivalence with the unpatched code is tested
@@ -282,11 +287,12 @@ Rust documentation. Used by: the proofs of all statements above.
 >   statement constrains the value of the reading or involves two readings. The model of
 >   `now_ms` always returns, while Rust's `Utc::now` panics for a clock before 1970 or outside
 >   chrono's range (exception (K)).
-> - **35 native-code assumptions**, locked in
->   [`formal/trusted/native-axioms.lock`](../trusted/native-axioms.lock): the side conditions of
->   the Aeneas `toStr` of string literals, decided by compiled code (5 for Phase 1, one of
->   which R07, R08 and the R08 corollary also reach; 30 for the method names and
->   `"http"`/`"https"` of T05–T08 and C05).
+> - **No native-code assumption** since the Aeneas upgrade of 2026-11-24:
+>   [`formal/trusted/native-axioms.lock`](../trusted/native-axioms.lock) is empty, because the
+>   `toStr` of `nightly-2026.11.24-fb44cb4` checks the length of a string literal in the kernel.
+>   Until then 35 were locked: the side conditions of the Aeneas `toStr` of string literals,
+>   decided by compiled code (5 for Phase 1, one of which R07, R08 and the R08 corollary also
+>   reached; 30 for the method names and `"http"`/`"https"` of T05–T08 and C05).
 > - **The translation pin** [`formal/trusted/translation-pins.txt`](../trusted/translation-pins.txt)
 >   (S21): the sha256 of the generated `Funs.lean` and the one line where `lean-guard.sh sources`
 >   excuses a metaprogramming word (the T06 literal `"initialize"`); a trusted file.
@@ -307,7 +313,9 @@ Rust documentation. Used by: the proofs of all statements above.
 - 9 of the 17 public functions of `request_state.rs` (not translated today, plan Section 2.3;
   status in [`../docs/STATUS.md`](../docs/STATUS.md), "Public request_state.rs API"): `seal`,
   `seal_with`, `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with` (R09–R14,
-  in progress via translation patch 03); `new_with_keyring` (R15, waits for an Aeneas upgrade);
+  in progress via translation patch 03, parked during the Aeneas upgrade of 2026-11-24);
+  `new_with_keyring` (R15, waited for an Aeneas upgrade; re-adding it is a separate step after
+  the migration, lead decision N15);
   `seal_json`, `seal_json_with` (R16–R17, excluded, blocked upstream). Also the private
   `seal_at` (excluded). Since no keyring constructor is verified, the codec-state premise (F) is
   assumed, not derived.
