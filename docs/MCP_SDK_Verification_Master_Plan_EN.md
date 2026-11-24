@@ -1003,7 +1003,8 @@ opaque = [
   # fields `Arc<dyn CredentialStore>` and `Arc<dyn StateStore>`, auth.rs:1252-1253, async-fn
   # traits), before Aeneas runs; and no type declaration is generated, while the name still
   # appears as the namespace of the three translated functions. The comment in
-  # crates/rmcp/Cargo.toml keeps the old wording so the S22 pins stay valid.]
+  # crates/rmcp/Cargo.toml was corrected at S37; comments are outside the S22 pins, which hash
+  # the parsed manifest without the Charon table.]
   "rmcp::transport::auth::AuthorizationManager",
 ]
 ```

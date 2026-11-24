@@ -1,4 +1,4 @@
-# Formal verification of the request-state codec
+# Formal verification of selected rmcp SDK functions (request-state codec, Phase 2 targets)
 
 Status: see [`docs/STATUS.md`](docs/STATUS.md) (per-function status) and
 [`docs/board.yaml`](docs/board.yaml) (plan steps). The plan is
@@ -9,6 +9,14 @@ patched copy: upstream `origin/main` `7caec76` plus translation patch
 `trusted/patches/01-request-state-wire.patch` (D2 fallback, human decision 2026-11-23; every
 target `patch-01`); the trusted base has that patch, no trusted axiom and five locked native-code
 axioms; see "Results" in `docs/STATUS.md`.
+
+Phase 2 (S37, 2026-11-24): 25 more existing SDK functions (M01–M14, T01–T08, A01–A03) are
+specified, signed off and proved on **unmodified** upstream `7caec76` (linkage `ORIGINAL`, checked
+by `scripts/check-original-linkage.sh`, locally so far), with the composition theorems C01–C05;
+the trusted base adds the `core::net`, integer-parsing and string/`Option` models (still no trusted
+axiom), 30 more locked `toStr` native-code axioms (35 in all) and the test-only patch 02; two
+bugs were found (H7, H8). Start reading at [`specs/README.md`](specs/README.md); full report:
+"Phase 2" → "Phase 2 results" in `docs/STATUS.md`.
 
 ## Translated configuration
 
@@ -491,7 +499,8 @@ code without any `rmcp` name. Reviewers of `trusted/` check imports, notation an
 until this is enforced. The exclusions and opaque items are those of plan Section 2.3 and
 Section 9 (S04a part 2 adds the derived `Debug` impls to `exclude`, human decision
 2026-11-22). The trusted-base section of `docs/STATUS.md` is authoritative (current counts: 0
-trusted axioms, 5 locked native-code axioms, 5 `opaque` constants since S26/S27).
+trusted axioms, 35 locked native-code axioms (5 Phase 1, 30 Phase 2, H2), 5 `opaque` constants
+since S26/S27).
 
 ### Tools
 

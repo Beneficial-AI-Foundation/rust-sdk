@@ -5,6 +5,8 @@ Task state: [`board.yaml`](board.yaml) (authoritative). Per-function records:
 [`functions/`](functions/). Step evidence: [`evidence/`](evidence/); this report's evidence:
 the S19 evidence (git history at 223ff12).
 
+Phase 2 results: see "Phase 2" → "Phase 2 results (S37, 2026-11-24)".
+
 Last updated 2026-11-23: S19 final status report, written at local commit `aacfbf7` (branch
 `docs/verification-guides`, not pushed). S19 was accepted by the human owner on 2026-11-23 (`board.yaml`).
 Updated 2026-11-23 for the D2 fallback (human decision 2026-11-23): the SDK `*.rs` files are
@@ -457,6 +459,120 @@ Plan Part II (Sections 13–25). Twenty-five existing upstream functions in six 
 composition theorems C01–C05. Selected by a measured pilot (plan Section 14, 2026-11-23); the
 pilot is not the project's translation, which is S21.
 
+### Phase 2 results (S37, 2026-11-24)
+
+Written by the lead, checked by an independent review, accepted by the human owner on 2026-11-24.
+
+Plan Section 25 template, filled with the actual results (no wording changed except the bracketed
+lists):
+
+> At upstream SDK commit `7caec762799bece6fba38e4298b8ca7db8bac12c`, unmodified (the translation of
+> these functions does not depend on any translation patch and `crates/rmcp/src` is the pinned
+> upstream tree; checked by `scripts/check-original-linkage.sh`), translated for
+> `x86_64-unknown-linux-gnu` with `--no-default-features --features
+> request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
+> (and the Charon settings in `crates/rmcp/Cargo.toml`), the following existing SDK functions are
+> verified against the Aeneas translation (`nightly-2026.08.20-5d08da4`): M01–M05
+> `JsonRpcMessage::{into_request, into_response, into_notification, into_error, into_result}`,
+> M06–M07 `NumberOrString::{numeric_string_value, matches_response_id}`, M08
+> `TaskStatus::is_terminal`, M09–M12 `SamplingContent::{into_vec, is_empty, len, first}`, M13–M14
+> `Reference::{as_prompt_name, as_resource_uri}`, T01–T03
+> `SseEventSizeLimiter::{check_limit, finish_line, observe}`, T04–T06
+> `async_rw::{without_carriage_return, is_standard_notification, is_standard_method}`, T07–T08
+> `tower::{default_port, AllowedPort::matches}`, A01–A03
+> `AuthorizationManager::{embedded_ipv4, is_disallowed_metadata_ipv4,
+> is_disallowed_metadata_ipv6}`, together with the composition theorems C01 (SSE chunk append),
+> C02 (SSE bound at chunk boundaries), C03 (`into_result` from `into_response`/`into_error`),
+> C04 (no SSRF bypass through embedded IPv4, with a corollary in `Defs.Net` terms), C05 (every
+> standard notification is a standard method) and the plan Section 16.1 joint lemmas. These
+> results rest on the trusted base listed in `formal/README.md` and `STATUS.md`: Charon, Aeneas
+> and Lean; the translated configuration; the standard-library, `core::net` and integer-parsing
+> models in `formal/trusted/` (definitions, structures and `opaque` constants; no trusted axiom);
+> the `toStr` native-code axioms in `formal/trusted/native-axioms.lock`; the statements in
+> `formal/specs/`; and the functions not taken (Section 16.5). They do not establish the
+> correctness of the functions that call these targets, of URL or HTTP parsing, of `async` code,
+> or of DNS resolution. Functions not listed are open for the reasons given below.
+
+None of the 25 is open; the functions measured and not taken are listed, with their blockers, in
+plan Section 16.5.
+
+Two qualifications the template does not carry: (1) the statements in `formal/specs/` are now the
+public API only; the statements about the private targets (M06, M07, T01–T08, A01–A03) and the
+model laws are in `formal/proofs/Proofs/Internal/` and part of the same trust (human decision
+2026-11-24, plan Sections 4 and 20); (2) "checked by `scripts/check-original-linkage.sh`" holds
+locally (on `3ded001` twice in the S23 review, and again in the S34 run; exit 0, blocks 41/27/30/9)
+and has not yet run in CI; the records say "pending S22 CI" until the first push.
+
+**D10 count for Phase 2:** verified on original code **25**, proved with a translation patch **0**,
+open **0** (all 25 records: `translation: LEAN_OK`, `spec: REVIEWED`, `linkage: ORIGINAL`,
+`proof: CHECKED`). In total 50 targets are proved: 25 verified on original code (Phase 2) and 25
+proved with translation patch 01 (Phase 1), plus C01–C05, the Phase 1 round trips and the joint
+lemmas (185 restated theorems: 19 public, 166 internal, of which 116 are model laws).
+
+**Trusted-base delta since Phase 1:**
+- External models: added the `core::net` (`Ipv4Addr`, `Ipv6Addr`), integer-parsing (`str::parse`,
+  `i64::from_str`, `ParseIntError`), `str`/`String`/`Arc` equality and dereference, `Option`,
+  `Result`, slice, range and `MaybeUninit` models (S26/S27), with 44 new proved laws (116 in all,
+  restated in `Proofs/Internal/External.lean`); one more `opaque` constant (`SerdeJsonValue`, five
+  in all). Trusted axioms: still **0**.
+- Native-code axioms: **5 → 35** (the 30 Aeneas `toStr` side conditions of the method-name and
+  `http`/`https` literals, human decision H2), all locked and kernel-provable.
+- Charon settings: 25 more `start_from` entries; 24 more `opaque` external crates of the widened
+  features (signatures only; see "Trusted base"); the `opaque` `AuthorizationManager` type (H4,
+  reason corrected at S23); no new `exclude` entry. The feature list (H1) is part of the translated
+  configuration; the Phase 1 output is byte-identical under it.
+- Translation pin: `formal/trusted/translation-pins.txt` (S21; sha256 of `Funs.lean` plus the one
+  excused line 1971).
+- Patches: the test-only patch 02 (S34, H3; changes no translated item).
+- Phase C (no trusted-base change): the listed proofs use the signed-off laws instead of unfolding
+  model bodies; two `#guard_msgs` lists shrank, builtins only (`Slice.first_spec` and T01).
+
+**Bugs found (Phase 2; see "Bugs found"):** H7 — `async_rw`'s method lists miss six core MCP names,
+so a line that fails to deserialize but parses as JSON with one of these method names is dropped
+(`Ok(None)`) instead of returned as a `Serde` error (for the four `tasks/*` requests only without
+an `id`); H8 — `240.0.0.0/4` (except `255.255.255.255`, which is blocked) is not blocked by
+`is_disallowed_metadata_ipv4`, and so passes the SSRF check and the DNS-resolver filter. Both are
+recorded, with the statements describing the code; neither is reported upstream yet.
+
+**Evidence beyond the proofs:** every plan Section 22 boundary case is exercised by a Rust test (37
+upstream, 104 through the test-only patch 02); 835 library tests pass locally with both patches;
+one seeded mutation (`64..=127` → `64..=126` in `is_disallowed_metadata_ipv4`) is caught by
+`s34_a02_range_boundaries` (S34; the S34 reviewers caught five more mutants in scratch, not
+recorded as evidence).
+
+**Phase 2 open items (full list: "Open items"):** H5 (project owner and budget; it also blocks the
+acceptance of S01 and S20 and gate G1); the first push, which runs the three CI workflows and makes
+S03, S04a, S21 and S22 (and through them S23 and S34) `ACCEPTED`; S17 and S35 (each CI check shown
+to fail once on a throwaway branch; `NOT_STARTED`); S36 (fresh-clone reproduction, after S35); the
+upstream reports for H7 and H8 (need the owner's go-ahead); the upstream Aeneas `toStr` fix that
+would remove the 35 native-code axioms; the Aeneas bump (plan Section 25); the S31 candidate lemma
+(`observe = historyOutcome` for every cap ≥ 1).
+
+**Cost:** Phase 2 ran on 2026-11-23 and 2026-11-24 (plan estimate: D1–D10), by AI agents in the
+`mcp-cycle` process, with the spec owner (Hoang Le Truong) signing off each specification and
+human decision; gate G1 is not yet met. Token cost is not recorded; the only measured compute
+figures are the pilot's (plan Section 14: about 7 s per warm translation, about 17 GB of build
+output). The budget (H5) has not been named, so no comparison with a budget is possible.
+
+**Phase 3 scope (plan Section 23):** what Phase 2 now provides as lemmas, and what still blocks:
+
+| Phase 3 candidate | Phase 2 lemmas it would use | Still blocked by |
+|---|---|---|
+| `AddressClass::of`, `MetadataAddressResolver::{is_allowed, allows_url}` (SSRF guard) | A01–A03, C04 | B16, B7 (an Aeneas bump fixes B7) |
+| `is_allowed_metadata_url` | A02, A03 | `url::Url`/`Host` model, B16, B2 |
+| `origin_is_allowed`, `parse_allowed_origin` | T07, T08 | B2 (`trim_matches`, `strip_suffix`); `http::Uri` parsing |
+| `host_is_allowed` | none (the S26 string-equality model) | B2 (`trim_matches`) |
+| `should_ignore_notification`, `try_parse_with_compatibility` | T04–T06 (and C05, added here) | a `serde_json::Value` model |
+| `bounded_sse_stream` | T01–T03, C01, C02 | `async`/`Pin` (outside Aeneas; C01/C02 are the contract) |
+| client response routing (`service/client.rs`) | M01–M07, C03 | `async`, channels |
+| task manager terminal-state transitions | M08 | `tokio` |
+| `CreateMessageRequestParams::validate` | M09–M12 | B21 |
+
+Phase 3 entry criterion (plan Section 23): a measured pilot on the then-current Aeneas release,
+re-run against this table, before any target is committed to. Deferred (Section 25): the Aeneas
+bump; upstreaming the Phase 2 models; specifications for the translatable Phase 1 non-targets
+(`open`, `open_with`, `new`, `try_new`). Phase C proof refinement is done (2026-11-24).
+
 **Human decisions (H1–H5 2026-11-23, run log of S20; H6–H7 2026-11-24, S24):**
 
 | ID | Decision | State |
@@ -561,8 +677,8 @@ translation (148/148). No Phase 2 target reaches an opaque crate or `Authorizati
 `exclude` reaches nothing in Phase 2, so no statement is weakened. No placeholder remains (only the
 five documented `opaque` constants; each external has a model with a cited source). Corrections
 made: H4's reason (Charon/hax fails on the `Arc<dyn CredentialStore/StateStore>` fields, not Aeneas
-on oauth2 aliases; plan Section 15 and H4; the `Cargo.toml` comment keeps its wording so the S22
-pins stay valid); the linkage script's description of its opaque check; stale STATUS, plan
+on oauth2 aliases; plan Section 15 and H4; the `Cargo.toml` comment was corrected at S37: comments do not
+reach the S22 pins, which hash the parsed manifest without the Charon table); the linkage script's description of its opaque check; stale STATUS, plan
 Section 24 and record text. Conditional: S21 and S22 are not yet accepted (no CI run), so S23 can
 be signed off only subject to their CI runs. **Signed off by the spec owner Hoang Le Truong on 2026-11-24**, subject to the
 S21/S22 CI runs; S23 becomes `ACCEPTED` when both pass.
@@ -652,7 +768,7 @@ lines). Re-run after the review fixes: output byte-identical. `lake build` (1745
 
 Board (2026-11-24, after the human acceptance above): S24–S33 `ACCEPTED`; S20, S21, S22, S23 and S34
 `IN_PROGRESS`, accepted by the owner and waiting only for H5 (S20) or the first CI runs (S21, S22,
-then S23 and S34); S35, S36 and S37 `NOT_STARTED`.
+then S23 and S34); S35 and S36 `NOT_STARTED`; S37 `ACCEPTED` (results written and accepted 2026-11-24).
 
 ## Open items
 

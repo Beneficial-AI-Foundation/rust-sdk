@@ -565,7 +565,7 @@ steps:
 
   - id: S37
     day: D10
-    state: NOT_STARTED
+    state: ACCEPTED  # Phase 2 results (STATUS.md, formal/README.md); reviewed; accepted by the human owner 2026-11-24
     depends_on: []   # plan: board state; no success required; S37 is mandatory
     owner: Lead + human owner
     files:

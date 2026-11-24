@@ -131,9 +131,10 @@ opaque = [
   "pin_project_lite", "tokio_stream", "http_body", "http_body_util", "rand", "async_trait",
   "pastey", "oauth2", "reqwest", "url",
   # Phase 2, human decision H4: the type only. A01-A03 are associated functions of
-  # AuthorizationManager that never use `self`; translating the type pulls in oauth2's client
-  # type aliases, on which Aeneas fails with an internal error (plan Section 14). Opaque, the
-  # type does not appear in the generated files; the three function bodies are translated.
+  # AuthorizationManager that never use `self`; translating the type makes Charon fail (a hax
+  # panic on the fields `Arc<dyn CredentialStore>` and `Arc<dyn StateStore>`, auth.rs:1252-1253;
+  # S23 review, 2026-11-24). Opaque, no type declaration is generated; the three function bodies
+  # are translated.
   "rmcp::transport::auth::AuthorizationManager",
 ]
 
