@@ -4,41 +4,39 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
+import Proofs.External.Byte
 
 /-!
 # Laws of the Phase 2 external models: Net (plan steps S26/S27, stage 6)
 
-Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27), restated in
-`formal/specs/Specs/External.lean` (Phase 2 part); the draft file was removed at incorporation. For this group
-(spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
+Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27),
+restated in `formal/specs/Specs/External.lean` (Phase 2 part); the draft file was removed at
+incorporation. For this group (spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
 -/
 
 open Aeneas Aeneas.Std Result
 open rmcp ExtModel
+open Proofs.External.Byte (byte_val)
 
 namespace Proofs.External.Net
 
-/-- The value of `ExtModel.byte n` is `n` modulo 256. -/
-theorem byte_val (n : Nat) : (ExtModel.byte n).val = n % 256 := by
-  simp [ExtModel.byte, UScalar.val]
-
 /-- Masking with `0xff00` keeps the second byte: `n &&& 0xff00 = (n / 256 % 256) * 256`. -/
 theorem and_65280_eq (n : Nat) : n &&& 65280 = n / 256 % 256 * 256 := by
-  have h1 : (65280 : Nat) = (2 ^ 8 - 1) * 2 ^ 8 := by norm_num
+  have h1 : (65280 : Nat) = (2 ^ 8 - 1) * 2 ^ 8 := rfl
   apply Nat.eq_of_testBit_eq
   intro i
-  rw [h1, Nat.testBit_and, show (256 : Nat) = 2 ^ 8 by norm_num, Nat.testBit_mul_two_pow,
+  rw [h1, Nat.testBit_and, show (256 : Nat) = 2 ^ 8 from rfl, Nat.testBit_mul_two_pow,
     Nat.testBit_mul_two_pow, Nat.testBit_two_pow_sub_one, Nat.testBit_mod_two_pow,
     Nat.testBit_div_two_pow]
   by_cases hi : 8 ≤ i
-  · simp [hi, Bool.and_comm]
-  · simp [hi]
+  · simp only [hi, decide_true, Bool.true_and, Nat.sub_add_cancel, Bool.and_comm]
+  · simp only [hi, decide_false, Bool.false_and, Bool.and_false]
 
 /-- The octets of an IPv4 address as natural numbers. -/
 theorem ipv4Nats_eq (self : core.net.ip_addr.Ipv4Addr) (o0 o1 o2 o3 : U8)
     (h : self.addrOctets.val = [o0, o1, o2, o3]) :
     ExtModel.ipv4Nats self = [o0.val, o1.val, o2.val, o3.val] := by
-  simp [ExtModel.ipv4Nats, h]
+  simp only [ExtModel.ipv4Nats, h, List.map_cons, List.map_nil]
 
 end Proofs.External.Net
 
@@ -60,7 +58,7 @@ Used by: A02 (`octets[0]`, `octets[1]` for `0/8`, `100.64/10`, `198.18/15`). -/
 theorem core.net.ip_addr.Ipv4Addr.octets_spec (self : core.net.ip_addr.Ipv4Addr) :
     core.net.ip_addr.Ipv4Addr.octets self ⦃ (result : Array U8 4#usize) =>
       result = self.addrOctets ⦄ := by
-  simp [core.net.ip_addr.Ipv4Addr.octets]
+  simp only [core.net.ip_addr.Ipv4Addr.octets, WP.spec_ok]
 
 /-- **Spec theorem for `Ipv4Addr::is_private`**: `10.0.0.0/8`, `172.16.0.0/12` or
 `192.168.0.0/16` (RFC 1918).
@@ -78,7 +76,12 @@ theorem core.net.ip_addr.Ipv4Addr.is_private_spec (self : core.net.ip_addr.Ipv4A
   unfold core.net.ip_addr.Ipv4Addr.is_private
   rw [ipv4Nats_eq self o0 o1 o2 o3 h]
   split
-  all_goals simp_all
+  -- The list is the `simp_all?` output; no shorter list closes all the match cases.
+  all_goals simp_all only [List.cons.injEq, Nat.reduceEqDiff, false_and, or_self, or_false,
+              iff_true, WP.spec_ok, ge_iff_le, Bool.decide_and, true_and, false_or,
+              Bool.and_eq_true, decide_eq_true_eq, Nat.reduceDiv, OfNat.ofNat_ne_one, and_self,
+              or_true, imp_false, not_and, forall_apply_eq_imp_iff, forall_apply_eq_imp_iff₂,
+              Bool.false_eq_true, false_iff, not_false_eq_true, implies_true]
   all_goals omega
 
 /-- **Spec theorem for `Ipv4Addr::is_loopback`**: `127.0.0.0/8`.
@@ -91,7 +94,10 @@ theorem core.net.ip_addr.Ipv4Addr.is_loopback_spec (self : core.net.ip_addr.Ipv4
     (o0 o1 o2 o3 : U8) (h : self.addrOctets.val = [o0, o1, o2, o3]) :
     core.net.ip_addr.Ipv4Addr.is_loopback self ⦃ (result : Bool) =>
       (result = true ↔ o0.val = 127) ⦄ := by
-  simp [core.net.ip_addr.Ipv4Addr.is_loopback, ipv4Nats_eq self o0 o1 o2 o3 h]
+  simp only [core.net.ip_addr.Ipv4Addr.is_loopback, ipv4Nats_eq self o0 o1 o2 o3 h,
+    List.getD_eq_getElem?_getD, List.length_cons, List.length_nil, zero_add, Nat.reduceAdd,
+    Nat.ofNat_pos, getElem?_pos, List.getElem_cons_zero, Option.getD_some, WP.spec_ok,
+    decide_eq_true_eq]
 
 /-- **Spec theorem for `Ipv4Addr::is_link_local`**: `169.254.0.0/16` (RFC 3927).
 
@@ -105,7 +111,9 @@ theorem core.net.ip_addr.Ipv4Addr.is_link_local_spec (self : core.net.ip_addr.Ip
       (result = true ↔ o0.val = 169 ∧ o1.val = 254) ⦄ := by
   unfold core.net.ip_addr.Ipv4Addr.is_link_local
   rw [ipv4Nats_eq self o0 o1 o2 o3 h]
-  split <;> simp_all
+  split <;> simp_all only [List.cons.injEq, and_self, iff_true, WP.spec_ok, imp_false, not_and,
+              forall_apply_eq_imp_iff₂, Bool.false_eq_true, false_iff, not_false_eq_true,
+              implies_true]
 
 /-- **Spec theorem for `Ipv4Addr::is_broadcast`**: exactly `255.255.255.255`.
 
@@ -122,7 +130,9 @@ theorem core.net.ip_addr.Ipv4Addr.is_broadcast_spec (self : core.net.ip_addr.Ipv
   have : o1.val < 256 := by scalar_tac
   have : o2.val < 256 := by scalar_tac
   have : o3.val < 256 := by scalar_tac
-  simp [core.net.ip_addr.Ipv4Addr.is_broadcast, ipv4Nats_eq self o0 o1 o2 o3 h, ExtModel.beNat]
+  simp only [core.net.ip_addr.Ipv4Addr.is_broadcast, ExtModel.beNat, ipv4Nats_eq self o0 o1 o2 o3 h,
+    List.foldl_cons, zero_mul, zero_add, List.foldl_nil, Nat.reduceMul, Nat.reduceAdd, WP.spec_ok,
+    decide_eq_true_eq]
   omega
 
 /-- **Spec theorem for `Ipv4Addr::is_unspecified`**: exactly `0.0.0.0`.
@@ -135,8 +145,10 @@ theorem core.net.ip_addr.Ipv4Addr.is_unspecified_spec (self : core.net.ip_addr.I
     (o0 o1 o2 o3 : U8) (h : self.addrOctets.val = [o0, o1, o2, o3]) :
     core.net.ip_addr.Ipv4Addr.is_unspecified self ⦃ (result : Bool) =>
       (result = true ↔ o0.val = 0 ∧ o1.val = 0 ∧ o2.val = 0 ∧ o3.val = 0) ⦄ := by
-  simp [core.net.ip_addr.Ipv4Addr.is_unspecified, ipv4Nats_eq self o0 o1 o2 o3 h,
-    ExtModel.beNat]
+  simp only [core.net.ip_addr.Ipv4Addr.is_unspecified, ExtModel.beNat,
+    ipv4Nats_eq self o0 o1 o2 o3 h, List.foldl_cons, zero_mul, zero_add, List.foldl_nil,
+    Nat.add_eq_zero_iff, mul_eq_zero, OfNat.ofNat_ne_zero, or_false, and_assoc, Bool.decide_and,
+    WP.spec_ok, Bool.and_eq_true, decide_eq_true_eq]
 
 /-- **Spec theorem for `Ipv4Addr::is_multicast`**: `224.0.0.0/4` (first four bits `1110`).
 
@@ -148,7 +160,10 @@ theorem core.net.ip_addr.Ipv4Addr.is_multicast_spec (self : core.net.ip_addr.Ipv
     (o0 o1 o2 o3 : U8) (h : self.addrOctets.val = [o0, o1, o2, o3]) :
     core.net.ip_addr.Ipv4Addr.is_multicast self ⦃ (result : Bool) =>
       (result = true ↔ o0.val / 16 = 14) ⦄ := by
-  simp [core.net.ip_addr.Ipv4Addr.is_multicast, ipv4Nats_eq self o0 o1 o2 o3 h]
+  simp only [core.net.ip_addr.Ipv4Addr.is_multicast, ipv4Nats_eq self o0 o1 o2 o3 h,
+    List.getD_eq_getElem?_getD, List.length_cons, List.length_nil, zero_add, Nat.reduceAdd,
+    Nat.ofNat_pos, getElem?_pos, List.getElem_cons_zero, Option.getD_some, ge_iff_le,
+    Bool.decide_and, WP.spec_ok, Bool.and_eq_true, decide_eq_true_eq]
   omega
 
 /-- **Spec theorem for `<Ipv4Addr as From<u32>>::from`**: the big-endian bytes of `ip`, most
@@ -217,7 +232,7 @@ Used by: A01 (`let [a, b, c, d, e, f, g, h] = addr.segments()`), A03 (`segments[
 theorem core.net.ip_addr.Ipv6Addr.segments_spec (self : core.net.ip_addr.Ipv6Addr) :
     core.net.ip_addr.Ipv6Addr.segments self ⦃ (result : Array U16 8#usize) =>
       result = self.addrSegments ⦄ := by
-  simp [core.net.ip_addr.Ipv6Addr.segments]
+  simp only [core.net.ip_addr.Ipv6Addr.segments, WP.spec_ok]
 
 /-- **Spec theorem for `Ipv6Addr::is_unspecified`**: exactly `::` (every segment `0`).
 
@@ -232,7 +247,10 @@ theorem core.net.ip_addr.Ipv6Addr.is_unspecified_spec (self : core.net.ip_addr.I
     core.net.ip_addr.Ipv6Addr.is_unspecified self ⦃ (result : Bool) =>
       (result = true ↔ s0.val = 0 ∧ s1.val = 0 ∧ s2.val = 0 ∧ s3.val = 0 ∧ s4.val = 0 ∧
         s5.val = 0 ∧ s6.val = 0 ∧ s7.val = 0) ⦄ := by
-  simp [core.net.ip_addr.Ipv6Addr.is_unspecified, ExtModel.ipv6Nats, ExtModel.beNat, h]
+  simp only [core.net.ip_addr.Ipv6Addr.is_unspecified, ExtModel.beNat, ExtModel.ipv6Nats, h,
+    List.map_cons, List.map_nil, List.foldl_cons, zero_mul, zero_add, List.foldl_nil, add_zero,
+    Nat.add_eq_zero_iff, mul_eq_zero, OfNat.ofNat_ne_zero, or_false, and_assoc, Bool.decide_and,
+    WP.spec_ok, Bool.and_eq_true, decide_eq_true_eq]
 
 /-- **Spec theorem for `Ipv6Addr::is_loopback`**: exactly `::1`.
 
@@ -255,7 +273,9 @@ theorem core.net.ip_addr.Ipv6Addr.is_loopback_spec (self : core.net.ip_addr.Ipv6
   have : s5.val < 65536 := by scalar_tac
   have : s6.val < 65536 := by scalar_tac
   have : s7.val < 65536 := by scalar_tac
-  simp [core.net.ip_addr.Ipv6Addr.is_loopback, ExtModel.ipv6Nats, ExtModel.beNat, h]
+  simp only [core.net.ip_addr.Ipv6Addr.is_loopback, ExtModel.beNat, ExtModel.ipv6Nats, h,
+    List.map_cons, List.map_nil, List.foldl_cons, zero_mul, zero_add, List.foldl_nil, add_zero,
+    WP.spec_ok, decide_eq_true_eq]
   omega
 
 /-- **Spec theorem for `Ipv6Addr::is_multicast`**: `ff00::/8` (first eight bits all `1`).

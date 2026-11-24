@@ -95,7 +95,7 @@ theorem Theorems.client_side_sse.SseEventSizeLimiter.check_limit (self : SseEven
   rmcp.transport.common.client_side_sse.SseEventSizeLimiter.check_limit_spec self
 
 /--
-info: 'Theorems.client_side_sse.SseEventSizeLimiter.check_limit' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'Theorems.client_side_sse.SseEventSizeLimiter.check_limit' depends on axioms: [propext, Quot.sound]
 -/
 #guard_msgs in
 #print axioms Theorems.client_side_sse.SseEventSizeLimiter.check_limit

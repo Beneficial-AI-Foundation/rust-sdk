@@ -8,9 +8,9 @@ import Rmcp.Funs
 /-!
 # Laws of the Phase 2 external models: Option (plan steps S26/S27, stage 6)
 
-Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27), restated in
-`formal/specs/Specs/External.lean` (Phase 2 part); the draft file was removed at incorporation. For this group
-(spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
+Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27),
+restated in `formal/specs/Specs/External.lean` (Phase 2 part); the draft file was removed at
+incorporation. For this group (spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
 -/
 
 open Aeneas Aeneas.Std Result
@@ -60,9 +60,12 @@ theorem core.option.Option.Insts.CoreCmpPartialEqOption.eq_spec {T : Type}
     have h := h_inst l r rfl rfl
     simp only [core.option.Option.Insts.CoreCmpPartialEqOption.eq, Option.some.injEq]
     exact h
-  | some _, none => simp [core.option.Option.Insts.CoreCmpPartialEqOption.eq]
-  | none, some _ => simp [core.option.Option.Insts.CoreCmpPartialEqOption.eq]
-  | none, none => simp [core.option.Option.Insts.CoreCmpPartialEqOption.eq]
+  | some _, none => simp only [core.option.Option.Insts.CoreCmpPartialEqOption.eq, reduceCtorEq,
+                      iff_false, Bool.not_eq_true, WP.spec_ok]
+  | none, some _ => simp only [core.option.Option.Insts.CoreCmpPartialEqOption.eq, reduceCtorEq,
+                      iff_false, Bool.not_eq_true, WP.spec_ok]
+  | none, none => simp only [core.option.Option.Insts.CoreCmpPartialEqOption.eq, iff_true,
+                    WP.spec_ok]
 
 /-- **Spec theorem for `<Option<i64> as PartialEq>::eq`** at the instance of the translation
 (`core.cmp.PartialEqI64`, value equality): option equality. -/
@@ -73,7 +76,17 @@ theorem core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_spec
       ⦃ (result : Bool) => (result = true ↔ self = other) ⦄ := by
   apply core.option.Option.Insts.CoreCmpPartialEqOption.eq_spec
   intro l r _ _
-  simp
+  simp only [liftFun2, core.cmp.impls.PartialEqI64.eq, WP.spec_ok, decide_eq_true_eq]
+
+/-- `<Option<i64> as PartialEq>::eq` against `Some n` compares the values: `eq_i64_spec` with
+the right-hand side a `Some`, as M07 uses it to compare the parsed response id with the numeric
+request id. -/
+theorem core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_some_spec
+    (self : Option I64) (n : I64) :
+    core.option.Option.Insts.CoreCmpPartialEqOption.eq core.cmp.PartialEqI64 self (some n)
+      ⦃ (result : Bool) => (result = true ↔ self.map (·.val) = some n.val) ⦄ := by
+  rw [← Option.map_some, (Option.map_injective (fun _ _ => IScalar.eq_of_val_eq)).eq_iff]
+  exact core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_spec self (some n)
 
 /-- **Spec theorem for `Result::ok`**: `Ok x ↦ Some x`, `Err _ ↦ None`; never fails. -/
 @[step]
@@ -83,5 +96,5 @@ theorem core.result.Result.ok_spec {T : Type} {E : Type} (self : core.result.Res
         | core.result.Result.Ok x => some x
         | core.result.Result.Err _ => none ⦄ := by
   match self with
-  | core.result.Result.Ok _ => simp [core.result.Result.ok]
-  | core.result.Result.Err _ => simp [core.result.Result.ok]
+  | core.result.Result.Ok _ => simp only [core.result.Result.ok, WP.spec_ok]
+  | core.result.Result.Err _ => simp only [core.result.Result.ok, WP.spec_ok]

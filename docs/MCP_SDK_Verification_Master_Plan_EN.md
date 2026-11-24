@@ -612,7 +612,7 @@ In each pipeline:
 | A target turns out to need a patch, or the Rust source changes | Phase A, steps 2–4 | Re-translate; CI re-checks every proof; broken proofs return to `proof: OPEN` |
 | A spec owner rejects a spec | The drafter | New draft; a different agent reviews it |
 
-**Phase C: refinement.** Phase C starts only once every target is `CHECKED` or definitively `OPEN`. It shortens proofs, makes them robust to translation changes and Aeneas upgrades, and factors out shared lemmas. Spec statements and `#guard_msgs` lists must not change during it. It is out of scope for this sprint (Section 12).
+**Phase C: refinement.** Phase C starts only once every target is `CHECKED` or definitively `OPEN`. It shortens proofs, makes them robust to translation changes and Aeneas upgrades, and factors out shared lemmas. Spec statements must not change during it, and a `#guard_msgs` axiom list may only lose axioms, never gain any (human decision 2026-11-24: a smaller trusted base is allowed; the spec file's list and the function record's `axioms` field are updated with it). It is out of scope for this sprint (Section 12).
 
 ### Steps
 

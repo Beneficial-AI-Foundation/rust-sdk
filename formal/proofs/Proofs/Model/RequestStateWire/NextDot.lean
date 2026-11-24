@@ -48,7 +48,7 @@ theorem next_dot_spec (s : Slice U8) (start : Usize) :
     · have hlt : i.val < s.val.length := by scalar_tac
       refine ⟨hinv, Or.inr ⟨hsi, ?_⟩⟩
       rw [List.getElem?_eq_getElem hlt, ← i2_post]
-      simp_all [dot]
+      simp_all only [dot, ne_eq]
     · have hlt : i.val < s.val.length := by scalar_tac
       refine ⟨by omega, fun j h1 h2 => ?_, by scalar_tac⟩
       by_cases hj : j < i.val
@@ -56,7 +56,7 @@ theorem next_dot_spec (s : Slice U8) (start : Usize) :
       · have : j = i.val := by omega
         subst this
         rw [List.getElem?_eq_getElem hlt, ← i2_post]
-        simp_all [dot]
+        simp_all only [dot, ne_eq, Option.some.injEq, not_false_eq_true]
   · exact ⟨le_refl _, fun j h1 h2 => absurd h2 (by omega)⟩
 
 end rmcp.model.request_state_wire

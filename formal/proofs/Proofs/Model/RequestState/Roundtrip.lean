@@ -132,7 +132,7 @@ theorem openRs2_eq_ok (self : RequestStateCodec) (tok kid key ad body : List U8)
   obtain ⟨keys, sm, fbs, hk, hl⟩ := h_key
   have henc : ¬ maxEncodedKidLen < (ExtModel.b64 kid).length := by
     rw [length_b64]
-    simp only [maxEncodedKidLen, maxKidLen] at *
+    simp only [maxEncodedKidLen, maxKidLen] at h_kid_len ⊢
     omega
   have hkl : ¬ (kid.length = 0 ∨ maxKidLen < kid.length) := by omega
   have hs : ExtModel.strOfBytes? kid = some kidStr := by

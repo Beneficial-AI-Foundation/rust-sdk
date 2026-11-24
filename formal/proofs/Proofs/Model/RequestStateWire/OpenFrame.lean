@@ -52,13 +52,17 @@ theorem open_frame_spec (body : Slice U8) (now_ms : I64) :
       rw [i9_post, bodyExpiry, expiryLen]
       congr 2
       apply List.ext_getElem
-      · simp; omega
+      · simp only [List.length_take, List.Vector.length_val, UScalar.ofNatCore_val_eq, inf_eq_left]
+        omega
       · intro n h1 h2
         simp only [List.length_take] at h1
         have : n < 8 := by omega
         rcases n with _ | _ | _ | _ | _ | _ | _ | _ | n
-        all_goals first | omega | simp [Array.make, *]
+        all_goals first | omega | simp only [zero_add, Nat.reduceAdd, List.getElem_take, Array.make,
+          List.getElem_cons_succ, List.getElem_cons_zero, i1_post, i2_post, i3_post, i4_post,
+          i5_post, i6_post, i7_post, i8_post]
     rw [hE]
-    simp_all [expiryLen]
+    simp_all only [true_eq_decide_iff, false_eq_decide_iff, Bool.not_eq_true, Slice.length,
+      List.length_drop, expiryLen, not_false_eq_true, and_self]
 
 end rmcp.model.request_state_wire

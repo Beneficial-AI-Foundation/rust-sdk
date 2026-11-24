@@ -5,15 +5,16 @@ Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
 import Mathlib.Data.Nat.Digits.Defs
+import Proofs.External.Byte
 import Proofs.External.String
 import Defs.IntParse
 
 /-!
 # Laws of the Phase 2 external models: IntParse (plan steps S26/S27, stage 6)
 
-Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27), restated in
-`formal/specs/Specs/External.lean` (Phase 2 part); the draft file was removed at incorporation. For this group
-(spec owner sign-off 2026-11-23): `str::parse` and `i64::from_str`.
+Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27),
+restated in `formal/specs/Specs/External.lean` (Phase 2 part); the draft file was removed at
+incorporation. For this group (spec owner sign-off 2026-11-23): `str::parse` and `i64::from_str`.
 
 The digit loop `ExtModel.i64DigitLoop` is described by `i64DigitLoop_eq`: from a magnitude `a`
 in range, it reads the longest digit prefix `d` of its input, and its result depends only on
@@ -29,7 +30,7 @@ open rmcp ExtModel
 
 namespace Proofs.External.IntParse
 
-open Proofs.External.Utf8 Proofs.External.Base64
+open Proofs.External.Utf8 Proofs.External.Byte
 
 /-- The decimal-digit test of the statements. -/
 def isDigit (c : U8) : Bool := decide (48 ≤ c.val ∧ c.val ≤ 57)
@@ -218,8 +219,8 @@ theorem digitFold_map (acc : Nat) (L : List Char) (h : ∀ ch ∈ L, ch.toNat < 
   | nil => rfl
   | cons ch t ih =>
     rw [List.map_cons, digitFold, List.foldl_cons, Nat.ofDigitChars_cons, ← digitFold,
-      byte_val, Nat.mod_eq_of_lt (h ch (by simp))]
-    exact ih _ (fun c hc => h c (by simp [hc]))
+      byte_val, Nat.mod_eq_of_lt (h ch List.mem_cons_self)]
+    exact ih _ (fun c hc => h c (List.mem_cons_of_mem ch hc))
 
 theorem digitFold_digitBytes (m : Nat) : digitFold 0 (digitBytes m) = m := by
   rw [digitBytes, digitFold_map]
@@ -234,7 +235,7 @@ theorem digitBytes_ne_nil (m : Nat) : digitBytes m ≠ [] := by
 
 end Proofs.External.IntParse
 
-open Proofs.External.IntParse Proofs.External.Base64 Proofs.External.Utf8
+open Proofs.External.IntParse Proofs.External.Byte Proofs.External.Utf8
 
 /-- **`i64::from_str` on the empty input**: `Err` with kind `Empty`. -/
 theorem I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_empty
@@ -410,9 +411,10 @@ theorem parseI64_append (sign body : List U8)
     · have hc := h_unsigned rfl c rfl
       have h1 : c ≠ Defs.IntParse.plus := fun h => hc.1 (by rw [h]; rfl)
       have h2 : c ≠ Defs.IntParse.minus := fun h => hc.2 (by rw [h]; rfl)
-      simp [Defs.IntParse.splitSign, h1, h2]
-    · simp [Defs.IntParse.splitSign, Defs.IntParse.plus]
-    · simp [Defs.IntParse.splitSign, Defs.IntParse.plus, Defs.IntParse.minus]
+      rw [List.nil_append, Defs.IntParse.splitSign, if_neg h1, if_neg h2]
+      rfl
+    · rfl
+    · rfl
   have hfold : Defs.IntParse.digitsValue body = digitFold 0 body := rfl
   have hdig : Defs.IntParse.isAsciiDigit = isDigit := rfl
   unfold Defs.parseI64
@@ -431,13 +433,9 @@ theorem parseI64_append (sign body : List U8)
 
 /-- The digit prefix is the whole list exactly when every byte is a digit. -/
 theorem takeWhile_isDigit_eq_self_iff (l : List U8) :
-    l.takeWhile isDigit = l ↔ l.all isDigit = true := by
-  induction l with
-  | nil => simp
-  | cons c t ih =>
-    by_cases hc : isDigit c = true
-    · simp [List.takeWhile_cons_of_pos hc, hc, ih]
-    · simp [List.takeWhile_cons_of_neg hc, hc]
+    l.takeWhile isDigit = l ↔ l.all isDigit = true :=
+  ⟨fun h => h ▸ List.all_takeWhile,
+    fun h => takeWhile_isDigit_eq_self l (List.all_eq_true.1 h)⟩
 
 end Proofs.External.IntParse
 
@@ -490,16 +488,18 @@ theorem I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64 (src : 
   · by_cases hsg : c.val = 43 ∨ c.val = 45
     · have hc : c = 43#u8 ∨ c = 45#u8 := by
         rcases hsg with h | h
-        · exact Or.inl (UScalar.eq_of_val_eq (by simp [h]))
-        · exact Or.inr (UScalar.eq_of_val_eq (by simp [h]))
+        · exact Or.inl (UScalar.eq_of_val_eq (by simp only [h, UScalar.ofNatCore_val_eq]))
+        · exact Or.inr (UScalar.eq_of_val_eq (by simp only [h, UScalar.ofNatCore_val_eq]))
       by_cases ht : t = []
       · subst ht
         rw [I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_lone_sign src c hs hsg,
           WP.spec_ok]
         rcases hc with rfl | rfl <;> rfl
       · rw [← hs]
-        exact main [c] t (by rw [hs]; rfl) (by rcases hc with rfl | rfl <;> simp) ht
-          (fun h => by simp at h)
+        exact main [c] t (by rw [hs]; rfl) (by rcases hc with rfl | rfl <;> decide) ht
+          (fun h => absurd h (List.cons_ne_nil c []))
     · rw [← hs]
       exact main [] (c :: t) (by rw [hs]; rfl) (Or.inl rfl) (List.cons_ne_nil _ _)
-        (fun _ x hx => by simp at hx; subst hx; omega)
+        (fun _ x hx => by
+          rw [List.head?_cons, Option.mem_def, Option.some.injEq] at hx
+          subst hx; omega)

@@ -6,6 +6,7 @@ Authors: Hoang Le Truong
 import Rmcp.Funs
 import Defs.Bytes
 import Defs.Tower
+import Proofs.External.Option
 import Proofs.External.String
 
 /-!
@@ -35,16 +36,17 @@ obligation, not part of this theorem. No premise. -/
 theorem default_port_spec (scheme : Str) :
     default_port scheme ⦃ (result : Option U16) =>
       result = Defs.Tower.defaultPort scheme.val ⦄ := by
-  simp only [default_port, Str.Insts.CoreCmpPartialEqStr.eq, Proofs.External.Utf8.toStr_val,
+  simp only [default_port, Str.Insts.CoreCmpPartialEqStr.eq_eq, Proofs.External.Utf8.toStr_val,
     Defs.Tower.defaultPort, Defs.Tower.http, Defs.Tower.https,
     Proofs.External.Utf8.utf8Bytes_eq_utf8, bind_tc_ok]
   have hne : ExtModel.utf8 "https" ≠ ExtModel.utf8 "http" := fun h =>
     absurd (Proofs.External.Utf8.utf8_injective h) (by decide)
   by_cases h₁ : scheme.val = ExtModel.utf8 "http"
-  · simp [h₁]
+  · simp only [h₁, decide_true, ↓reduceIte, WP.spec_ok]
   · by_cases h₂ : scheme.val = ExtModel.utf8 "https"
-    · simp [h₂, hne]
-    · simp [h₁, h₂]
+    · simp only [h₂, hne, decide_false, Bool.false_eq_true, ↓reduceIte, decide_true,
+        WP.spec_ok]
+    · simp only [h₁, decide_false, Bool.false_eq_true, ↓reduceIte, h₂, WP.spec_ok]
 
 /-- **Spec theorem for `rmcp::transport::streamable_http_server::tower::AllowedPort::matches`**
 (T08)
@@ -65,19 +67,21 @@ theorem AllowedPort.matches_spec (self : AllowedPort) (scheme : Str) (port : Opt
       | .Exact allowed =>
         (result = true ↔ (port <|> Defs.Tower.defaultPort scheme.val) = some allowed) ⦄ := by
   match self with
-  | .Any => simp [AllowedPort.matches]
-  | .Unspecified => simp [AllowedPort.matches]
+  | .Any => simp only [AllowedPort.matches, WP.spec_ok]
+  | .Unspecified => simp only [AllowedPort.matches, WP.spec_ok]
   | .Exact allowed =>
-    match port with
-    | none =>
-      obtain ⟨r, hr, hp⟩ := WP.spec_imp_exists (default_port_spec scheme)
-      simp only [AllowedPort.matches, core.option.Option.or_else,
-        AllowedPort.matches.closure.Insts.CoreOpsFunctionFnOnceTupleOptionU16.call_once, hr,
-        bind_tc_ok, ← hp]
-      cases r <;> simp [core.option.Option.Insts.CoreCmpPartialEqOption.eq,
-        core.cmp.impls.PartialEqU16.eq]
-    | some p =>
-      simp [AllowedPort.matches, core.option.Option.or_else,
-        core.option.Option.Insts.CoreCmpPartialEqOption.eq, core.cmp.impls.PartialEqU16.eq]
+    have hor : core.option.Option.or_else
+        AllowedPort.matches.closure.Insts.CoreOpsFunctionFnOnceTupleOptionU16 port scheme =
+        ok (port <|> Defs.Tower.defaultPort scheme.val) := by
+      cases port with
+      | none =>
+        obtain ⟨r, hr, hp⟩ := WP.spec_imp_exists (default_port_spec scheme)
+        rw [core.option.Option.or_else_none]
+        exact hr.trans (by rw [hp]; rfl)
+      | some p => exact core.option.Option.or_else_some _ p scheme
+    simp only [AllowedPort.matches, hor, bind_tc_ok]
+    apply core.option.Option.Insts.CoreCmpPartialEqOption.eq_spec
+    intro l r _ _
+    simp only [liftFun2, core.cmp.impls.PartialEqU16.eq, WP.spec_ok, decide_eq_true_eq]
 
 end rmcp.transport.streamable_http_server.tower

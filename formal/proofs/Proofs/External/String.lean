@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
+import Proofs.External.Byte
+import Proofs.External.WP
 import Proofs.External.Base64
 import Defs.Bytes
 
@@ -18,15 +20,16 @@ literal has the bytes `utf8` gives. `utf8Bytes_eq_utf8` identifies `Defs.utf8Byt
 the Phase 2 definitions use) with `utf8`.
 
 Section "Phase 2: strings and `Arc`" proves the signed-off laws of plan steps S26/S27 for
-`<str as PartialEq>::eq`, `<String as Deref>::deref` and `Arc` (`deref`, `eq`). It needs
-`Rmcp.Funs` for the instance `Str.Insts.CoreCmpPartialEqStr`.
+`<str as PartialEq>::eq` (with the equation `eq_eq` derived from it), `<String as Deref>::deref`
+and `Arc` (`deref`, `eq`), and `alloc.sync.Arc.data_val_inj` (an `Arc<str>` is determined by the
+bytes it shares). It needs `Rmcp.Funs` for the instance `Str.Insts.CoreCmpPartialEqStr`.
 -/
 
 open Aeneas Aeneas.Std
 
 namespace Proofs.External.Utf8
 
-open ExtModel Proofs.External.Base64
+open ExtModel Proofs.External.Byte Proofs.External.Base64
 
 theorem byteArray_toList_loop (bs : ByteArray) (i : Nat) (r : List UInt8) :
     ByteArray.toList.loop bs i r = r.reverse ++ bs.data.toList.drop i := by
@@ -103,13 +106,13 @@ theorem strOfBytes?_eq_some_iff (l : List U8) (s : String) :
       apply List.map_congr_left
       intro x _
       exact (byte_toUInt8 x).symm
-    · simp at h
+    · simp only [reduceCtorEq] at h
   · intro h; subst h; exact strOfBytes?_utf8 s
 
 /-- `strOfBytes? l = none` exactly when `l` is the encoding of no string (not UTF-8). -/
 theorem strOfBytes?_eq_none_iff (l : List U8) : strOfBytes? l = none ↔ ∀ s, l ≠ utf8 s := by
   constructor
-  · intro h s hs; rw [hs, strOfBytes?_utf8] at h; simp at h
+  · intro h s hs; rw [hs, strOfBytes?_utf8] at h; simp only [reduceCtorEq] at h
   · intro h
     cases hl : strOfBytes? l with
     | none => rfl
@@ -124,7 +127,8 @@ theorem utf8_injective {s t : String} (h : utf8 s = utf8 t) : s = t := by
 theorem utf8EncodeChar_ofNat {n : Nat} (h : n < 128) :
     String.utf8EncodeChar (Char.ofNat n) = [UInt8.ofNat n] := by
   have hv : (Char.ofNat n).val.toNat = n := by
-    rw [Char.ofNat, dif_pos (Or.inl (by omega))]; simp [Char.ofNatAux]
+    rw [Char.ofNat, dif_pos (Or.inl (by omega))]
+    simp only [Char.ofNatAux, UInt32.ofBitVec_ofNatLT, UInt32.toNat_ofNatLT]
   simp only [String.utf8EncodeChar, hv]
   rw [if_pos (by omega)]
 
@@ -138,8 +142,8 @@ theorem utf8_ofList_ascii (l : List U8) (h : ∀ b ∈ l, b.val < 128) :
     induction l with
     | nil => rfl
     | cons b t ih =>
-      rw [List.flatMap_cons, List.map_cons, utf8EncodeChar_ofNat (h b (by simp)),
-        ih (fun c hc => h c (by simp [hc]))]
+      rw [List.flatMap_cons, List.map_cons, utf8EncodeChar_ofNat (h b List.mem_cons_self),
+        ih (fun c hc => h c (List.mem_cons_of_mem b hc))]
       rfl
   rw [this, List.map_map]
   conv => rhs; rw [← List.map_id l]
@@ -150,7 +154,7 @@ theorem utf8_ofList_ascii (l : List U8) (h : ∀ b ∈ l, b.val < 128) :
 /-- Appending an ASCII character appends its one byte. -/
 theorem utf8_push_ascii (s : String) (c : Char) (h : c.toNat < 128) :
     utf8 (s.push c) = utf8 s ++ [byte c.toNat] := by
-  have hc : c = Char.ofNat c.toNat := by simp
+  have hc : c = Char.ofNat c.toNat := (Char.ofNat_toNat c).symm
   have : s.push c = s ++ String.ofList [c] := by
     apply String.toByteArray_inj.1
     rw [String.toByteArray_push, String.toByteArray_append, String.toByteArray_ofList]
@@ -159,15 +163,19 @@ theorem utf8_push_ascii (s : String) (c : Char) (h : c.toNat < 128) :
   have h1 : [c] = [byte c.toNat].map (fun b => Char.ofNat b.val) := by
     rw [List.map_cons, List.map_nil, byte_val, Nat.mod_eq_of_lt (by omega), ← hc]
   rw [h1, utf8_ofList_ascii]
-  intro b hb; simp at hb; subst hb; rw [byte_val]; omega
+  intro b hb
+  rw [List.mem_singleton] at hb
+  subst hb; rw [byte_val]; omega
 
 /-- An ASCII character is one byte. -/
 theorem utf8_ofList_singleton_ascii (ch : Char) (h : ch.toNat < 128) :
     utf8 (String.ofList [ch]) = [byte ch.toNat] := by
   have h1 : [ch] = [byte ch.toNat].map (fun b => Char.ofNat b.val) := by
-    rw [List.map_cons, List.map_nil, byte_val, Nat.mod_eq_of_lt (by omega)]; simp
+    rw [List.map_cons, List.map_nil, byte_val, Nat.mod_eq_of_lt (by omega), Char.ofNat_toNat]
   rw [h1, utf8_ofList_ascii]
-  intro b hb; simp at hb; subst hb; rw [byte_val]; omega
+  intro b hb
+  rw [List.mem_singleton] at hb
+  subst hb; rw [byte_val]; omega
 
 /-- The bytes of the Aeneas `toStr` of a literal are its `utf8` bytes. -/
 theorem toStr_val (s : String) (h : s.toByteArray.size ≤ U32.max) :
@@ -189,7 +197,8 @@ theorem val_lt_128_of_mem_b64 (x : List U8) : ∀ b ∈ b64 x, b.val < 128 := by
 `String` the models produce form a `Slice`. -/
 theorem maxStringBytes_le_usize_max : maxStringBytes ≤ Usize.max := by
   simp only [maxStringBytes, Isize.max, Usize.max, Isize.numBits, Usize.numBits]
-  rcases System.Platform.numBits_eq with h | h <;> simp [h]
+  rcases System.Platform.numBits_eq with h | h <;>
+    simp only [IScalarTy.Isize_numBits_eq, UScalarTy.Usize_numBits_eq, h] <;> decide
 
 end Proofs.External.Utf8
 
@@ -203,7 +212,15 @@ open rmcp ExtModel Proofs.External.Utf8
 theorem Str.Insts.CoreCmpPartialEqStr.eq_spec (self : Str) (other : Str) :
     Str.Insts.CoreCmpPartialEqStr.eq self other ⦃ (result : Bool) =>
       (result = true ↔ self.val = other.val) ⦄ := by
-  simp [Str.Insts.CoreCmpPartialEqStr.eq]
+  simp only [Str.Insts.CoreCmpPartialEqStr.eq, WP.spec_ok, decide_eq_true_eq]
+
+/-- `<str as PartialEq>::eq` as an equation, for rewriting inside a `do` block; from
+`Str.Insts.CoreCmpPartialEqStr.eq_spec`. -/
+theorem Str.Insts.CoreCmpPartialEqStr.eq_eq (self : Str) (other : Str) :
+    Str.Insts.CoreCmpPartialEqStr.eq self other = ok (decide (self.val = other.val)) := by
+  obtain ⟨b, hb, hbv⟩ :=
+    Proofs.External.WP.exists_ok_of_spec (Str.Insts.CoreCmpPartialEqStr.eq_spec self other)
+  rw [hb, Bool.eq_iff_iff.2 (hbv.trans decide_eq_true_iff.symm)]
 
 /-- **Spec theorem for `<String as Deref<Target = str>>::deref`**: the UTF-8 bytes of the
 string. The precondition holds for every Rust `String` (at most `isize::MAX` bytes); see
@@ -235,7 +252,7 @@ theorem alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec {T : Type} (A : Type)
     (self : alloc.sync.Arc T) :
     alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref A self ⦃ (result : T) =>
       result = self.data ⦄ := by
-  simp [alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref]
+  simp only [alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref, WP.spec_ok]
 
 /-- `<Arc<T> as PartialEq>::eq` is the equality of the instance of `T` on the shared values,
 for every instance, including its failure. -/
@@ -255,3 +272,10 @@ theorem alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec (A : Type)
       ⦃ (result : Bool) => (result = true ↔ self.data.val = other.data.val) ⦄ := by
   rw [alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq]
   exact Str.Insts.CoreCmpPartialEqStr.eq_spec self.data other.data
+
+/-- Two `Arc<str>` are equal exactly when their shared strings have the same bytes. -/
+theorem alloc.sync.Arc.data_val_inj {a b : alloc.sync.Arc Str} :
+    a.data.val = b.data.val ↔ a = b := by
+  obtain ⟨x⟩ := a
+  obtain ⟨y⟩ := b
+  exact ⟨fun h => congrArg alloc.sync.Arc.mk (Subtype.ext h), fun h => by cases h; rfl⟩

@@ -31,7 +31,7 @@ Always succeeds (any key length) with the HMAC-SHA256 tag `hmacSha256 key msg`. 
 theorem hmac_sha256_spec (key : Slice U8) (msg : Slice U8) :
     hmac_sha256 key msg ⦃ (result : Std.Array U8 32#usize) =>
       result = hmacSha256 key.val msg.val ⦄ := by
-  simp [hmac_sha256]
+  simp only [hmac_sha256, WP.spec_ok]
 
 /-- **Spec theorem for `rmcp::model::request_state_wire::prim::hmac_sha256_verify`**
 
@@ -41,7 +41,7 @@ of `msg` under `key`. -/
 theorem hmac_sha256_verify_spec (key : Slice U8) (msg : Slice U8) (tag : Slice U8) :
     hmac_sha256_verify key msg tag ⦃ (result : Bool) =>
       result = decide (tag.val = (hmacSha256 key.val msg.val).val) ⦄ := by
-  simp [hmac_sha256_verify]
+  simp only [hmac_sha256_verify, WP.spec_ok]
 
 /-- A tag whose length is not 32 is rejected (in particular a truncated tag). -/
 theorem hmac_sha256_verify_eq_ok_false_of_length_ne (key : Slice U8) (msg : Slice U8)
@@ -56,7 +56,7 @@ theorem hmac_sha256_verify_eq_ok_false_of_length_ne (key : Slice U8) (msg : Slic
 theorem hmac_sha256_verify_hmac_sha256 (key : Slice U8) (msg : Slice U8) (tag : Slice U8)
     (h : tag.val = (hmacSha256 key.val msg.val).val) :
     hmac_sha256_verify key msg tag = ok true := by
-  simp [hmac_sha256_verify, h]
+  simp only [hmac_sha256_verify, h, decide_true]
 
 /-- **Spec theorem for `rmcp::model::request_state_wire::prim::b64_encode_into`**
 
@@ -97,6 +97,7 @@ theorem b64_decode_spec (input : Slice U8) :
     b64_decode input ⦃ (result : Option (alloc.vec.Vec U8)) =>
       result.map (fun v => v.val) = b64Decode input.val ⦄ := by
   unfold b64_decode
-  split <;> simp_all
+  split <;> simp_all only [Option.map_eq_none_iff, WP.spec_ok, Option.map_eq_some_iff,
+              Option.some.injEq, exists_eq_left']
 
 end model.request_state_wire.prim

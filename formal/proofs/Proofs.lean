@@ -28,6 +28,8 @@ import Proofs.External.IntParse
 import Proofs.External.Prim
 import Proofs.External.Std
 import Proofs.External.Iter
+import Proofs.External.Byte
+import Proofs.External.WP
 import Proofs.Model.RequestState.Common
 import Proofs.Model.RequestState.OpenAuthenticatedBody
 import Proofs.Model.RequestState.ValidateKeyLength

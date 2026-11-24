@@ -69,7 +69,7 @@ theorem open_rs2_at_spec (self : RequestStateCodec) (sealed : Str)
     · rename_i v k b t hc
       have hv : v ≠ versionV2 := by
         rintro rfl; exact ho k b t (hs ▸ hc)
-      simp [hv]
+      simp only [ne_eq, hv, not_false_eq_true, ↓reduceIte]
     · rfl
   | some rp =>
     simp only at ho
@@ -77,101 +77,104 @@ theorem open_rs2_at_spec (self : RequestStateCodec) (sealed : Str)
     unfold openRs2
     rw [ho]
     simp only [ne_eq, not_true_eq_false, if_false]
-    have hkl : rp.kid.len.val = rp.kid.val.length := Slice.len_val _
     by_cases hk : Defs.CodecState.maxEncodedKidLen < rp.kid.val.length
     · have hk' : rp.kid.len > MAX_ENCODED_KID_LEN := by
         simp only [MAX_ENCODED_KID_LEN, request_state_wire.MAX_ENCODED_KID_LEN,
           Defs.CodecState.maxEncodedKidLen] at hk ⊢
         scalar_tac
-      simp [hk', hk, resultBytes]
+      simp only [gt_iff_lt, hk', ↓reduceIte, resultBytes, hk, WP.spec_ok]
     · have hk' : ¬ rp.kid.len > MAX_ENCODED_KID_LEN := by
         simp only [MAX_ENCODED_KID_LEN, request_state_wire.MAX_ENCODED_KID_LEN,
           Defs.CodecState.maxEncodedKidLen] at hk ⊢
         scalar_tac
-      simp only [hk', hk, if_false, model.request_state_wire.prim.b64_decode]
-      split
-      · rename_i hkd
-        simp [hkd, core.option.Option.ok_or, CoreOpsTry.branch,
-          CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-          core.convert.FromSame.from, resultBytes]
-      · rename_i kid hkd
-        simp only [hkd, core.option.Option.ok_or, CoreOpsTry.branch,
-          bind_tc_ok]
+      simp only [hk', hk, if_false]
+      apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.kid)
+      intro o1 hkd
+      cases o1 with
+      | none =>
+        simp only [Option.map_none] at hkd
+        simp only [core.option.Option.ok_or_eq, CoreOpsTry.branch,
+          CoreOpsTryTraitFromResidualResultInfallible.from_residual, core.convert.FromSame.from,
+          bind_tc_ok, resultBytes, ← hkd, WP.spec_ok]
+      | some kv =>
+        simp only [Option.map_some] at hkd
+        simp only [core.option.Option.ok_or_eq, CoreOpsTry.branch, bind_tc_ok, ← hkd]
         step as ⟨r1, hr1⟩
-        have hvl : ∀ v : alloc.vec.Vec U8, v.val = kid → v.len.val = kid.length := by
-          intro v hv; rw [alloc.vec.Vec.len_val, ← hv]
+        rw [alloc.vec.Vec.len_val] at hr1
+        simp only [alloc.vec.Vec.length] at hr1
         rcases r1 with ⟨⟩ | ⟨⟨⟩ | ⟨⟩⟩
-        · rw [hvl _ rfl] at hr1
-          have hbad : ¬ (kid.length = 0 ∨ Defs.Wire.maxKidLen < kid.length) := by omega
-          simp only [hbad, if_false, core.result.Result.is_err, bind_tc_ok, Bool.false_eq_true]
-          unfold alloc.string.String.from_utf8
-          split
-          · rename_i ks hks
+        · have hbad : ¬ (kv.val.length = 0 ∨ Defs.Wire.maxKidLen < kv.val.length) := by omega
+          simp only [hbad, if_false, core.result.Result.is_err_eq, bind_tc_ok, Bool.false_eq_true]
+          apply WP.spec_bind (alloc.string.String.from_utf8_spec _)
+          rintro (ks | e) hku
+          · have hks : ExtModel.strOfBytes? kv.val = some ks :=
+              (Proofs.External.Utf8.strOfBytes?_eq_some_iff _ _).2 hku
             simp only [hks, bind_tc_ok, core.result.Result.map_err_ok]
-            have hku : kid = ExtModel.utf8 ks :=
-              (Proofs.External.Utf8.strOfBytes?_eq_some_iff _ _).1 hks
             cases hkeys : self.keys with
-            | Single k1 => simp [resultBytes]
+            | Single k1 => simp only [resultBytes, WP.spec_ok]
             | Ring keys sm fb =>
-              simp only [std.collections.hash.map.HashMap.get_eq,
-                Proofs.External.HashMap.find_string, bind_tc_ok, Defs.CodecState.lookupKey]
-              cases hf : keys.entries.find? (fun e => decide (e.1 = ks)) with
+              apply WP.spec_bind (std.collections.hash.map.HashMap.get_string_spec keys ks)
+              intro o hget
+              simp only [Defs.CodecState.lookupKey]
+              cases o with
               | none =>
-                simp [resultBytes,
+                have hf := Option.map_eq_none_iff.1 hget.symm
+                simp only [hf, Option.map_none,
                   CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-                  core.convert.FromSame.from]
-              | some ent =>
-                simp only [Option.map_some, bind_tc_ok]
-                split
-                · rename_i hbd
-                  simp [hbd, resultBytes,
-                    CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-                    core.convert.FromSame.from]
-                · rename_i body hbd
-                  simp only [hbd, bind_tc_ok]
-                  split
-                  · rename_i htd
-                    simp [htd, resultBytes,
-                      CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-                      core.convert.FromSame.from]
-                  · rename_i tag htd
-                    simp only [htd, bind_tc_ok]
+                  core.convert.FromSame.from, bind_tc_ok, resultBytes, WP.spec_ok]
+              | some key =>
+                obtain ⟨ent, hf, rfl⟩ := Option.map_eq_some_iff.1 hget.symm
+                simp only [hf, Option.map_some, bind_tc_ok]
+                apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.body)
+                intro o2 hbd
+                cases o2 with
+                | none =>
+                  simp only [Option.map_none] at hbd
+                  simp only [CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                    core.convert.FromSame.from, bind_tc_ok, resultBytes, ← hbd, WP.spec_ok]
+                | some bv =>
+                  simp only [Option.map_some] at hbd
+                  simp only [bind_tc_ok]
+                  apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.tag)
+                  intro o3 htd
+                  cases o3 with
+                  | none =>
+                    simp only [Option.map_none] at htd
+                    simp only [CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+                      core.convert.FromSame.from, bind_tc_ok, resultBytes, ← hbd, ← htd,
+                      WP.spec_ok]
+                  | some tv =>
+                    simp only [Option.map_some] at htd
+                    simp only [bind_tc_ok]
+                    rw [← hbd, ← htd]
                     have hksz : ks.utf8ByteSize ≤ Usize.max := by
-                      have : kid.length ≤ 255 := by simp only [Defs.Wire.maxKidLen] at hbad; omega
+                      have : kv.val.length ≤ 255 := by
+                        simp only [Defs.Wire.maxKidLen] at hbad; omega
                       rw [← Proofs.External.Utf8.length_utf8, ← hku]; scalar_tac
                     step as ⟨s1, hs1⟩
                     step as ⟨tr, htr⟩
-                    · rw [hs1, ← hku]; exact h_len _ _ _ _ _ ho hkd hbd
+                    · rw [hs1, ← hku]; exact h_len _ _ _ _ _ ho hkd.symm hbd.symm
                     step as ⟨v, hv⟩
                     step as ⟨b1, hb1⟩
                     simp only [alloc.vec.Vec.deref, hv, htr, hs1, ← hku] at hb1
                     by_cases ht : Defs.CodecState.TagVerifies ent.2.inner.val
-                        (transcriptV2 kid associated_data.val body) tag
+                        (transcriptV2 kv.val associated_data.val bv.val) tv.val
                     · have hb : b1 = true := by
                         rw [hb1]; exact decide_eq_true ht
                       simp only [hb, if_true, ht]
-                      step as ⟨res, hres⟩
-                      unfold Defs.CodecState.openBody
-                      rcases res with pl | e
-                      · obtain ⟨h1, h2, h3⟩ := hres
-                        have h1' : ¬ body.length < Defs.Wire.expiryLen := by
-                          omega
-                        simp [resultBytes, h1', h2, h3]
-                      · rcases hres with ⟨h1, rfl⟩ | ⟨h1, h2, rfl⟩
-                        · simp [resultBytes, h1]
-                        · have h1' : ¬ body.length < Defs.Wire.expiryLen := by omega
-                          simp [resultBytes, h1', h2]
+                      exact open_authenticated_body_openBody _ now_ms
                     · have hb : b1 = false := by
                         rw [hb1]; exact decide_eq_false ht
-                      simp [hb, ht, resultBytes]
-          · rename_i hks
-            simp [hks, resultBytes,
-              CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-              core.convert.FromSame.from,
-              CoreOpsFunctionFnOnceTupleFromUtf8ErrorRequestStateError.call_once]
-        · rw [hvl _ rfl] at hr1
-          simp [hr1, core.result.Result.is_err, resultBytes]
-        · rw [hvl _ rfl] at hr1
-          simp [hr1, core.result.Result.is_err, resultBytes]
+                      simp only [hb, Bool.false_eq_true, ↓reduceIte, resultBytes, ht, WP.spec_ok]
+          · have hks : ExtModel.strOfBytes? kv.val = none :=
+              (Proofs.External.Utf8.strOfBytes?_eq_none_iff _).2 hku.1
+            simp only [CoreOpsTryTraitFromResidualResultInfallible.from_residual,
+              core.convert.FromSame.from, bind_tc_ok, core.result.Result.map_err_err,
+              CoreOpsFunctionFnOnceTupleFromUtf8ErrorRequestStateError.call_once, resultBytes, hks,
+              WP.spec_ok]
+        · simp only [core.result.Result.is_err_eq, bind_tc_ok, ↓reduceIte, resultBytes, hr1,
+            not_lt_zero, or_false, WP.spec_ok]
+        · simp only [core.result.Result.is_err_eq, bind_tc_ok, ↓reduceIte, resultBytes,
+            List.length_eq_zero_iff, hr1, or_true, WP.spec_ok]
 
 end rmcp.model.request_state.RequestStateCodec

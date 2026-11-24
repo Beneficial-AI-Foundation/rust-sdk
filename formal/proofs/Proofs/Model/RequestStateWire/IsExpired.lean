@@ -31,7 +31,9 @@ theorem is_expired_spec (expiry : I64) (now_ms : I64) :
     is_expired expiry now_ms ⦃ (result : Bool) =>
       result = decide (Expired expiry.val now_ms.val) ⦄ := by
   unfold is_expired
-  simp [Expired]
-  split_ifs <;> simp_all
+  simp only [bne_iff_ne, ne_eq, IScalar.neq_to_neq_val, IScalar.ofInt_val_eq, gt_iff_lt,
+    IScalar.lt_equiv, ite_not, Expired, Bool.decide_and, decide_not]
+  split_ifs <;> simp_all only [decide_true, decide_false, Bool.not_true, Bool.not_false,
+    Bool.false_and, Bool.true_and, WP.spec_ok]
 
 end rmcp.model.request_state_wire

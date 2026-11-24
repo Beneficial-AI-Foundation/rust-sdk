@@ -88,7 +88,8 @@ theorem seal_rs2_spec (kid : Str) (key : Slice Std.U8) (associated_data : Slice 
   step as ⟨i10, hi10⟩
   step as ⟨out, hout⟩
   step with alloc.string.String.push_str_spec out model.request_state.VERSION_V2 "rs2"
-    (by rw [val_VERSION_V2, utf8_rs2]) (by rw [hout, val_VERSION_V2]; simp; omega)
+    (by rw [val_VERSION_V2, utf8_rs2])
+    (by rw [hout, val_VERSION_V2]; simp only [String.utf8ByteSize_empty, zero_add]; omega)
     as ⟨out1, hout1, hout1'⟩
   have hl1 : out1.utf8ByteSize = 3 := by
     rw [← length_utf8, hout1', hout, val_VERSION_V2, utf8_empty]; rfl
@@ -103,7 +104,8 @@ theorem seal_rs2_spec (kid : Str) (key : Slice Std.U8) (associated_data : Slice 
   step with alloc.string.String.push_spec out3 '.' (by rw [hl3]; omega)
     as ⟨out4, hout4, hout4'⟩
   have hl4 : out4.utf8ByteSize = 5 + (b64 (kid : Slice Std.U8).val).length := by
-    rw [← length_utf8, hout4', List.length_append, length_utf8, hl3, hdot]; simp; omega
+    rw [← length_utf8, hout4', List.length_append, length_utf8, hl3, hdot]
+    simp only [List.length_cons, List.length_nil, zero_add]; omega
   step with model.request_state_wire.prim.b64_encode_into_spec body out4
     (by rw [hl4]; simp only [Slice.length]; rw [← length_b64]; omega) as ⟨out5, hout5⟩
   have hl5 : out5.utf8ByteSize =
@@ -113,13 +115,14 @@ theorem seal_rs2_spec (kid : Str) (key : Slice Std.U8) (associated_data : Slice 
     as ⟨out6, hout6, hout6'⟩
   have hl6 : out6.utf8ByteSize =
       6 + (b64 (kid : Slice Std.U8).val).length + (b64 body.val).length := by
-    rw [← length_utf8, hout6', List.length_append, length_utf8, hl5, hdot]; simp; omega
+    rw [← length_utf8, hout6', List.length_append, length_utf8, hl5, hdot]
+    simp only [List.length_cons, List.length_nil, zero_add]; omega
   step with model.request_state_wire.prim.b64_encode_into_spec tag.to_slice out6
     (by rw [hl6]; simp only [Slice.length, hts, htl]; omega) as ⟨out7, hout7⟩
   have hv' : v.deref.val = transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val := by
     rw [← hs]; exact hv
   rw [hout7, hout6', hout5, hout4', hout3, hout2', hout1', hout, val_VERSION_V2, utf8_empty, hdot,
     hts, htag, hv', hs]
-  simp
+  simp only [List.nil_append, List.append_assoc, List.cons_append]
 
 end rmcp.model.request_state.RequestStateCodec

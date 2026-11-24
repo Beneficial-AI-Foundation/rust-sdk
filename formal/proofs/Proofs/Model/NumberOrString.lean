@@ -6,6 +6,7 @@ Authors: Hoang Le Truong
 import Rmcp.Funs
 import Defs.JsonRpc
 import Proofs.External.IntParse
+import Proofs.External.Option
 
 /-!
 # Spec theorems for `NumberOrString` (M06, M07)
@@ -13,7 +14,10 @@ import Proofs.External.IntParse
 `numeric_string_value` (M06) parses a string id with `i64::from_str` and keeps `Ok`; its value is
 `Defs.JsonRpc.numericValue`, by the S27 deferred law `from_str_eq_parseI64`
 (`Proofs/External/IntParse.lean`). `matches_response_id` (M07) is the derived equality, or else a
-numeric request id against the parsed response id; its proof uses M06.
+numeric request id against the parsed response id; its proof uses M06. The `Arc`, `str`,
+`Option` and `Result` steps use the signed-off laws of `Proofs/External/{String,Option}.lean`
+(`deref_spec`, `eq_str_spec`, `data_val_inj`, `eq_i64_spec` through `eq_i64_some_spec`,
+`ok_spec`), not the model bodies.
 
 Source: "crates/rmcp/src/model.rs", lines 322–337 at `7caec76`
 -/
@@ -41,13 +45,12 @@ theorem numeric_string_value_spec (self : model.NumberOrString) :
   | .String a =>
     obtain ⟨r, hr, hp⟩ := WP.spec_imp_exists
       (I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64 a.data)
-    simp only [numeric_string_value, alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref,
-      core.str.Str.parse_eq, bind_tc_ok, numericValue, hr]
-    rcases r with n | e
-    · simp only [core.result.Result.ok, WP.spec_ok, Option.map_some] at hp ⊢
-      exact hp
-    · simp only [core.result.Result.ok, WP.spec_ok, Option.map_none] at hp ⊢
-      exact hp
+    obtain ⟨d, hd, hdv⟩ :=
+      WP.spec_imp_exists (alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref_spec Global a)
+    obtain ⟨o, ho, hov⟩ := WP.spec_imp_exists (core.result.Result.ok_spec r)
+    simp only [numeric_string_value, hd, hdv, core.str.Str.parse_eq, hr, ho, bind_tc_ok,
+      numericValue, WP.spec_ok, hov, ← hp]
+    rcases r with n | e <;> rfl
 
 /-- **Spec theorem for `rmcp::model::NumberOrString::matches_response_id`** (M07)
 
@@ -70,30 +73,26 @@ theorem matches_response_id_spec (self response_id : model.NumberOrString) :
   obtain ⟨o, ho, hpo⟩ := WP.spec_imp_exists (numeric_string_value_spec response_id)
   match self, response_id with
   | .Number n, .Number m =>
+    obtain ⟨c, hc, hcv⟩ := WP.spec_imp_exists
+      (core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_some_spec o n)
+    rw [hpo] at hcv
+    simp only [numericValue, reduceCtorEq, iff_false, Bool.not_eq_true] at hcv
     simp only [matches_response_id, Insts.CoreCmpPartialEqNumberOrString.eq, read_discriminant,
-      ↓reduceIte, lift, core.cmp.impls.PartialEqI64.eq, numeric_string_value,
-      core.option.Option.Insts.CoreCmpPartialEqOption.eq, liftFun2, bind_tc_ok,
+      ↓reduceIte, lift, core.cmp.impls.PartialEqI64.eq, ho, hc, hcv, bind_tc_ok,
       Bool.false_eq_true, decide_eq_true_eq, Number.injEq, numericValue, reduceCtorEq, and_false,
       exists_const, or_false]
     by_cases h : n = m <;>
       simp only [h, ↓reduceIte, iff_true, iff_false, Bool.not_eq_true, WP.spec_ok]
   | .Number n, .String b =>
+    obtain ⟨c, hc, hcv⟩ := WP.spec_imp_exists
+      (core.option.Option.Insts.CoreCmpPartialEqOption.eq_i64_some_spec o n)
+    rw [hpo] at hcv
     simp only [matches_response_id, Insts.CoreCmpPartialEqNumberOrString.eq, read_discriminant,
       Int.not_eq, IScalar.ofInt_val_eq, ne_eq, zero_ne_one, not_false_eq_true, one_ne_zero,
       zero_lt_one, Int.reduceLT, or_false, or_self, IScalar.val_not_eq_imp_not_eq, ↓reduceIte, ho,
-      bind_tc_ok, Bool.false_eq_true, reduceCtorEq, Number.injEq, exists_eq_left', false_or]
-    rw [← hpo]
-    rcases o with _ | k
-    · simp only [core.option.Option.Insts.CoreCmpPartialEqOption.eq, bind_tc_ok,
-        Bool.false_eq_true, ↓reduceIte, Option.map_none, reduceCtorEq, iff_false,
-        Bool.not_eq_true, WP.spec_ok]
-    · have hk : k.val = n.val ↔ k = n :=
-        ⟨fun h => IScalar.eq_of_val_eq h, fun h => h ▸ rfl⟩
-      by_cases h : k = n <;>
-        simp only [core.option.Option.Insts.CoreCmpPartialEqOption.eq, liftFun2,
-          core.cmp.impls.PartialEqI64.eq, h, decide_true, decide_false, bind_tc_ok,
-          Bool.false_eq_true, ↓reduceIte, Option.map_some, Option.some.injEq, hk, iff_true,
-          iff_false, Bool.not_eq_true, WP.spec_ok]
+      hc, bind_tc_ok, Bool.false_eq_true, reduceCtorEq, Number.injEq, exists_eq_left', false_or]
+    cases c <;> simpa only [Bool.false_eq_true, ↓reduceIte, true_iff, false_iff, WP.spec_ok]
+      using hcv
   | .String a, .Number m =>
     simp only [matches_response_id, Insts.CoreCmpPartialEqNumberOrString.eq, read_discriminant,
       Int.not_eq, IScalar.ofInt_val_eq, ne_eq, one_ne_zero, not_false_eq_true, zero_ne_one,
@@ -102,19 +101,12 @@ theorem matches_response_id_spec (self response_id : model.NumberOrString) :
       Bool.not_eq_true, WP.spec_ok]
   | .String a, .String b =>
     simp only [matches_response_id, Insts.CoreCmpPartialEqNumberOrString.eq, read_discriminant,
-      ↓reduceIte, alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq, Str.Insts.CoreCmpPartialEqStr.eq,
-      bind_tc_ok, decide_eq_true_eq, String.injEq, reduceCtorEq, false_and, exists_const,
-      or_false]
-    have hab : a.data.val = b.data.val ↔ a = b := by
-      rcases a with ⟨x⟩
-      rcases b with ⟨y⟩
-      constructor
-      · intro h
-        rw [show x = y from Subtype.ext h]
-      · intro h
-        cases h
-        rfl
-    by_cases h : a = b <;>
-      simp only [hab, h, ↓reduceIte, iff_true, iff_false, Bool.not_eq_true, WP.spec_ok]
+      ↓reduceIte, String.injEq, reduceCtorEq, false_and, exists_const, or_false]
+    obtain ⟨c, hc, hcv⟩ := WP.spec_imp_exists
+      (alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_str_spec Global a b)
+    rw [alloc.sync.Arc.data_val_inj] at hcv
+    simp only [hc, bind_tc_ok]
+    cases c <;> simpa only [Bool.false_eq_true, ↓reduceIte, true_iff, false_iff, WP.spec_ok]
+      using hcv
 
 end rmcp.model.NumberOrString

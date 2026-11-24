@@ -5,6 +5,7 @@ Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
 import Defs.Wire
+import Defs.CodecState
 import Proofs.Model.RequestStateWire.OpenFrame
 
 /-!
@@ -13,7 +14,8 @@ import Proofs.Model.RequestStateWire.OpenFrame
 Checks the framing and the expiry of an authenticated body with `request_state_wire::open_frame`
 and maps its errors (`TooShort` to `MalformedFormat`, `Expired` to `Expired`); on success it
 copies the payload into a new vector. The proof uses the W14 theorem `open_frame_spec` through
-`step`, without unfolding the W function.
+`step`, without unfolding the W function. The corollary `open_authenticated_body_openBody`
+restates E01 as `Defs.CodecState.openBody` of the body bytes, the form E09 and E10 use.
 
 Source: "crates/rmcp/src/model/request_state.rs", line 695 in the patched copy
 (patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers refer to it.
@@ -65,8 +67,29 @@ theorem open_authenticated_body_spec (body : alloc.vec.Vec Std.U8) (now_ms : Std
   step
   split
   · step
-    simp_all [alloc.vec.Vec.deref, Slice.length]
+    simp_all only [Slice.length, alloc.vec.Vec.deref, Subtype.coe_eta, not_false_eq_true, and_self]
   · rename_i fe
-    cases fe <;> simp_all [alloc.vec.Vec.deref, Slice.length]
+    cases fe <;> simp_all only [Slice.length, alloc.vec.Vec.deref, Subtype.coe_eta,
+      not_true_eq_false, false_and, and_false, true_and, WP.spec_ok, reduceCtorEq, or_false,
+      or_true]
+
+/-- E01 in the form used by E09 and E10: the result of `open_authenticated_body`, as
+`Defs.CodecState.resultBytes`, is `Defs.CodecState.openBody` of the body bytes. -/
+theorem open_authenticated_body_openBody (body : alloc.vec.Vec Std.U8) (now_ms : Std.I64) :
+    open_authenticated_body body now_ms ⦃ (result :
+        core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+      Defs.CodecState.resultBytes result = Defs.CodecState.openBody body.val now_ms.val ⦄ := by
+  apply WP.spec_mono (open_authenticated_body_spec body now_ms)
+  intro r hr
+  unfold Defs.CodecState.openBody
+  rcases r with p | e
+  · obtain ⟨h1, h2, h3⟩ := hr
+    rw [if_neg (by omega), if_neg h2, ← h3]
+    rfl
+  · rcases hr with ⟨h1, rfl⟩ | ⟨h1, h2, rfl⟩
+    · rw [if_pos h1]
+      rfl
+    · rw [if_neg (by omega), if_pos h2]
+      rfl
 
 end rmcp.model.request_state.RequestStateCodec

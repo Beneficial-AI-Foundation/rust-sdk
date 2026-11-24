@@ -505,6 +505,22 @@ reviewer recomputed all 35 hashes); no blocking finding; the local findings were
 proof-style ones (flexible tactics, iterator-helper duplication, proofs that unfold trusted model
 bodies instead of using the S26 laws, splitting A02 to cut its ~65 s build) are deferred to phase C.
 
+**Phase C proof refinement (2026-11-24, both phases; plan Section 8 "Phase C"):** with every spec
+statement frozen, the hand-written proofs were refined in two waves (`Proofs/External/*` first, then
+four parallel groups) and one fix round: about 300 flexible tactic uses (`simp`, `simp_all`,
+`simpa` without `only`, `norm_num`, `at *`) replaced, none kept; no `maxHeartbeats` left (A01 and
+A02 no longer need them; `Proofs.Transport.Auth` builds in about 4.6 s instead of about 70 s); no
+rewrite with generated equation lemmas; proofs that unfolded trusted model bodies now use the
+signed-off laws (M06, M07, M10, M12, M13, M14, T04–T08, A01 and several Phase 1 proofs); duplicates
+factored into shared lemmas (`Proofs/External/{Byte,WP}.lean` new; iterator `next` equations,
+`Arc.data_val_inj`, `ok_or_eq`, `is_err_eq`, `Str…eq_eq`, `eq_i64_some_spec`, one shared E01 lemma
+used by E09/E10). Human decision 2026-11-24: in phase C an axiom list may only shrink. Two did:
+`Theorems.External.core.slice.Slice.first_spec` `[propext, Quot.sound]` → `[propext]`, and T01
+`check_limit` `[propext, Classical.choice, Quot.sound]` → `[propext, Quot.sound]` (record updated).
+`formal/trusted/` and `formal/translation/` unchanged; full `lake build` (1773 jobs) and the four
+`lean-guard.sh` checks pass. Two independent `mcp-review` agents reviewed the refinement (no
+blocking finding) and a third the fix round (no blocking finding).
+
 **S25 spec cycle (2026-11-24):** drafts `formal/specs/Drafts/ClientSideSse.lean` (T01–T03, C01 with
 its plan form, C02 with its prefix form) and `formal/specs/Drafts/Auth.lean` (A01–A03, C04 with a
 corollary in `Defs.Net` terms), with `Defs/Sse.lean` (limiter model plus an independent description

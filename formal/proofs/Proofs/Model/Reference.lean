@@ -11,9 +11,9 @@ import Proofs.External.String
 # Spec theorems for `Reference` (M13, M14)
 
 `as_prompt_name` (M13) and `as_resource_uri` (M14) of `rmcp::model::Reference` return the
-dereferenced `String` of the matching variant. The `String` deref model succeeds exactly when the
-UTF-8 encoding has at most `Usize.max` bytes (`Proofs.External.Utf8.length_utf8` relates its
-length to `String.utf8ByteSize`); the `_fail` theorems cover the other case.
+dereferenced `String` of the matching variant. The proofs use the signed-off `String` deref laws
+of `Proofs/External/String.lean`: `deref_spec` (the UTF-8 bytes, when `String.utf8ByteSize` is at
+most `Usize.max`) and `deref_fail` (the other case, used by the `_fail` theorems).
 
 Source: "crates/rmcp/src/model.rs", lines 3741–3754 at `7caec76`
 -/
@@ -39,12 +39,10 @@ theorem as_prompt_name_spec (self : model.Reference)
   match self with
   | .Resource _ => simp only [as_prompt_name, WP.spec_ok]
   | .Prompt p =>
-    have h_len : (ExtModel.utf8 p.«name»).length ≤ Usize.max := by
-      rw [Proofs.External.Utf8.length_utf8]
-      exact h_size p rfl
-    simp only [as_prompt_name, alloc.string.String.Insts.CoreOpsDerefDerefStr.deref,
-      alloc.string.String.as_bytes, h_len, ↓reduceDIte]
-    exact ⟨_, rfl, rfl⟩
+    obtain ⟨s, hs, hv⟩ := WP.spec_imp_exists
+      (alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec p.«name» (h_size p rfl))
+    simp only [as_prompt_name, hs, bind_tc_ok, WP.spec_ok]
+    exact ⟨s, rfl, hv⟩
 
 /-- M13, failing case: a prompt reference whose name has more than `Usize.max` bytes (a Lean
 `String` that no Rust `String` is) gives `fail maximumSizeExceeded`, the failure of the `String`
@@ -52,12 +50,8 @@ deref model. With `as_prompt_name_spec` this covers every input. -/
 theorem as_prompt_name_fail (p : model.PromptReference)
     (h_big : Usize.max < p.«name».utf8ByteSize) :
     as_prompt_name (.Prompt p) = fail .maximumSizeExceeded := by
-  have h_len : ¬ (ExtModel.utf8 p.«name»).length ≤ Usize.max := by
-    rw [Proofs.External.Utf8.length_utf8]
-    omega
-  simp only [as_prompt_name, alloc.string.String.Insts.CoreOpsDerefDerefStr.deref,
-    alloc.string.String.as_bytes, h_len, ↓reduceDIte]
-  rfl
+  simp only [as_prompt_name,
+    alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_fail p.«name» h_big, bind_tc_fail]
 
 /-- **Spec theorem for `rmcp::model::Reference::as_resource_uri`** (M14)
 
@@ -76,23 +70,17 @@ theorem as_resource_uri_spec (self : model.Reference)
   match self with
   | .Prompt _ => simp only [as_resource_uri, WP.spec_ok]
   | .Resource r =>
-    have h_len : (ExtModel.utf8 r.uri).length ≤ Usize.max := by
-      rw [Proofs.External.Utf8.length_utf8]
-      exact h_size r rfl
-    simp only [as_resource_uri, alloc.string.String.Insts.CoreOpsDerefDerefStr.deref,
-      alloc.string.String.as_bytes, h_len, ↓reduceDIte]
-    exact ⟨_, rfl, rfl⟩
+    obtain ⟨s, hs, hv⟩ := WP.spec_imp_exists
+      (alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec r.uri (h_size r rfl))
+    simp only [as_resource_uri, hs, bind_tc_ok, WP.spec_ok]
+    exact ⟨s, rfl, hv⟩
 
 /-- M14, failing case: a resource reference whose URI has more than `Usize.max` bytes gives
 `fail maximumSizeExceeded`. With `as_resource_uri_spec` this covers every input. -/
 theorem as_resource_uri_fail (r : model.ResourceTemplateReference)
     (h_big : Usize.max < r.uri.utf8ByteSize) :
     as_resource_uri (.Resource r) = fail .maximumSizeExceeded := by
-  have h_len : ¬ (ExtModel.utf8 r.uri).length ≤ Usize.max := by
-    rw [Proofs.External.Utf8.length_utf8]
-    omega
-  simp only [as_resource_uri, alloc.string.String.Insts.CoreOpsDerefDerefStr.deref,
-    alloc.string.String.as_bytes, h_len, ↓reduceDIte]
-  rfl
+  simp only [as_resource_uri,
+    alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_fail r.uri h_big, bind_tc_fail]
 
 end rmcp.model.Reference

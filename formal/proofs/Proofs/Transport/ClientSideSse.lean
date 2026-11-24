@@ -5,6 +5,7 @@ Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
 import Defs.Sse
+import Proofs.External.Iter
 
 /-!
 # Spec theorems for `SseEventSizeLimiter` (T01–T03, C01, C02)
@@ -42,7 +43,8 @@ theorem saturating_add_val (x y : Usize) :
   have hm : UScalar.max .Usize = Usize.max := UScalar.max_USize_eq
   rw [hm]
   have h1 : Usize.max < 2 ^ UScalarTy.Usize.numBits := by
-    have := UScalar.max_USize_eq; rw [← this, UScalar.max]; simp
+    rw [← UScalar.max_USize_eq, UScalar.max]
+    exact Nat.sub_lt (Nat.two_pow_pos _) Nat.one_pos
   simp only [UScalar.val, BitVec.toNat_ofNat]
   rw [Nat.mod_eq_of_lt (by omega)]
   omega
@@ -66,14 +68,14 @@ theorem withinLimit_step (st : Defs.Sse.State) (x : U8)
       (Defs.Sse.step Usize.max st x).state.maxSize = st.maxSize := by
   unfold Defs.Sse.step at hok ⊢
   by_cases h1 : st.previousWasCr = true ∧ x.val = 10
-  · rw [if_pos h1]; exact ⟨by simpa [Defs.Sse.withinLimit] using hb, rfl⟩
+  · rw [if_pos h1]; exact ⟨hb, rfl⟩
   rw [if_neg h1] at hok ⊢
   by_cases h13 : x.val = 13
   · rw [if_pos h13] at hok ⊢
     simp only at hok ⊢
     by_cases ho : (Defs.Sse.finishLine Usize.max { st with previousWasCr := false }).ok = true
     · rw [if_pos ho] at hok ⊢
-      exact ⟨by simpa [Defs.Sse.withinLimit, Defs.Sse.finishLine] using ho, rfl⟩
+      exact ⟨ho, rfl⟩
     · rw [if_neg ho] at hok; exact absurd hok ho
   rw [if_neg h13] at hok ⊢
   simp only at hok ⊢
@@ -100,7 +102,7 @@ theorem withinLimit_observe (st : Defs.Sse.State) (l : List U8)
       obtain ⟨h1, h2⟩ := withinLimit_step st x hb hs
       obtain ⟨h3, h4⟩ := ih _ h1 hok
       exact ⟨h3, h4.trans h2⟩
-    · simp_all
+    · rename_i hs; exact absurd hok hs
 
 /-! ## `check_limit` and `finish_line` as equations -/
 
@@ -110,7 +112,11 @@ theorem check_limit_eq (self : SseEventSizeLimiter) :
       ok (Defs.Sse.toResult (Defs.Sse.withinLimit Usize.max (Defs.Sse.ofLimiter self))) := by
   unfold SseEventSizeLimiter.check_limit
   simp only [lift, bind_tc_ok, Defs.Sse.toResult, Defs.Sse.withinLimit, Defs.Sse.ofLimiter]
-  split <;> rename_i h <;> simp_all [saturating_add_val]
+  split
+  · simp_all only [gt_iff_lt, UScalar.lt_equiv, saturating_add_val, decide_eq_true_eq, ok.injEq,
+      right_eq_ite_iff, reduceCtorEq, imp_false, not_le]
+  · simp_all only [gt_iff_lt, UScalar.lt_equiv, saturating_add_val, not_lt, decide_true,
+      ↓reduceIte]
 
 /-- `finish_line` returns the verdict of `Defs.Sse.finishLine` and a state whose model is the
 state of `Defs.Sse.finishLine`. -/
@@ -135,13 +141,16 @@ theorem finish_line_eq (self : SseEventSizeLimiter) :
     refine ⟨{ self with retained_size := i, line_size := 0#usize, line_is_comment := false },
       ?_, ?_⟩
     · rw [check_limit_eq]
-      simp [Defs.Sse.finishLine, Defs.Sse.ofLimiter, hi]
-    · simp [Defs.Sse.finishLine, Defs.Sse.ofLimiter, hi]
+      simp only [Defs.Sse.ofLimiter, hi, UScalar.ofNatCore_val_eq, bind_tc_ok,
+        Defs.Sse.finishLine]
+    · simp only [Defs.Sse.ofLimiter, hi, UScalar.ofNatCore_val_eq, Defs.Sse.finishLine]
   split
-  · apply key; simp_all
+  · apply key; simp_all only [UScalar.ofNatCore_val_eq, ↓reduceIte]
   · split
-    · apply key; simp_all
-    · simp only [lift, bind_tc_ok]; apply key; simp_all [saturating_add_val]
+    · apply key; simp_all only [↓reduceIte, UScalar.neq_to_neq_val, UScalar.ofNatCore_val_eq]
+    · simp only [lift, bind_tc_ok]; apply key
+      simp_all only [Bool.false_eq_true, ↓reduceIte, UScalar.neq_to_neq_val,
+        UScalar.ofNatCore_val_eq, Bool.not_eq_true, saturating_add_val]
 
 /-! ## One loop iteration is one `Defs.Sse.step` -/
 
@@ -199,28 +208,40 @@ theorem observe_loop_body_eq (iter iter1 : core.slice.iter.Iter U8) (b : U8)
     generalize Defs.Sse.finishLine Usize.max st0 = F at hs2 ⊢
     rcases F with ⟨ok1, F⟩
     cases ok1 <;> cases setCr
-    all_goals first
-      | exact ⟨s2, by simpa using hs2, by simp [Defs.Sse.toResult, branch_eq, from_residual_eq]⟩
-      | exact ⟨{ s2 with previous_was_cr := true }, by simp only at hs2 ⊢; rw [← hs2]; rfl,
-          by simp [Defs.Sse.toResult, branch_eq]⟩
+    -- The check passed and the line ended at CR: the code sets `previous_was_cr`.
+    case true.true =>
+      exact ⟨{ s2 with previous_was_cr := true }, by simp only at hs2 ⊢; rw [← hs2]; rfl,
+        by simp only [Defs.Sse.toResult, ↓reduceIte, branch_eq, bind_tc_ok]⟩
+    -- Otherwise (the check failed, or no CR) the state is `s2`.
+    all_goals
+      exact ⟨s2, by simpa only [Bool.false_eq_true, ↓reduceIte] using hs2,
+        by simp only [Defs.Sse.toResult, Bool.false_eq_true, ↓reduceIte, branch_eq, bind_tc_ok,
+          from_residual_eq]⟩
   have h13v : b ≠ 13#u8 → b.val ≠ 13 := by
-    intro hb hv; apply hb; apply UScalar.eq_of_val_eq; simpa using hv
+    intro hb hv; apply hb; apply UScalar.eq_of_val_eq
+    simpa only [UScalar.ofNatCore_val_eq] using hv
   have h10v : b ≠ 10#u8 → b.val ≠ 10 := by
-    intro hb hv; apply hb; apply UScalar.eq_of_val_eq; simpa using hv
+    intro hb hv; apply hb; apply UScalar.eq_of_val_eq
+    simpa only [UScalar.ofNatCore_val_eq] using hv
   have hmodel : ∀ p, b ≠ 13#u8 → b ≠ 10#u8 →
       Defs.Sse.step Usize.max ⟨m.val, r.val, l.val, c, p⟩ b =
         let R : SseEventSizeLimiter := ⟨m, r, core.num.Usize.saturating_add l 1#usize,
           (if l = 0#usize then decide (b = 58#u8) else c), false⟩
         ⟨Defs.Sse.withinLimit Usize.max (Defs.Sse.ofLimiter R), Defs.Sse.ofLimiter R⟩ := by
     intro p hb13 hb10
-    have := h13v hb13; have := h10v hb10
+    have hb13v := h13v hb13; have hb10v := h10v hb10
     by_cases hl : l = 0#usize
     · subst hl
       have h58 : (b.val = 58) ↔ b = 58#u8 :=
-        ⟨fun hv => UScalar.eq_of_val_eq (by simpa using hv), fun hb => by subst hb; rfl⟩
-      simp [Defs.Sse.step, Defs.Sse.ofLimiter, saturating_add_val, *]
-    · have hl' : l.val ≠ 0 := by intro h; apply hl; apply UScalar.eq_of_val_eq; simpa using h
-      simp_all [Defs.Sse.step, Defs.Sse.ofLimiter, saturating_add_val]
+        ⟨fun hv =>
+          UScalar.eq_of_val_eq (by simpa only [UScalar.ofNatCore_val_eq] using hv),
+        fun hb => by subst hb; rfl⟩
+      simp only [Defs.Sse.step, and_false, ↓reduceIte, UScalar.ofNatCore_val_eq,
+        Defs.Sse.ofLimiter, saturating_add_val, hb10v, hb13v, h58]
+    · have hl' : l.val ≠ 0 := by
+        intro h; apply hl; apply UScalar.eq_of_val_eq; simpa only [UScalar.ofNatCore_val_eq] using h
+      simp only [Defs.Sse.step, and_false, ↓reduceIte, UScalar.ofNatCore_val_eq,
+        Defs.Sse.ofLimiter, saturating_add_val, hb10v, hb13v, hl, hl']
   have hcl := check_limit_eq ⟨m, r, core.num.Usize.saturating_add l 1#usize,
           (if l = 0#usize then decide (b = 58#u8) else c), false⟩
   -- the branch of any other byte
@@ -293,21 +314,6 @@ theorem observe_loop_body_eq (iter iter1 : core.slice.iter.Iter U8) (b : U8)
 
 /-! ## The loop is the fold `Defs.Sse.observe` -/
 
-/-- The slice iterator yields the byte at position `i` while `i` is in range. -/
-theorem next_of_lt (s : Slice U8) (i : Nat) (h : i < s.val.length) :
-    core.slice.iter.IteratorSliceIter.next (⟨s, i⟩ : core.slice.iter.Iter U8) =
-      ok (some s.val[i], ⟨s, i + 1⟩) := by
-  have hlen : i < s.len.val := by simpa [Slice.len] using h
-  simp only [core.slice.iter.IteratorSliceIter.next, dif_pos hlen]
-  rfl
-
-/-- The slice iterator yields `none` at the end of the slice. -/
-theorem next_of_le (s : Slice U8) (i : Nat) (h : s.val.length ≤ i) :
-    core.slice.iter.IteratorSliceIter.next (⟨s, i⟩ : core.slice.iter.Iter U8) =
-      ok (none, ⟨s, i⟩) := by
-  have hlen : ¬ i < s.len.val := by simp [Slice.len]; omega
-  simp only [core.slice.iter.IteratorSliceIter.next, dif_neg hlen]
-
 /-- The translated loop from position `i` is `Defs.Sse.observe` on the bytes from `i` on, by
 induction on the number `n` of remaining bytes. -/
 theorem observe_loop_eq (s : Slice U8) : ∀ n i st, s.val.length - i = n →
@@ -325,7 +331,7 @@ theorem observe_loop_eq (s : Slice U8) : ∀ n i st, s.val.length - i = n →
       rw [SseEventSizeLimiter.observe_loop, loop]
       have hb : SseEventSizeLimiter.observe_loop.body ⟨s, i⟩ st = ok (.done (.Ok (), st)) := by
         unfold SseEventSizeLimiter.observe_loop.body
-        rw [next_of_le s i hge]
+        rw [core.slice.iter.IteratorSliceIter.next_eq_none_of_le s i hge]
         rfl
       simp only [hb, List.drop_eq_nil_of_le hge]
       rfl
@@ -334,8 +340,10 @@ theorem observe_loop_eq (s : Slice U8) : ∀ n i st, s.val.length - i = n →
     intro i st hn
     have hlt : i < s.val.length := by omega
     obtain ⟨st1, hst1, hb⟩ :=
-      observe_loop_body_eq ⟨s, i⟩ ⟨s, i + 1⟩ s.val[i] (next_of_lt s i hlt) st
-    rw [List.drop_eq_getElem_cons hlt, Defs.Sse.observe.eq_2]
+      observe_loop_body_eq ⟨s, i⟩ ⟨s, i + 1⟩ s.val[i]
+        (core.slice.iter.IteratorSliceIter.next_eq_some_of_lt s i hlt) st
+    rw [List.drop_eq_getElem_cons hlt]
+    simp only [Defs.Sse.observe]
     rw [SseEventSizeLimiter.observe_loop, loop]
     simp only [hb]
     cases hok : (Defs.Sse.step Usize.max (Defs.Sse.ofLimiter st) s.val[i]).ok
@@ -452,19 +460,21 @@ theorem observe_append (self : SseEventSizeLimiter) (a b ab : Slice U8)
       | .Err () => ok (.Err (), s)) := by
   obtain ⟨sab, hab, hsab⟩ := Proofs.ClientSideSse.observe_eq self ab
   obtain ⟨sa, ha, hsa⟩ := Proofs.ClientSideSse.observe_eq self a
-  rw [hab, ha, h_ab, Defs.Sse.observe_append] at *
+  rw [h_ab, Defs.Sse.observe_append] at hab hsab
+  rw [hab, ha]
   simp only [bind_tc_ok, uncurry_apply_pair]
-  revert hsab hab
+  revert hsab
   cases hoka : (Defs.Sse.observe Usize.max (Defs.Sse.ofLimiter self) a.val).ok
   · simp only [hoka, Bool.false_eq_true, if_false]
-    intro _ hsab
+    intro hsab
     have : sab = sa := Proofs.ClientSideSse.ofLimiter_injective (hsab.trans hsa.symm)
     subst this; rfl
   · simp only [hoka, if_true]
-    intro _ hsab
+    intro hsab
     obtain ⟨sb, hb, hsb⟩ := Proofs.ClientSideSse.observe_eq sa b
     show _ = observe sa b
-    rw [hb, hsa] at *
+    rw [hb, hsa]
+    rw [hsa] at hsb
     have : sab = sb := Proofs.ClientSideSse.ofLimiter_injective (hsab.trans hsb.symm)
     subst this; rfl
 
@@ -512,13 +522,13 @@ theorem max_size_eq_and_satAdd_le_of_observe_eq_ok (self self' : SseEventSizeLim
   have hok : (Defs.Sse.observe Usize.max (Defs.Sse.ofLimiter self) chunk.val).ok = true := by
     revert hr
     cases (Defs.Sse.observe Usize.max (Defs.Sse.ofLimiter self) chunk.val).ok <;>
-      simp [Defs.Sse.toResult]
+      simp only [Defs.Sse.toResult, Bool.false_eq_true, ↓reduceIte, reduceCtorEq, imp_self]
   have hb : Defs.Sse.withinLimit Usize.max (Defs.Sse.ofLimiter self) = true := by
-    simpa [Defs.Sse.withinLimit, Defs.Sse.ofLimiter] using h_bound
+    simpa only [Defs.Sse.withinLimit, Defs.Sse.ofLimiter, decide_eq_true_eq] using h_bound
   obtain ⟨h3, h4⟩ := Proofs.ClientSideSse.withinLimit_observe _ _ hb hok
   rw [← h2] at h3 h4
-  refine ⟨UScalar.eq_of_val_eq (by simpa [Defs.Sse.ofLimiter] using h4), ?_⟩
-  simpa [Defs.Sse.withinLimit, Defs.Sse.ofLimiter] using h3
+  refine ⟨UScalar.eq_of_val_eq (by simpa only [Defs.Sse.ofLimiter] using h4), ?_⟩
+  simpa only [Defs.Sse.withinLimit, Defs.Sse.ofLimiter, decide_eq_true_eq] using h3
 
 /-- **C02, prefix form** (plan Section 16.4, C02 and C01): if the bound holds for `self` and
 `observe` on `ab = a ++ b` returns `Ok(())`, then `observe` on the prefix `a` also returns
@@ -542,10 +552,11 @@ theorem exists_observe_eq_ok_and_max_size_eq_and_satAdd_le_of_observe_append_eq_
   rw [ha] at h_ok ⊢
   revert h_ok
   cases hk : (Defs.Sse.observe Usize.max (Defs.Sse.ofLimiter self) a.val).ok
-  · simp [Defs.Sse.toResult]
+  · simp only [Defs.Sse.toResult, Bool.false_eq_true, ↓reduceIte, bind_tc_ok, uncurry_apply_pair,
+      ok.injEq, Prod.mk.injEq, reduceCtorEq, false_and, exists_false, imp_self]
   · intro _
-    refine ⟨sa, by simp [Defs.Sse.toResult], ?_⟩
+    refine ⟨sa, by simp only [Defs.Sse.toResult, ↓reduceIte], ?_⟩
     exact max_size_eq_and_satAdd_le_of_observe_eq_ok self sa a h_bound
-      (by rw [ha]; simp [Defs.Sse.toResult, hk])
+      (by rw [ha]; simp only [Defs.Sse.toResult, hk, ↓reduceIte])
 
 end rmcp.transport.common.client_side_sse.SseEventSizeLimiter

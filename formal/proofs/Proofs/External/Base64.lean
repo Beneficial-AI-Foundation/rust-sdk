@@ -5,6 +5,7 @@ Authors: Hoang Le Truong
 -/
 import Rmcp.FunsExternal
 import Defs.Wire
+import Proofs.External.Byte
 
 /-!
 # Laws of the Base64url model
@@ -23,16 +24,7 @@ open Aeneas Aeneas.Std
 
 namespace Proofs.External.Base64
 
-open ExtModel
-
-theorem byte_val (n : Nat) : (byte n).val = n % 256 := by
-  simp [byte, UScalar.val]
-
-theorem byte_eq {x : U8} {n : Nat} (h : n = x.val) : byte n = x := by
-  apply UScalar.eq_of_val_eq
-  rw [byte_val, h]
-  have : x.val < 256 := by scalar_tac
-  omega
+open ExtModel Proofs.External.Byte
 
 /-- `b64Val` inverts `b64Sym` on 6-bit values. -/
 theorem b64Val_b64Sym {n : Nat} (h : n < 64) : b64Val (b64Sym n) = some n := by
@@ -43,16 +35,15 @@ theorem b64Val_b64Sym {n : Nat} (h : n < 64) : b64Val (b64Sym n) = some n := by
 /-- Every symbol that `b64Val` accepts is `b64Sym` of its value, and the value has 6 bits. -/
 theorem b64Sym_b64Val {c : U8} {n : Nat} (h : b64Val c = some n) : b64Sym n = c ∧ n < 64 := by
   unfold b64Val at h
-  split_ifs at h <;> simp at h <;> subst h <;> refine ⟨?_, by omega⟩ <;> unfold b64Sym <;>
-    split_ifs <;> first | omega | (apply byte_eq; omega)
+  split_ifs at h <;> simp only [Option.some.injEq, ReduceNat.reduceNatEq] at h <;> subst h <;>
+    refine ⟨?_, by omega⟩ <;> unfold b64Sym <;> split_ifs <;>
+    first | omega | (apply byte_eq; omega)
 
 /-- `b64Sym` produces only symbols of the URL-safe alphabet. -/
 theorem isSome_b64Val_b64Sym (n : Nat) : (b64Val (b64Sym n)).isSome := by
   unfold b64Sym
   split_ifs <;> simp only [b64Val, byte_val] <;> split_ifs <;>
     first | rfl | omega
-
-theorem val_lt (x : U8) : x.val < 256 := by scalar_tac
 
 /-- **Round trip:** decoding the encoding gives the input back. -/
 theorem b64Decode_b64 : ∀ x : List U8, b64Decode (b64 x) = some x
@@ -111,7 +102,7 @@ theorem b64_of_b64Decode : ∀ (s y : List U8), b64Decode s = some y → b64 y =
       · rw [← e0]; congr 1; omega
       · rw [← e1]; congr 1; omega
       · rw [← e2]; congr 1; omega
-    · simp at hy
+    · simp only [reduceCtorEq] at hy
   | [c0, c1], y, h => by
     simp only [b64Decode, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
     obtain ⟨v0, h0, v1, h1, hy⟩ := h
@@ -122,8 +113,8 @@ theorem b64_of_b64Decode : ∀ (s y : List U8), b64Decode s = some y → b64 y =
       refine ⟨?_, ?_, trivial⟩
       · rw [← e0]; congr 1; omega
       · rw [← e1]; congr 1; omega
-    · simp at hy
-  | [_], y, h => by simp [b64Decode] at h
+    · simp only [reduceCtorEq] at hy
+  | [_], y, h => by simp only [b64Decode, reduceCtorEq] at h
   | [], y, h => by simp only [b64Decode, Option.some.injEq] at h; subst h; rfl
 
 /-- `b64Decode` accepts exactly the encodings, and returns what was encoded. -/
@@ -143,7 +134,7 @@ theorem isSome_b64Val_of_mem_b64 : ∀ (x : List U8), ∀ c ∈ b64 x, (b64Val c
   | [a] => by
     intro d hd; simp only [b64, List.mem_cons, List.not_mem_nil, or_false] at hd
     rcases hd with h | h <;> (subst h; exact isSome_b64Val_b64Sym _)
-  | [] => by simp [b64]
+  | [] => by simp only [b64, List.not_mem_nil, IsEmpty.forall_iff, implies_true]
 
 /-- The symbols of the URL-safe alphabet are the bytes `A`–`Z`, `a`–`z`, `0`–`9`, `-`, `_`. -/
 theorem isSome_b64Val_iff (c : U8) :
@@ -157,14 +148,14 @@ theorem isSome_b64Val_iff (c : U8) :
 theorem dot_notMem_b64 (x : List U8) : Defs.Wire.dot ∉ b64 x := by
   intro h
   have := (isSome_b64Val_iff _).1 (isSome_b64Val_of_mem_b64 x _ h)
-  simp [Defs.Wire.dot] at this
+  rw [Defs.Wire.dot, UScalar.ofNatCore_val_eq] at this; omega
 
 /-- **Length:** the unpadded encoding of `n` bytes has `⌈4n/3⌉ = (4n + 2) / 3` symbols. -/
 theorem length_b64 : ∀ x : List U8, (b64 x).length = (4 * x.length + 2) / 3
   | _ :: _ :: _ :: rest => by
     simp only [b64, List.length_cons, length_b64 rest]; omega
-  | [_, _] => by simp [b64]
-  | [_] => by simp [b64]
+  | [_, _] => by simp only [b64, List.length_cons, List.length_nil]
+  | [_] => by simp only [b64, List.length_cons, List.length_nil]
   | [] => rfl
 
 /-- The encoding is never longer than `Defs.Wire.b64Len` (`4 * ⌈n/3⌉`, the padded length that

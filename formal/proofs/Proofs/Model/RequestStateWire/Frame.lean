@@ -73,7 +73,7 @@ theorem frame_roundtrip (expiry : I64) (payload : Slice U8) (now_ms : I64)
     simp only [Slice.length, hd, length_frameBytes]
   rcases result with p' | e
   · obtain ⟨-, -, hp⟩ := result_post
-    rw [hd, frameBytes, expiryLen, List.drop_left' (by simp [be64OfInt, be64])] at hp
+    rw [hd, frameBytes, expiryLen, List.drop_left' (by rw [be64OfInt, length_be64])] at hp
     rw [Subtype.ext hp]
   · cases e with
     | TooShort =>

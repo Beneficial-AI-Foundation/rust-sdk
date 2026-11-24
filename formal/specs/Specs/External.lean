@@ -1228,7 +1228,7 @@ theorem Theorems.External.core.slice.Slice.first_spec {T : Type} (self : Slice T
   _root_.core.slice.Slice.first_spec self
 
 /--
-info: 'Theorems.External.core.slice.Slice.first_spec' depends on axioms: [propext, Quot.sound]
+info: 'Theorems.External.core.slice.Slice.first_spec' depends on axioms: [propext]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.slice.Slice.first_spec

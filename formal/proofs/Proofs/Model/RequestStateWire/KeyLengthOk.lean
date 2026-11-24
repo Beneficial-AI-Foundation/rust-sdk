@@ -30,6 +30,7 @@ theorem key_length_ok_spec (len : Usize) :
     key_length_ok len ⦃ (result : Bool) =>
       result = decide (minKeyLength ≤ len.val) ⦄ := by
   unfold key_length_ok
-  simp [MIN_KEY_LENGTH, minKeyLength]
+  simp only [MIN_KEY_LENGTH, ge_iff_le, UScalar.le_equiv, UScalar.ofNatCore_val_eq, minKeyLength,
+    WP.spec_ok, decide_eq_decide]
 
 end rmcp.model.request_state_wire

@@ -4,18 +4,21 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
+import Proofs.External.Std
 
 /-!
 # Spec theorems for `SamplingContent` (M09–M12 and their joint lemmas)
 
 `into_vec` (M09), `is_empty` (M10), `len` (M11) and `first` (M12) of
 `rmcp::model::SamplingContent`, and the joint lemmas of plan Section 16.1 relating them
-(`is_empty_eq_len_eq_zero`, `first_eq_head?_into_vec`, `len_eq_len_into_vec`).
+(`is_empty_eq_len_eq_zero`, `first_eq_head?_into_vec`, `len_eq_len_into_vec`). `Vec::is_empty`
+and `slice::first` are used through their laws in `Proofs/External/Std.lean`.
 
 Source: "crates/rmcp/src/model.rs", lines 2926–2963 at `7caec76`
 -/
 
 open Aeneas Aeneas.Std Result
+open Proofs.External.WP (exists_ok_of_spec)
 
 namespace rmcp.model.SamplingContent
 
@@ -50,8 +53,8 @@ theorem is_empty_spec {T : Type} (self : model.SamplingContent T) :
   match self with
   | .Single _ => simp only [is_empty, WP.spec_ok]
   | .Multiple v =>
-    simp only [is_empty, alloc.vec.Vec.is_empty, List.length_eq_zero_iff, WP.spec_ok,
-      decide_eq_true_eq]
+    obtain ⟨b, hb, hbv⟩ := exists_ok_of_spec (alloc.vec.Vec.is_empty_spec Global v)
+    simp only [is_empty, hb, hbv, WP.spec_ok, decide_eq_true_eq]
 
 /-- **Spec theorem for `rmcp::model::SamplingContent::len`** (M11)
 
@@ -81,9 +84,11 @@ theorem first_spec {T : Type} (self : model.SamplingContent T) :
       | .Multiple v => result = v.val.head? ⦄ := by
   match self with
   | .Single x => simp only [first, WP.spec_ok]
-  | .Multiple ⟨l, hl⟩ =>
-    simp only [first, core.slice.Slice.first, alloc.vec.Vec.deref]
-    cases l <;> simp only [List.head?_nil, List.head?_cons, WP.spec_ok]
+  | .Multiple v =>
+    obtain ⟨r, hr, hrv⟩ :=
+      exists_ok_of_spec (core.slice.Slice.first_spec (alloc.vec.Vec.deref v))
+    simp only [first, hr, hrv, WP.spec_ok]
+    rfl
 
 /-- Joint lemma M10 `= (M11 = 0)`: `is_empty` is `len = 0` (plan Section 16.1; `model.rs` lines
 2934–2947). -/
@@ -93,8 +98,9 @@ theorem is_empty_eq_len_eq_zero {T : Type} (self : model.SamplingContent T) :
   | .Single _ =>
     simp only [is_empty, len, bind_tc_ok, UScalar.ofNatCore_val_eq, one_ne_zero, decide_false]
   | .Multiple v =>
-    simp only [is_empty, alloc.vec.Vec.is_empty, List.length_eq_zero_iff, len, alloc.vec.Vec.len,
-      bind_tc_ok, Usize.ofNatCore_val_eq]
+    obtain ⟨b, hb, hbv⟩ := exists_ok_of_spec (alloc.vec.Vec.is_empty_spec Global v)
+    simp only [is_empty, hb, hbv, List.length_eq_zero_iff, len, alloc.vec.Vec.len, bind_tc_ok,
+      Usize.ofNatCore_val_eq]
 
 /-- Joint lemma M12 `= (M09).head?`: `first` is the first element of `into_vec` (plan Section
 16.1; `model.rs` lines 2926–2931 and 2958–2963). In Rust `first` borrows and `into_vec`
@@ -105,9 +111,11 @@ theorem first_eq_head?_into_vec {T : Type} (self : model.SamplingContent T) :
   | .Single x =>
     simp only [first, into_vec, lift, Array.to_slice, Array.make, alloc.slice.Slice.into_vec,
       bind_tc_ok, List.head?_cons]
-  | .Multiple ⟨l, hl⟩ =>
-    simp only [first, core.slice.Slice.first, alloc.vec.Vec.deref, into_vec, bind_tc_ok]
-    cases l <;> rfl
+  | .Multiple v =>
+    obtain ⟨r, hr, hrv⟩ :=
+      exists_ok_of_spec (core.slice.Slice.first_spec (alloc.vec.Vec.deref v))
+    simp only [first, hr, hrv, into_vec, bind_tc_ok]
+    rfl
 
 /-- Joint lemma M11 `= (M09).length`: `len` is the length of `into_vec` (plan Section 16.1;
 `model.rs` lines 2926–2931 and 2942–2947). -/

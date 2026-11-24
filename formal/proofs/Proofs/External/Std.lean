@@ -12,7 +12,9 @@ import Proofs.External.String
 Spec theorems for the models in `formal/trusted/Rmcp/FunsExternal.lean` (sections Standard
 library and Clock). Each covers success and, where the model can fail, the failure. Names follow
 the style guide: the full generated name of the external with `_spec`; equation lemmas for
-functions that take a trait instance whose behaviour is not fixed (`map_err`, `clone`, ...).
+functions that take a trait instance whose behaviour is not fixed (`map_err`, `clone`, ...), and
+for `ok_or` and `is_err` (`ok_or_eq`, `is_err_eq`, from their spec theorems, for rewriting inside
+a `do` block).
 
 Section "Phase 2: slices and ranges" proves the signed-off laws of plan steps S26/S27 for
 `slice::first`, `<[T; N] as SlicePattern>::as_slice`, `[T] == [U; N]`, `slice::strip_suffix`
@@ -29,7 +31,7 @@ open ExtModel Proofs.External.Utf8 Proofs.External.Base64
 @[step]
 theorem core.borrow.Borrow.Blanket.borrow_spec {T : Type} (self : T) :
     core.borrow.Borrow.Blanket.borrow self ⦃ (result : T) => result = self ⦄ := by
-  simp [core.borrow.Borrow.Blanket.borrow]
+  simp only [core.borrow.Borrow.Blanket.borrow, WP.spec_ok]
 
 /-- **Spec theorem for `core::option::Option::ok_or`**: `Some v ↦ Ok v`, `None ↦ Err err`. -/
 @[step]
@@ -39,15 +41,25 @@ theorem core.option.Option.ok_or_spec {T : Type} {E : Type} (self : Option T) (e
         | some v => core.result.Result.Ok v
         | none => core.result.Result.Err err ⦄ := by
   match self with
-  | some _ => simp [core.option.Option.ok_or]
-  | none => simp [core.option.Option.ok_or]
+  | some _ => simp only [core.option.Option.ok_or, WP.spec_ok]
+  | none => simp only [core.option.Option.ok_or, WP.spec_ok]
+
+/-- `Option::ok_or` as an equation, for rewriting inside a `do` block; from
+`core.option.Option.ok_or_spec`. -/
+theorem core.option.Option.ok_or_eq {T E : Type} (o : Option T) (err : E) :
+    core.option.Option.ok_or o err = Aeneas.Std.Result.ok (match o with
+      | some v => core.result.Result.Ok v
+      | none => core.result.Result.Err err) := by
+  obtain ⟨r, hr, h⟩ :=
+    Proofs.External.WP.exists_ok_of_spec (core.option.Option.ok_or_spec o err)
+  rw [hr, h]
 
 /-- **Spec theorem for `<Option<T> as Default>::default`**: `None`. -/
 @[step]
 theorem core.option.Option.Insts.CoreDefaultDefault.default_spec (T : Type) :
     core.option.Option.Insts.CoreDefaultDefault.default T ⦃ (result : Option T) =>
       result = none ⦄ := by
-  simp [core.option.Option.Insts.CoreDefaultDefault.default]
+  simp only [core.option.Option.Insts.CoreDefaultDefault.default, WP.spec_ok]
 
 /-- **Spec theorem for `core::result::Result::is_err`**: `true` exactly for `Err`. -/
 @[step]
@@ -57,8 +69,18 @@ theorem core.result.Result.is_err_spec {T : Type} {E : Type} (self : core.result
         | core.result.Result.Ok _ => false
         | core.result.Result.Err _ => true ⦄ := by
   match self with
-  | core.result.Result.Ok _ => simp [core.result.Result.is_err]
-  | core.result.Result.Err _ => simp [core.result.Result.is_err]
+  | core.result.Result.Ok _ => simp only [core.result.Result.is_err, WP.spec_ok]
+  | core.result.Result.Err _ => simp only [core.result.Result.is_err, WP.spec_ok]
+
+/-- `Result::is_err` as an equation, for rewriting inside a `do` block; from
+`core.result.Result.is_err_spec`. -/
+theorem core.result.Result.is_err_eq {T E : Type} (r : core.result.Result T E) :
+    core.result.Result.is_err r = Aeneas.Std.Result.ok (match r with
+      | core.result.Result.Ok _ => false
+      | core.result.Result.Err _ => true) := by
+  obtain ⟨b, hb, h⟩ :=
+    Proofs.External.WP.exists_ok_of_spec (core.result.Result.is_err_spec r)
+  rw [hb, h]
 
 /-- `core::result::Result::map_err` on `Ok`: unchanged, the closure is not called. -/
 @[simp]
@@ -80,19 +102,19 @@ theorem core.result.Result.map_err_err {T E F O : Type}
 theorem Shared0Slice.Insts.CoreDefaultDefault.default_spec (T : Type) :
     Shared0Slice.Insts.CoreDefaultDefault.default T ⦃ (result : Slice T) =>
       result.val = [] ⦄ := by
-  simp [Shared0Slice.Insts.CoreDefaultDefault.default, Slice.new]
+  simp only [Shared0Slice.Insts.CoreDefaultDefault.default, Slice.new, WP.spec_ok]
 
 /-- **Spec theorem for `core::str::str::len`**: the number of bytes; for every `Str`. -/
 @[step]
 theorem core.str.Str.len_spec (self : Str) :
     core.str.Str.len self ⦃ (result : Usize) => result.val = self.val.length ⦄ := by
-  simp [core.str.Str.len]
+  simp only [core.str.Str.len, WP.spec_ok, Usize.ofNatCore_val_eq]
 
 /-- **Spec theorem for `core::str::str::as_bytes`**: the same bytes; for every `Str`. -/
 @[step]
 theorem core.str.Str.as_bytes_spec (self : Str) :
     core.str.Str.as_bytes self ⦃ (result : Slice U8) => result.val = self.val ⦄ := by
-  simp [core.str.Str.as_bytes]
+  simp only [core.str.Str.as_bytes, WP.spec_ok]
 
 /-! ## `alloc::string::String` -/
 
@@ -102,13 +124,13 @@ theorem core.str.Str.as_bytes_spec (self : Str) :
 theorem alloc.string.String.with_capacity_spec (capacity : Usize)
     (h : capacity.val ≤ maxStringBytes) :
     alloc.string.String.with_capacity capacity ⦃ (result : String) => result = "" ⦄ := by
-  simp [alloc.string.String.with_capacity, h]
+  simp only [alloc.string.String.with_capacity, h, ↓reduceIte, WP.spec_ok]
 
 /-- `String::with_capacity` panics ("capacity overflow") above `isize::MAX`. -/
 theorem alloc.string.String.with_capacity_fail (capacity : Usize)
     (h : maxStringBytes < capacity.val) :
     alloc.string.String.with_capacity capacity = fail Error.panic := by
-  simp [alloc.string.String.with_capacity, Nat.not_le.2 h]
+  simp only [alloc.string.String.with_capacity, Nat.not_le.2 h, ↓reduceIte]
 
 /-- **Spec theorem for `String::push_str`**: for a UTF-8 argument (`string` is the bytes of `t`,
 as every Rust `&str` is) whose result fits in a `String`, appends `t`; the result's bytes are
@@ -136,7 +158,7 @@ domain: `fail undef`. -/
 theorem alloc.string.String.push_str_not_utf8 (self : String) (string : Str)
     (h : ∀ t, string.val ≠ utf8 t) :
     alloc.string.String.push_str self string = fail Error.undef := by
-  simp [alloc.string.String.push_str, (strOfBytes?_eq_none_iff _).2 h]
+  simp only [alloc.string.String.push_str, (strOfBytes?_eq_none_iff _).2 h]
 
 /-- **Spec theorem for `String::push`**: appends the character if the result fits in a
 `String`; the result's bytes are the old bytes followed by the character's encoding. -/
@@ -167,13 +189,13 @@ Rust `String` (at most `isize::MAX` bytes); see `as_bytes_fail`. -/
 theorem alloc.string.String.as_bytes_spec (self : String) (h : self.utf8ByteSize ≤ Usize.max) :
     alloc.string.String.as_bytes self ⦃ (result : Slice U8) => result.val = utf8 self ⦄ := by
   rw [← length_utf8] at h
-  simp [alloc.string.String.as_bytes, h]
+  simp only [alloc.string.String.as_bytes, h, ↓reduceDIte, WP.spec_ok]
 
 /-- `String::as_bytes` on a Lean `String` longer than `Usize.max` bytes (no Rust `String`). -/
 theorem alloc.string.String.as_bytes_fail (self : String) (h : Usize.max < self.utf8ByteSize) :
     alloc.string.String.as_bytes self = fail Error.maximumSizeExceeded := by
   rw [← length_utf8] at h
-  simp [alloc.string.String.as_bytes, Nat.not_le.2 h]
+  simp only [alloc.string.String.as_bytes, Nat.not_le.2 h, ↓reduceDIte]
 
 /-- **Spec theorem for `String::from_utf8`**: `Ok s` when the bytes are the encoding of `s`;
 otherwise `Err` carrying the bytes. -/
@@ -186,8 +208,8 @@ theorem alloc.string.String.from_utf8_spec (vec : alloc.vec.Vec U8) :
       | core.result.Result.Err e => (∀ s, vec.val ≠ utf8 s) ∧ e.bytes = vec ⦄ := by
   unfold alloc.string.String.from_utf8
   split
-  · rename_i s hs; simpa using (strOfBytes?_eq_some_iff _ _).1 hs
-  · rename_i hs; simpa using (strOfBytes?_eq_none_iff _).1 hs
+  · rename_i s hs; simpa only [ne_eq, WP.spec_ok] using (strOfBytes?_eq_some_iff _ _).1 hs
+  · rename_i hs; simpa only [ne_eq, WP.spec_ok, and_true] using (strOfBytes?_eq_none_iff _).1 hs
 
 /-- **Spec theorem for `<String as PartialEq>::eq`**: equality. -/
 @[step]
@@ -195,20 +217,20 @@ theorem alloc.string.String.Insts.CoreCmpPartialEqString.eq_spec (self : String)
     (other : String) :
     alloc.string.String.Insts.CoreCmpPartialEqString.eq self other ⦃ (result : Bool) =>
       result = decide (self = other) ⦄ := by
-  simp [alloc.string.String.Insts.CoreCmpPartialEqString.eq]
+  simp only [alloc.string.String.Insts.CoreCmpPartialEqString.eq, WP.spec_ok]
 
 /-- **Spec theorem for `<String as Eq>::assert_fields_are_eq`**: succeeds. -/
 @[step]
 theorem alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq_spec (self : String) :
     alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq self ⦃ (_ : Unit) => True ⦄ := by
-  simp [alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq]
+  simp only [alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq, WP.spec_ok]
 
 /-- **Spec theorem for `<String as Clone>::clone`**: the same string. -/
 @[step]
 theorem alloc.string.String.Insts.CoreCloneClone.clone_spec (self : String) :
     alloc.string.String.Insts.CoreCloneClone.clone self ⦃ (result : String) =>
       result = self ⦄ := by
-  simp [alloc.string.String.Insts.CoreCloneClone.clone]
+  simp only [alloc.string.String.Insts.CoreCloneClone.clone, WP.spec_ok]
 
 /-- `<String as Hash>::hash` writes the bytes and then `0xff` (for a Rust-sized `String`). -/
 theorem alloc.string.String.Insts.CoreHashHash.hash_eq {H : Type}
@@ -219,7 +241,8 @@ theorem alloc.string.String.Insts.CoreHashHash.hash_eq {H : Type}
         let state ← inst.write state ⟨utf8 self, by rw [length_utf8]; exact h⟩
         inst.write state ⟨[byte 255], by scalar_tac⟩) := by
   have h' : (utf8 self).length ≤ Usize.max := by rw [length_utf8]; exact h
-  simp [alloc.string.String.Insts.CoreHashHash.hash, alloc.string.String.as_bytes, h']
+  simp only [alloc.string.String.Insts.CoreHashHash.hash, alloc.string.String.as_bytes, h',
+    ↓reduceDIte, bind_tc_ok]
 
 /-! ## `Vec`, hashing, `HashMap` -/
 
@@ -227,7 +250,7 @@ theorem alloc.string.String.Insts.CoreHashHash.hash_eq {H : Type}
 @[step]
 theorem alloc.vec.Vec.is_empty_spec {T : Type} (A : Type) (self : alloc.vec.Vec T) :
     alloc.vec.Vec.is_empty A self ⦃ (result : Bool) => result = decide (self.val = []) ⦄ := by
-  simp [alloc.vec.Vec.is_empty]
+  simp only [alloc.vec.Vec.is_empty, List.length_eq_zero_iff, WP.spec_ok]
 
 /-- **Spec theorem for `<RandomState as Clone>::clone`**: the same value. -/
 @[step]
@@ -235,7 +258,7 @@ theorem std.hash.random.RandomState.Insts.CoreCloneClone.clone_spec
     (self : std.hash.random.RandomState) :
     std.hash.random.RandomState.Insts.CoreCloneClone.clone self ⦃
       (result : std.hash.random.RandomState) => result = self ⦄ := by
-  simp [std.hash.random.RandomState.Insts.CoreCloneClone.clone]
+  simp only [std.hash.random.RandomState.Insts.CoreCloneClone.clone, WP.spec_ok]
 
 /-- **Spec theorem for `<RandomState as BuildHasher>::build_hasher`**: the map's keys, no
 bytes written. -/
@@ -245,7 +268,8 @@ theorem std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build
     std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher self ⦃
       (result : std.hash.random.DefaultHasher) =>
         result = { k0 := self.k0, k1 := self.k1, written := [] } ⦄ := by
-  simp [std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher]
+  simp only [std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher,
+    WP.spec_ok]
 
 /-- **Spec theorem for `<DefaultHasher as Hasher>::write`**: appends the bytes. -/
 @[step]
@@ -254,7 +278,7 @@ theorem std.hash.random.DefaultHasher.Insts.CoreHashHasher.write_spec
     std.hash.random.DefaultHasher.Insts.CoreHashHasher.write self msg ⦃
       (result : std.hash.random.DefaultHasher) =>
         result = { self with written := self.written ++ msg.val } ⦄ := by
-  simp [std.hash.random.DefaultHasher.Insts.CoreHashHasher.write]
+  simp only [std.hash.random.DefaultHasher.Insts.CoreHashHasher.write, WP.spec_ok]
 
 /-- **Spec theorem for `<DefaultHasher as Hasher>::finish`**: SipHash-1-3 of keys and bytes. -/
 @[step]
@@ -262,7 +286,7 @@ theorem std.hash.random.DefaultHasher.Insts.CoreHashHasher.finish_spec
     (self : std.hash.random.DefaultHasher) :
     std.hash.random.DefaultHasher.Insts.CoreHashHasher.finish self ⦃ (result : U64) =>
       result = sipHash13 self.k0 self.k1 self.written ⦄ := by
-  simp [std.hash.random.DefaultHasher.Insts.CoreHashHasher.finish]
+  simp only [std.hash.random.DefaultHasher.Insts.CoreHashHasher.finish, WP.spec_ok]
 
 /-- `HashMap::get` is the lookup `ExtModel.HashMap.find` over the entries, whatever the
 hashing instances. -/
@@ -289,8 +313,8 @@ theorem find_string {V : Type} (q : String) :
       rmcp.alloc.string.String.Insts.CoreCmpPartialEqString,
       alloc.string.String.Insts.CoreCmpPartialEqString.eq, bind_tc_ok, List.find?_cons]
     by_cases h : q = k
-    · subst h; simp
-    · simp [h, Ne.symm h]
+    · subst h; simp only [decide_true, ↓reduceIte, Option.map_some]
+    · simp only [h, decide_false, Bool.false_eq_true, ↓reduceIte, Ne.symm h]
       exact find_string q rest
 
 end Proofs.External.HashMap
@@ -312,7 +336,7 @@ theorem std.collections.hash.map.HashMap.get_string_spec {V A : Type}
       rmcp.alloc.string.String.Insts.CoreCmpEq self k ⦃ (result : Option V) =>
         result = (self.entries.find? (fun e => decide (e.1 = k))).map Prod.snd ⦄ := by
   rw [std.collections.hash.map.HashMap.get_eq, Proofs.External.HashMap.find_string]
-  simp
+  simp only [WP.spec_ok]
 
 namespace Proofs.External.HashMap
 
@@ -321,7 +345,7 @@ theorem find?_key_of_mem {V : Type} (entries : List (String × V)) (k : String) 
     (hnd : (entries.map Prod.fst).Nodup) (hm : (k, v) ∈ entries) :
     (entries.find? (fun e => decide (e.1 = k))).map Prod.snd = some v := by
   induction entries with
-  | nil => simp at hm
+  | nil => simp only [List.not_mem_nil] at hm
   | cons e rest ih =>
     obtain ⟨k', v'⟩ := e
     simp only [List.map_cons, List.nodup_cons, List.mem_map] at hnd
@@ -329,11 +353,12 @@ theorem find?_key_of_mem {V : Type} (entries : List (String × V)) (k : String) 
     by_cases hk : k' = k
     · subst hk
       rcases hm with ⟨_, rfl⟩ | hm
-      · simp
+      · simp only [decide_true, List.find?_cons_of_pos, Option.map_some]
       · exact absurd ⟨(k', v), hm, rfl⟩ hnd.1
     · rcases hm with ⟨h1, _⟩ | hm
       · exact absurd h1.symm hk
-      · simp [hk, ih hnd.2 hm]
+      · simp only [hk, decide_false, Bool.false_eq_true, not_false_eq_true, List.find?_cons_of_neg,
+          ih hnd.2 hm]
 
 /-- No entry has key `k`: the lookup gives `none`. -/
 theorem find?_key_of_not_mem {V : Type} (entries : List (String × V)) (k : String)
@@ -348,7 +373,8 @@ theorem find?_key_of_not_mem {V : Type} (entries : List (String × V)) (k : Stri
 theorem find?_key_isSome_iff {V : Type} (entries : List (String × V)) (k : String) :
     ((entries.find? (fun e => decide (e.1 = k))).map Prod.snd).isSome ↔
       k ∈ entries.map Prod.fst := by
-  simp [Option.isSome_map, List.find?_isSome, List.mem_map]
+  simp only [Option.isSome_map, List.find?_isSome, decide_eq_true_eq, Prod.exists, exists_and_right,
+    exists_eq_right, List.mem_map]
 
 end Proofs.External.HashMap
 
@@ -374,7 +400,7 @@ theorem std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_eq
 theorem zeroize.Zeroizing.new_spec {Z : Type} (inst : rmcp.zeroize.Zeroize Z) (value : Z) :
     zeroize.Zeroizing.new inst value ⦃ (result : zeroize.Zeroizing Z) =>
       result.inner = value ⦄ := by
-  simp [zeroize.Zeroizing.new]
+  simp only [zeroize.Zeroizing.new, WP.spec_ok]
 
 /-- **Spec theorem for `<Zeroizing<Z> as Deref>::deref`**: the wrapped value. -/
 @[step]
@@ -382,7 +408,7 @@ theorem zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref_spec {Z : Type}
     (inst : rmcp.zeroize.Zeroize Z) (self : zeroize.Zeroizing Z) :
     zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref inst self ⦃ (result : Z) =>
       result = self.inner ⦄ := by
-  simp [zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref]
+  simp only [zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref, WP.spec_ok]
 
 /-- `<Zeroizing<Z> as Clone>::clone` wraps a clone of the value. -/
 theorem zeroize.Zeroizing.Insts.CoreCloneClone.clone_eq {Z : Type} (inst : rmcp.zeroize.Zeroize Z)
@@ -419,7 +445,7 @@ open rmcp
 theorem core.slice.Slice.first_spec {T : Type} (self : Slice T) :
     core.slice.Slice.first self ⦃ (result : Option T) => result = self.val.head? ⦄ := by
   unfold core.slice.Slice.first
-  split <;> rename_i h <;> simp [h]
+  cases h : self.val <;> exact (WP.spec_ok _).mpr rfl
 
 /-- **Spec theorem for `<[T; N] as SlicePattern>::as_slice`**: the same elements. -/
 @[step]
@@ -427,7 +453,7 @@ theorem Array.Insts.CoreSliceSlicePattern.as_slice_spec {T : Type} {N : Usize}
     (self : Array T N) :
     Array.Insts.CoreSliceSlicePattern.as_slice self ⦃ (result : Slice T) =>
       result.val = self.val ⦄ := by
-  simp [Array.Insts.CoreSliceSlicePattern.as_slice, Array.to_slice]
+  simp only [Array.Insts.CoreSliceSlicePattern.as_slice, Array.to_slice, WP.spec_ok]
 
 namespace Proofs.External.Slice
 
@@ -441,20 +467,25 @@ theorem sliceEqSameLength_spec {T U : Type} (inst : core.cmp.PartialEq T U) (R :
   induction l generalizing r with
   | nil =>
     cases r with
-    | nil => simp [ExtModel.sliceEqSameLength]
-    | cons _ _ => simp at hlen
+    | nil =>
+      simp only [ExtModel.sliceEqSameLength, List.forall₂_nil_right_iff, iff_true, WP.spec_ok]
+    | cons _ _ => exact absurd hlen (Nat.succ_ne_zero _).symm
   | cons a l ih =>
     cases r with
-    | nil => simp at hlen
+    | nil => exact absurd hlen (Nat.succ_ne_zero _)
     | cons b r =>
-      obtain ⟨d, hd, hP⟩ := WP.spec_imp_exists (h_ne a (by simp) b (by simp))
+      obtain ⟨d, hd, hP⟩ :=
+        WP.spec_imp_exists (h_ne a List.mem_cons_self b List.mem_cons_self)
       simp only [ExtModel.sliceEqSameLength, hd, bind_tc_ok, List.forall₂_cons]
       cases d with
-      | true => simp_all
+      | true =>
+        simp only [↓reduceIte, WP.spec_ok, Bool.false_eq_true, false_iff, not_and]
+        exact fun hR => absurd hR (hP.1 rfl)
       | false =>
-        have hR : R a b := by simpa using hP
+        have hR : R a b := by simpa only [Bool.false_eq_true, false_iff, not_not] using hP
         simp only [Bool.false_eq_true, ↓reduceIte, hR, true_and]
-        exact ih r (by simpa using hlen) (fun x hx y hy => h_ne x (by simp [hx]) y (by simp [hy]))
+        exact ih r (Nat.succ.inj hlen)
+          (fun x hx y hy => h_ne x (List.mem_cons_of_mem a hx) y (List.mem_cons_of_mem b hy))
 
 end Proofs.External.Slice
 
@@ -486,7 +517,9 @@ theorem Slice.Insts.CoreCmpPartialEqArray.eq_u16_spec {N : Usize}
     Slice.Insts.CoreCmpPartialEqArray.eq core.cmp.PartialEqU16 self other ⦃ (result : Bool) =>
       (result = true ↔ self.val = other.val) ⦄ := by
   have h := Slice.Insts.CoreCmpPartialEqArray.eq_spec core.cmp.PartialEqU16 self other (· = ·)
-    (fun a _ b _ => by simp)
+    (fun a _ b _ => by
+      simp only [liftFun2, core.cmp.impls.PartialEqU16.ne, UScalar.neq_to_neq_val, decide_not,
+        WP.spec_ok, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not])
   rw [List.forall₂_eq_eq_eq] at h
   exact h
 
@@ -589,7 +622,9 @@ theorem core.slice.Slice.strip_suffix_u8_single_spec (self : Slice U8) (c : U8) 
         | none => self.val.getLast? ≠ some c ⦄ := by
   have h := core.slice.Slice.strip_suffix_spec (Array.Insts.CoreSliceSlicePattern U8 1#usize)
     core.cmp.PartialEqU8 self (Array.make 1#usize [c]) (Array.to_slice (Array.make 1#usize [c]))
-    (· = ·) rfl (fun a _ b _ => by simp)
+    (· = ·) rfl (fun a _ b _ => by
+      simp only [liftFun2, core.cmp.impls.PartialEqU8.ne, UScalar.neq_to_neq_val, decide_not,
+        WP.spec_ok, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not])
   apply WP.spec_mono h
   intro result hr
   cases result with
@@ -619,7 +654,9 @@ theorem core.ops.range.RangeInclusive.contains_u8_spec
          else item.val ≤ self.«end».val)) ⦄ := by
   unfold core.ops.range.RangeInclusive.contains
   cases hx : self.exhausted <;> by_cases h1 : self.start.val ≤ item.val <;>
-    simp [core.cmp.impls.PartialOrdU8.le, core.cmp.impls.PartialOrdU8.lt, h1]
+    simp only [liftFun2, core.cmp.impls.PartialOrdU8.le, h1, decide_true, Bool.false_eq_true,
+      ↓reduceIte, bind_tc_ok, true_and, WP.spec_ok, decide_eq_true_eq, decide_false, false_and,
+      iff_false, Bool.not_eq_true, core.cmp.impls.PartialOrdU8.lt]
 
 /-- **`(a..=b).contains(&x)` for `u8`**: `a ≤ x ≤ b`. -/
 theorem core.ops.range.RangeInclusive.new_contains_u8_spec (a b item : U8) :

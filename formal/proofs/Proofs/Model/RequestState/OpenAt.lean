@@ -84,8 +84,9 @@ theorem open_at_spec (self : RequestStateCodec) (sealed : Str) (associated_data 
       resultBytes result = openAt self (sealed : Slice Std.U8).val associated_data.val
         now_ms.val ⦄ := by
   unfold open_at
-  simp only [core.str.Str.as_bytes, bind_tc_ok]
+  step as ⟨sb, hsb⟩
   step as ⟨o, ho⟩
+  rw [hsb] at ho
   rcases o with _ | ⟨_ | _⟩
   · simp only at ho
     simp only [resultBytes, openAt, ho.1, ↓reduceIte, ho.2, WP.spec_ok]

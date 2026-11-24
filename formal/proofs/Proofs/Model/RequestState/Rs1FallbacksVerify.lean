@@ -81,20 +81,21 @@ theorem rs1_fallbacks_verify_spec (keys : KeyTable) (rs1_fallbacks : Slice Strin
     step as ⟨o, iter1, hr⟩
     rcases hr with ⟨hlt, ho, hit⟩ | ⟨hge, hr⟩
     · rcases o with _ | kid
-      · simp at ho
+      · cases ho
       simp only [Option.some.injEq] at ho
       dsimp only
       have hlt' : it.i < it.slice.val.length := hlt
       have hkid : kid = it.slice.val[it.i] := by rw [ho, getElem!_pos it.slice.val it.i hlt']
       have hmem : kid ∈ Defs.CodecState.keyIds keys := by
         rw [hkid]; exact h_known _ (List.getElem_mem _)
-      rw [_root_.std.collections.hash.map.HashMap.get_eq, Proofs.External.HashMap.find_string,
-        bind_tc_ok]
+      obtain ⟨o1, hget, ho1⟩ := Proofs.External.WP.exists_ok_of_spec
+        (_root_.std.collections.hash.map.HashMap.get_string_spec keys kid)
+      rw [hget, bind_tc_ok]
       have hsome := (Proofs.External.HashMap.find?_key_isSome_iff keys.entries kid).2 hmem
-      generalize ho1 : (keys.entries.find? (fun e => decide (e.1 = kid))).map Prod.snd = o1
-        at hsome
+      rw [← ho1] at hsome
+      replace ho1 := ho1.symm
       rcases o1 with _ | key
-      · simp at hsome
+      · cases hsome
       simp only [core.option.Option.expect, Result.ofOption, bind_tc_ok]
       step as ⟨v1, hv1⟩
       step as ⟨m, hm⟩
@@ -103,24 +104,27 @@ theorem rs1_fallbacks_verify_spec (keys : KeyTable) (rs1_fallbacks : Slice Strin
         unfold Defs.CodecState.lookupKey
         rw [Option.map_eq_some_iff] at ho1
         obtain ⟨e, he, rfl⟩ := ho1
-        simp [he]
+        simp only [he, Option.map_some]
       subst hit
       refine ⟨rfl, ?_, ?_, ?_⟩
       · simp only [Slice.length] at hlt' ⊢; omega
       · simp only
         rw [List.take_add_one, List.getElem?_eq_getElem hlt', hv, ← hkid]
-        simp [Rs1Verifies, Defs.CodecState.TagVerifies, List.mem_append, or_and_right,
-          exists_or, hl, alloc.vec.Vec.deref]
+        simp only [Rs1Verifies, Option.mem_def, Defs.CodecState.TagVerifies, alloc.vec.Vec.deref,
+          Subtype.coe_eta, Option.toList_some, List.mem_append, List.mem_cons, List.not_mem_nil,
+          or_false, or_and_right, exists_or, ↓existsAndEq, hl, Option.some.injEq,
+          exists_eq_left', true_and, Bool.decide_or]
       · simp only [Slice.length] at hlt' ⊢; omega
     · simp only [Prod.mk.injEq] at hr
       obtain ⟨ho, hit⟩ := hr
       rcases o with _ | kid
       swap
-      · simp at ho
+      · cases ho
       dsimp only
       simp only [WP.spec_ok]
       have : it.i = it.slice.val.length := by simp only [Slice.length] at hge hi; omega
       rw [hv, this, List.take_length]
-  · simp [Rs1Verifies]
+  · simp only [Slice.length, zero_le, Rs1Verifies, List.take_zero, List.not_mem_nil,
+      Option.mem_def, false_and, exists_const, decide_false, and_self]
 
 end rmcp.model.request_state.RequestStateCodec

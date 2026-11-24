@@ -6,6 +6,7 @@ Authors: Hoang Le Truong
 import Rmcp.Funs
 import Defs.Bytes
 import Defs.Methods
+import Proofs.External.Std
 import Proofs.External.String
 
 /-!
@@ -36,25 +37,14 @@ unchanged, including for the empty slice (plan Section 16.2, T04; `async_rw.rs` 
 theorem without_carriage_return_spec (s : Slice U8) :
     without_carriage_return s ⦃ (result : Slice U8) =>
       result.val = if s.val.getLast? = some 13#u8 then s.val.dropLast else s.val ⦄ := by
-  rcases s with ⟨l, hl⟩
-  simp only [without_carriage_return, core.slice.Slice.strip_suffix,
-    Array.Insts.CoreSliceSlicePattern.as_slice]
-  simp only [Array.to_slice, Array.make, Slice.len, UScalar.le_equiv, Usize.ofNatCore_val_eq,
-    core.slice.Slice.split_at, Slice.length, List.splitAt_eq, dite_eq_ite, ExtModel.sliceEq,
-    bind_tc_ok, List.length_cons, List.length_nil, zero_add, core.option.Option.unwrap_or]
-  rcases List.eq_nil_or_concat l with rfl | ⟨L, c, rfl⟩
-  · simp
-  · simp only [List.concat_eq_append, List.length_append, List.length_singleton] at *
-    rw [if_pos (by omega)]
-    let* ⟨ x, x_post1, x_post2 ⟩ ← Usize.sub_spec
-    have hx : x.val = L.length := by
-      simp only [Usize.ofNatCore, UScalar.ofNatCore_val_eq, add_tsub_cancel_right] at x_post1
-      exact x_post1
-    simp only [hx, Nat.le_succ, if_true, List.take_left', List.drop_left']
-    by_cases hc : c = 13#u8
-    · subst hc
-      simp [ExtModel.sliceEqSameLength, core.cmp.PartialEqU8, core.cmp.impls.PartialEqU8.ne]
-    · simp [ExtModel.sliceEqSameLength, core.cmp.PartialEqU8, core.cmp.impls.PartialEqU8.ne, hc]
+  unfold without_carriage_return
+  apply WP.spec_bind (core.slice.Slice.strip_suffix_u8_single_spec s 13#u8)
+  intro o ho
+  rw [WP.spec_ok]
+  cases o with
+  | some head => rw [core.option.Option.unwrap_or_some, ho, List.getLast?_concat, if_pos rfl,
+      List.dropLast_concat]
+  | none => rw [core.option.Option.unwrap_or_none, if_neg ho]
 
 /-! ## T05, T06: MCP method allow-lists (`async_rw.rs` lines 392–433)
 
@@ -70,14 +60,19 @@ private theorem spec_ite_decide_ok_true {p : Prop} [Decidable p] {Q : Prop} {x :
     (hx : x ⦃ (r : Bool) => (r = true ↔ Q) ⦄) :
     (if decide p = true then ok true else x) ⦃ (r : Bool) => (r = true ↔ p ∨ Q) ⦄ := by
   by_cases hp : p
-  · simp [hp]
+  · rw [if_pos (decide_eq_true hp), WP.spec_ok]
+    exact iff_of_true rfl (Or.inl hp)
   · simp only [hp, decide_false, Bool.false_eq_true, if_false, false_or]
     exact hx
 
 /-- The last link of the translated `||` chain. -/
 private theorem spec_ite_decide_ok_true_ok_false (p : Prop) [Decidable p] :
     (if decide p = true then ok true else ok false) ⦃ (r : Bool) => (r = true ↔ p) ⦄ := by
-  by_cases hp : p <;> simp [hp]
+  by_cases hp : p
+  · rw [if_pos (decide_eq_true hp), WP.spec_ok]
+    exact iff_of_true rfl hp
+  · rw [if_neg (mt of_decide_eq_true hp), WP.spec_ok]
+    exact iff_of_false Bool.false_ne_true hp
 
 /-- Membership in the image of a filtered list, as the statements of T05 and T06 phrase it. -/
 private theorem mem_map_utf8Bytes_filter_iff (L : List String) (b : List U8) :
@@ -103,7 +98,7 @@ private theorem is_standard_notification_spec_rust (method : Str) :
   simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil, or_false,
     Proofs.External.Utf8.utf8Bytes_eq_utf8]
   unfold is_standard_notification
-  simp only [Str.Insts.CoreCmpPartialEqStr.eq, Proofs.External.Utf8.toStr_val, bind_tc_ok]
+  simp only [Str.Insts.CoreCmpPartialEqStr.eq_eq, Proofs.External.Utf8.toStr_val, bind_tc_ok]
   repeat (first | apply spec_ite_decide_ok_true_ok_false | apply spec_ite_decide_ok_true)
 
 /-- **Spec theorem for `rmcp::transport::async_rw::is_standard_notification`** (T05)
@@ -164,7 +159,7 @@ theorem is_standard_method_spec (method : Str) :
     "elicitation/create", "logging/setLevel", "roots/list", "sampling/createMessage"] = L
   unfold is_standard_method
   rw [hr]
-  simp only [Str.Insts.CoreCmpPartialEqStr.eq, Proofs.External.Utf8.toStr_val, bind_tc_ok]
+  simp only [Str.Insts.CoreCmpPartialEqStr.eq_eq, Proofs.External.Utf8.toStr_val, bind_tc_ok]
   refine WP.spec_bind (Pₘ := fun b => (b = true ↔ method.val ∈ L)) ?_ ?_
   · rw [← hL]
     simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil, or_false,
@@ -172,8 +167,10 @@ theorem is_standard_method_spec (method : Str) :
     repeat (first | apply spec_ite_decide_ok_true_ok_false | apply spec_ite_decide_ok_true)
   · intro b hb
     cases b
-    · cases r <;> simp_all
-    · simp_all
+    · rw [if_neg Bool.false_ne_true, WP.spec_ok]
+      exact ⟨Or.inr, fun h => h.resolve_left fun hm => absurd (hb.2 hm) Bool.false_ne_true⟩
+    · rw [if_pos rfl, WP.spec_ok]
+      exact iff_of_true rfl (Or.inl (hb.1 rfl))
 
 /-! ## Composition theorem C05 -/
 

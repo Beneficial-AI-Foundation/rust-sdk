@@ -38,18 +38,23 @@ open Defs.Wire
 theorem length_splitOnP {α : Type} (p : α → Bool) (l : List α) :
     (l.splitOnP p).length = l.countP p + 1 := by
   induction l with
-  | nil => simp
+  | nil =>
+    simp only [List.splitOnP_nil, List.length_cons, List.length_nil, zero_add, List.countP_nil]
   | cons x xs ih =>
     rw [List.splitOnP_cons_eq_if_modifyHead, List.countP_cons]
-    split <;> simp_all
+    split <;> simp_all only [Bool.not_eq_true, List.length_cons, List.length_modifyHead, add_zero]
 
 /-- The number of `.`-components is one more than the number of `.` bytes. -/
 theorem length_components (s : List U8) : (components s).length = s.count dot + 1 := by
   rw [components, List.splitOn, length_splitOnP, List.count]
 
+/-- `be64 n` has 8 bytes. -/
+theorem length_be64 (n : Nat) : (be64 n).length = 8 := by
+  simp only [be64, List.length_map, List.length_range]
+
 /-- A frame is 8 bytes longer than its payload. -/
 theorem length_frameBytes (e : Int) (p : List U8) : (frameBytes e p).length = 8 + p.length := by
-  simp [frameBytes, be64OfInt, be64]
+  rw [frameBytes, List.length_append, be64OfInt, length_be64]
 
 /-- Reading back the 8 big-endian bytes of `n` gives `n mod 2 ^ 64`. -/
 theorem beNat_be64 (n : Nat) : beNat (be64 n) = n % 2 ^ 64 := by
@@ -63,7 +68,7 @@ theorem beNat_be64 (n : Nat) : beNat (be64 n) = n % 2 ^ 64 := by
 range. -/
 theorem bodyExpiry_frameBytes (e : Int) (p : List U8) (h1 : -2 ^ 63 ≤ e) (h2 : e < 2 ^ 63) :
     bodyExpiry (frameBytes e p) = e := by
-  have hl : (be64OfInt e).length = 8 := by simp [be64OfInt, be64]
+  have hl : (be64OfInt e).length = 8 := by rw [be64OfInt, length_be64]
   rw [bodyExpiry, frameBytes, expiryLen, List.take_append_of_le_length (by omega),
     List.take_of_length_le (by omega), be64OfInt, beNat_be64, toInt64]
   split_ifs <;> omega
@@ -74,8 +79,8 @@ theorem count_take_add_one (s : List U8) (i : Nat) (h : i < s.length) :
   rw [List.take_add_one, List.getElem?_eq_getElem h, Option.toList_some, List.count_append,
     List.count_singleton]
   by_cases hd : s[i] = dot
-  · simp [hd]
-  · simp [hd]
+  · simp only [hd, BEq.rfl, ↓reduceIte]
+  · simp only [beq_iff_eq, hd, ↓reduceIte]
 
 /-! ## Translated library functions -/
 
@@ -92,9 +97,9 @@ theorem extend_from_slice_spec (v : alloc.vec.Vec U8) (s : Slice U8)
     (Slice.clone_spec (clone := core.clone.CloneU8.clone) (s := s) (fun _ _ => rfl))
   subst heq
   split
-  · simp_all
-  · simp_all
-  · simp_all
+  · simp_all only [ok.injEq, WP.spec_ok]
+  · simp_all only [alloc.vec.Vec.length, Slice.length, reduceCtorEq]
+  · simp_all only [alloc.vec.Vec.length, Slice.length, reduceCtorEq]
 
 /-- The big-endian bytes of a 64-bit bit vector: byte `i` is `v / 256 ^ (7 - i)` mod 256. -/
 theorem toBEBytes_eq (v : BitVec 64) :
@@ -229,10 +234,6 @@ theorem val_DOMAIN_V1 : rmcp.model.request_state_wire.DOMAIN_V1.val = domainV1 :
 theorem val_DOMAIN_V2 : rmcp.model.request_state_wire.DOMAIN_V2.val = domainV2 := by
   unfold rmcp.model.request_state_wire.DOMAIN_V2
   rfl
-
-/-- `be64 n` has 8 bytes. -/
-theorem length_be64 (n : Nat) : (be64 n).length = 8 := by
-  simp only [be64, List.length_map, List.length_range]
 
 /-- The cast `usize as u64` is exact: `Usize` has 32 or 64 bits. -/
 theorem val_cast_u64 (x : Usize) : (UScalar.cast .U64 x).val = x.val := by
