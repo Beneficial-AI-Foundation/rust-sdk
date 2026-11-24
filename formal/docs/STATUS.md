@@ -7,6 +7,10 @@ the S19 evidence (git history at 223ff12).
 
 Phase 2 results: see "Phase 2" → "Phase 2 results (S37, 2026-11-24)".
 
+**Translation patch 03 v2 (2026-11-24, reviewed and signed off 2026-11-24; specs pending):** R09–R15 of the public
+`request_state.rs` API translate on the upgraded toolchain (specs pending); see "Public
+request_state.rs API" and "Trusted base".
+
 **Aeneas upgrade (2026-11-24), reviewed and re-signed by the spec owner 2026-11-24:** see "Aeneas upgrade
 (2026-11-24)" below. The results sections below record the state before it (Aeneas
 `nightly-2026.08.20-5d08da4`, 35 native-code axioms); "Trusted base" is updated to the current state.
@@ -136,7 +140,9 @@ and the `RangeInclusive::contains` model (re-sign table, recorded in the run log
 its 4 stale entries); a clean `aeneas-archive` run (stale `*.trace.nobuild` files written by an
 editor Lean server still on v4.31); the commit (human approval); patch 03 (R09–R12), parked in
 `stash@{0}`, resumed after the commit; re-adding excluded items as separate steps (N15); CI on
-GitHub.
+GitHub. (Update 2026-11-24, after the upgrade commit `deb8d84`: patch 03 was redone on the new
+toolchain as patch 03 v2, targets R09–R15, human decision; the parked `stash@{0}` version is
+superseded and kept until the new one is committed. See "Public request_state.rs API".)
 
 ## Results
 
@@ -245,10 +251,13 @@ human decision H1; the Phase 1 output is byte-identical under it):
 Charon settings: `[package.metadata.charon]` in `crates/rmcp/Cargo.toml` (`start_from`, `exclude`,
 `opaque`), committed (they name `request_state_wire`, which exists only in the patched copy).
 Dependency pins (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`,
-`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`, checked since S21 on rmcp's own edges in the
+`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`, and since translation patch 03 (2026-11-24,
+signed off) `serde_core 1.0.229`, checked since S21 on rmcp's own edges in the
 translated configuration (human decision 2026-11-23; other versions used only by other crates,
 e.g. `oauth2`'s `sha2 0.10.9`, are allowed). **One translation patch**,
-`formal/trusted/patches/01-request-state-wire.patch` (D2 fallback, 2026-11-23), and **no hand edit**
+`formal/trusted/patches/01-request-state-wire.patch` (D2 fallback, 2026-11-23) (plus the
+test-only patch 02 and, since 2026-11-24 (signed off), translation patch 03
+`03-request-state-public.patch`, see "Trusted base"), and **no hand edit**
 of the generated files (`formal/translation/` is reproduced byte for byte by the translate script,
 S18). The proofs hold only for this configuration.
 
@@ -361,6 +370,21 @@ every target has a generated body that the proofs use.
   B9, `serde` signatures, `Error::source` not modelled; `exclude`.
 - crates `serde`, `serde_core` (crate level): B9; only the excluded JSON wrappers use them.
 
+**Amendment (translation patch 03 v2, 2026-11-24, signed off by the spec owner).** On Aeneas
+`nightly-2026.11.24-fb44cb4` the `exclude` entries of `seal_at`, `seal`, `seal_with`,
+`new_with_keyring`, `with_rs1_signing`, `with_rs1_fallback`, `open_json` and `open_json_with`
+are removed and these eight functions translate: `with_rs1_signing`, `with_rs1_fallback` and
+`new_with_keyring` with no source change (B4 and the B13 internal error are gone on this
+toolchain), `seal_at` (hence `seal`, `seal_with`) and `open_json*` with translation patch 03; the
+crate `serde_core` moved from `exclude` to `opaque` (crate `serde` stays excluded). Still excluded:
+`seal_json`, `seal_json_with` (B9 narrowed to these two: Aeneas does not support the mutually
+recursive `serde_core::ser` traits; blocked upstream; once that is fixed they would additionally
+need the variant-constructor workaround of patch 03 hunk 2, since
+`.map_err(RequestStateError::Serialization)` hits "Arrow types are not supported yet" at
+`request_state.rs` 133:4-133:46 / 461:4-468:5 of the patched copy), `Error` for `RequestStateError`, the
+`Debug`/`Display` impls and the derived `Debug` impls above. The list above is the state before
+2026-11-24.
+
 Consequences (plan Section 2.3): the round-trip theorems compose E07/E08 with E09–E11
 directly, with no seal wrapper verified; the codec-state invariant is permanently a hypothesis;
 `open`, `open_with`, `new` and `try_new` translate but are not targets. (Since 2026-11-24 they and the `SealOptions` builder, `new_unchecked`, are being specified as
@@ -394,7 +418,9 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   41 placeholder externals of S04a part 2 are replaced by definitions (functions) and structures
   (types) with the generated names; what cannot be computed is one of exactly four `opaque`
   constants: `ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs`,
-  `ExtModel.SerdeJsonErrorImpl` (Phase 1; S26/S27 add a fifth, see below). They add no axiom and do not appear in `#print axioms` or the
+  `ExtModel.SerdeJsonErrorImpl` (Phase 1; S26/S27 add a fifth, see below; translation patch 03
+  adds three more and turns `SerdeJsonErrorImpl` into a `def`, see "Translation patch 03 models"
+  below). They add no axiom and do not appear in `#print axioms` or the
   locks: a change to a model is caught only by review of `formal/trusted/`. Their 72 laws are
   proved (`Proofs/External/`) and restated in `Specs/External.lean` (since 2026-11-24:
   `formal/proofs/Proofs/Internal/External.lean`).
@@ -425,6 +451,37 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   differential tests of plan Section 18 were not built (stage 3 dropped by human decision,
   2026-11-23; plan Section 18 amendment), so fidelity rests on the cited source, review and the
   proved laws (stage 6).
+- **Translation patch 03 models** (2026-11-24, human decisions: targets R09–R15, variant A;
+  **reviewed in two rounds and signed off by the spec owner 2026-11-24**): the functions newly reached by `seal`/`seal_with`
+  (through `seal_at`), `with_rs1_signing`, `with_rs1_fallback`, `open_json`/`open_json_with` and
+  `new_with_keyring` need **14 function models** (`Duration::as_millis`, `str::to_owned`,
+  `HashMap::{contains_key, is_empty, new, entry}`, `VacantEntry::insert`, `Hash for str`,
+  `Borrow<str> for String`, `PartialEq<str> for String`, `slice::Iter::any`, `Iterator::any`
+  (default), `serde_json::from_slice`, `Error::source` (default)) and **2 type models**
+  (`OccupiedEntry`, `VacantEntry`), all definitions or structures, with the helpers
+  `ExtModel.HashMap.lookupEntry` and `ExtModel.sliceIterAny`, and **three `opaque` constants**
+  (no axiom):
+  - `ExtModel.randomState : RandomState`, the hash keys `HashMap::new` stores (random per map in
+    Rust). Review rule: no statement has a premise or conclusion about its value or about the
+    `hash_builder` of a map built by `HashMap::new`, and none states or relies on the equality
+    (or inequality) of maps or codecs built by distinct `HashMap::new` calls.
+  - `ExtModel.serdeJsonFromSlice`, the outcome (`Ok` value or `Err`) of
+    `serde_json::from_slice::<T>` for the caller's `Deserialize` instance. **Modelling decision**
+    (human, 2026-11-24): `from_slice` is `ok` of this opaque outcome, because it depends on the
+    caller's `Deserialize` impl and the `serde_json` parser, neither translated; stated
+    exceptions: a `Deserialize` impl that panics, aborts or does not terminate, or that is
+    non-deterministic or has side effects (global or thread-local state, a random number
+    generator), is not modelled. Review rule: a statement may only say that the result of
+    `open_json`/`open_json_with` is this outcome for the opened payload, mapped as the Rust code
+    maps it, and no statement relates two calls of `open_json`/`open_json_with` (or of
+    `from_slice`).
+  - `ExtModel.SerdeJsonErrorImplCarrier : NonemptyType`; `ExtModel.SerdeJsonErrorImpl` is now
+    `def … := Carrier.type` (abstract, no longer itself `opaque`), with `Nonempty` instances for
+    it and for `serde_json::Error`, so that the opaque outcome can be an `Err` (human decision
+    2026-11-24). Still never inspected.
+  The total is 7 `opaque` constants (`hmacSha256`, `sipHash13`, `nowMs`, `SerdeJsonValue`,
+  `randomState`, `serdeJsonFromSlice`, `SerdeJsonErrorImplCarrier`). Sources and tests per model:
+  `formal/trusted/evidence/README.md`, "Public `request_state.rs` API externals".
 - **Codec-state hypothesis** (accepted at S12): `Defs/CodecState.lean` defines `CodecValid`
   (keyring clauses; single-key codecs unconstrained; pairwise distinct key ids),
   `CodecFallbacksKnown` (every rs1 fallback id is a key id) and `FallbacksKnown`. It is a
@@ -442,8 +499,31 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   `formal/trusted/patches/01-request-state-wire.patch` (the refactor and its tests; D2 fallback,
   2026-11-23; reviewed by two independent agents and signed off by the human on 2026-11-23, VERIFICATION.md §4),
   and the test-only `02-phase2-tests.patch` (34 `#[cfg(test)]` boundary tests, S34, H3, 2026-11-24;
-  it changes no translated item, the re-translation is byte-identical; see "Documents"). **Hand
+  it changes no translated item, the re-translation is byte-identical; see "Documents"), and
+  (since 2026-11-24, **reviewed and signed off 2026-11-24; specs pending**) translation patch
+  `formal/trusted/patches/03-request-state-public.patch` (variant A, human decision 2026-11-24;
+  +6/−2 non-test Rust lines in `request_state.rs`, no test added or changed): hunk 1 in `seal_at`,
+  `let ttl = options.ttl;` before the `match` (without it Aeneas stops with "Unreachable" on the
+  `Some(ttl)` arm, matching on a field read through a shared reference; `Option<Duration>` is
+  `Copy`, so the match computes the same expression), hunk 2 in `open_json_with`, an explicit
+  `match` in place of `.map_err(RequestStateError::Deserialization)` (without it Aeneas fails on
+  the `FnOnce` impl of the variant constructor, "Arrow types are not supported yet";
+  `Result::map_err` is that `match`). Existing tests cover both hunks (the TTL, known-answer and
+  round-trip tests for hunk 1; `seal_open_roundtrips_json` and
+  `serde_is_reached_only_after_integrity_verification` for hunk 2; 835 library tests pass before
+  and after, measured). With it, `seal`, `seal_with`, `seal_at`, `with_rs1_signing`,
+  `with_rs1_fallback`, `open_json`, `open_json_with` and `new_with_keyring` translate with real
+  bodies; every earlier generated block is unchanged up to its `Source` line numbers. **Hand
   edits of the translation:** none.
+  **Charon and script changes with patch 03** (lead decisions 2026-11-24 on the human decision
+  of targets R09–R15; signed off 2026-11-24): in `crates/rmcp/Cargo.toml` the eight `exclude` entries
+  above and their comments are removed and `serde_core` moved from `exclude` to `opaque` (so the
+  trait `DeserializeOwned` of the `open_json*` signatures is translated; only signatures and
+  trait declarations); `scripts/check-original-linkage.sh` requires the non-`request_state`
+  `exclude` list to be exactly `["serde"]` (was `["serde", "serde_core"]`);
+  `scripts/aeneas-translate.sh` adds `serde_core 1.0.229` to `PINNED_DEPS`;
+  `formal/trusted/translation-pins.txt` is updated to the new `Funs.lean` hash and line of the
+  pinned `initialize` word.
   **Exclusions:** the list above (plan Section 2.3).
 - **Statements:** `formal/specs/Defs/` and `formal/specs/Specs/` (public API; index
   `formal/specs/README.md`), and `formal/proofs/Proofs/Internal/` with `formal/proofs/Proofs/Defs/`
@@ -459,11 +539,12 @@ External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
 | Standard library | definitions and structures (list below) | accepted (S09) |
 | `zeroize` | `Zeroizing::new`, `Clone`, `Deref`; `Zeroize` impls | accepted (S09) |
 | Clock (`now_ms`, opaque) | `ok nowMs`, `opaque ExtModel.nowMs` | accepted (S09) |
-| `serde_json::Error` (type) | structure, `opaque ExtModel.SerdeJsonErrorImpl` | accepted (S09) |
+| `serde_json::Error` (type) | structure, `opaque ExtModel.SerdeJsonErrorImpl` | accepted (S09); since translation patch 03 `SerdeJsonErrorImpl` is a `def` over `opaque ExtModel.SerdeJsonErrorImplCarrier : NonemptyType` (reviewed and signed off by the spec owner 2026-11-24) |
 | Codec state | `Defs.CodecState` hypotheses (above) | accepted (S12) |
 | Phase 2: strings, `Arc`, `Option`, `Result`, slices, ranges | definitions (S26) | signed off 2026-11-23; 22 laws proved; `RangeInclusive::contains` model changed 2026-11-24 (Aeneas upgrade, human decision A2; one fresh model review, no defect; two laws restated exactly, re-signed 2026-11-24) |
 | Phase 2: `i64::from_str`, `Ipv4Addr`/`Ipv6Addr` | definitions, structures (S27) | signed off 2026-11-23; 21 laws proved |
 | `serde_json::Value` (type) | `opaque ExtModel.SerdeJsonValue` (S27) | signed off 2026-11-23 (no law: only moved) |
+| Translation patch 03: `Duration::as_millis`, `str::to_owned`, `HashMap::{contains_key, is_empty, new, entry}`, `VacantEntry::insert`, `Hash for str`, `Borrow<str>`/`PartialEq<str>` for `String`, `slice::Iter::any`, `Iterator::any`, `serde_json::from_slice`, `Error::source`; types `OccupiedEntry`, `VacantEntry` | 14 definitions, 2 structures; `opaque ExtModel.randomState`, `opaque ExtModel.serdeJsonFromSlice` | reviewed, signed off by the spec owner (2026-11-24) |
 
 Details:
 - HMAC: both functions always succeed. Stated exception: the SHA-256 bit-length `u64` counter
@@ -492,22 +573,43 @@ Details:
 Review rules that stay in force:
 - **Clock.** `nowMs` is one constant, so every reader of the clock is pure in the model. No spec
   statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
-  `…RequestStateCodec.open` or `…RequestStateCodec.open_with` (a variable named `now_ms`, such
-  as the time parameter of E01, is not covered); opening is specified through `open_at`.
-  Exception (human decision 2026-11-24): only the spec theorems of `open` and `open_with` and their
+  `…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or
+  `…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01,
+  is not covered); opening is specified through `open_at` and sealing through `seal_at`.
+  Exceptions (human decisions 2026-11-24): only the spec theorems of `open` and `open_with` and their
   `Theorems.*` restatements may name these two functions and `ExtModel.nowMs`, and only with the
-  postcondition `resultBytes result = openAt … ExtModel.nowMs.val`; their docstrings state the
+  postcondition `resultBytes result = openAt … ExtModel.nowMs.val`; only the spec theorems of
+  `seal` and `seal_with` and their `Theorems.*` restatements may name these two functions and
+  `ExtModel.nowMs`, and only with a postcondition that states the result as that of the
+  translated `seal_at` at `ExtModel.nowMs` (`seal_with self payload options` relates to
+  `seal_at self payload options ExtModel.nowMs`). Their docstrings state the
   one-reading caveat and the inherited exceptions. No other statement names `ExtModel.nowMs`, no
   statement has a premise or conclusion about its value, and no statement involves two clock
   readings; `now_ms` itself stays unmentioned.
 - **`HashMap::get`.** Faithful for `Hash`/`Eq` instances that agree and do not fail (only
-  `K = Q = String` occurs).
+  `K = Q = String` occurs). Since translation patch 03 the same holds for `contains_key`
+  (`K = String`, `Q = str` or `String`) and `entry` (`K = String`).
+- **`ExtModel.randomState`** (translation patch 03, signed off 2026-11-24): no statement has a premise or
+  conclusion about its value or about the `hash_builder` of a map built by `HashMap::new`, and no
+  statement states or relies on the equality (or inequality) of maps, or of codecs containing
+  them, built by distinct `HashMap::new` calls (for example two results of `new_with_keyring`):
+  in Rust their `RandomState` keys differ on the same thread and are independent random keys otherwise (`std/src/hash/random.rs` lines 71–75); the
+  `hash_builder` is unobservable through the modelled API.
+- **`ExtModel.serdeJsonFromSlice`** (translation patch 03, signed off 2026-11-24): a statement may only
+  say that the result of `open_json`/`open_json_with` is this outcome for the opened payload,
+  mapped as the Rust code maps it; as for two clock readings, no statement relates two calls of
+  `open_json`/`open_json_with` (or of `serde_json::from_slice`). Stated exceptions: a
+  `Deserialize` impl that panics, aborts or does not terminate, and one that is
+  non-deterministic or has side effects (global or thread-local state, a random number
+  generator).
 
 Opaque items (Charon `opaque` setting in `crates/rmcp/Cargo.toml`, committed):
 `rmcp::model::request_state_wire::prim` (wraps the HMAC and base64 `Engine` types, B1, B3),
-`rmcp::model::request_state::_::now_ms` (system clock; used only by non-target wrappers), and
+`rmcp::model::request_state::_::now_ms` (system clock; since translation patch 03 called by the
+targets `seal_with` and hence `seal`, under the extended clock rule, and by non-target wrappers), and
 the external crates `zeroize`, `base64`, `hmac`, `sha2`, `thiserror`, `chrono`, `serde_json`
-(signatures only); since S21 (Phase 2, plan Section 15) also the crates of the widened features
+(signatures only), since translation patch 03 also `serde_core` (moved from `exclude`; signatures
+and trait declarations, for `DeserializeOwned` in the `open_json*` signatures); since S21 (Phase 2, plan Section 15) also the crates of the widened features
 (`http`, `tokio`, `tokio_util`, `tracing`, `tracing_core`, `futures`, `futures_util`, `futures_core`,
 `bytes`, `sse_stream`, `hyper`, `tower_service`, `uuid`, `schemars`, `pin_project_lite`,
 `tokio_stream`, `http_body`, `http_body_util`, `rand`, `async_trait`, `pastey`, `oauth2`, `reqwest`,
@@ -791,6 +893,18 @@ other nine (`new_with_keyring`, `with_rs1_signing`, `with_rs1_fallback`, `seal`,
 the four JSON wrappers; R09–R17 once translated) are excluded today (B13, B4, B9); a translation
 measurement on the pinned and the newest Aeneas is running. `Defs.Wire` and `Defs.CodecState` moved
 back to `formal/specs/Defs/` for these public statements.
+**Update (translation patch 03 v2, 2026-11-24; reviewed and signed off 2026-11-24; specs pending):** on Aeneas
+`nightly-2026.11.24-fb44cb4` (base `deb8d84`) the human chose targets R09–R15 and variant A
+("minimal Rust change"). With `formal/trusted/patches/03-request-state-public.patch` (+6/−2 Rust
+lines) and the Charon-settings change ("Trusted base"), **R09–R15 translate** with real bodies:
+`seal`, `seal_with`, `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with`,
+`new_with_keyring` (and the private `seal_at`); 14 function and 2 type models and 3 `opaque`
+constants were added, reviewed and signed off by the spec owner 2026-11-24. **Their specifications are not written yet** (no
+statement, no sign-off, no proof; the clock rule now covers `seal`/`seal_with`, human decision
+2026-11-24). **R16–R17 (`seal_json`, `seal_json_with`) stay excluded**, blocked upstream: Aeneas
+does not support the mutually recursive trait declarations of `serde_core::ser` (minimal
+reproducer kept outside the repository). The earlier patch 03 (R09–R12, on the old toolchain,
+`stash@{0}`) is superseded.
 
 **Public and internal specifications (2026-11-24, human decision):** `formal/specs/` now holds only
 the public rmcp API (functions `pub` in upstream rmcp): `Specs/Model.lean` (M01–M05, M09–M14, the

@@ -30,6 +30,11 @@ steps S26/S27 replaced them by definitions (sections "Phase 2", plan Section 18)
 `RangeInclusive::contains`, each the `core` body transcribed; `str::parse` and
 `i64::from_str` (Rust's radix-10 grammar and error kinds); and the `Ipv4Addr`/`Ipv6Addr`
 functions transcribed from `core/src/net/ip_addr.rs`. None of them needs an `opaque` constant.
+Translation patch 03 (human decisions 2026-11-24, targets R09–R15) added the models of the last
+section, for `seal`/`seal_with`, `with_rs1_signing`/`with_rs1_fallback`, `open_json`/
+`open_json_with` and `new_with_keyring`, with two more `opaque` constants (no axiom):
+`ExtModel.randomState` (the hash keys of a new map) and `ExtModel.serdeJsonFromSlice` (the
+outcome of a caller's `Deserialize` impl).
 The conventions below apply to all models.
 
 Ordering note (S21): the generated external `core.result.Result.ok` shadows Aeneas' `ok` for
@@ -220,15 +225,21 @@ opaque sipHash13 : Std.U64 → Std.U64 → List Std.U8 → Std.U64
 
 /-- **Clock reading** (opaque): the value of `chrono::Utc::now().timestamp_millis()` that
 `RequestStateCodec::now_ms` returns. A single constant cannot model that two readings differ,
-and it makes every function that reads the clock (`now_ms`, `open`, `open_with`) pure. Review
-rule: no spec statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
-`…RequestStateCodec.open` or `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the
-time parameter of E01 `open_authenticated_body`, is not covered; `formal/README.md`, "Trusted
-base"). Exception (human decision 2026-11-24; `formal/README.md`, "Trusted base"): only the
-spec theorems of `open` and `open_with` and their restatements may name these two functions and
-`nowMs`, and only with postcondition `resultBytes result = openAt … nowMs.val`; no other statement
-names `nowMs`, no statement has a premise or conclusion about its value or involves two clock
-readings, and `now_ms` itself stays unmentioned. -/
+and it makes every function that reads the clock (`now_ms`, `open`, `open_with` and, since
+translation patch 03, `seal`, `seal_with`) pure. Review rule: no spec statement mentions the
+functions `rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open`,
+`…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or `…RequestStateCodec.seal_with` (a
+variable named `now_ms`, such as the time parameter of E01 `open_authenticated_body`, is not
+covered; `formal/README.md`, "Trusted base"). Exceptions (human decisions 2026-11-24;
+`formal/README.md`, "Trusted base"): only the spec theorems of `open` and `open_with` and their
+restatements may name these two functions and `nowMs`, and only with postcondition
+`resultBytes result = openAt … nowMs.val`; only the spec theorems of `seal` and `seal_with` and
+their restatements may name these two functions and `nowMs`, and only with a postcondition that
+states the result as that of the translated `seal_at` at `nowMs` (`seal_with self payload
+options` relates to `seal_at self payload options nowMs`). Their docstrings state the one-reading
+caveat and the inherited exceptions. No other statement names `nowMs`, no statement has a
+premise or conclusion about its value or involves two clock readings, and `now_ms` itself stays
+unmentioned. -/
 opaque nowMs : Std.I64
 
 end ExtModel
@@ -666,19 +677,20 @@ def zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref {Z : Type}
 /-! ## Clock -/
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::now_ms]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 729:4-731:5
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 733:4-735:5
 
 **Model:** `ok nowMs`, an opaque value (`chrono::Utc::now().timestamp_millis()`).
 Environmental assumption (stated exception, not modelled): `Utc::now` panics if the system
 clock is before 1970 or outside chrono's range (`chrono-0.4.45/src/offset/utc.rs` lines 96–98:
 `duration_since(UNIX_EPOCH).expect("system time before Unix epoch")` and
 `DateTime::from_timestamp(..).unwrap()`); the model assumes a clock within that range. Called
-by the translated wrappers `open` and `open_with` (not targets); `seal_with`, which also reads
-the clock, is excluded from the translation. Because `nowMs` is one constant, those wrappers
-are pure in the model; no spec statement may mention the functions
-`rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open` or
-`…RequestStateCodec.open_with` (a variable named `now_ms`, such as the time parameter of E01
-`open_authenticated_body`, is not covered), except as stated at `ExtModel.nowMs` (human decision
+by the translated wrappers `open` and `open_with` and, since translation patch 03, `seal_with`
+(hence `seal`). Because `nowMs` is one constant, those wrappers are pure in the model; no spec
+statement may mention the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
+`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or
+`…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01
+`open_authenticated_body`, is not covered), except as stated at `ExtModel.nowMs` (the spec
+theorems of `open`/`open_with` and of `seal`/`seal_with` and their restatements; human decisions
 2026-11-24). -/
 def model.request_state.RequestStateCodec.now_ms : Result Std.I64 :=
   ok ExtModel.nowMs
@@ -1169,3 +1181,339 @@ default of `getD` is never used (eight segments). -/
 def core.net.ip_addr.Ipv6Addr.is_multicast (self : core.net.ip_addr.Ipv6Addr) :
     Result Bool :=
   ok (decide ((self.addrSegments.val.getD 0 0#u16 &&& 0xff00#u16) = 0xff00#u16))
+
+/-! ## Public `request_state.rs` API (R09–R15)
+
+External functions reached by the public functions `seal`, `seal_with` (through the private
+`seal_at`), `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with` and
+`new_with_keyring` once their `exclude` entries are removed (translation patch 03). Every model
+is a definition; the two values a model cannot compute are the `opaque` constants
+`ExtModel.randomState` (the hash keys of a new map) and `ExtModel.serdeJsonFromSlice` (the
+outcome of a user `Deserialize` impl), which add no axiom. -/
+
+/-- [core::time::{core::time::Duration}::as_millis]:
+    Source: '/rustc/library/core/src/time.rs', lines 601:4-601:41
+    Name pattern: [core::time::{core::time::Duration}::as_millis]
+    Visibility: public
+
+**Model:** `secs * 1000 + nanos / 1_000_000` as a `u128` (`self.secs as u128 * MILLIS_PER_SEC
+as u128 + (self.nanos.as_inner() / NANOS_PER_MILLI) as u128`, lines 601–604, with
+`NANOS_PER_MILLI = 1_000_000` and `MILLIS_PER_SEC = 1_000`, lines 28 and 30). Exact: the value
+is below `2^64 * 1000 + 1000 < 2^128`, so the `u128` arithmetic neither overflows nor panics and
+`BitVec.ofNat 128` does not wrap. -/
+@[rust_fun "core::time::{core::time::Duration}::as_millis"]
+def core.time.Duration.as_millis (self : core.time.Duration) : Result Std.U128 :=
+  ok ⟨BitVec.ofNat 128 (self.secs.val * 1000 + self.nanos.val / 1000000)⟩
+
+/-- [alloc::str::{impl alloc::borrow::ToOwned<alloc::string::String> for str}::to_owned]:
+    Source: '/rustc/library/alloc/src/str.rs', lines 252:4-252:32
+    Name pattern: [alloc::str::{alloc::borrow::ToOwned<str, alloc::string::String>}::to_owned]
+    Visibility: public
+
+**Model:** the `String` with the same UTF-8 bytes
+(`String::from_utf8_unchecked(self.as_bytes().to_owned())`, lines 252–255). `fail undef` if
+the bytes are not UTF-8, which no Rust `&str` is (the `Str` convention above, as for
+`String::push_str`). A Rust `&str` has at most `isize::MAX` bytes, so the copy never hits the
+capacity-overflow panic (memory convention above). -/
+@[rust_fun "alloc::str::{alloc::borrow::ToOwned<str, alloc::string::String>}::to_owned"]
+def Str.Insts.AllocBorrowToOwnedString.to_owned (self : Str) : Result String :=
+  match ExtModel.strOfBytes? self.val with
+  | some s => ok s
+  | none => fail undef
+
+/-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::contains_key]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1268:4-1271:21
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::contains_key]
+    Visibility: public
+
+**Model:** `true` exactly when some entry's key `key` satisfies `k == key.borrow()`, i.e. when
+`ExtModel.HashMap.find` (the lookup of the `get` model) returns `some`. The Rust function is
+`self.base.contains_key(k)` (lines 1268–1274), i.e. hashbrown 0.17.1 `HashMap::contains_key`
+(`src/map.rs` lines 1382–1392): `false` on an empty table, otherwise
+`self.table.get(hash, equivalent_key(k)).is_some()`, the same hash and `Equivalent` probe as
+`get`. Hashing is not modelled, for the reason given at `std.collections.hash.map.HashMap.get`:
+faithful for `Hash`/`Eq` instances that agree and do not fail. The instances in the translation
+are `K = String` with `Q = str` (`with_rs1_signing`, `with_rs1_fallback`) and with `Q = String`
+(`new_with_keyring`); `String` and `str` equality are byte equality, `Hash for String` hashes the
+bytes as `Hash for str` does (`(**self).hash(hasher)`), and `Borrow<str> for String` returns the
+same bytes, so they agree, and none fails. Unlike `get`, the result does not depend on which of
+several equal keys is found, so it is exact also for a map with duplicate keys. -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::contains_key"]
+def std.collections.hash.map.HashMap.contains_key
+    {K : Type} {V : Type} {S : Type} {A : Type} {Q : Type} {Clause2_Hasher : Type}
+    (_corecmpEqInst : core.cmp.Eq K) (_corehashHashInst : core.hash.Hash K)
+    (_corehashBuildHasherInst : core.hash.BuildHasher S Clause2_Hasher)
+    (coreborrowBorrowInst : core.borrow.Borrow K Q) (_corehashHashInst1 : core.hash.Hash Q)
+    (corecmpEqInst1 : core.cmp.Eq Q)
+    (self : std.collections.hash.map.HashMap K V S A) (k : Q) : Result Bool := do
+  let r ← ExtModel.HashMap.find coreborrowBorrowInst corecmpEqInst1 k self.entries
+  ok r.isSome
+
+/-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::is_empty]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 745:4-745:34
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::is_empty]
+    Visibility: public
+
+**Model:** `true` exactly when the map has no entry (`self.base.is_empty()`, lines 745–747;
+hashbrown 0.17.1 `self.len() == 0`, `src/map.rs` lines 824–826). Exact also for an entry list
+with duplicate keys (emptiness does not depend on duplicates). -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::is_empty"]
+def std.collections.hash.map.HashMap.is_empty {K : Type} {V : Type} {S : Type} {A : Type}
+    (self : std.collections.hash.map.HashMap K V S A) : Result Bool :=
+  ok self.entries.isEmpty
+
+/-- **Hash keys of a new map** (opaque): the `RandomState` that `HashMap::new` stores. Rust
+takes it from a per-thread pair of random keys, read once from the operating system, whose
+first key is incremented on every `RandomState::new` (`std/src/hash/random.rs` lines 55–76), so
+two maps built on the same thread get different keys (maps on different threads get independent
+random keys). One constant cannot model that, and nothing in the value model
+depends on the keys (no model hashes for a lookup; `std.collections.hash.map.HashMap.get`).
+Review rule: no statement has a premise or conclusion about the value of `randomState` or about
+the `hash_builder` of a map built by `HashMap::new`; and no statement states or relies on the
+equality (or inequality) of two maps, or of two codecs containing them, built by distinct
+`HashMap::new` calls (for example two results of `new_with_keyring`): in the model they share
+`randomState`, in Rust their `RandomState` keys differ on the same thread and are independent random keys
+otherwise (`std/src/hash/random.rs` lines 71–75).
+The `hash_builder` is unobservable through the modelled API. -/
+opaque ExtModel.randomState : std.hash.random.RandomState :=
+  { k0 := 0#u64, k1 := 0#u64 }
+
+/-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, std::hash::random::RandomState, alloc::alloc::Global>}::new]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 269:4-269:46
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, std::hash::random::RandomState, alloc::alloc::Global>}::new]
+    Visibility: public
+
+**Model:** the empty map with hash builder `ExtModel.randomState` and the `Global` allocator
+(`Default::default()`, lines 269–271, i.e. `HashMap::with_hasher(RandomState::new())`, lines
+1488–1497; `RandomState::new`, `std/src/hash/random.rs` lines 55–76). Stated exception: the
+keys of the `RandomState` are random in Rust and an unknown constant here (see
+`ExtModel.randomState`). Not modelled: `hashmap_random_keys` panics if the operating system's
+random source fails (`std/src/sys/random/linux.rs` lines 166–172, `getrandom`), an
+environmental assumption like the clock's. -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, std::hash::random::RandomState, alloc::alloc::Global>}::new"]
+def std.collections.hash.map.HashMapKVRandomStateGlobal.new (K : Type) (V : Type) :
+    Result (std.collections.hash.map.HashMap K V std.hash.random.RandomState
+      alloc.alloc.Global) :=
+  ok { hash_builder := ExtModel.randomState, alloc := alloc.alloc.Global.mk, entries := [] }
+
+/-- The first entry of `entries` whose key is equal to `key` as `rustc_entry` compares
+(`stored.eq(&key)` through the `Eq` instance of `K`; its failures propagate). -/
+def ExtModel.HashMap.lookupEntry {K V : Type} (corecmpEqInst : core.cmp.Eq K) (key : K) :
+    List (K × V) → Result (Option (K × V))
+  | [] => ok none
+  | (k, v) :: rest => do
+    let b ← corecmpEqInst.partialEqInst.eq k key
+    if b then ok (some (k, v)) else ExtModel.HashMap.lookupEntry corecmpEqInst key rest
+
+/-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::entry]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1012:4-1012:57
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::entry]
+    Visibility: public
+
+**Model:** if an entry with a key equal to `key` exists (`ExtModel.HashMap.lookupEntry`), an
+`Occupied` entry with that slot's key and value, and a backward function that returns the map
+unchanged; otherwise a `Vacant` entry for `key` with nothing inserted, and a backward function
+that adds `(key, v)` to the map if the final entry holds an inserted value `v`, and otherwise
+returns the map unchanged. The Rust function is `map_entry(self.base.rustc_entry(key))` (lines
+1012–1014), i.e. hashbrown 0.17.1 `rustc_entry` (`src/rustc_entry.rs` lines 35–54): it hashes
+`key`, probes for a slot whose key satisfies `q.0.eq(&key)`, and returns `Occupied` (the passed
+`key` is dropped) or, after `self.reserve(1)`, `Vacant` with the hash and the key. Hashing is
+not modelled, for the reason given at `std.collections.hash.map.HashMap.get` (faithful for
+`Hash`/`Eq` instances that agree and do not fail; the only instance is `K = String`). The
+backward function of an `Occupied` entry ignores the final entry: no translated function and no
+model changes an occupied entry. Not modelled: the allocation of `reserve(1)` (memory
+convention above; its capacity-overflow panic needs more than `isize::MAX` bytes of
+entries). -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::entry"]
+def std.collections.hash.map.HashMap.entry
+    {K : Type} {V : Type} {S : Type} {A : Type} {Clause2_Hasher : Type}
+    (corecmpEqInst : core.cmp.Eq K) (_corehashHashInst : core.hash.Hash K)
+    (_corehashBuildHasherInst : core.hash.BuildHasher S Clause2_Hasher)
+    (self : std.collections.hash.map.HashMap K V S A) (key : K) :
+    Result ((std.collections.hash.map.Entry K V A) ×
+      (std.collections.hash.map.Entry K V A → std.collections.hash.map.HashMap K V S A)) := do
+  let found ← ExtModel.HashMap.lookupEntry corecmpEqInst key self.entries
+  match found with
+  | some (k, v) =>
+    ok (std.collections.hash.map.Entry.Occupied { key := k, value := v }, fun _ => self)
+  | none =>
+    ok (std.collections.hash.map.Entry.Vacant { key := key, inserted := none },
+      fun e => match e with
+        | std.collections.hash.map.Entry.Vacant { key := k, inserted := some v } =>
+          { self with entries := self.entries ++ [(k, v)] }
+        | _ => self)
+
+/-- [std::collections::hash::map::{std::collections::hash::map::VacantEntry<'a, K, V, A>}::insert]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 2975:4-2975:46
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::VacantEntry<'a, @K, @V, @A>}::insert]
+    Visibility: public
+
+**Model:** returns `value` (the new slot, as the `&'a mut V` that Rust returns), with a
+backward function that records the final value `v` of that reference as the entry's inserted
+value. The Rust function is `self.base.insert(value)` (lines 2975–2977), i.e. hashbrown 0.17.1
+`RustcVacantEntry::insert` (`src/rustc_entry.rs` lines 574–579): `insert_no_grow` of
+`(self.key, value)` at the hash, into capacity that `rustc_entry` reserved, then a reference to
+the value; it does not fail. The map is updated by the backward function of
+`std.collections.hash.map.HashMap.entry`. -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::VacantEntry<'a, @K, @V, @A>}::insert"]
+def std.collections.hash.map.VacantEntry.insert {K : Type} {V : Type} {A : Type}
+    (self : std.collections.hash.map.VacantEntry K V A) (value : V) :
+    Result (V × (V → std.collections.hash.map.VacantEntry K V A)) :=
+  ok (value, fun v => { self with inserted := some v })
+
+/-- **Outcome of `serde_json::from_slice`** (opaque): `serdeJsonFromSlice inst v` is what
+`serde_json::from_slice::<T>(v)` returns for the `Deserialize` instance `inst` of `T`: `Ok` of
+the value it builds or `Err` of a `serde_json` error. Opaque because it depends on the
+`Deserialize` impl of the caller's type `T` (arbitrary code, derived or hand-written) and on the
+whole `serde_json` parser, neither of which is translated (plan Section 4: the crate's
+correctness is out of scope). A statement can only say that the result of `open_json_with` is
+this outcome, for the opened payload, mapped as the Rust code maps it. The model is a function
+of `inst` and the bytes, so it assumes a deterministic `Deserialize` impl without side effects;
+stated exception: an impl that is non-deterministic or has side effects (global or thread-local
+state, a random number generator). Review rule (as for two clock readings): no statement relates
+two calls of `open_json`/`open_json_with` (or of `serde_json::from_slice`), for example by
+equating their results. -/
+noncomputable opaque ExtModel.serdeJsonFromSlice {T : Type} (inst : serde_core.de.Deserialize T)
+    (v : List Std.U8) : core.result.Result T serde_json.error.Error :=
+  core.result.Result.Err (Classical.choice inferInstance)
+
+/-- [serde_json::de::from_slice]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/de.rs', lines 2667:0-2669:27
+    Name pattern: [serde_json::de::from_slice]
+    Visibility: public
+
+**Model:** `ok (serdeJsonFromSlice inst v)`, an opaque outcome (`from_trait(read::SliceRead::new
+(v))`, lines 2667–2672: `T::deserialize` on a slice deserializer, then `Deserializer::end`,
+which rejects trailing non-whitespace). Stated exceptions: the model claims that the call
+returns; a `Deserialize` impl of the caller's type that panics, aborts or does not terminate is
+not modelled (derived impls and `serde_json`'s own code return an `Err` instead of panicking;
+its recursion limit of 128 nested levels turns deep input into `Err`, `de.rs`
+`check_recursion!`); nor is one that is non-deterministic or has side effects (global or
+thread-local state, a random number generator), since the model returns the same outcome for
+the same instance and bytes. Review rule (as for two clock readings): no statement relates two
+calls of `from_slice` (or of `open_json`/`open_json_with`). -/
+@[rust_fun "serde_json::de::from_slice"]
+noncomputable def serde_json.de.from_slice {T : Type} (serde_coredeDeserializeInst : serde_core.de.Deserialize T)
+    (v : Slice Std.U8) : Result (core.result.Result T serde_json.error.Error) :=
+  ok (ExtModel.serdeJsonFromSlice serde_coredeDeserializeInst v.val)
+
+/-- [core::error::Error::source]:
+    Source: '/rustc/library/core/src/error.rs', lines 111:4-111:54
+    Name pattern: [core::error::Error::source]
+    Visibility: public
+
+**Model:** `None`, the body of the default method (lines 111–113). Declared by the Aeneas
+template because the `serde_core` error traits (opaque crate) have `core::error::Error` as a
+supertrait; no generated definition calls it. -/
+@[rust_fun "core::error::Error::source"]
+def core.error.Error.source.default {Self : Type} (_ErrorInst : core.error.Error Self)
+    (_self : Self) : Result (Option (Dyn (fun _dyn => core.error.Error _dyn))) :=
+  ok none
+
+/-- [core::hash::impls::{impl core::hash::Hash for str}::hash]:
+    Source: '/rustc/library/core/src/hash/mod.rs', lines 865:8-865:48
+    Name pattern: [core::hash::impls::{core::hash::Hash<str>}::hash]
+    Visibility: public
+
+**Model:** writes the bytes, then the byte `0xff`, through the hasher instance
+(`state.write_str(self)`, lines 865–867; the default `Hasher::write_str` is `self.write(s.as_bytes());
+self.write_u8(0xff)`, and `DefaultHasher` writes the same bytes, as stated at
+`alloc.string.String.Insts.CoreHashHash.hash`, which is the same function on the `String`'s
+bytes). Defined for every `Str`. No model hashes for a lookup; the instance is required by the
+signatures of `HashMap::contains_key` with `Q = str`. -/
+@[rust_fun "core::hash::impls::{core::hash::Hash<str>}::hash"]
+def Str.Insts.CoreHashHash.hash {H : Type} (HasherInst : core.hash.Hasher H) (self : Str)
+    (state : H) : Result H := do
+  let state ← HasherInst.write state self
+  HasherInst.write state (Std.Slice.from [ExtModel.byte 255] (by scalar_tac))
+
+/-- [alloc::str::{impl core::borrow::Borrow<str> for alloc::string::String}::borrow]:
+    Source: '/rustc/library/alloc/src/str.rs', lines 233:4-233:28
+    Name pattern: [alloc::str::{core::borrow::Borrow<alloc::string::String, str>}::borrow]
+    Visibility: public
+
+**Model:** the UTF-8 bytes of the string (`&self[..]`, lines 233–235: the full-range index of
+`String`, which is `self.as_str()`), defined as the model of `String`'s `Deref<str>`, which
+returns the same bytes: `fail maximumSizeExceeded` only for a Lean `String` longer than
+`Usize.max` bytes, which no Rust `String` is. -/
+@[rust_fun "alloc::str::{core::borrow::Borrow<alloc::string::String, str>}::borrow"]
+def alloc.string.String.Insts.CoreBorrowBorrowStr.borrow (self : String) : Result Str :=
+  alloc.string.String.Insts.CoreOpsDerefDerefStr.deref self
+
+/-- [alloc::string::{impl core::cmp::PartialEq<str> for alloc::string::String}::eq]:
+    Source: '/rustc/library/alloc/src/string.rs', lines 2740:12-2740:46
+    Name pattern: [alloc::string::{core::cmp::PartialEq<alloc::string::String, str>}::eq]
+    Visibility: public
+
+**Model:** byte equality of the string's UTF-8 bytes and `other`
+(`PartialEq::eq(&self[..], &other[..])`, lines 2740–2742, generated by `impl_eq! { String,
+str }`, line 2763: `str` equality of the two byte sequences), for every `Str`. -/
+@[rust_fun "alloc::string::{core::cmp::PartialEq<alloc::string::String, str>}::eq"]
+def alloc.string.String.Insts.CoreCmpPartialEqStr.eq (self : String) (other : Str) :
+    Result Bool :=
+  ok (decide (ExtModel.utf8 self = other.val))
+
+/-- The model of `slice::Iter::any`: given the list of remaining elements, call the closure on each in
+order and stop at the first `true`. Returns the result and the number of elements consumed. -/
+def ExtModel.sliceIterAny {T F : Type} (inst : core.ops.function.FnMut F T Bool) :
+    List T → F → Result (Bool × Nat)
+  | [], _ => ok (false, 0)
+  | x :: rest, f => do
+    let (b, f) ← inst.call_mut f x
+    if b then ok (true, 1)
+    else do
+      let (r, n) ← ExtModel.sliceIterAny inst rest f
+      ok (r, n + 1)
+
+/-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::any]:
+    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 321:12-324:45
+    Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::any]
+    Visibility: public
+
+**Model:** calls the closure (through its `FnMut` instance, whose failures propagate) on the
+remaining elements in order, stops at the first `true`, and returns whether one was found and
+the iterator advanced past every element it consumed. The Rust function is the slice override
+of `Iterator::any` (lines 321–332, instantiated for `Iter` by `iterator!`,
+`core/src/slice/iter.rs` lines 140–148): `while let Some(x) = self.next() { if f(x) { return
+true; } } false`. The remaining elements of the Aeneas `Iter` are `slice[i..]`
+(`Aeneas.Std.core.slice.iter.IteratorSliceIter.next`). -/
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::any"]
+def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any {T : Type} {F : Type}
+    (opsfunctionFnMutFTupleSharedATBoolInst : core.ops.function.FnMut F T Bool)
+    (self : core.slice.iter.Iter T) (f : F) : Result (Bool × (core.slice.iter.Iter T)) := do
+  let (b, n) ← ExtModel.sliceIterAny opsfunctionFnMutFTupleSharedATBoolInst
+    (self.slice.val.drop self.i) f
+  ok (b, { self with i := self.i + n })
+
+/-- [core::iter::traits::iterator::Iterator::any]:
+    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 2897:4-2900:37
+    Name pattern: [core::iter::traits::iterator::Iterator::any]
+    Visibility: public
+
+**Model:** calls `next` and the closure alternately until the closure returns `true` (result
+`true`) or `next` returns `None` (result `false`), through the `loop` combinator of the Aeneas
+library, which is `div` if this never happens. The Rust default method is
+`self.try_fold((), check(f)) == ControlFlow::Break(())` (lines 2897–2910), and the default
+`try_fold` is that `next` loop. Stated exception: an iterator that overrides `try_fold` is
+modelled by the loop. Declared by the Aeneas template; no generated definition calls it (the
+translated code calls the slice override above). -/
+@[rust_fun "core::iter::traits::iterator::Iterator::any"]
+def core.iter.traits.iterator.Iterator.any.default {Self : Type} {F : Type} {Clause0_Item : Type}
+    (IteratorInst : core.iter.traits.iterator.Iterator Self Clause0_Item)
+    (opsfunctionFnMutFTupleClause0_ItemBoolInst :
+      core.ops.function.FnMut F Clause0_Item Bool)
+    (self : Self) (f : F) : Result (Bool × Self) :=
+  loop (fun (st : Self × F) => do
+      let (o, it) ← IteratorInst.next st.1
+      match o with
+      | none => ok (ControlFlow.done (false, it))
+      | some x => do
+        let (b, f) ← opsfunctionFnMutFTupleClause0_ItemBoolInst.call_mut st.2 x
+        if b then ok (ControlFlow.done (true, it)) else ok (ControlFlow.cont (it, f)))
+    (self, f)

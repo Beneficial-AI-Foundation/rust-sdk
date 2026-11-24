@@ -86,23 +86,13 @@ start_from = [
 ]
 hide_marker_traits = true
 exclude = [
-  # B9: serde is out of scope; only the excluded JSON wrappers use it.
-  "serde", "serde_core",
-  # Section 2.3, B9: JSON wrappers and the Error impl.
+  # B9: the serde facade is out of scope (serde_core, which defines the traits, is opaque below).
+  "serde",
+  # Section 2.3, B9: the serializing JSON wrappers (Aeneas does not support the mutually
+  # recursive serde_core::ser traits) and the Error impl.
   "rmcp::model::request_state::_::seal_json",
   "rmcp::model::request_state::_::seal_json_with",
-  "rmcp::model::request_state::_::open_json",
-  "rmcp::model::request_state::_::open_json_with",
   "rmcp::model::request_state::{impl core::error::Error for rmcp::model::request_state::RequestStateError}",
-  # Section 2.3, B13: Aeneas "Unreachable" error in seal_at; seal and seal_with call it.
-  "rmcp::model::request_state::_::seal",
-  "rmcp::model::request_state::_::seal_with",
-  "rmcp::model::request_state::_::seal_at",
-  # Section 2.3, B13: Aeneas internal error.
-  "rmcp::model::request_state::_::new_with_keyring",
-  # Section 2.3, B4: "no bottoms in the value".
-  "rmcp::model::request_state::_::with_rs1_signing",
-  "rmcp::model::request_state::_::with_rs1_fallback",
   # Section 2.3, B13: Aeneas type assertion / internal error in formatting impls.
   "rmcp::model::request_state::{impl core::fmt::Debug for rmcp::model::request_state::RequestStateError}",
   "rmcp::model::request_state::{impl core::fmt::Display for rmcp::model::request_state::RequestStateError}",
@@ -120,10 +110,15 @@ exclude = [
 opaque = [
   # Wraps HMAC and base64 Engine types that cannot be translated (B1, B3); no Rust model to patch in; Lean models: Section 4.
   "rmcp::model::request_state_wire::prim",
-  # Reads the system clock (I/O); no Rust model to patch in; Lean model: Section 4. Used only by non-target wrappers.
+  # Reads the system clock (I/O); no Rust model to patch in; Lean model: Section 4. Called by the
+  # targets seal_with and seal (since translation patch 03; extended clock rule) and by non-target wrappers.
   "rmcp::model::request_state::_::now_ms",
   # External crates: only signatures are needed; Lean models: Section 4.
   "zeroize", "base64", "hmac", "sha2", "thiserror", "chrono", "serde_json",
+  # serde_core: opaque, not excluded, so that the trait DeserializeOwned in the signatures of
+  # open_json and open_json_with is translated (formal/trusted/patches/03-request-state-public.patch;
+  # human decision 2026-11-24, targets R09-R15); only signatures and trait declarations are needed.
+  "serde_core",
   # Phase 2 (plan Section 15): external crates reached by the widened feature list; only
   # signatures are needed, no Phase 2 target body calls into them.
   "http", "tokio", "tokio_util", "tracing", "tracing_core", "futures", "futures_util",

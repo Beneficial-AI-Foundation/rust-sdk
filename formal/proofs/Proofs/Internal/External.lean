@@ -68,8 +68,7 @@ from `formal/specs/Specs/External.lean` on 2026-11-24 (statements unchanged). De
 the moved `Defs` modules keep their Lean names (`Defs.Wire.dot`, `Defs.Wire.b64Len` are in module
 `Defs.Wire`, back in `formal/specs/Defs/` since the request-state public specifications).
 
-Aeneas upgrade (2026-11-24, `nightly-2026.11.24-fb44cb4`; pending review and the human batch
-re-sign-off): four functions are defined in the Aeneas library instead of by a project model
+Aeneas upgrade (2026-11-24, `nightly-2026.11.24-fb44cb4`; reviewed and re-signed by the spec owner 2026-11-24): four functions are defined in the Aeneas library instead of by a project model
 (`core::borrow::Borrow`, `Option::ok_or`, `Result::map_err`, `Vec::is_empty`; lead decision N8);
 forced restatements, name-only: the `Borrow` rename (`Aeneas.Std.core.borrow.Borrow`), the arity
 of `alloc.vec.Vec.is_empty_spec` and the `Slice.from` form in `hash_eq`. The model of

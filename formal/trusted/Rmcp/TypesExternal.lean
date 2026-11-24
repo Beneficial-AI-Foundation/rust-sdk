@@ -17,7 +17,10 @@ patched copy (patch 01 on origin/main 7caec76), which gives the same translation
 line numbers below refer to it. Plan steps S08–S09 replaced every placeholder of that (Phase 1)
 template: each type is now a `structure` that models the fields of the Rust type; the one field
 that no translated code and no model looks inside (`serde_json`'s boxed `ErrorImpl`) has an
-`opaque` type. The six external types that the Phase 2 translation (plan step S21) added were
+abstract type (since translation patch 03 over the `opaque` carrier
+`ExtModel.SerdeJsonErrorImplCarrier : NonemptyType`, so that the opaque outcome of
+`serde_json::from_slice` can contain an error). Translation patch 03 also added the entry types
+`OccupiedEntry` and `VacantEntry` of `HashMap::entry` (last section). The six external types that the Phase 2 translation (plan step S21) added were
 temporary placeholders over `opaque` carrier types; plan steps S26/S27 replaced them (last
 section, plan Section 18): `MaybeUninit` is an inductive type of its two union fields,
 `Ipv4Addr` a structure of its four octets, `Ipv6Addr` a structure of its eight segments (a
@@ -42,9 +45,10 @@ open Aeneas Aeneas.Std Result ControlFlow Error
 
 **Model: the two fields of the Rust struct** `pub struct Duration { secs: u64, nanos:
 Nanoseconds }` (`time.rs` lines 81–84), with its documented invariant `nanos < 10^9` ("Always
-0 <= nanos < NANOS_PER_SEC"; `Nanoseconds` is a `u32` restricted to that range). Used only by
-the non-target `SealOptions::ttl : Option<Duration>`; no target and no external model reads
-one. -/
+0 <= nanos < NANOS_PER_SEC"; `Nanoseconds` is a `u32` restricted to that range). Used by
+`SealOptions::ttl : Option<Duration>`; since translation patch 03 the private `seal_at` reads one
+through the model of `Duration::as_millis` (`Rmcp.FunsExternal`), the only external model that
+reads its fields. -/
 @[rust_type "core::time::Duration"]
 structure core.time.Duration : Type where
   /-- Whole seconds. -/
@@ -61,13 +65,15 @@ structure core.time.Duration : Type where
 is the `S` value the Rust map stores and `alloc` the allocator of its table (std wraps
 `hashbrown::HashMap { hash_builder: S, table: RawTable<(K, V), A> }`, hashbrown 0.17.1 as
 pinned by the toolchain's `library/Cargo.lock`, `src/map.rs`). The order of `entries` carries
-no meaning: the translated code only calls `get` and `clone`, which do not reveal the table
-order.
+no meaning: the translated code only calls `get`, `clone`, `contains_key`, `is_empty`, `entry`
+(with `VacantEntry::insert`) and `HashMap::new`, none of which reveals the table order.
 
 The Rust invariant "no two keys are equal" is not part of the type: a generic `clone` could not
-preserve a proof of it (`K::clone` is an arbitrary function), and no translated function
-constructs a map (the constructors are excluded, plan Section 2.3). A statement that needs it
-takes it as a hypothesis (the codec-state invariant, plan Section 4).
+preserve a proof of it (`K::clone` is an arbitrary function). Since translation patch 03 one
+translated function builds a map, `new_with_keyring` (through `HashMap::new`, `entry` and
+`VacantEntry::insert`, whose models add an entry only for a key that no entry has). A statement
+that needs the invariant takes it as a hypothesis (the codec-state invariant, plan Section 4) or
+proves it for the maps that `new_with_keyring` builds.
 `std.collections.hash.map.HashMap.get` returns the value of the first entry whose key equals
 the query, which is the Rust result whenever the keys are pairwise distinct. -/
 @[rust_type "std::collections::hash::map::HashMap"]
@@ -122,10 +128,19 @@ structure alloc.string.FromUtf8Error : Type where
   /-- The bytes that `String::from_utf8` rejected. -/
   bytes : alloc.vec.Vec Std.U8
 
+/-- The carrier of `ExtModel.SerdeJsonErrorImpl`: an opaque type together with the fact that it
+has an element (`NonemptyType`; a Rust `ErrorImpl` exists). Opaque, adds no axiom. -/
+opaque ExtModel.SerdeJsonErrorImplCarrier : NonemptyType
+
 /-- The content of a `serde_json` error (`serde_json-1.0.154/src/error.rs`, `struct ErrorImpl`
-behind the `Box`). **Opaque**: no translated function and no external model creates or inspects
-one. -/
-opaque ExtModel.SerdeJsonErrorImpl : Type
+behind the `Box`). **Abstract**: no translated function and no external model inspects one;
+only the opaque outcome `ExtModel.serdeJsonFromSlice` of the `serde_json::from_slice` model
+(`Rmcp.FunsExternal`) may contain one, which is why the type is known to be nonempty. -/
+def ExtModel.SerdeJsonErrorImpl : Type := ExtModel.SerdeJsonErrorImplCarrier.type
+
+/-- A `serde_json` error content exists (the carrier's property). -/
+instance ExtModel.SerdeJsonErrorImpl.nonempty : Nonempty ExtModel.SerdeJsonErrorImpl :=
+  ExtModel.SerdeJsonErrorImplCarrier.property
 
 /-- [serde_json::error::Error]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/error.rs', lines 17:0-17:16
@@ -137,6 +152,10 @@ occurs only as the payload of `RequestStateError::{Serialization, Deserializatio
 structure serde_json.error.Error : Type where
   /-- The boxed error content. -/
   err : ExtModel.SerdeJsonErrorImpl
+
+/-- A `serde_json` error exists (from `ExtModel.SerdeJsonErrorImpl.nonempty`). -/
+instance serde_json.error.Error.nonempty : Nonempty serde_json.error.Error :=
+  let ⟨e⟩ := ExtModel.SerdeJsonErrorImpl.nonempty; ⟨{ err := e }⟩
 
 /-- [zeroize::Zeroizing]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.2/src/lib.rs', lines 584:0-584:41
@@ -264,3 +283,45 @@ type; a statement can say that a value is passed through unchanged and nothing m
 `Aeneas/Extract/Extract.lean`, `processType`), hence the `def` over the carrier. -/
 @[rust_type "serde_json::value::Value"]
 def serde_json.value.Value : Type := ExtModel.SerdeJsonValue
+
+/-! ## Types of the public `request_state.rs` API (R15 `new_with_keyring`)
+
+The two entry types that `HashMap::entry` returns in `new_with_keyring`. Their only purpose in
+the value model is to carry, through the backward functions that Aeneas generates for the
+`&mut` borrow of the map, what the translated code does with the entry; the map itself is
+rebuilt by the backward function of the model of `HashMap::entry` (`Rmcp.FunsExternal`). -/
+
+/-- [std::collections::hash::map::OccupiedEntry]
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1977:0-1982:1
+
+**Model: the key and value of the occupied slot.** The Rust struct is `OccupiedEntry { base:
+RustcOccupiedEntry<'a, K, V, A> }` (`map.rs` lines 1977–1984), i.e. hashbrown 0.17.1
+`RustcOccupiedEntry { elem: Bucket<(K, V)>, table: &'a mut RawTable<(K, V), A> }`
+(`src/rustc_entry.rs`): a pointer to the slot and the borrowed table. The model keeps the
+slot's contents only. No translated function and no external model reads or changes an
+occupied entry (`new_with_keyring` only matches `Entry::Occupied(_)`). -/
+@[rust_type "std::collections::hash::map::OccupiedEntry" (mutRegions := #[0])]
+structure std.collections.hash.map.OccupiedEntry (K : Type) (V : Type) (A : Type) : Type where
+  /-- The key stored in the slot. -/
+  key : K
+  /-- The value stored in the slot. -/
+  value : V
+
+/-- [std::collections::hash::map::VacantEntry]
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1999:0-2004:1
+
+**Model: the key, and the value inserted through the entry.** The Rust struct is `VacantEntry {
+base: RustcVacantEntry<'a, K, V, A> }` (`map.rs` lines 1999–2006), i.e. hashbrown 0.17.1
+`RustcVacantEntry { hash: u64, key: K, table: &'a mut RawTable<(K, V), A> }`
+(`src/rustc_entry.rs`). The hash and the borrowed table are not stored: the model of
+`HashMap::entry` rebuilds the map from the original map and the final value of this entry.
+`inserted` is `none` for the entry that `HashMap::entry` returns and `some v` after
+`VacantEntry::insert` (in the backward function of the returned `&mut V`, `v` being the final
+value of that reference); dropping a vacant entry without inserting leaves the map unchanged,
+as in Rust (`rustc_entry` only reserves capacity, which the value model does not have). -/
+@[rust_type "std::collections::hash::map::VacantEntry" (mutRegions := #[0])]
+structure std.collections.hash.map.VacantEntry (K : Type) (V : Type) (A : Type) : Type where
+  /-- The key the entry was created for (`RustcVacantEntry::key`). -/
+  key : K
+  /-- The value written into the new slot, if any. -/
+  inserted : Option V

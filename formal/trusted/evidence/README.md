@@ -14,8 +14,11 @@ cannot compute is an `opaque` constant, which adds no axiom (`#print axioms` doe
 | `ExtModel.hmacSha256 : List U8 → List U8 → Array U8 32` | HMAC-SHA256 (RFC 2104, FIPS 180-4) | correctness of the `hmac`/`sha2` crates is out of scope (plan Section 4) |
 | `ExtModel.sipHash13 : U64 → U64 → List U8 → U64` | SipHash-1-3 of `DefaultHasher` | no statement depends on hash values (`HashMap::get` is modelled without hashing) |
 | `ExtModel.nowMs : I64` | the clock reading of `now_ms` | not a function of anything the model has |
-| `ExtModel.SerdeJsonErrorImpl : Type` | the boxed content of `serde_json::Error` | never created or inspected |
+| `ExtModel.SerdeJsonErrorImpl : Type` | the boxed content of `serde_json::Error` | never inspected. Until translation patch 03 an `opaque` type, never created; since then (reviewed and signed off by the spec owner 2026-11-24) a `def` over the opaque carrier `ExtModel.SerdeJsonErrorImplCarrier` (below), known to be inhabited, which may occur only inside the opaque outcome `ExtModel.serdeJsonFromSlice` |
 | `ExtModel.SerdeJsonValue : Type` | `serde_json::Value` (Phase 2, S26/S27) | the translated code only moves values of this type |
+| `ExtModel.randomState : RandomState` (translation patch 03, signed off 2026-11-24) | the keys `HashMap::new` stores (`RandomState::new`) | random per thread and incremented per map in Rust; no model hashes for a lookup |
+| `ExtModel.serdeJsonFromSlice` (translation patch 03, signed off 2026-11-24) | the outcome of `serde_json::from_slice::<T>` | depends on the caller's `Deserialize` impl and the `serde_json` parser, not translated |
+| `ExtModel.SerdeJsonErrorImplCarrier : NonemptyType` (translation patch 03, signed off 2026-11-24) | the carrier of `ExtModel.SerdeJsonErrorImpl` | not inspected; nonempty so that `serdeJsonFromSlice` can return `Err` |
 
 This follows the human decision of 2026-11-23 to convert every placeholder axiom into a
 definition (plan Section 4). Because there is no axiom, the consistency models of the earlier
@@ -225,7 +228,7 @@ Tests: every keyring test of `codec` goes through `Zeroizing::deref` (`two_key_r
 ## Clock (`RequestStateCodec::now_ms`)
 
 - **Model.** `ok nowMs`, an opaque constant (`chrono::Utc::now().timestamp_millis()`,
-  `codec` lines 729–731).
+  `codec` lines 729–731; lines 733–735 since translation patch 03).
 - **Environmental assumption (stated exception, not modelled).** `Utc::now` panics if the
   system clock is before 1970 or outside chrono's range (`chrono-0.4.45/src/offset/utc.rs`
   lines 96–98: `expect("system time before Unix epoch")`, `DateTime::from_timestamp(..)
@@ -233,14 +236,21 @@ Tests: every keyring test of `codec` goes through `Zeroizing::deref` (`two_key_r
 - **Limitation.** One constant cannot express that two readings differ, and it makes every
   function that reads the clock pure. The callers of `now_ms` are `open` and `open_with`, which
   are translated (`formal/translation/Rmcp/Funs.lean`, `open_with` and `open`) but are not
-  targets, and `seal_with`, which is excluded from the translation (Charon `exclude`, B13).
+  targets, and `seal_with`, which was excluded from the translation (Charon `exclude`, B13) until
+  translation patch 03 (2026-11-24, signed off) and is now translated, with `seal` calling it.
 - **Review rule.** No spec statement mentions the functions
-  `rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open` or
-  `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the time parameter of E01
+  `rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open`,
+  `…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or `…RequestStateCodec.seal_with` (a
+  variable named `now_ms`, such as the time parameter of E01
   `open_authenticated_body`, is not covered); statements about
-  opening use `open_at` with an explicit `now` (also in `formal/docs/STATUS.md`). Exception (human
-  decision 2026-11-24): the spec theorems of the public `open`/`open_with` and their restatements,
-  as worded in `formal/README.md`, "Trusted base".
+  opening use `open_at`, and about sealing `seal_at`, with an explicit `now` (also in
+  `formal/docs/STATUS.md`). Exceptions (human decisions 2026-11-24), as worded in
+  `formal/README.md`, "Trusted base": the spec theorems of the public `open`/`open_with` and their
+  restatements (postcondition `resultBytes result = openAt … ExtModel.nowMs.val`), and the spec
+  theorems of the public `seal`/`seal_with` and their restatements (postcondition: the result is
+  that of the translated `seal_at` at `ExtModel.nowMs`, `seal_with self payload options` relating
+  to `seal_at self payload options ExtModel.nowMs`); their docstrings state the one-reading caveat
+  and the inherited exceptions; no other statement names `ExtModel.nowMs`.
 - **Tests.** `codec::within_ttl_opens`, `codec::past_ttl_is_expired` (through `open`).
 
 ## Phase 2 externals (plan steps S26–S27)
@@ -408,6 +418,69 @@ of an address as natural numbers). The opaque carrier `SerdeJsonValue` is listed
   (`serde_json-1.0.154/src/value/mod.rs` 116–176, `pub enum Value`). The targets only move values
   (`ErrorData.data : Option Value`); no model creates, inspects or compares one. No evidence is
   needed beyond that observation (plan Section 18).
+
+## Public `request_state.rs` API externals (translation patch 03, R09–R15)
+
+**Pending model review** (2026-11-24; human decisions: targets R09–R15, variant A; not signed
+off). Translation patch 03 and the removal of eight Charon `exclude` entries make `seal`,
+`seal_with` (through the private `seal_at`), `with_rs1_signing`, `with_rs1_fallback`,
+`open_json`, `open_json_with` and `new_with_keyring` translate; the externals they newly reach are
+modelled below (14 functions, 2 types, 3 `opaque` constants, no axiom). Toolchain: Aeneas
+`nightly-2026.11.24-fb44cb4`, `rust-src` of `nightly-2026-09-17`, hashbrown 0.17.1 (the
+toolchain's `library/Cargo.lock`), `serde_json 1.0.154` and `serde_core 1.0.229` (both in
+`PINNED_DEPS`). The docstrings in `formal/trusted/Rmcp/{Funs,Types}External.lean` are
+authoritative. Test names are relative to `model::request_state::tests::` and run with
+`cargo test -p rmcp --no-default-features --features request-state --lib model::request_state`
+on the patched copy (`byte_identity::*` come from patch 01).
+
+**Opaque constants** (no axiom):
+- `ExtModel.randomState : RandomState`: the keys `HashMap::new` stores (`RandomState::new`,
+  `std/src/hash/random.rs` 55–76: random per thread, incremented per map). Review rule: no
+  statement about its value or about the `hash_builder` of a map built by `HashMap::new`, and no
+  statement states or relies on the equality (or inequality) of two maps, or of two codecs
+  containing them, built by distinct `HashMap::new` calls: their keys differ on the same thread
+  and are independent random keys otherwise (`std/src/hash/random.rs` 71–75).
+- `ExtModel.serdeJsonFromSlice {T} : Deserialize T → List U8 → core.result.Result T
+  serde_json::Error`: the outcome of `serde_json::from_slice::<T>`; depends on the caller's
+  `Deserialize` impl and the `serde_json` parser, not translated (human decision 2026-11-24:
+  `from_slice` is `ok` of this outcome). Review rule: a statement may only say that the result of
+  `open_json`/`open_json_with` is this outcome for the opened payload, mapped as the Rust code
+  maps it; no statement relates two calls of `open_json`/`open_json_with` (or of `from_slice`).
+- `ExtModel.SerdeJsonErrorImplCarrier : NonemptyType`: replaces `opaque ExtModel.SerdeJsonErrorImpl
+  : Type`, which is now `def … := Carrier.type`, with `Nonempty` instances for it and for
+  `serde_json::Error`, so that `serdeJsonFromSlice` can return `Err` (human decision 2026-11-24).
+
+**Types**
+
+| External | Model | Source | Tests |
+|---|---|---|---|
+| `OccupiedEntry` | `{key, value}` of the slot | `std/src/collections/hash/map.rs` 1977–1984; hashbrown `src/rustc_entry.rs` (`RustcOccupiedEntry {elem, table}`) | `key_rotation::constructor_invariants_are_enforced` (duplicate kid) |
+| `VacantEntry` | `{key, inserted : Option V}` (hash and table not stored; the map is rebuilt by the backward function of `entry`) | `map.rs` 1999–2006; hashbrown `src/rustc_entry.rs` (`RustcVacantEntry {hash, key, table}`) | every `new_with_keyring` test below |
+
+**Functions**
+
+| External | Model | Source (`rust-src` nightly-2026-09-17 unless stated) | Tests |
+|---|---|---|---|
+| `Duration::as_millis` | `secs*1000 + nanos/1_000_000` as `u128` (exact, no overflow) | `core/src/time.rs` 601–604, constants 28, 30 | `key_rotation::rs1_known_answer_is_unchanged`, `key_rotation::rs2_known_answer_matches_wire_specification` (90 s TTL, byte-exact), `ttl::within_ttl_opens`, `ttl::past_ttl_is_expired`, `ttl::ttl_and_associated_data_combine`, `key_rotation::rs2_roundtrips_with_associated_data_and_ttl`, `byte_identity::pinned_tokens_and_open_results_are_unchanged` (TTL tokens of `pinned_cases`) |
+| `str::to_owned` | same bytes as `String`; `fail undef` on non-UTF-8 `Str` | `alloc/src/str.rs` 252–255 | `key_rotation::rolling_migration_is_bidirectionally_compatible`, `key_rotation::multiple_legacy_fallbacks_are_supported` |
+| `HashMap::contains_key` | `find` (as for `get`) is `some`; no hashing | `map.rs` 1268–1274; hashbrown `src/map.rs` 1382–1392, `src/lib.rs` 151–159 (`Equivalent`) | `key_rotation::constructor_invariants_are_enforced` (unknown kid in `with_rs1_*`, absent active kid), `key_rotation::rolling_migration_is_bidirectionally_compatible` (known kid in `with_rs1_*`, followed by the `any → false` path only; the `any → true` path after `contains_key` is covered as stated in the `slice::Iter::any` row) |
+| `HashMap::is_empty` | `entries = []` | `map.rs` 745–747; hashbrown `src/map.rs` 824–826 | `key_rotation::constructor_invariants_are_enforced` (empty keyring) |
+| `HashMap::new` (K, V, `RandomState`, `Global`) | empty, `hash_builder := randomState`; OS-RNG panic not modelled | `map.rs` 269–271, 1488–1497; `std/src/hash/random.rs` 55–76; `std/src/sys/random/linux.rs` 166–172 | every `new_with_keyring` test |
+| `HashMap::entry` (helper `ExtModel.HashMap.lookupEntry`) | first entry with `stored.eq(key)` → `Occupied {key, value}`, backward = same map; else `Vacant {key, none}`, backward adds `(key, v)` iff `inserted = some v`; `reserve(1)` not modelled | `map.rs` 1012–1014; hashbrown `src/rustc_entry.rs` 35–54 | `key_rotation::constructor_invariants_are_enforced` (duplicate kid → `InvalidKeyring`), `byte_identity::run3_token_matrix_is_unchanged` and `byte_identity::pinned_tokens_and_open_results_are_unchanged` (keyring codecs of `codecs`), `key_rotation::rotation_keeps_previous_rs2_key_verifiable` |
+| `VacantEntry::insert` | returns `value`; backward records the final value as `inserted` | `map.rs` 2975–2977; hashbrown `src/rustc_entry.rs` 574–579 | as for `entry` |
+| `Hash for str` | write bytes, then `0xff` | `core/src/hash/mod.rs` 865–867 (`write_str`); default `write_str` and the `DefaultHasher` path as for `String` `Hash` | — (instance only required by `contains_key` with `Q = str`; no model hashes) |
+| `Borrow<str> for String` | `String` deref (same bytes) | `alloc/src/str.rs` 233–235 | through `contains_key` in `with_rs1_*` |
+| `String == str` (`PartialEq<str> for String`) | byte equality of `utf8 self` and `other` | `alloc/src/string.rs` 2740–2742, `impl_eq! { String, str }` 2763 | `key_rotation::multiple_legacy_fallbacks_are_supported`, `key_rotation::rolling_migration_is_bidirectionally_compatible` (the `any → false` path: a new kid is appended); no committed test reaches the `any → true` branch (de-duplication when the kid is already in `rs1_fallbacks`): that branch is covered only by reading the source (`request_state.rs` lines 404–406 and 436–438 of the repository source, 394–396 and 426–428 of the patched copy: `if !rs1_fallbacks.iter().any(…) { rs1_fallbacks.push(…) }`); a scratch test (not committed) confirmed that Rust de-duplicates as modelled |
+| `slice::Iter::any` (helper `ExtModel.sliceIterAny`) | call the `FnMut` on `slice[i..]` in order, stop at the first `true`, advance `i` by the consumed count | `core/src/slice/iter/macros.rs` 321–332, instantiated by `iterator!` in `core/src/slice/iter.rs` 140–148 | as for `String == str`, and `with_rs1_signing` in `key_rotation::rolling_migration_is_bidirectionally_compatible` (`any → false` only); no committed test reaches the `any → true` branch (de-duplication when the kid is already in `rs1_fallbacks`): that branch is covered only by reading the source (`request_state.rs` lines 404–406 and 436–438 of the repository source, 394–396 and 426–428 of the patched copy: `if !rs1_fallbacks.iter().any(…) { rs1_fallbacks.push(…) }`); a scratch test (not committed) confirmed that Rust de-duplicates as modelled |
+| `Iterator::any` (default) | `next`/closure loop through `Aeneas.Std.loop`; stated exception: an overridden `try_fold` | `core/src/iter/traits/iterator.rs` 2897–2910 | — (declared by the template, called by no generated definition) |
+| `serde_json::from_slice` | `ok (serdeJsonFromSlice inst v)`; stated exceptions: a panicking or non-terminating caller `Deserialize` impl, and a non-deterministic or side-effecting one (global or thread-local state, RNG) | `serde_json-1.0.154/src/de.rs` 2667–2672 | `seal_open_roundtrips_json` (Ok), `key_rotation::serde_is_reached_only_after_integrity_verification` (invalid JSON → `Deserialization`; tampered → integrity error before serde) |
+| `Error::source` (default) | `ok none` | `core/src/error.rs` 111–113 | — (declared by the template because the `serde_core` error traits have `Error` as supertrait; not called) |
+
+Changed docstrings (facts only): `core.time.Duration` is now read by `seal_at` through
+`as_millis`; `std.collections.hash.map.HashMap` lists the called functions and notes that
+`new_with_keyring` builds a map; `model.request_state.RequestStateCodec.now_ms` is called by
+`seal_with` (hence `seal`) since patch 03 (Source lines 733:4–735:5) and carries the extended
+clock rule.
 
 ## Phase 2 boundary cases: upstream-test map (S34)
 

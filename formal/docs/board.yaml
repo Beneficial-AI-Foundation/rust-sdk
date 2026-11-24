@@ -629,3 +629,40 @@ steps:
       and all lean-guard.sh checks pass; every changed #print axioms list only gains propext,
       Classical.choice or Quot.sound or loses native-code axioms; forced restatements name-only
       (N7) or the reviewed RangeInclusive laws; human batch re-sign-off recorded by the human.
+
+  - id: PATCH03-V2  # not a plan step; translation patch 03 v2, plan Sections 2.3 and 9 (amendments 2026-11-24)
+    day: 2026-11-24
+    state: IN_PROGRESS  # translated on Aeneas nightly-2026.11.24-fb44cb4 (base deb8d84); records and
+    # docs updated; reviewed (2 rounds, all findings fixed); patch, Charon settings, linkage script,
+    # 14+2 models, 3 opaque constants and the seal clock rule signed off by the spec owner 2026-11-24;
+    # committed. Pending: the R09-R15 specs, proofs and records.
+    # Human decisions 2026-11-24: targets R09-R15 (R16-R17 stay excluded, blocked upstream);
+    # variant A (+6/-2 Rust lines); from_slice modelled as ok of an opaque outcome; clock rule
+    # extended to seal/seal_with. The old patch 03 (stash@{0}) is superseded.
+    depends_on: [AEN-UPG]
+    owner: Lead + human owner
+    files:
+      - formal/trusted/patches/03-request-state-public.patch  # new
+      - crates/rmcp/Cargo.toml  # Charon table only: 8 exclude entries removed; serde_core exclude -> opaque
+      - scripts/aeneas-translate.sh  # PINNED_DEPS: serde_core 1.0.229
+      - scripts/check-original-linkage.sh  # exclude == ["serde"], EXTERNAL_OPAQUE pin (adds serde_core)
+      - formal/translation/Rmcp/Funs.lean
+      - formal/translation/Rmcp/Types.lean
+      - formal/translation/translation.json
+      - formal/trusted/translation-pins.txt
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/evidence/README.md
+      - formal/proofs/Proofs/External/Std.lean  # Clock section comment only
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - formal/specs/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 2.3, 4, 9, 26 (amendments)
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+    acceptance: >-
+      seal, seal_with, seal_at, with_rs1_signing, with_rs1_fallback, open_json, open_json_with and
+      new_with_keyring translate with real bodies and no sorry; every earlier generated block is
+      unchanged up to its Source line numbers; the patched copy passes the crate's tests; lake build
+      --wfail and all lean-guard.sh checks pass; the patch and the new models reviewed by independent
+      agents and signed off by the human. Specifying R09-R15 is a separate step.

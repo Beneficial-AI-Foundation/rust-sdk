@@ -25,6 +25,15 @@ noncomputable section
 
 namespace rmcp
 
+/-- Trait implementation: [core::hash::impls::{impl core::hash::Hash for str}]
+    Source: '/rustc/library/core/src/hash/mod.rs', lines 863:4-863:21
+    Name pattern: [core::hash::Hash<str>] -/
+@[reducible, rust_trait_impl "core::hash::Hash<str>"]
+def Str.Insts.CoreHashHash : core.hash.Hash Str := {
+  hash := fun {H : Type} (HasherInst : core.hash.Hasher H) =>
+    Str.Insts.CoreHashHash.hash HasherInst
+}
+
 /-- Trait implementation: [core::num::{impl core::str::traits::FromStr<core::num::error::ParseIntError> for i64}]
     Source: '/rustc/library/core/src/num/mod.rs', lines 1595:8-1595:38; this code is generated from a macro invocation at: '/rustc/library/core/src/num/mod.rs', lines 1868:0-1868:55
     Name pattern: [core::str::traits::FromStr<i64, core::num::error::ParseIntError>] -/
@@ -62,6 +71,16 @@ def Str.Insts.CoreCmpPartialEqStr : core.cmp.PartialEq Str Str := {
   eq := Str.Insts.CoreCmpPartialEqStr.eq
 }
 
+/-- Trait implementation: [core::str::traits::{impl core::cmp::Eq for str}]
+    Source: '/rustc/library/core/src/str/traits.rs', lines 36:0-36:21
+    Name pattern: [core::cmp::Eq<str>] -/
+@[reducible, rust_trait_impl "core::cmp::Eq<str>"]
+impl_def Str.Insts.CoreCmpEq : core.cmp.Eq Str := {
+  partialEqInst := Str.Insts.CoreCmpPartialEqStr
+  assert_fields_are_eq := core.cmp.Eq.assert_fields_are_eq.default
+    Str.Insts.CoreCmpEq
+}
+
 /-- Trait implementation: [std::hash::random::{impl core::clone::Clone for std::hash::random::RandomState}]
     Source: '/rustc/library/std/src/hash/random.rs', lines 34:9-34:14
     Name pattern: [core::clone::Clone<std::hash::random::RandomState>] -/
@@ -96,6 +115,16 @@ def std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher :
     std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher
 }
 
+/-- Trait implementation: [alloc::str::{impl core::borrow::Borrow<str> for alloc::string::String}]
+    Source: '/rustc/library/alloc/src/str.rs', lines 231:0-231:27
+    Name pattern: [core::borrow::Borrow<alloc::string::String, str>] -/
+@[reducible, rust_trait_impl
+  "core::borrow::Borrow<alloc::string::String, str>"]
+def alloc.string.String.Insts.CoreBorrowBorrowStr : core.borrow.Borrow String
+  Str := {
+  borrow := alloc.string.String.Insts.CoreBorrowBorrowStr.borrow
+}
+
 /-- Trait implementation: [alloc::string::{impl core::cmp::PartialEq<alloc::string::String> for alloc::string::String}]
     Source: '/rustc/library/alloc/src/string.rs', lines 350:9-350:18
     Name pattern: [core::cmp::PartialEq<alloc::string::String, alloc::string::String>] -/
@@ -122,6 +151,16 @@ def alloc.string.String.Insts.CoreCmpEq : core.cmp.Eq String := {
 @[reducible, rust_trait_impl "core::clone::Clone<alloc::string::String>"]
 def alloc.string.String.Insts.CoreCloneClone : core.clone.Clone String := {
   clone := alloc.string.String.Insts.CoreCloneClone.clone
+}
+
+/-- Trait implementation: [alloc::string::{impl core::cmp::PartialEq<str> for alloc::string::String}]
+    Source: '/rustc/library/alloc/src/string.rs', lines 2738:8-2738:37; this code is generated from a macro invocation at: '/rustc/library/alloc/src/string.rs', lines 2763:0-2763:24
+    Name pattern: [core::cmp::PartialEq<alloc::string::String, str>] -/
+@[reducible, rust_trait_impl
+  "core::cmp::PartialEq<alloc::string::String, str>"]
+def alloc.string.String.Insts.CoreCmpPartialEqStr : core.cmp.PartialEq String
+  Str := {
+  eq := alloc.string.String.Insts.CoreCmpPartialEqStr.eq
 }
 
 /-- Trait implementation: [alloc::string::{impl core::hash::Hash for alloc::string::String}]
@@ -406,7 +445,7 @@ def model.request_state_wire.key_length_ok
   ok (len >= model.request_state_wire.MIN_KEY_LENGTH)
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::validate_key_length]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 704:4-712:5 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 708:4-716:5 -/
 def model.request_state.RequestStateCodec.validate_key_length
   (key : Slice Std.U8) :
   Result (core.result.Result Unit model.request_state.RequestStateError)
@@ -449,6 +488,737 @@ def model.request_state.RequestStateCodec.try_new
     core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
       model.request_state.RequestStateCodec (core.convert.FromSame
       model.request_state.RequestStateError) residual
+
+/-- [rmcp::model::request_state_wire::MAX_KID_LEN]
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 21:0-21:35
+    Visibility: public -/
+@[global_simps, irreducible]
+def model.request_state_wire.MAX_KID_LEN : Std.Usize := 255#usize
+
+/-- [rmcp::model::request_state_wire::check_kid_len]:
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 54:0-62:1
+    Visibility: public -/
+def model.request_state_wire.check_kid_len
+  (len : Std.Usize) :
+  Result (core.result.Result Unit model.request_state_wire.KidError)
+  := do
+  if len = 0#usize
+  then ok (core.result.Result.Err model.request_state_wire.KidError.Empty)
+  else
+    if len > model.request_state_wire.MAX_KID_LEN
+    then ok (core.result.Result.Err model.request_state_wire.KidError.TooLong)
+    else ok (core.result.Result.Ok ())
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::validate_config_kid]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 718:4-726:5 -/
+def model.request_state.RequestStateCodec.validate_config_kid
+  (kid : Str) :
+  Result (core.result.Result Unit model.request_state.RequestStateError)
+  := do
+  let i ← core.str.Str.len kid
+  let r ← model.request_state_wire.check_kid_len i
+  match r with
+  | core.result.Result.Ok _ => ok (core.result.Result.Ok ())
+  | core.result.Result.Err ke =>
+    match ke with
+    | model.request_state_wire.KidError.Empty =>
+      ok (core.result.Result.Err
+        (model.request_state.RequestStateError.InvalidKeyring
+        model.request_state.KID_EMPTY_MSG))
+    | model.request_state_wire.KidError.TooLong =>
+      ok (core.result.Result.Err
+        (model.request_state.RequestStateError.InvalidKeyring
+        model.request_state.KID_TOO_LONG_MSG))
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::new_with_keyring]: loop body 0:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 328:8-364:5
+    Visibility: public -/
+@[rust_loop_body]
+def model.request_state.RequestStateCodec.new_with_keyring_loop.body
+  {K : Type _} {V : Type _} {T2 : Type _} {T3 : Type _} {Clause3_IntoIter :
+  Type _} (coreconvertIntoKStringInst : core.convert.Into K String)
+  (coreconvertIntoVVecU8Inst : core.convert.Into V (alloc.vec.Vec Std.U8))
+  (coreconvertIntoT2StringInst : core.convert.Into T2 String)
+  (coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T3 (K × V) Clause3_IntoIter)
+  (active_kid : T2) (iter : Clause3_IntoIter)
+  (ring : std.collections.hash.map.HashMap String (zeroize.Zeroizing
+  (alloc.vec.Vec Std.U8)) std.hash.random.RandomState alloc.alloc.Global) :
+  Result (ControlFlow (Clause3_IntoIter × (std.collections.hash.map.HashMap
+    String (zeroize.Zeroizing (alloc.vec.Vec Std.U8))
+    std.hash.random.RandomState alloc.alloc.Global)) (core.result.Result
+    model.request_state.RequestStateCodec
+    model.request_state.RequestStateError))
+  := do
+  let (o, iter1) ←
+    coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst.iteratorInst.next
+      iter
+  match o with
+  | none =>
+    let b ← std.collections.hash.map.HashMap.is_empty ring
+    if b
+    then
+      ok (done (core.result.Result.Err
+        (model.request_state.RequestStateError.InvalidKeyring (toStr
+        "keyring must contain at least one key"))))
+    else
+      let active_kid1 ← coreconvertIntoT2StringInst.into active_kid
+      let s ←
+        alloc.string.String.Insts.CoreOpsDerefDerefStr.deref active_kid1
+      let r ← model.request_state.RequestStateCodec.validate_config_kid s
+      let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+      match cf with
+      | core.ops.control_flow.ControlFlow.Continue _ =>
+        let b1 ←
+          std.collections.hash.map.HashMap.contains_key
+            alloc.string.String.Insts.CoreCmpEq
+            alloc.string.String.Insts.CoreHashHash
+            std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+            (core.borrow.Borrow.Blanket String)
+            alloc.string.String.Insts.CoreHashHash
+            alloc.string.String.Insts.CoreCmpEq ring active_kid1
+        if b1
+        then
+          ok (done (core.result.Result.Ok
+            {
+              keys :=
+                (model.request_state.Keys.Ring
+                  ring
+                  (model.request_state.SealMode.Rs2
+                  active_kid1)
+                  (alloc.vec.Vec.new
+                  String))
+            }))
+        else
+          ok (done (core.result.Result.Err
+            (model.request_state.RequestStateError.InvalidKeyring (toStr
+            "active key id is not present in the keyring"))))
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r1 ←
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
+            model.request_state.RequestStateCodec (core.convert.FromSame
+            model.request_state.RequestStateError) residual
+        ok (done r1)
+  | some p =>
+    let (kid, key) := p
+    let kid1 ← coreconvertIntoKStringInst.into kid
+    let v ← coreconvertIntoVVecU8Inst.into key
+    let key1 ←
+      zeroize.Zeroizing.new (alloc.vec.Vec.Insts.ZeroizeZeroize
+        (zeroize.Zeroize.Blanket U8.Insts.ZeroizeDefaultIsZeroes)) v
+    let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref kid1
+    let r ← model.request_state.RequestStateCodec.validate_config_kid s
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue _ =>
+      let v1 ←
+        zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref
+          (alloc.vec.Vec.Insts.ZeroizeZeroize (zeroize.Zeroize.Blanket
+          U8.Insts.ZeroizeDefaultIsZeroes)) key1
+      let s1 := alloc.vec.Vec.deref v1
+      let r1 ← model.request_state.RequestStateCodec.validate_key_length s1
+      let cf1 ← core.result.Result.Insts.CoreOpsTry.branch r1
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue _ =>
+        let (e, entry_back) ←
+          std.collections.hash.map.HashMap.entry
+            alloc.string.String.Insts.CoreCmpEq
+            alloc.string.String.Insts.CoreHashHash
+            std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+            ring kid1
+        match e with
+        | std.collections.hash.map.Entry.Occupied _ =>
+          ok (done (core.result.Result.Err
+            (model.request_state.RequestStateError.InvalidKeyring (toStr
+            "duplicate key id"))))
+        | std.collections.hash.map.Entry.Vacant entry =>
+          let (z, insert_back) ←
+            std.collections.hash.map.VacantEntry.insert entry key1
+          let ve := insert_back z
+          let hm := entry_back (std.collections.hash.map.Entry.Vacant ve)
+          ok (cont (iter1, hm))
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        let r2 ←
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
+            model.request_state.RequestStateCodec (core.convert.FromSame
+            model.request_state.RequestStateError) residual
+        ok (done r2)
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
+          model.request_state.RequestStateCodec (core.convert.FromSame
+          model.request_state.RequestStateError) residual
+      ok (done r1)
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::new_with_keyring]: loop 0:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 328:8-364:5
+    Visibility: public -/
+@[rust_loop]
+def model.request_state.RequestStateCodec.new_with_keyring_loop
+  {K : Type _} {V : Type _} {T2 : Type _} {T3 : Type _} {Clause3_IntoIter :
+  Type _} (coreconvertIntoKStringInst : core.convert.Into K String)
+  (coreconvertIntoVVecU8Inst : core.convert.Into V (alloc.vec.Vec Std.U8))
+  (coreconvertIntoT2StringInst : core.convert.Into T2 String)
+  (coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T3 (K × V) Clause3_IntoIter)
+  (iter : Clause3_IntoIter) (active_kid : T2)
+  (ring : std.collections.hash.map.HashMap String (zeroize.Zeroizing
+  (alloc.vec.Vec Std.U8)) std.hash.random.RandomState alloc.alloc.Global) :
+  Result (core.result.Result model.request_state.RequestStateCodec
+    model.request_state.RequestStateError)
+  := do
+  loop
+    (fun (iter1, ring1) =>
+      model.request_state.RequestStateCodec.new_with_keyring_loop.body
+      coreconvertIntoKStringInst coreconvertIntoVVecU8Inst
+      coreconvertIntoT2StringInst
+      coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst active_kid
+      iter1 ring1)
+    (iter, ring)
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::new_with_keyring]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 319:4-364:5
+    Visibility: public -/
+def model.request_state.RequestStateCodec.new_with_keyring
+  {K : Type _} {V : Type _} {T2 : Type _} {T3 : Type _} {Clause3_IntoIter :
+  Type _} (coreconvertIntoKStringInst : core.convert.Into K String)
+  (coreconvertIntoVVecU8Inst : core.convert.Into V (alloc.vec.Vec Std.U8))
+  (coreconvertIntoT2StringInst : core.convert.Into T2 String)
+  (coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T3 (K × V) Clause3_IntoIter)
+  (active_kid : T2) (keys : T3) :
+  Result (core.result.Result model.request_state.RequestStateCodec
+    model.request_state.RequestStateError)
+  := do
+  let ring ←
+    std.collections.hash.map.HashMapKVRandomStateGlobal.new String
+      (zeroize.Zeroizing (alloc.vec.Vec Std.U8))
+  let iter ←
+    coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst.into_iter keys
+  model.request_state.RequestStateCodec.new_with_keyring_loop
+    coreconvertIntoKStringInst coreconvertIntoVVecU8Inst
+    coreconvertIntoT2StringInst
+    coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst iter active_kid
+    ring
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{impl core::ops::function::FnMut<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}<'_0, '_1, T0>}::call_mut]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 394:45-394:72 -/
+def
+  model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool.call_mut
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str)
+  (c : model.request_state.RequestStateCodec.with_rs1_signing.closure T0)
+  (tupled_args : String) :
+  Result (Bool ×
+    (model.request_state.RequestStateCodec.with_rs1_signing.closure T0))
+  := do
+  let b ← alloc.string.String.Insts.CoreCmpPartialEqString.eq tupled_args c
+  ok (b, c)
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{impl core::ops::function::FnOnce<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}<'_0, '_1, T0>}::call_once]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 394:45-394:72 -/
+def
+  model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool.call_once
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str)
+  (c : model.request_state.RequestStateCodec.with_rs1_signing.closure T0)
+  (s : String) :
+  Result Bool
+  := do
+  let (b, _) ←
+    model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool.call_mut
+      coreconvertAsRefT0StrInst c s
+  ok b
+
+/-- Trait implementation: [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{impl core::ops::function::FnOnce<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}<'_0, '_1, T0>}]
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 394:45-394:72 -/
+@[reducible]
+def
+  model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str) :
+  core.ops.function.FnOnce
+  (model.request_state.RequestStateCodec.with_rs1_signing.closure T0) String
+  Bool := {
+  call_once :=
+    model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool.call_once
+    coreconvertAsRefT0StrInst
+}
+
+/-- Trait implementation: [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{impl core::ops::function::FnMut<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}<'_0, '_1, T0>}]
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 394:45-394:72 -/
+@[reducible]
+def
+  model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str) :
+  core.ops.function.FnMut
+  (model.request_state.RequestStateCodec.with_rs1_signing.closure T0) String
+  Bool := {
+  FnOnceInst :=
+    model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool
+    coreconvertAsRefT0StrInst
+  call_mut :=
+    model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool.call_mut
+    coreconvertAsRefT0StrInst
+}
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 373:4-400:5
+    Visibility: public -/
+def model.request_state.RequestStateCodec.with_rs1_signing
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str)
+  (self : model.request_state.RequestStateCodec) (kid : T0) :
+  Result (core.result.Result model.request_state.RequestStateCodec
+    model.request_state.RequestStateError)
+  := do
+  let kid1 ← coreconvertAsRefT0StrInst.as_ref kid
+  match self.keys with
+  | model.request_state.Keys.Single _ =>
+    ok (core.result.Result.Err
+      (model.request_state.RequestStateError.InvalidKeyring (toStr
+      "rs1 transitional signing requires a keyring")))
+  | model.request_state.Keys.Ring keys _ rs1_fallbacks =>
+    let b ←
+      std.collections.hash.map.HashMap.contains_key
+        alloc.string.String.Insts.CoreCmpEq
+        alloc.string.String.Insts.CoreHashHash
+        std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+        alloc.string.String.Insts.CoreBorrowBorrowStr Str.Insts.CoreHashHash
+        Str.Insts.CoreCmpEq keys kid1
+    if b
+    then
+      let kid2 ← Str.Insts.AllocBorrowToOwnedString.to_owned kid1
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone kid2
+      let s1 := alloc.vec.Vec.deref rs1_fallbacks
+      let i ← core.slice.Slice.iter s1
+      let (b1, _) ←
+        core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any
+          (model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool
+          coreconvertAsRefT0StrInst) i kid2
+      if b1
+      then
+        ok (core.result.Result.Ok
+          {
+            keys :=
+              (model.request_state.Keys.Ring
+                keys
+                (model.request_state.SealMode.Rs1
+                s)
+                rs1_fallbacks)
+          })
+      else
+        let rs1_fallbacks1 ← alloc.vec.Vec.push rs1_fallbacks kid2
+        ok (core.result.Result.Ok
+          {
+            keys :=
+              (model.request_state.Keys.Ring
+                keys
+                (model.request_state.SealMode.Rs1
+                s)
+                rs1_fallbacks1)
+          })
+    else
+      ok (core.result.Result.Err
+        (model.request_state.RequestStateError.InvalidKeyring (toStr
+        "rs1 signing key id is not present in the keyring")))
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{impl core::ops::function::FnMut<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}<'_0, '_1, '_2, T0>}::call_mut]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 426:45-426:71 -/
+def
+  model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool.call_mut
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str)
+  (c : model.request_state.RequestStateCodec.with_rs1_fallback.closure T0)
+  (tupled_args : String) :
+  Result (Bool ×
+    (model.request_state.RequestStateCodec.with_rs1_fallback.closure T0))
+  := do
+  let b ← alloc.string.String.Insts.CoreCmpPartialEqStr.eq tupled_args c
+  ok (b, c)
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{impl core::ops::function::FnOnce<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}<'_0, '_1, '_2, T0>}::call_once]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 426:45-426:71 -/
+def
+  model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool.call_once
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str)
+  (c : model.request_state.RequestStateCodec.with_rs1_fallback.closure T0)
+  (s : String) :
+  Result Bool
+  := do
+  let (b, _) ←
+    model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool.call_mut
+      coreconvertAsRefT0StrInst c s
+  ok b
+
+/-- Trait implementation: [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{impl core::ops::function::FnOnce<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}<'_0, '_1, '_2, T0>}]
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 426:45-426:71 -/
+@[reducible]
+def
+  model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str) :
+  core.ops.function.FnOnce
+  (model.request_state.RequestStateCodec.with_rs1_fallback.closure T0) String
+  Bool := {
+  call_once :=
+    model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool.call_once
+    coreconvertAsRefT0StrInst
+}
+
+/-- Trait implementation: [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{impl core::ops::function::FnMut<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}<'_0, '_1, '_2, T0>}]
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 426:45-426:71 -/
+@[reducible]
+def
+  model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str) :
+  core.ops.function.FnMut
+  (model.request_state.RequestStateCodec.with_rs1_fallback.closure T0) String
+  Bool := {
+  FnOnceInst :=
+    model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool
+    coreconvertAsRefT0StrInst
+  call_mut :=
+    model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool.call_mut
+    coreconvertAsRefT0StrInst
+}
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 410:4-432:5
+    Visibility: public -/
+def model.request_state.RequestStateCodec.with_rs1_fallback
+  {T0 : Type _} (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str)
+  (self : model.request_state.RequestStateCodec) (kid : T0) :
+  Result (core.result.Result model.request_state.RequestStateCodec
+    model.request_state.RequestStateError)
+  := do
+  let kid1 ← coreconvertAsRefT0StrInst.as_ref kid
+  match self.keys with
+  | model.request_state.Keys.Single _ =>
+    ok (core.result.Result.Err
+      (model.request_state.RequestStateError.InvalidKeyring (toStr
+      "rs1 fallbacks require a keyring")))
+  | model.request_state.Keys.Ring keys sm rs1_fallbacks =>
+    let b ←
+      std.collections.hash.map.HashMap.contains_key
+        alloc.string.String.Insts.CoreCmpEq
+        alloc.string.String.Insts.CoreHashHash
+        std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+        alloc.string.String.Insts.CoreBorrowBorrowStr Str.Insts.CoreHashHash
+        Str.Insts.CoreCmpEq keys kid1
+    if b
+    then
+      let s := alloc.vec.Vec.deref rs1_fallbacks
+      let i ← core.slice.Slice.iter s
+      let (b1, _) ←
+        core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any
+          (model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool
+          coreconvertAsRefT0StrInst) i kid1
+      if b1
+      then ok (core.result.Result.Ok { keys := self.keys })
+      else
+        let s1 ← Str.Insts.AllocBorrowToOwnedString.to_owned kid1
+        let rs1_fallbacks1 ← alloc.vec.Vec.push rs1_fallbacks s1
+        ok (core.result.Result.Ok
+          { keys := (model.request_state.Keys.Ring keys sm rs1_fallbacks1) })
+    else
+      ok (core.result.Result.Err
+        (model.request_state.RequestStateError.InvalidKeyring (toStr
+        "rs1 fallback key id is not present in the keyring")))
+
+/-- [rmcp::model::request_state_wire::frame]:
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 239:0-244:1
+    Visibility: public -/
+def model.request_state_wire.frame
+  (expiry : Std.I64) (payload : Slice Std.U8) :
+  Result (alloc.vec.Vec Std.U8)
+  := do
+  let i ← lift (IScalar.hcast .U64 expiry)
+  let a ← lift (core.num.U64.to_be_bytes i)
+  let s ← lift (Array.to_slice a)
+  let body ←
+    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 (alloc.vec.Vec.new
+      Std.U8) s
+  alloc.vec.Vec.extend_from_slice core.clone.CloneU8 body payload
+
+/-- [rmcp::model::request_state_wire::DOMAIN_V2]
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 15:0-15:59
+    Visibility: public -/
+@[global_simps, irreducible]
+def model.request_state_wire.DOMAIN_V2 : Slice Std.U8 :=
+  Array.to_slice
+    (Array.make 26#usize [
+      114#u8, 109#u8, 99#u8, 112#u8, 47#u8, 109#u8, 114#u8, 116#u8, 114#u8,
+      47#u8, 114#u8, 101#u8, 113#u8, 117#u8, 101#u8, 115#u8, 116#u8, 45#u8,
+      115#u8, 116#u8, 97#u8, 116#u8, 101#u8, 47#u8, 118#u8, 50#u8
+      ])
+
+/-- [rmcp::model::request_state_wire::transcript_v2]:
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 193:0-202:1
+    Visibility: public -/
+def model.request_state_wire.transcript_v2
+  (kid : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8) :
+  Result (alloc.vec.Vec Std.U8)
+  := do
+  let t ←
+    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 (alloc.vec.Vec.new
+      Std.U8) model.request_state_wire.DOMAIN_V2
+  let i := Slice.len kid
+  let i1 ← lift (UScalar.cast .U64 i)
+  let a ← lift (core.num.U64.to_be_bytes i1)
+  let s ← lift (Array.to_slice a)
+  let t1 ← alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t s
+  let t2 ← alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t1 kid
+  let i2 := Slice.len associated_data
+  let i3 ← lift (UScalar.cast .U64 i2)
+  let a1 ← lift (core.num.U64.to_be_bytes i3)
+  let s1 ← lift (Array.to_slice a1)
+  let t3 ← alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t2 s1
+  let t4 ←
+    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t3 associated_data
+  alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t4 body
+
+/-- [rmcp::model::request_state_wire::b64_len]:
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 33:0-36:1
+    Visibility: public -/
+def model.request_state_wire.b64_len (len : Std.Usize) : Result Std.Usize := do
+  let i ← len / 3#usize
+  let full ← i * 4#usize
+  let i1 ← len % 3#usize
+  if i1 = 0#usize
+  then ok full
+  else full + 4#usize
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::b64_len]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 729:4-731:5 -/
+def model.request_state.RequestStateCodec.b64_len
+  (len : Std.Usize) : Result Std.Usize := do
+  model.request_state_wire.b64_len len
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_rs2]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 589:4-609:5 -/
+def model.request_state.RequestStateCodec.seal_rs2
+  (kid : Str) (key : Slice Std.U8) (associated_data : Slice Std.U8)
+  (body : Slice Std.U8) :
+  Result String
+  := do
+  let s ← core.str.Str.as_bytes kid
+  let v ← model.request_state_wire.transcript_v2 s associated_data body
+  let s1 := alloc.vec.Vec.deref v
+  let tag ← model.request_state_wire.prim.hmac_sha256 key s1
+  let i ← core.str.Str.len model.request_state.VERSION_V2
+  let i1 ← i + 3#usize
+  let i2 ← core.str.Str.len kid
+  let i3 ← model.request_state.RequestStateCodec.b64_len i2
+  let i4 ← i1 + i3
+  let i5 := Slice.len body
+  let i6 ← model.request_state.RequestStateCodec.b64_len i5
+  let i7 ← i4 + i6
+  let s2 ← lift (Array.to_slice tag)
+  let i8 := Slice.len s2
+  let i9 ← model.request_state.RequestStateCodec.b64_len i8
+  let i10 ← i7 + i9
+  let out ← alloc.string.String.with_capacity i10
+  let out1 ← alloc.string.String.push_str out model.request_state.VERSION_V2
+  let out2 ← alloc.string.String.push out1 '.'
+  let out3 ← model.request_state_wire.prim.b64_encode_into s out2
+  let out4 ← alloc.string.String.push out3 '.'
+  let out5 ← model.request_state_wire.prim.b64_encode_into body out4
+  let out6 ← alloc.string.String.push out5 '.'
+  let s3 ← lift (Array.to_slice tag)
+  model.request_state_wire.prim.b64_encode_into s3 out6
+
+/-- [rmcp::model::request_state_wire::DOMAIN_V1]
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 13:0-13:59
+    Visibility: public -/
+@[global_simps, irreducible]
+def model.request_state_wire.DOMAIN_V1 : Slice Std.U8 :=
+  Array.to_slice
+    (Array.make 26#usize [
+      114#u8, 109#u8, 99#u8, 112#u8, 47#u8, 109#u8, 114#u8, 116#u8, 114#u8,
+      47#u8, 114#u8, 101#u8, 113#u8, 117#u8, 101#u8, 115#u8, 116#u8, 45#u8,
+      115#u8, 116#u8, 97#u8, 116#u8, 101#u8, 47#u8, 118#u8, 49#u8
+      ])
+
+/-- [rmcp::model::request_state_wire::transcript_v1]:
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 183:0-190:1
+    Visibility: public -/
+def model.request_state_wire.transcript_v1
+  (associated_data : Slice Std.U8) (body : Slice Std.U8) :
+  Result (alloc.vec.Vec Std.U8)
+  := do
+  let t ←
+    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 (alloc.vec.Vec.new
+      Std.U8) model.request_state_wire.DOMAIN_V1
+  let i := Slice.len associated_data
+  let i1 ← lift (UScalar.cast .U64 i)
+  let a ← lift (core.num.U64.to_be_bytes i1)
+  let s ← lift (Array.to_slice a)
+  let t1 ← alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t s
+  let t2 ←
+    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t1 associated_data
+  alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t2 body
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_rs1]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 576:4-587:5 -/
+def model.request_state.RequestStateCodec.seal_rs1
+  (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8) :
+  Result String
+  := do
+  let v ← model.request_state_wire.transcript_v1 associated_data body
+  let s := alloc.vec.Vec.deref v
+  let tag ← model.request_state_wire.prim.hmac_sha256 key s
+  let i ← core.str.Str.len model.request_state.VERSION_V1
+  let i1 ← i + 2#usize
+  let i2 := Slice.len body
+  let i3 ← model.request_state.RequestStateCodec.b64_len i2
+  let i4 ← i1 + i3
+  let s1 ← lift (Array.to_slice tag)
+  let i5 := Slice.len s1
+  let i6 ← model.request_state.RequestStateCodec.b64_len i5
+  let i7 ← i4 + i6
+  let out ← alloc.string.String.with_capacity i7
+  let out1 ← alloc.string.String.push_str out model.request_state.VERSION_V1
+  let out2 ← alloc.string.String.push out1 '.'
+  let out3 ← model.request_state_wire.prim.b64_encode_into body out2
+  let out4 ← alloc.string.String.push out3 '.'
+  let s2 ← lift (Array.to_slice tag)
+  model.request_state_wire.prim.b64_encode_into s2 out4
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_at]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 533:4-561:5 -/
+def model.request_state.RequestStateCodec.seal_at
+  (self : model.request_state.RequestStateCodec) (payload : Slice Std.U8)
+  (options : model.request_state.SealOptions) (now_ms : Std.I64) :
+  Result String
+  := do
+  match options.ttl with
+  | none =>
+    let body ← model.request_state_wire.frame 0#i64 payload
+    match self.keys with
+    | model.request_state.Keys.Single key =>
+      let v ←
+        zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref
+          (alloc.vec.Vec.Insts.ZeroizeZeroize (zeroize.Zeroize.Blanket
+          U8.Insts.ZeroizeDefaultIsZeroes)) key
+      let s := alloc.vec.Vec.deref v
+      let s1 := alloc.vec.Vec.deref body
+      model.request_state.RequestStateCodec.seal_rs1 s options.associated_data
+        s1
+    | model.request_state.Keys.Ring keys seal_mode _ =>
+      match seal_mode with
+      | model.request_state.SealMode.Rs1 key_id =>
+        let o ←
+          std.collections.hash.map.HashMap.get
+            alloc.string.String.Insts.CoreCmpEq
+            alloc.string.String.Insts.CoreHashHash
+            std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+            (core.borrow.Borrow.Blanket String)
+            alloc.string.String.Insts.CoreHashHash
+            alloc.string.String.Insts.CoreCmpEq keys key_id
+        let z ←
+          core.option.Option.expect o (toStr "validated rs1 signing key")
+        let v ←
+          zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref
+            (alloc.vec.Vec.Insts.ZeroizeZeroize (zeroize.Zeroize.Blanket
+            U8.Insts.ZeroizeDefaultIsZeroes)) z
+        let s := alloc.vec.Vec.deref v
+        let s1 := alloc.vec.Vec.deref body
+        model.request_state.RequestStateCodec.seal_rs1 s
+          options.associated_data s1
+      | model.request_state.SealMode.Rs2 key_id =>
+        let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref key_id
+        let o ←
+          std.collections.hash.map.HashMap.get
+            alloc.string.String.Insts.CoreCmpEq
+            alloc.string.String.Insts.CoreHashHash
+            std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+            (core.borrow.Borrow.Blanket String)
+            alloc.string.String.Insts.CoreHashHash
+            alloc.string.String.Insts.CoreCmpEq keys key_id
+        let z ←
+          core.option.Option.expect o (toStr "validated rs2 signing key")
+        let v ←
+          zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref
+            (alloc.vec.Vec.Insts.ZeroizeZeroize (zeroize.Zeroize.Blanket
+            U8.Insts.ZeroizeDefaultIsZeroes)) z
+        let s1 := alloc.vec.Vec.deref v
+        let s2 := alloc.vec.Vec.deref body
+        model.request_state.RequestStateCodec.seal_rs2 s s1
+          options.associated_data s2
+  | some ttl =>
+    let i ← core.time.Duration.as_millis ttl
+    let i1 ← lift (IScalar.hcast .U128 core.num.I64.MAX)
+    let i2 ← lift (core.cmp.impls.OrdU128.min i i1)
+    let i3 ← lift (UScalar.hcast .I64 i2)
+    let expiry ← lift (core.num.I64.saturating_add now_ms i3)
+    let body ← model.request_state_wire.frame expiry payload
+    match self.keys with
+    | model.request_state.Keys.Single key =>
+      let v ←
+        zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref
+          (alloc.vec.Vec.Insts.ZeroizeZeroize (zeroize.Zeroize.Blanket
+          U8.Insts.ZeroizeDefaultIsZeroes)) key
+      let s := alloc.vec.Vec.deref v
+      let s1 := alloc.vec.Vec.deref body
+      model.request_state.RequestStateCodec.seal_rs1 s options.associated_data
+        s1
+    | model.request_state.Keys.Ring keys seal_mode _ =>
+      match seal_mode with
+      | model.request_state.SealMode.Rs1 key_id =>
+        let o ←
+          std.collections.hash.map.HashMap.get
+            alloc.string.String.Insts.CoreCmpEq
+            alloc.string.String.Insts.CoreHashHash
+            std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+            (core.borrow.Borrow.Blanket String)
+            alloc.string.String.Insts.CoreHashHash
+            alloc.string.String.Insts.CoreCmpEq keys key_id
+        let z ←
+          core.option.Option.expect o (toStr "validated rs1 signing key")
+        let v ←
+          zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref
+            (alloc.vec.Vec.Insts.ZeroizeZeroize (zeroize.Zeroize.Blanket
+            U8.Insts.ZeroizeDefaultIsZeroes)) z
+        let s := alloc.vec.Vec.deref v
+        let s1 := alloc.vec.Vec.deref body
+        model.request_state.RequestStateCodec.seal_rs1 s
+          options.associated_data s1
+      | model.request_state.SealMode.Rs2 key_id =>
+        let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref key_id
+        let o ←
+          std.collections.hash.map.HashMap.get
+            alloc.string.String.Insts.CoreCmpEq
+            alloc.string.String.Insts.CoreHashHash
+            std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+            (core.borrow.Borrow.Blanket String)
+            alloc.string.String.Insts.CoreHashHash
+            alloc.string.String.Insts.CoreCmpEq keys key_id
+        let z ←
+          core.option.Option.expect o (toStr "validated rs2 signing key")
+        let v ←
+          zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref
+            (alloc.vec.Vec.Insts.ZeroizeZeroize (zeroize.Zeroize.Blanket
+            U8.Insts.ZeroizeDefaultIsZeroes)) z
+        let s1 := alloc.vec.Vec.deref v
+        let s2 := alloc.vec.Vec.deref body
+        model.request_state.RequestStateCodec.seal_rs2 s s1
+          options.associated_data s2
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_with]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 441:4-443:5
+    Visibility: public -/
+def model.request_state.RequestStateCodec.seal_with
+  (self : model.request_state.RequestStateCodec) (payload : Slice Std.U8)
+  (options : model.request_state.SealOptions) :
+  Result String
+  := do
+  let i ← model.request_state.RequestStateCodec.now_ms
+  model.request_state.RequestStateCodec.seal_at self payload options i
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 436:4-438:5
+    Visibility: public -/
+def model.request_state.RequestStateCodec.seal
+  (self : model.request_state.RequestStateCodec) (payload : Slice Std.U8) :
+  Result String
+  := do
+  let so ← model.request_state.SealOptions.Insts.CoreDefaultDefault.default
+  model.request_state.RequestStateCodec.seal_with self payload so
 
 /-- [rmcp::model::request_state_wire::next_dot]: loop body 0:
     Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 82:4-89:1
@@ -562,43 +1332,6 @@ def model.request_state_wire.version_of
     then ok (some model.request_state_wire.Version.V2)
     else ok none
 
-/-- [rmcp::model::request_state_wire::DOMAIN_V2]
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 15:0-15:59
-    Visibility: public -/
-@[global_simps, irreducible]
-def model.request_state_wire.DOMAIN_V2 : Slice Std.U8 :=
-  Array.to_slice
-    (Array.make 26#usize [
-      114#u8, 109#u8, 99#u8, 112#u8, 47#u8, 109#u8, 114#u8, 116#u8, 114#u8,
-      47#u8, 114#u8, 101#u8, 113#u8, 117#u8, 101#u8, 115#u8, 116#u8, 45#u8,
-      115#u8, 116#u8, 97#u8, 116#u8, 101#u8, 47#u8, 118#u8, 50#u8
-      ])
-
-/-- [rmcp::model::request_state_wire::transcript_v2]:
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 193:0-202:1
-    Visibility: public -/
-def model.request_state_wire.transcript_v2
-  (kid : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8) :
-  Result (alloc.vec.Vec Std.U8)
-  := do
-  let t ←
-    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 (alloc.vec.Vec.new
-      Std.U8) model.request_state_wire.DOMAIN_V2
-  let i := Slice.len kid
-  let i1 ← lift (UScalar.cast .U64 i)
-  let a ← lift (core.num.U64.to_be_bytes i1)
-  let s ← lift (Array.to_slice a)
-  let t1 ← alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t s
-  let t2 ← alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t1 kid
-  let i2 := Slice.len associated_data
-  let i3 ← lift (UScalar.cast .U64 i2)
-  let a1 ← lift (core.num.U64.to_be_bytes i3)
-  let s1 ← lift (Array.to_slice a1)
-  let t3 ← alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t2 s1
-  let t4 ←
-    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t3 associated_data
-  alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t4 body
-
 /-- [rmcp::model::request_state_wire::component_count]: loop body 0:
     Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 95:4-100:5
     Visibility: public -/
@@ -675,26 +1408,6 @@ def model.request_state_wire.parse_rs2
       ok (some { kid := s2, body := s3, tag := s4 })
     else ok none
 
-/-- [rmcp::model::request_state_wire::MAX_KID_LEN]
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 21:0-21:35
-    Visibility: public -/
-@[global_simps, irreducible]
-def model.request_state_wire.MAX_KID_LEN : Std.Usize := 255#usize
-
-/-- [rmcp::model::request_state_wire::check_kid_len]:
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 54:0-62:1
-    Visibility: public -/
-def model.request_state_wire.check_kid_len
-  (len : Std.Usize) :
-  Result (core.result.Result Unit model.request_state_wire.KidError)
-  := do
-  if len = 0#usize
-  then ok (core.result.Result.Err model.request_state_wire.KidError.Empty)
-  else
-    if len > model.request_state_wire.MAX_KID_LEN
-    then ok (core.result.Result.Err model.request_state_wire.KidError.TooLong)
-    else ok (core.result.Result.Ok ())
-
 /-- [rmcp::model::request_state_wire::is_expired]:
     Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 210:0-212:1
     Visibility: public -/
@@ -753,7 +1466,7 @@ def model.request_state_wire.open_frame
       ok (core.result.Result.Ok s)
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_authenticated_body]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 695:4-702:5 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 699:4-706:5 -/
 def model.request_state.RequestStateCodec.open_authenticated_body
   (body : alloc.vec.Vec Std.U8) (now_ms : Std.I64) :
   Result (core.result.Result (alloc.vec.Vec Std.U8)
@@ -774,7 +1487,7 @@ def model.request_state.RequestStateCodec.open_authenticated_body
       ok (core.result.Result.Err model.request_state.RequestStateError.Expired)
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{impl core::ops::function::FnOnce<(alloc::string::FromUtf8Error,), rmcp::model::request_state::RequestStateError> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{closure}}::call_once]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 676:49-676:84 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 680:49-680:84 -/
 def
   model.request_state.RequestStateCodec.open_rs2_at.closure.Insts.CoreOpsFunctionFnOnceTupleFromUtf8ErrorRequestStateError.call_once
   (c : model.request_state.RequestStateCodec.open_rs2_at.closure)
@@ -784,7 +1497,7 @@ def
   ok model.request_state.RequestStateError.InvalidKeyId
 
 /-- Trait implementation: [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{impl core::ops::function::FnOnce<(alloc::string::FromUtf8Error,), rmcp::model::request_state::RequestStateError> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{closure}}]
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 676:49-676:84 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 680:49-680:84 -/
 @[reducible]
 def
   model.request_state.RequestStateCodec.open_rs2_at.closure.Insts.CoreOpsFunctionFnOnceTupleFromUtf8ErrorRequestStateError
@@ -796,7 +1509,7 @@ def
 }
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 659:4-693:5 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 663:4-697:5 -/
 def model.request_state.RequestStateCodec.open_rs2_at
   (self : model.request_state.RequestStateCodec) (sealed : Str)
   (associated_data : Slice Std.U8) (now_ms : Std.I64) :
@@ -915,37 +1628,6 @@ def model.request_state.RequestStateCodec.open_rs2_at
           (alloc.vec.Vec Std.U8) (core.convert.FromSame
           model.request_state.RequestStateError) residual
 
-/-- [rmcp::model::request_state_wire::DOMAIN_V1]
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 13:0-13:59
-    Visibility: public -/
-@[global_simps, irreducible]
-def model.request_state_wire.DOMAIN_V1 : Slice Std.U8 :=
-  Array.to_slice
-    (Array.make 26#usize [
-      114#u8, 109#u8, 99#u8, 112#u8, 47#u8, 109#u8, 114#u8, 116#u8, 114#u8,
-      47#u8, 114#u8, 101#u8, 113#u8, 117#u8, 101#u8, 115#u8, 116#u8, 45#u8,
-      115#u8, 116#u8, 97#u8, 116#u8, 101#u8, 47#u8, 118#u8, 49#u8
-      ])
-
-/-- [rmcp::model::request_state_wire::transcript_v1]:
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 183:0-190:1
-    Visibility: public -/
-def model.request_state_wire.transcript_v1
-  (associated_data : Slice Std.U8) (body : Slice Std.U8) :
-  Result (alloc.vec.Vec Std.U8)
-  := do
-  let t ←
-    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 (alloc.vec.Vec.new
-      Std.U8) model.request_state_wire.DOMAIN_V1
-  let i := Slice.len associated_data
-  let i1 ← lift (UScalar.cast .U64 i)
-  let a ← lift (core.num.U64.to_be_bytes i1)
-  let s ← lift (Array.to_slice a)
-  let t1 ← alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t s
-  let t2 ←
-    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t1 associated_data
-  alloc.vec.Vec.extend_from_slice core.clone.CloneU8 t2 body
-
 /-- [rmcp::model::request_state_wire::parse_rs1]:
     Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 137:0-150:1
     Visibility: public -/
@@ -979,7 +1661,7 @@ def model.request_state_wire.parse_rs1
     else ok none
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::rs1_fallbacks_verify]: loop body 0:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 651:8-655:9 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 655:8-659:9 -/
 @[rust_loop_body]
 def model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body
   (keys : std.collections.hash.map.HashMap String (zeroize.Zeroizing
@@ -1011,7 +1693,7 @@ def model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body
     ok (cont (iter1, verified || is_match))
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::rs1_fallbacks_verify]: loop 0:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 651:8-655:9 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 655:8-659:9 -/
 @[rust_loop]
 def model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop
   (iter : core.slice.iter.Iter String)
@@ -1027,7 +1709,7 @@ def model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop
     (iter, verified)
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::rs1_fallbacks_verify]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 644:4-657:5 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 648:4-661:5 -/
 def model.request_state.RequestStateCodec.rs1_fallbacks_verify
   (keys : std.collections.hash.map.HashMap String (zeroize.Zeroizing
   (alloc.vec.Vec Std.U8)) std.hash.random.RandomState alloc.alloc.Global)
@@ -1042,7 +1724,7 @@ def model.request_state.RequestStateCodec.rs1_fallbacks_verify
     transcript tag false
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs1_at]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 607:4-641:5 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 611:4-645:5 -/
 def model.request_state.RequestStateCodec.open_rs1_at
   (self : model.request_state.RequestStateCodec) (sealed : Str)
   (associated_data : Slice Std.U8) (now_ms : Std.I64) :
@@ -1146,7 +1828,7 @@ def model.request_state.RequestStateCodec.open_rs1_at
             model.request_state.RequestStateError) residual
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_at]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 559:4-570:5 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 563:4-574:5 -/
 def model.request_state.RequestStateCodec.open_at
   (self : model.request_state.RequestStateCodec) (sealed : Str)
   (associated_data : Slice Std.U8) (now_ms : Std.I64) :
@@ -1191,102 +1873,46 @@ def model.request_state.RequestStateCodec.open
   let s ← lift (Array.to_slice (Std.Array.empty Std.U8))
   model.request_state.RequestStateCodec.open_with self sealed s
 
-/-- [rmcp::model::request_state_wire::b64_len]:
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 33:0-36:1
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_json_with]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 521:4-531:5
     Visibility: public -/
-def model.request_state_wire.b64_len (len : Std.Usize) : Result Std.Usize := do
-  let i ← len / 3#usize
-  let full ← i * 4#usize
-  let i1 ← len % 3#usize
-  if i1 = 0#usize
-  then ok full
-  else full + 4#usize
-
-/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::b64_len]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 725:4-727:5 -/
-def model.request_state.RequestStateCodec.b64_len
-  (len : Std.Usize) : Result Std.Usize := do
-  model.request_state_wire.b64_len len
-
-/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_rs1]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 572:4-583:5 -/
-def model.request_state.RequestStateCodec.seal_rs1
-  (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8) :
-  Result String
+def model.request_state.RequestStateCodec.open_json_with
+  {T : Type _} (serde_coredeDeserializeOwnedInst :
+  serde_core.de.DeserializeOwned T)
+  (self : model.request_state.RequestStateCodec) (sealed : Str)
+  (associated_data : Slice Std.U8) :
+  Result (core.result.Result T model.request_state.RequestStateError)
   := do
-  let v ← model.request_state_wire.transcript_v1 associated_data body
-  let s := alloc.vec.Vec.deref v
-  let tag ← model.request_state_wire.prim.hmac_sha256 key s
-  let i ← core.str.Str.len model.request_state.VERSION_V1
-  let i1 ← i + 2#usize
-  let i2 := Slice.len body
-  let i3 ← model.request_state.RequestStateCodec.b64_len i2
-  let i4 ← i1 + i3
-  let s1 ← lift (Array.to_slice tag)
-  let i5 := Slice.len s1
-  let i6 ← model.request_state.RequestStateCodec.b64_len i5
-  let i7 ← i4 + i6
-  let out ← alloc.string.String.with_capacity i7
-  let out1 ← alloc.string.String.push_str out model.request_state.VERSION_V1
-  let out2 ← alloc.string.String.push out1 '.'
-  let out3 ← model.request_state_wire.prim.b64_encode_into body out2
-  let out4 ← alloc.string.String.push out3 '.'
-  let s2 ← lift (Array.to_slice tag)
-  model.request_state_wire.prim.b64_encode_into s2 out4
-
-/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_rs2]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 585:4-605:5 -/
-def model.request_state.RequestStateCodec.seal_rs2
-  (kid : Str) (key : Slice Std.U8) (associated_data : Slice Std.U8)
-  (body : Slice Std.U8) :
-  Result String
-  := do
-  let s ← core.str.Str.as_bytes kid
-  let v ← model.request_state_wire.transcript_v2 s associated_data body
-  let s1 := alloc.vec.Vec.deref v
-  let tag ← model.request_state_wire.prim.hmac_sha256 key s1
-  let i ← core.str.Str.len model.request_state.VERSION_V2
-  let i1 ← i + 3#usize
-  let i2 ← core.str.Str.len kid
-  let i3 ← model.request_state.RequestStateCodec.b64_len i2
-  let i4 ← i1 + i3
-  let i5 := Slice.len body
-  let i6 ← model.request_state.RequestStateCodec.b64_len i5
-  let i7 ← i4 + i6
-  let s2 ← lift (Array.to_slice tag)
-  let i8 := Slice.len s2
-  let i9 ← model.request_state.RequestStateCodec.b64_len i8
-  let i10 ← i7 + i9
-  let out ← alloc.string.String.with_capacity i10
-  let out1 ← alloc.string.String.push_str out model.request_state.VERSION_V2
-  let out2 ← alloc.string.String.push out1 '.'
-  let out3 ← model.request_state_wire.prim.b64_encode_into s out2
-  let out4 ← alloc.string.String.push out3 '.'
-  let out5 ← model.request_state_wire.prim.b64_encode_into body out4
-  let out6 ← alloc.string.String.push out5 '.'
-  let s3 ← lift (Array.to_slice tag)
-  model.request_state_wire.prim.b64_encode_into s3 out6
-
-/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::validate_config_kid]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 714:4-722:5 -/
-def model.request_state.RequestStateCodec.validate_config_kid
-  (kid : Str) :
-  Result (core.result.Result Unit model.request_state.RequestStateError)
-  := do
-  let i ← core.str.Str.len kid
-  let r ← model.request_state_wire.check_kid_len i
-  match r with
-  | core.result.Result.Ok _ => ok (core.result.Result.Ok ())
-  | core.result.Result.Err ke =>
-    match ke with
-    | model.request_state_wire.KidError.Empty =>
+  let r ←
+    model.request_state.RequestStateCodec.open_with self sealed associated_data
+  let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let s := alloc.vec.Vec.deref val
+    let r1 ←
+      serde_json.de.from_slice serde_coredeDeserializeOwnedInst.DeserializeInst
+        s
+    match r1 with
+    | core.result.Result.Ok value => ok (core.result.Result.Ok value)
+    | core.result.Result.Err error =>
       ok (core.result.Result.Err
-        (model.request_state.RequestStateError.InvalidKeyring
-        model.request_state.KID_EMPTY_MSG))
-    | model.request_state_wire.KidError.TooLong =>
-      ok (core.result.Result.Err
-        (model.request_state.RequestStateError.InvalidKeyring
-        model.request_state.KID_TOO_LONG_MSG))
+        (model.request_state.RequestStateError.Deserialization error))
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual T
+      (core.convert.FromSame model.request_state.RequestStateError) residual
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_json]:
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 509:4-511:5
+    Visibility: public -/
+def model.request_state.RequestStateCodec.open_json
+  {T : Type _} (serde_coredeDeserializeOwnedInst :
+  serde_core.de.DeserializeOwned T)
+  (self : model.request_state.RequestStateCodec) (sealed : Str) :
+  Result (core.result.Result T model.request_state.RequestStateError)
+  := do
+  let s ← lift (Array.to_slice (Std.Array.empty Std.U8))
+  model.request_state.RequestStateCodec.open_json_with
+    serde_coredeDeserializeOwnedInst self sealed s
 
 /-- [rmcp::model::request_state_wire::TAG_LEN]
     Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 25:0-25:30
@@ -1638,21 +2264,6 @@ impl_def model.request_state_wire.FrameError.Insts.CoreCmpEq : core.cmp.Eq
   assert_fields_are_eq := core.cmp.Eq.assert_fields_are_eq.default
     model.request_state_wire.FrameError.Insts.CoreCmpEq
 }
-
-/-- [rmcp::model::request_state_wire::frame]:
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 239:0-244:1
-    Visibility: public -/
-def model.request_state_wire.frame
-  (expiry : Std.I64) (payload : Slice Std.U8) :
-  Result (alloc.vec.Vec Std.U8)
-  := do
-  let i ← lift (IScalar.hcast .U64 expiry)
-  let a ← lift (core.num.U64.to_be_bytes i)
-  let s ← lift (Array.to_slice a)
-  let body ←
-    alloc.vec.Vec.extend_from_slice core.clone.CloneU8 (alloc.vec.Vec.new
-      Std.U8) s
-  alloc.vec.Vec.extend_from_slice core.clone.CloneU8 body payload
 
 /-- [rmcp::model::task::{rmcp::model::task::TaskStatus}::is_terminal]:
     Source: 'crates/rmcp/src/model/task.rs', lines 38:4-40:5

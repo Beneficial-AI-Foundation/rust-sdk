@@ -118,7 +118,11 @@ A patch is a small, behaviour-preserving edit applied only to the copy of the cr
 trusted"); since 2026-11-23 (D2 fallback, human decision) there is one,
 `formal/trusted/patches/01-request-state-wire.patch`, which carries the `request_state_wire`
 refactor and its tests on upstream `7caec76`, so every Phase 1 target's (W/E) linkage is `patch-01`
-(proved on upstream `7caec76` plus translation patch 01). Phase 2 targets (M/T/A) need no patch;
+(proved on upstream `7caec76` plus translation patch 01). Since 2026-11-24 (human decisions:
+targets R09–R15, variant A; reviewed and signed off 2026-11-24; specs pending) a third,
+`formal/trusted/patches/03-request-state-public.patch` (+6/−2 non-test lines in
+`request_state.rs`, no test change), lets `seal`, `seal_with` and `open_json*` translate; see
+`formal/docs/STATUS.md`, "Trusted base". Phase 2 targets (M/T/A) need no patch;
 their `ORIGINAL` linkage holds only while `scripts/check-original-linkage.sh` passes (plan Section 19). If one is needed:
 
 1. Run `scripts/apply-patches.sh` so that `.llbc/work/` holds the patched copy.
@@ -165,7 +169,7 @@ refused. A fake `rustc` that prints exactly these lines is not caught by this ch
 
 The dependency versions that the axioms rely on are pinned in `scripts/aeneas-translate.sh`
 (`PINNED_DEPS`: `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`, `zeroize 1.9.2`,
-`chrono 0.4.45`, `serde_json 1.0.154`). The script runs one `cargo tree` over the whole dependency
+`chrono 0.4.45`, `serde_json 1.0.154`, and since translation patch 03 `serde_core 1.0.229`). The script runs one `cargo tree` over the whole dependency
 tree of `rmcp` in the translated configuration and fails if any dependency does not come from
 crates.io (path, git or other registry), and checks the pins on the normal-edge tree of `rmcp` in that configuration (`cargo tree --prefix depth`).
 Since S21 (human decision 2026-11-23) the version that counts is the one `rmcp` itself uses: a
@@ -496,7 +500,9 @@ model) is declared by hand in `formal/trusted/Rmcp/FunsExternal.lean` (types in
   opaque value: `def hmac_sha256 k m := ok (hmacSha256 k m)` with `opaque hmacSha256`.
 - **No axioms in `trusted/`** (human decision 2026-11-23). Every external is a definition or a
   `structure`; what cannot be computed is an `opaque` constant (`hmacSha256`, `sipHash13`,
-  `nowMs`, `SerdeJsonErrorImpl`, and since S26/S27 the abstract type `SerdeJsonValue`), which adds
+  `nowMs`, since S26/S27 the abstract type `SerdeJsonValue`, and since translation patch 03
+  `randomState`, `serdeJsonFromSlice` and the carrier `SerdeJsonErrorImplCarrier`, which replaced
+  the opaque type `SerdeJsonErrorImpl`), which adds
   no axiom. Laws such as `b64Decode (b64 x) = some x`
   are theorems in `formal/proofs/Proofs/External/`, and `trusted/axioms.lock` stays empty. Adding
   an axiom again is a human decision.

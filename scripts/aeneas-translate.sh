@@ -102,7 +102,8 @@ BUILD_RS_SHA256="31b905abf91292bab290271e993e347e06a1944e6305f742f69dbd01e6b8934
 
 # Dependency versions the external models of plan Section 4 rely on: hmac, sha2, base64
 # resolved at S03; digest, zeroize, chrono, serde_json added at S08-S09, whose models cite their
-# sources (formal/trusted/evidence/README.md).
+# sources (formal/trusted/evidence/README.md); serde_core added with translation patch 03
+# (2026-11-24: opaque crate whose trait declarations, e.g. DeserializeOwned, are translated).
 PINNED_DEPS=(
   "hmac 0.13.0"
   "sha2 0.11.1"
@@ -111,6 +112,7 @@ PINNED_DEPS=(
   "zeroize 1.9.2"
   "chrono 0.4.45"
   "serde_json 1.0.154"
+  "serde_core 1.0.229"
 )
 
 # Lean names of the targets (plan Section 2): each needs a `def` in Funs.lean.

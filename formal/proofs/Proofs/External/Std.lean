@@ -447,13 +447,16 @@ theorem alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq {Z : Type} (inst : rmcp.ze
 /-! ## Clock
 
 No statement about the function `RequestStateCodec::now_ms` (nor the functions `open`,
-`open_with`; Lean `rmcp.model.request_state.RequestStateCodec.{now_ms, open, open_with}`; a
+`open_with`, `seal`, `seal_with`; Lean
+`rmcp.model.request_state.RequestStateCodec.{now_ms, open, open_with, seal, seal_with}`; a
 variable named `now_ms` is not covered): the clock is one
 opaque constant `ExtModel.nowMs`, which makes every reader pure, so a statement about it could
 relate readings in a way the Rust code does not guarantee (review rule, `formal/README.md`,
-"Trusted base"). Statements about opening use `open_at` with an explicit time, except the spec
-theorems of the public `open`/`open_with` and their restatements (human decision 2026-11-24;
-wording in `formal/README.md`, "Trusted base"). -/
+"Trusted base"). Statements about opening use `open_at`, and about sealing `seal_at`, with an
+explicit time, except the spec theorems of the public `open`/`open_with` (postcondition
+`openAt … ExtModel.nowMs.val`) and `seal`/`seal_with` (result that of `seal_at` at
+`ExtModel.nowMs`) and their restatements (human decisions 2026-11-24; wording in
+`formal/README.md`, "Trusted base"). -/
 
 /-! ## Phase 2: slices and ranges -/
 

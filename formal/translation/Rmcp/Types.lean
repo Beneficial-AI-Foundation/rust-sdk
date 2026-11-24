@@ -46,6 +46,21 @@ structure core.str.traits.FromStr (Self : Type _) (Self_Err : Type _) where
 structure core.slice.SlicePattern (Self : Type _) (Self_Item : Type _) where
   as_slice : Self → Result (Slice Self_Item)
 
+/-- [std::collections::hash::map::Entry]
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1949:0-1954:1
+    Name pattern: [std::collections::hash::map::Entry]
+    Visibility: public -/
+@[discriminant isize, rust_type "std::collections::hash::map::Entry"
+  (mutRegions := #[0])]
+inductive std.collections.hash.map.Entry (K : Type _) (V : Type _) (A : Type _)
+  where
+| Occupied :
+  std.collections.hash.map.OccupiedEntry K V A →
+  std.collections.hash.map.Entry K V A
+| Vacant :
+  std.collections.hash.map.VacantEntry K V A →
+  std.collections.hash.map.Entry K V A
+
 /-- Trait declaration: [alloc::borrow::ToOwned]
     Source: '/rustc/library/alloc/src/borrow.rs', lines 27:0-27:17
     Name pattern: [alloc::borrow::ToOwned]
@@ -64,6 +79,140 @@ structure alloc.borrow.ToOwned (Self : Type _) (Self_Owned : Type _) where
 inductive alloc.borrow.Cow (B : Type _) (Clause0_Owned : Type _) where
 | Borrowed : B → alloc.borrow.Cow B Clause0_Owned
 | Owned : Clause0_Owned → alloc.borrow.Cow B Clause0_Owned
+
+/-- Trait declaration: [serde_core::de::Error]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.229/src/de/mod.rs', lines 165:8-165:48; this code is generated from a macro invocation at: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.229/src/de/mod.rs', lines 304:0-304:45
+    Name pattern: [serde_core::de::Error]
+    Visibility: public -/
+@[rust_trait "serde_core::de::Error" (parentClauses := ["coreerrorErrorInst"])]
+structure serde_core.de.Error (Self : Type _) where
+  coreerrorErrorInst : core.error.Error Self
+  custom : forall {T : Type} (corefmtDisplayInst : core.fmt.Display T), T →
+    Result Self
+
+/-- Trait declaration: [serde_core::de::Visitor]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.229/src/de/mod.rs', lines 1317:0-1317:29
+    Name pattern: [serde_core::de::Visitor]
+    Visibility: public -/
+@[rust_trait "serde_core::de::Visitor"]
+structure serde_core.de.Visitor (Self : Type _) (Self_Value : Type _) where
+  expecting : Self → core.fmt.Formatter → Result ((core.result.Result Unit
+    core.fmt.Error) × core.fmt.Formatter)
+
+/-- Trait declaration: [serde_core::de::Deserializer]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.229/src/de/mod.rs', lines 945:0-945:34
+    Name pattern: [serde_core::de::Deserializer]
+    Visibility: public -/
+@[rust_trait "serde_core::de::Deserializer" (parentClauses := ["ErrorInst"])]
+structure serde_core.de.Deserializer (Self : Type _) (Self_Error : Type _)
+  where
+  ErrorInst : serde_core.de.Error Self_Error
+  deserialize_any : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_bool : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_i8 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_i16 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_i32 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_i64 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_u8 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_u16 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_u32 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_u64 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_f32 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_f64 : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_char : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_str : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_string : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_bytes : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_byte_buf : forall {V : Type} {Clause0_Value : Type} (VisitorInst
+    : serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_option : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_unit : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_unit_struct : forall {V : Type} {Clause0_Value : Type}
+    (VisitorInst : serde_core.de.Visitor V Clause0_Value), Self → Str → V
+    → Result (core.result.Result Clause0_Value Self_Error)
+  deserialize_newtype_struct : forall {V : Type} {Clause0_Value : Type}
+    (VisitorInst : serde_core.de.Visitor V Clause0_Value), Self → Str → V
+    → Result (core.result.Result Clause0_Value Self_Error)
+  deserialize_seq : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_tuple : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → Std.Usize → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_tuple_struct : forall {V : Type} {Clause0_Value : Type}
+    (VisitorInst : serde_core.de.Visitor V Clause0_Value), Self → Str →
+    Std.Usize → V → Result (core.result.Result Clause0_Value Self_Error)
+  deserialize_map : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → V → Result
+    (core.result.Result Clause0_Value Self_Error)
+  deserialize_struct : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → Str → Slice Str → V
+    → Result (core.result.Result Clause0_Value Self_Error)
+  deserialize_enum : forall {V : Type} {Clause0_Value : Type} (VisitorInst :
+    serde_core.de.Visitor V Clause0_Value), Self → Str → Slice Str → V
+    → Result (core.result.Result Clause0_Value Self_Error)
+  deserialize_identifier : forall {V : Type} {Clause0_Value : Type}
+    (VisitorInst : serde_core.de.Visitor V Clause0_Value), Self → V →
+    Result (core.result.Result Clause0_Value Self_Error)
+  deserialize_ignored_any : forall {V : Type} {Clause0_Value : Type}
+    (VisitorInst : serde_core.de.Visitor V Clause0_Value), Self → V →
+    Result (core.result.Result Clause0_Value Self_Error)
+
+/-- Trait declaration: [serde_core::de::Deserialize]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.229/src/de/mod.rs', lines 554:0-554:33
+    Name pattern: [serde_core::de::Deserialize]
+    Visibility: public -/
+@[rust_trait "serde_core::de::Deserialize"]
+structure serde_core.de.Deserialize (Self : Type _) where
+  deserialize : forall {D : Type} {Clause0_Error : Type} (DeserializerInst :
+    serde_core.de.Deserializer D Clause0_Error), D → Result
+    (core.result.Result Self Clause0_Error)
+
+/-- Trait declaration: [serde_core::de::DeserializeOwned]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.229/src/de/mod.rs', lines 632:0-632:53
+    Name pattern: [serde_core::de::DeserializeOwned]
+    Visibility: public -/
+@[rust_trait "serde_core::de::DeserializeOwned"
+  (parentClauses := ["DeserializeInst"])]
+structure serde_core.de.DeserializeOwned (Self : Type _) where
+  DeserializeInst : serde_core.de.Deserialize Self
 
 /-- Trait declaration: [zeroize::Zeroize]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.2/src/lib.rs', lines 253:0-253:17
@@ -140,6 +289,28 @@ inductive model.request_state.Keys where
 structure model.request_state.RequestStateCodec where
   keys : model.request_state.Keys
 
+/-- [rmcp::model::request_state_wire::KidError]
+    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 46:0-51:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.request_state_wire.KidError where
+| Empty : model.request_state_wire.KidError
+| TooLong : model.request_state_wire.KidError
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}]
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 394:45-394:72 -/
+@[reducible]
+def model.request_state.RequestStateCodec.with_rs1_signing.closure (T0 :
+  Type _) :=
+  String
+
+/-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}]
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 426:45-426:71 -/
+@[reducible]
+def model.request_state.RequestStateCodec.with_rs1_fallback.closure (T0 :
+  Type _) :=
+  Str
+
 /-- [rmcp::model::request_state_wire::Version]
     Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 107:0-112:1
     Visibility: public -/
@@ -156,14 +327,6 @@ structure model.request_state_wire.Rs2Parts where
   body : Slice Std.U8
   tag : Slice Std.U8
 
-/-- [rmcp::model::request_state_wire::KidError]
-    Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 46:0-51:1
-    Visibility: public -/
-@[discriminant isize]
-inductive model.request_state_wire.KidError where
-| Empty : model.request_state_wire.KidError
-| TooLong : model.request_state_wire.KidError
-
 /-- [rmcp::model::request_state_wire::FrameError]
     Source: 'crates/rmcp/src/model/request_state_wire.rs', lines 217:0-222:1
     Visibility: public -/
@@ -173,7 +336,7 @@ inductive model.request_state_wire.FrameError where
 | Expired : model.request_state_wire.FrameError
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{closure}]
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 676:49-676:84 -/
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 680:49-680:84 -/
 @[reducible]
 def model.request_state.RequestStateCodec.open_rs2_at.closure := Unit
 

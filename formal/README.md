@@ -18,13 +18,20 @@ axiom) and the test-only patch 02 (until 2026-11-24 also 30 more locked `toStr` 
 axioms, 35 in all); two bugs were found (H7, H8). Start reading at [`specs/README.md`](specs/README.md); full report:
 "Phase 2" → "Phase 2 results" in `docs/STATUS.md`.
 
-Aeneas upgrade (2026-11-24, human decision "full migration"; **pending review and human
-re-sign-off**): the toolchain moved from Aeneas `nightly-2026.08.20-5d08da4` / Lean 4.31 / Rust
+Aeneas upgrade (2026-11-24, human decision "full migration"; **reviewed and re-signed by the spec owner 2026-11-24**): the toolchain moved from Aeneas `nightly-2026.08.20-5d08da4` / Lean 4.31 / Rust
 `nightly-2026-06-01` to Aeneas `nightly-2026.11.24-fb44cb4` (Charon `0.1.324`) / Lean and Mathlib
 4.36 / Rust `nightly-2026-09-17`. The new Aeneas `toStr` needs no native code, so no project
 constant depends on a native-code axiom and `trusted/native-axioms.lock` is empty; every
 `#print axioms` list is now within `[propext, Classical.choice, Quot.sound]`. See "Aeneas upgrade
 (2026-11-24)" in `docs/STATUS.md`.
+
+Translation patch 03 v2 (2026-11-24, human decisions: targets R09–R15, variant A; **reviewed and signed off
+by the spec owner 2026-11-24; specs pending**): on the upgraded toolchain, `trusted/patches/03-request-state-public.patch`
+(+6/−2 Rust lines) and the Charon-settings change let seven more public `request_state.rs`
+functions translate (R09–R15: `seal`, `seal_with`, `with_rs1_signing`, `with_rs1_fallback`,
+`open_json`, `open_json_with`, `new_with_keyring`); their specifications are not written yet.
+`seal_json`/`seal_json_with` (R16–R17) stay excluded, blocked upstream. See "Trusted base" below
+and "Public request_state.rs API" in `docs/STATUS.md`.
 
 ## Translated configuration
 
@@ -127,7 +134,8 @@ The release assets are checked against the sha256 values committed in
 
 The dependency versions the external models rely on are pinned in `scripts/aeneas-translate.sh`
 (`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, and since S08–S09 `digest 0.11.3`,
-`zeroize 1.9.2`, `chrono 0.4.45` and `serde_json 1.0.154`, which the models also cite); the
+`zeroize 1.9.2`, `chrono 0.4.45` and `serde_json 1.0.154`, which the models also cite, and since
+translation patch 03 `serde_core 1.0.229`, whose traits are translated opaque); the
 script fails on a source other than crates.io or on another version of a pinned crate. Since S21 (human decision 2026-11-23) the version that counts is the one `rmcp` itself uses: a
 version reached, in the normal-edge tree of `rmcp` for the translated configuration (`cargo tree`),
 through edges whose intermediate packages are all pinned crates
@@ -158,7 +166,9 @@ under `crates/` plus the root `Cargo.toml`, and a digest of `crates/rmcp/Cargo.t
 Charon table are pinned, and `crates/`, `Cargo.toml` and `formal/translation/` must be clean. It shows
 that the Phase 2 translation does not depend on any patch; it cannot see a patch that changes the
 body of an `opaque` SDK item, so it requires the SDK-side opaque list to be exactly
-`AuthorizationManager` (a type) and nothing of the SDK to be excluded, and it fails if a
+`AuthorizationManager` (a type) and nothing of the SDK to be excluded (the `exclude` list
+without its `rmcp::model::request_state` entries must be exactly `["serde"]` since translation
+patch 03 moved `serde_core` to `opaque`; until then `["serde", "serde_core"]`), and it fails if a
 committed-only (patched) declaration could shadow a name used in a Phase 2 block. Dependency
 resolution beyond `PINNED_DEPS` is not pinned by it (both sides share it; plan Section 19). A Phase 2 record may say `linkage: ORIGINAL`
 only while it passes; `aeneas-translation.yml` runs it after the stale-translation check. The
@@ -472,7 +482,24 @@ There is one translation patch, `trusted/patches/01-request-state-wire.patch` (t
 `request_state_wire` refactor and its tests on upstream `7caec76`; D2 fallback, human decision
 2026-11-23); before that date there was none. A second, test-only patch,
 `trusted/patches/02-phase2-tests.patch` (S34, human decision H3, 2026-11-24), adds `#[cfg(test)]`
-boundary tests for Phase 2 and changes no translated item; `scripts/apply-patches.sh` applies both. S04a part 2 started `trusted/Rmcp/` from the Aeneas templates
+boundary tests for Phase 2 and changes no translated item; `scripts/apply-patches.sh` applies both.
+A third patch, `trusted/patches/03-request-state-public.patch` (human decisions 2026-11-24:
+targets R09–R15, variant A "minimal Rust change"; **reviewed and signed off 2026-11-24; specs pending**), changes two
+non-test statements of `request_state.rs` (+6/−2 lines) so that the public `seal`, `seal_with`,
+`open_json` and `open_json_with` translate: in `seal_at`, `let ttl = options.ttl;` before the
+`match` (matching on the field read through the shared reference stops Aeneas with
+"Unreachable"; the value is `Copy`, so the match computes the same expression), and in
+`open_json_with` an explicit `match` in place of
+`.map_err(RequestStateError::Deserialization)` (Aeneas rejects the `FnOnce` impl of a variant
+constructor used as a function, "Arrow types are not supported yet"; `Result::map_err` is that
+`match`). It adds and changes no test: the existing TTL, known-answer, round-trip and
+`open_json` tests cover both hunks (listed in the patch header). With it, and with the Charon
+settings it relies on (the eight `exclude` entries of `seal`, `seal_with`, `seal_at`,
+`new_with_keyring`, `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with`
+removed; the crate `serde_core` moved from `exclude` to `opaque`, so that `DeserializeOwned` in
+the signatures of `open_json*` translates), those eight functions translate with real bodies;
+`with_rs1_signing`, `with_rs1_fallback` and `new_with_keyring` need no source change on this
+toolchain. `seal_json` and `seal_json_with` stay excluded (R16–R17, blocked upstream). S04a part 2 started `trusted/Rmcp/` from the Aeneas templates
 with placeholder axioms; since S08–S09 (accepted 2026-11-23; human decision: convert every axiom
 into a definition) it declares **no axiom**: each external type is a
 `structure`, each external function a definition with the generated name and signature
@@ -481,21 +508,46 @@ opaque `rmcp` functions, the `prim` functions and `now_ms`, have none), and what
 compute is one of five `opaque` constants
 (`ExtModel.hmacSha256`, `ExtModel.sipHash13`, `ExtModel.nowMs`, `ExtModel.SerdeJsonErrorImpl`, and since
 S26/S27 `ExtModel.SerdeJsonValue`, the `serde_json::Value` type that Phase 2 targets only move),
-which add no axiom; `axioms.lock` stays empty. What an auditor trusts is that each definition
+which add no axiom; `axioms.lock` stays empty. Translation patch 03 (reviewed and signed off by the spec owner 2026-11-24) adds
+14 function models and 2 type models (`OccupiedEntry`, `VacantEntry`) and three `opaque`
+constants, `ExtModel.randomState` (the hash keys a new `HashMap` stores), `ExtModel.serdeJsonFromSlice`
+(the outcome of `serde_json::from_slice` for the caller's `Deserialize` impl) and
+`ExtModel.SerdeJsonErrorImplCarrier : NonemptyType`, over which `ExtModel.SerdeJsonErrorImpl` is
+now an abstract `def` known to be inhabited (so that the opaque outcome can be an `Err`); still
+no axiom. What an auditor trusts is that each definition
 describes its Rust function, with the exceptions stated in its docstring
 (`trusted/evidence/README.md` cites the source and tests of each). These models do not appear in
 `#print axioms`, the `#guard_msgs` lists or `axioms.lock`, so a change to one is caught only by
 review of `trusted/`; the proofs use them since S08/S09 were signed off. Review rule: no spec
 statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
-`…RequestStateCodec.open` or `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the
+`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or
+`…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the
 time parameter of E01 `open_authenticated_body`, is not covered): the single opaque clock reading
 `nowMs` makes those functions pure in
-the model; opening is specified through `open_at`. Exception (human decision 2026-11-24): only the spec theorems of `open` and `open_with` and their
+the model; opening is specified through `open_at` and sealing through `seal_at`. Exceptions
+(human decisions 2026-11-24): only the spec theorems of `open` and `open_with` and their
 `Theorems.*` restatements may name these two functions and `ExtModel.nowMs`, and only with the
-postcondition `resultBytes result = openAt … ExtModel.nowMs.val`; their docstrings state the
+postcondition `resultBytes result = openAt … ExtModel.nowMs.val`; only the spec theorems of
+`seal` and `seal_with` and their `Theorems.*` restatements may name these two functions and
+`ExtModel.nowMs`, and only with a postcondition that states the result as that of the translated
+`seal_at` at `ExtModel.nowMs` (`seal_with self payload options` relates to
+`seal_at self payload options ExtModel.nowMs`). Their docstrings state the
 one-reading caveat and the inherited exceptions. No other statement names `ExtModel.nowMs`, no
 statement has a premise or conclusion about its value, and no statement involves two clock
 readings; `now_ms` itself stays unmentioned.
+Review rules of the patch 03 opaque constants (reviewed and signed off by the spec owner 2026-11-24): no statement has a premise
+or conclusion about the value of `ExtModel.randomState` or about the `hash_builder` of a map
+built by `HashMap::new`, and no statement states or relies on the equality (or inequality) of
+maps, or of codecs containing them, built by distinct `HashMap::new` calls (for example two
+results of `new_with_keyring`): in Rust their `RandomState` keys differ (on the same thread; independent random keys otherwise)
+(`std/src/hash/random.rs` lines 71–75), and the `hash_builder` is unobservable through the
+modelled API. A statement may say about `ExtModel.serdeJsonFromSlice` only that the result of
+`open_json`/`open_json_with` is that outcome for the opened payload, mapped as the Rust code
+maps it, and no statement relates two calls of `open_json`/`open_json_with` (or of
+`serde_json::from_slice`), as no statement involves two clock readings (stated exceptions: a
+`Deserialize` impl that panics or does not terminate, and one that is non-deterministic or has
+side effects such as global or thread-local state or a random number generator, are not
+modelled).
 Names in the namespace `rmcp` are banned in `trusted/`: the generated code
 works inside `namespace rmcp` and names the root-level externals and the Aeneas library functions
 unqualified, so a name `rmcp.<x>` from `trusted/` would silently take precedence over the one it
@@ -526,7 +578,9 @@ until this is enforced. The exclusions and opaque items are those of plan Sectio
 Section 9 (S04a part 2 adds the derived `Debug` impls to `exclude`, human decision
 2026-11-22). The trusted-base section of `docs/STATUS.md` is authoritative (current counts: 0
 trusted axioms, 0 native-code axioms (35 locked until the Aeneas upgrade of 2026-11-24: 5 Phase 1,
-30 Phase 2, H2), 5 `opaque` constants since S26/S27).
+30 Phase 2, H2), 5 `opaque` constants since S26/S27; 7 with translation patch 03, which adds
+`randomState`, `serdeJsonFromSlice` and `SerdeJsonErrorImplCarrier` and turns
+`SerdeJsonErrorImpl` into a `def` over the carrier, signed off 2026-11-24).
 
 ### Tools
 

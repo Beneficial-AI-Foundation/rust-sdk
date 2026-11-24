@@ -153,13 +153,30 @@ new = text[:m.start()] + block + "\n" + text[m.end():]
 # opaque SDK item is the type AuthorizationManager (no body), nothing of the SDK is excluded,
 # marker traits hidden. Any change needs the affected records reassessed (a new opaque or
 # excluded SDK item hides its body from this check) and an edit of this list in a reviewed PR.
+# exclude is ["serde"] since serde_core became opaque for open_json/open_json_with (translation
+# patch 03; lead decision 2026-11-24 on the human decision of targets R09-R15).
 SDK_OPAQUE = ["rmcp::transport::auth::AuthorizationManager"]
-if [o for o in opaque if o.startswith("rmcp::")] != SDK_OPAQUE or exclude != ["serde", "serde_core"] \
-        or hide is not True:
+# The external crates that are opaque (signatures only), exactly and in this order. serde_core is
+# opaque instead of excluded since translation patch 03 (lead decision 2026-11-24 on the human
+# decision of targets R09-R15): it must stay in this list, and no other crate may be added to or
+# removed from it (a crate leaving the list would be translated or excluded, a new one would hide
+# bodies) without a reviewed edit here.
+EXTERNAL_OPAQUE = [
+    "zeroize", "base64", "hmac", "sha2", "thiserror", "chrono", "serde_json",
+    "serde_core",
+    "http", "tokio", "tokio_util", "tracing", "tracing_core", "futures", "futures_util",
+    "futures_core", "bytes", "sse_stream", "hyper", "tower_service", "uuid", "schemars",
+    "pin_project_lite", "tokio_stream", "http_body", "http_body_util", "rand", "async_trait",
+    "pastey", "oauth2", "reqwest", "url",
+]
+external_opaque = [o for o in opaque if not o.startswith("rmcp::")]
+if [o for o in opaque if o.startswith("rmcp::")] != SDK_OPAQUE or exclude != ["serde"] \
+        or external_opaque != EXTERNAL_OPAQUE or hide is not True:
     sys.exit(f"[package.metadata.charon] SDK-side settings differ from the reviewed ones "
              f"(opaque SDK items {[o for o in opaque if o.startswith('rmcp::')]}, exclude {exclude}, "
-             f"hide_marker_traits {hide}); reassess the Phase 2 records (plan Section 19) and update "
-             "SDK_OPAQUE in scripts/check-original-linkage.sh in a reviewed PR")
+             f"opaque external crates {external_opaque}, hide_marker_traits {hide}); reassess the "
+             "Phase 2 records (plan Section 19) and update SDK_OPAQUE/EXTERNAL_OPAQUE in "
+             "scripts/check-original-linkage.sh in a reviewed PR")
 check = tomllib.loads(new)["package"]["metadata"]["charon"]   # the rewrite must parse back
 assert (check["start_from"] == start and check["opaque"] == opaque and check["exclude"] == exclude
         and check["hide_marker_traits"] == hide)

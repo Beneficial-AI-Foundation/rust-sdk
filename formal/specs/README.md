@@ -6,10 +6,9 @@
 > are about a patched copy (translation patch 01). 28 guarantees are about the public API
 > (`Specs/`), 50 about private, crate-internal or patch-only functions and 116 are laws of the
 > trusted models (`../proofs/Proofs/Internal/`): 194 restated theorems. The public
-> `request_state.rs` API is partly covered: 8 of its 17 public functions (R09–R14 in progress via
-> translation patch 03, parked during the Aeneas upgrade of 2026-11-24; R15 `new_with_keyring`
-> waited for an Aeneas upgrade, re-adding it is a separate step after the migration; R16–R17 `seal_json*`
-> excluded, blocked upstream). Main trust items: Charon/Aeneas/Lean, the translated
+> `request_state.rs` API is partly covered: 8 of its 17 public functions (R09–R15 translated on
+> the upgraded toolchain via translation patch 03 v2, reviewed and signed off 2026-11-24, their specs
+> not yet written; R16–R17 `seal_json*` excluded, blocked upstream). Main trust items: Charon/Aeneas/Lean, the translated
 > configuration, patch 01, the hand-written models (including the one clock reading of `open`);
 > no native-code assumption remains (35 were locked until the Aeneas upgrade of 2026-11-24, which is
 > reviewed and re-signed by the spec owner 2026-11-24). Two bugs found: H7 (`async_rw` method lists) and H8 (`240.0.0.0/4` not blocked).
@@ -283,7 +282,11 @@ Rust documentation. Used by: the proofs of all statements above.
 > - **The clock** (human decision 2026-11-24; [`../README.md`](../README.md), "Trusted base"):
 >   the clock is one opaque reading `ExtModel.nowMs`, which makes `open`/`open_with` pure in the
 >   model. Only R07, R08 and the R08 corollary may name `open`, `open_with` and
->   `ExtModel.nowMs`, and only with the postcondition `resultBytes result = openAt … nowMs`; no
+>   `ExtModel.nowMs`, and only with the postcondition `resultBytes result = openAt … nowMs`; likewise
+>   (human decision 2026-11-24, for the R09/R10 specs still to be written) only the spec theorems
+>   of `seal` and `seal_with` and their restatements may name those two functions and
+>   `ExtModel.nowMs`, and only with a postcondition stating the result as that of `seal_at` at
+>   `ExtModel.nowMs`; no
 >   statement constrains the value of the reading or involves two readings. The model of
 >   `now_ms` always returns, while Rust's `Utc::now` panics for a clock before 1970 or outside
 >   chrono's range (exception (K)).
@@ -310,14 +313,17 @@ Rust documentation. Used by: the proofs of all statements above.
   `origin_is_allowed`, `is_allowed_metadata_url`, `AddressClass::of`,
   `MetadataAddressResolver::is_allowed`.
 - URL and HTTP parsing (`Origin` and `Host` headers, `url::Url`), `async` code, DNS resolution.
-- 9 of the 17 public functions of `request_state.rs` (not translated today, plan Section 2.3;
-  status in [`../docs/STATUS.md`](../docs/STATUS.md), "Public request_state.rs API"): `seal`,
-  `seal_with`, `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with` (R09–R14,
-  in progress via translation patch 03, parked during the Aeneas upgrade of 2026-11-24);
-  `new_with_keyring` (R15, waited for an Aeneas upgrade; re-adding it is a separate step after
-  the migration, lead decision N15);
-  `seal_json`, `seal_json_with` (R16–R17, excluded, blocked upstream). Also the private
-  `seal_at` (excluded). Since no keyring constructor is verified, the codec-state premise (F) is
+- 9 of the 17 public functions of `request_state.rs` (status in
+  [`../docs/STATUS.md`](../docs/STATUS.md), "Public request_state.rs API"): `seal`,
+  `seal_with`, `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with`,
+  `new_with_keyring` (R09–R15: translated since translation patch 03 v2, 2026-11-24, reviewed
+  and signed off 2026-11-24; specifications pending, nothing about them is specified or proved);
+  `seal_json`, `seal_json_with` (R16–R17, excluded, blocked upstream: Aeneas does not support the
+  mutually recursive `serde_core::ser` traits; once that is fixed they would additionally need the
+  variant-constructor workaround of patch 03 hunk 2, since
+  `.map_err(RequestStateError::Serialization)` hits "Arrow types are not supported yet" at
+  `request_state.rs` 133:4-133:46 / 461:4-468:5 of the patched copy). Also the private `seal_at` (translated with patch
+  03, not specified). Since no keyring constructor is verified, the codec-state premise (F) is
   assumed, not derived.
 - Cryptographic security (HMAC unforgeability), constant-time behaviour, the correctness of the
   `hmac`, `sha2`, `base64` and `zeroize` crates; negative round trips (a tampered token is
