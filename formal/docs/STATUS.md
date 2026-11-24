@@ -27,7 +27,8 @@ Plan Section 11 template, filled with the actual results. Three deviations from 
 wording, each forced by a recorded fact: the verified code is upstream `origin/main` plus a
 translation patch, not the unmodified upstream files (D2 fallback, human decision 2026-11-23); the
 external contracts are models (definitions, structures and `opaque` constants), not axioms (human
-decision 2026-11-23); five native-code axioms are added to the trusted base. No target is open, so
+decision 2026-11-23); five native-code axioms are added to the trusted base (Phase 1; Phase 2 adds
+30 more, see "Trusted base"). No target is open, so
 the last sentence names the excluded functions and non-targets instead.
 
 > At upstream SDK commit `7caec762799bece6fba38e4298b8ca7db8bac12c` (`origin/main`) **with the
@@ -52,7 +53,8 @@ the last sentence names the excluded functions and non-targets instead.
 > not proved. These results rest on the trusted base listed in `formal/README.md` and `STATUS.md`:
 > Charon, Aeneas and Lean; the translated configuration; translation patch 01; the HMAC-SHA256,
 > Base64url and standard-library models in `formal/trusted/` (definitions, structures and four
-> `opaque` constants; no trusted axiom); the five Aeneas `toStr` native-code axioms locked in
+> `opaque` constants; no trusted axiom); the five Aeneas `toStr` native-code axioms (Phase 1; 35 with
+> Phase 2) locked in
 > `formal/trusted/native-axioms.lock`; the codec-state hypothesis; the statements in
 > `formal/specs/`; and the exclusions. They do not establish cryptographic security, constant-time
 > execution, or correctness of the public codec wrappers. No target is open; the functions not
@@ -246,10 +248,13 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
 - **Trusted axioms: 0.** `formal/trusted/axioms.lock` has no entry; the `RmcpExternal` roots
   declare no axiom (human decision 2026-11-23). Allowed builtins: `propext`, `Classical.choice`,
   `Quot.sound`.
-- **Native-code axioms: 5**, all reached, used and locked in `formal/trusted/native-axioms.lock`:
-  the Aeneas `toStr` side conditions of the string literals `VERSION_V1` ("rs1"), `VERSION_V2`
-  ("rs2"), `KID_EMPTY_MSG`, `KID_TOO_LONG_MSG` and the `expect` message of
-  `rs1_fallbacks_verify` (separate trust class, human decision 2026-11-22). Each side condition
+- **Native-code axioms: 35**, all reached, used and locked in `formal/trusted/native-axioms.lock`
+  (separate trust class, human decision 2026-11-22). Phase 1 (5): the Aeneas `toStr` side
+  conditions of the string literals `VERSION_V1` ("rs1"), `VERSION_V2` ("rs2"), `KID_EMPTY_MSG`,
+  `KID_TOO_LONG_MSG` and the `expect` message of `rs1_fallbacks_verify`. Phase 2 (30, human
+  decision H2, locked 2026-11-24 at S29): the 18 request and 10 notification method-name literals
+  of `async_rw.rs` (`is_standard_method` lines 399–416, `is_standard_notification` lines 423–432)
+  and `"http"`/`"https"` of `tower.rs` `default_port` (lines 1148–1149), used by T05–T08 and C05. Each side condition
   also has a kernel proof, so an upstream Aeneas `toStr` fix would remove them (open item).
 - **External models** (accepted at S08/S09, human approval 2026-11-23; in use by the proofs): the
   41 placeholder externals of S04a part 2 are replaced by definitions (functions) and structures
@@ -280,8 +285,7 @@ modules; kernel replay of 2107 constants accepted, 3 unsafe/partial skipped):
   `Classical.choice`, `Quot.sound`). Sources and evidence: `formal/trusted/evidence/README.md`; the
   differential tests of plan Section 18 were not built (stage 3 dropped by human decision,
   2026-11-23; plan Section 18 amendment), so fidelity rests on the cited source, review and the
-  proved laws (stage 6). 30 more Aeneas `toStr` native-code axioms are reached (T05–T08,
-  H2) but used by no `Defs`/`Proofs`/`Specs` constant yet, so not locked until S29.
+  proved laws (stage 6).
 - **Codec-state hypothesis** (accepted at S12): `Defs/CodecState.lean` defines `CodecValid`
   (keyring clauses; single-key codecs unconstrained; pairwise distinct key ids),
   `CodecFallbacksKnown` (every rs1 fallback id is a key id) and `FallbacksKnown`. It is a
@@ -475,6 +479,32 @@ S22 check), `proof: OPEN`.
 | T07, T08 | `tower::default_port`, `tower::AllowedPort::matches` | `transport/streamable_http_server/tower.rs:1146, 1164` |
 | A01–A03 | `AuthorizationManager::{embedded_ipv4, is_disallowed_metadata_ipv4, is_disallowed_metadata_ipv6}` | `transport/auth.rs:1359, 1343, 1370` |
 
+**Incorporation of S24/S25 (2026-11-24; human request "move the approved specifications into the
+project and remove the drafts", decided as "prove, then incorporate"):** the seven Phase 2 `Defs`
+modules joined the `Defs` root; the deferred `Defs` items, approved by the spec owner at S24/S25 sign-off, were applied by an
+`mcp-spec` agent, not by a prover (a `Defs.Net` check of the
+6to4, IPv4-mapped and IPv4-compatible prefix edges; citations in `Defs/Sse.lean` and
+`Defs/IntParse.lean`; the derivation-command wording in `Defs/Methods.lean`), and `Defs.Bytes` no
+longer imports the trusted models (`Proofs.External.Utf8.utf8Bytes_eq_utf8`,
+`Proofs.RequestState.strIs_iff_val_eq_utf8Bytes`). All 47 signed-off statements (M01–M14, T01–T08,
+A01–A03, C01–C05 with their second forms and corollaries, the Section 16.1 joint lemmas and the S27
+law `from_str_eq_parseI64`) were proved by four `mcp-lean` agents that drafted none of them (S28–S32),
+with every statement copied verbatim from its draft (checked by script), and restated in
+`Specs/Model.lean`, `Specs/Model/Task.lean`, `Specs/Transport/{AsyncRw, Auth}.lean`,
+`Specs/Transport/Common/ClientSideSse.lean`, `Specs/Transport/StreamableHttpServer/Tower.lean` and
+`Specs/External.lean` with `#guard_msgs` axiom checks; restated statements write the translated
+functions with their full names (inside `theorem Theorems.<…>.f` a bare `f` names the restated
+theorem). Axioms: `propext`, `Classical.choice`, `Quot.sound` only, plus for T05–T08 and C05 the 30
+Aeneas `toStr` native-code axioms of the method-name and `http`/`https` literals (human decision
+H2), added to `trusted/native-axioms.lock` after checking each literal. `formal/specs/Drafts/` was
+removed. Full `lake build` (1771 jobs) and the four `lean-guard.sh` checks pass (native-code
+axioms: 35 reached, 35 used and locked). Heartbeats raised only for A02 (1,600,000) and A01
+(400,000). One independent `mcp-review` agent per batch reviewed the proofs, restatements, records
+and the lock (each re-checked the statements against the drafts with its own script, and the lock
+reviewer recomputed all 35 hashes); no blocking finding; the local findings were fixed, and the
+proof-style ones (flexible tactics, iterator-helper duplication, proofs that unfold trusted model
+bodies instead of using the S26 laws, splitting A02 to cut its ~65 s build) are deferred to phase C.
+
 **S25 spec cycle (2026-11-24):** drafts `formal/specs/Drafts/ClientSideSse.lean` (T01–T03, C01 with
 its plan form, C02 with its prefix form) and `formal/specs/Drafts/Auth.lean` (A01–A03, C04 with a
 corollary in `Defs.Net` terms), with `Defs/Sse.lean` (limiter model plus an independent description
@@ -550,12 +580,16 @@ lines). Re-run after the review fixes: output byte-identical. `lake build` (1745
 (`$FEATURES,macros`) passes 801 library tests. The three workflows have not run on GitHub.
 
 Board: S20 `IN_PROGRESS`; S21 `IN_PROGRESS` (translated, all 25 `LEAN_OK`; human sign-off and CI pending);
-S22 `IN_PROGRESS` (linkage check written and reviewed; local evidence below; not yet in CI); S24 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S25 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S26/S27 `IN_PROGRESS` (signed off, proved); the other steps `NOT_STARTED`.
+S22 `IN_PROGRESS` (linkage check written and reviewed; local evidence below; not yet in CI); S24 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S25 `IN_PROGRESS` (statements signed off 2026-11-24; awaits human acceptance); S28–S33 `IN_PROGRESS` (proved, restated and proof-reviewed 2026-11-24; awaits human acceptance); S26/S27 `IN_PROGRESS` (signed off, proved); the other steps `NOT_STARTED`.
 
 ## Open items
 
 Human decisions and actions:
 - **Phase 2 owner and budget (H5)**: not named; blocks S20 acceptance and gate G1 (plan Section 21).
+- **S31 candidate lemma (open, not a signed-off statement):** prove
+  `∀ cap ≥ 1, Defs.Sse.observe cap (init m) h = historyOutcome cap m h` (checked only on finite
+  cases in `Defs/Sse.lean`); a later "the stream rejects an oversize event" lemma needs it (plan
+  Section 21, notes for S31/S32).
 - **Report the H8 gap upstream** (S25, 2026-11-24): `240.0.0.0/4` not blocked by
   `is_disallowed_metadata_ipv4` ("Bugs found", Phase 2). Needs the owner's go-ahead.
 - **Report the H7 gap upstream** (S24, 2026-11-24): the `async_rw` method lists miss six core MCP

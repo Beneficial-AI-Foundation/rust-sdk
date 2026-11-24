@@ -6,6 +6,7 @@ Authors: Hoang Le Truong
 import Rmcp.Funs
 import Mathlib.Data.Nat.Digits.Defs
 import Proofs.External.String
+import Defs.IntParse
 
 /-!
 # Laws of the Phase 2 external models: IntParse (plan steps S26/S27, stage 6)
@@ -18,6 +19,9 @@ The digit loop `ExtModel.i64DigitLoop` is described by `i64DigitLoop_eq`: from a
 in range, it reads the longest digit prefix `d` of its input, and its result depends only on
 the value `digitFold a d` (the left fold `s ↦ 10 * s + digit`), which is at least every
 accumulated value of the loop, so an overflow at some digit is an out-of-range final value.
+
+The S27 deferred law `from_str_eq_parseI64` (signed off 2026-11-24, S24/S25 spec cycle) relates
+the model to the documented grammar `Defs.parseI64`, through `parseI64_append` and `from_str_eq`.
 -/
 
 open Aeneas Aeneas.Std Result
@@ -386,3 +390,116 @@ theorem core.str.Str.parse_eq {F : Type} {Clause0_Err : Type}
     (traitsFromStrInst : core.str.traits.FromStr F Clause0_Err) (self : Str) :
     core.str.Str.parse traitsFromStrInst self = traitsFromStrInst.from_str self := by
   rfl
+
+namespace Proofs.External.IntParse
+
+/-- `Defs.parseI64` on `sign ++ body` with an explicit sign split. -/
+theorem parseI64_append (sign body : List U8)
+    (h_sign : sign = [] ∨ sign = [43#u8] ∨ sign = [45#u8])
+    (h_body : body ≠ [])
+    (h_unsigned : sign = [] → ∀ c ∈ body.head?, c.val ≠ 43 ∧ c.val ≠ 45) :
+    Defs.parseI64 (sign ++ body) =
+      if body.all isDigit = true then
+        (if InRange (decide (sign ≠ [45#u8])) (digitFold 0 body) then
+          some (signed (decide (sign ≠ [45#u8])) (digitFold 0 body))
+        else none)
+      else none := by
+  have hsplit : Defs.IntParse.splitSign (sign ++ body) = (decide (sign = [45#u8]), body) := by
+    obtain ⟨c, t, rfl⟩ := List.exists_cons_of_ne_nil h_body
+    rcases h_sign with rfl | rfl | rfl
+    · have hc := h_unsigned rfl c rfl
+      have h1 : c ≠ Defs.IntParse.plus := fun h => hc.1 (by rw [h]; rfl)
+      have h2 : c ≠ Defs.IntParse.minus := fun h => hc.2 (by rw [h]; rfl)
+      simp [Defs.IntParse.splitSign, h1, h2]
+    · simp [Defs.IntParse.splitSign, Defs.IntParse.plus]
+    · simp [Defs.IntParse.splitSign, Defs.IntParse.plus, Defs.IntParse.minus]
+  have hfold : Defs.IntParse.digitsValue body = digitFold 0 body := rfl
+  have hdig : Defs.IntParse.isAsciiDigit = isDigit := rfl
+  unfold Defs.parseI64
+  rw [hsplit]
+  simp only [hfold, hdig, ne_eq, h_body, not_false_eq_true, true_and]
+  by_cases hneg : sign = [45#u8]
+  · simp only [List.all_eq_true, Defs.IntParse.i64Min, Int.reducePow, Int.reduceNeg, hneg,
+      decide_true, ↓reduceIte, neg_le_neg_iff, Nat.cast_le_ofNat, Defs.IntParse.i64Max,
+      Int.reduceSub, Int.neg_natCast_le_ofNat, and_true, InRange, not_true_eq_false, decide_false,
+      Bool.false_eq_true, Nat.reducePow, signed]
+  · simp only [List.all_eq_true, Defs.IntParse.i64Min, Int.reducePow, Int.reduceNeg, hneg,
+      decide_false, Bool.false_eq_true, ↓reduceIte, Int.neg_ofNat_le_natCast,
+      Defs.IntParse.i64Max, Int.reduceSub, Nat.cast_le_ofNat, true_and, InRange,
+      not_false_eq_true, decide_true, Nat.reducePow, signed]
+    split_ifs <;> first | rfl | omega
+
+/-- The digit prefix is the whole list exactly when every byte is a digit. -/
+theorem takeWhile_isDigit_eq_self_iff (l : List U8) :
+    l.takeWhile isDigit = l ↔ l.all isDigit = true := by
+  induction l with
+  | nil => simp
+  | cons c t ih =>
+    by_cases hc : isDigit c = true
+    · simp [List.takeWhile_cons_of_pos hc, hc, ih]
+    · simp [List.takeWhile_cons_of_neg hc, hc]
+
+end Proofs.External.IntParse
+
+open Proofs.External.IntParse
+
+/-- **S27 deferred law.** `i64::from_str` (the model in `trusted/Rmcp/FunsExternal.lean`) never
+fails, and it returns `Ok n` exactly when `Defs.parseI64` accepts the bytes of `src`, with
+`n.val` the value `Defs.parseI64` gives; otherwise `Err _` (the error kind is not constrained:
+M06 discards it). -/
+theorem I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64 (src : Str) :
+    I64.Insts.CoreStrTraitsFromStrParseIntError.from_str src
+      ⦃ (result : core.result.Result I64 core.num.error.ParseIntError) =>
+        (match result with
+         | .Ok n => some n.val
+         | .Err _ => none) = Defs.parseI64 src.val ⦄ := by
+  have main : ∀ (sign body : List U8), src.val = sign ++ body →
+      (sign = [] ∨ sign = [43#u8] ∨ sign = [45#u8]) → body ≠ [] →
+      (sign = [] → ∀ c ∈ body.head?, c.val ≠ 43 ∧ c.val ≠ 45) →
+      I64.Insts.CoreStrTraitsFromStrParseIntError.from_str src
+      ⦃ (result : core.result.Result I64 core.num.error.ParseIntError) =>
+        (match result with
+         | .Ok n => some n.val
+         | .Err _ => none) = Defs.parseI64 src.val ⦄ := by
+    intro sign body h_src h_sign h_body h_unsigned
+    rw [from_str_eq src sign body h_src h_sign h_body h_unsigned, WP.spec_ok, h_src,
+      parseI64_append sign body h_sign h_body h_unsigned]
+    have hv64 : ∀ x : Int, -2 ^ 63 ≤ x → x < 2 ^ 63 →
+        (⟨BitVec.ofInt 64 x⟩ : I64).val = x := by
+      intro x h1 h2
+      show (BitVec.ofInt 64 x).toInt = x
+      rw [BitVec.toInt_ofInt]
+      exact Int.bmod_eq_of_le (by omega) (by omega)
+    by_cases hall : body.all isDigit = true
+    · have htw := (takeWhile_isDigit_eq_self_iff body).2 hall
+      rw [htw, if_pos hall]
+      by_cases hr : InRange (decide (sign ≠ [45#u8])) (digitFold 0 body)
+      · rw [if_pos hr, if_pos hr, if_pos rfl]
+        show some (⟨BitVec.ofInt 64 _⟩ : I64).val = _
+        rw [hv64]
+        · revert hr; unfold InRange signed; split <;> intro hr <;> omega
+        · revert hr; unfold InRange signed; split <;> intro hr <;> omega
+      · rw [if_neg hr, if_neg hr]
+    · have htw : ¬ body.takeWhile isDigit = body :=
+        fun h => hall ((takeWhile_isDigit_eq_self_iff body).1 h)
+      rw [if_neg hall]
+      split_ifs <;> rfl
+  rcases hs : src.val with _ | ⟨c, t⟩
+  · rw [I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_empty src hs, WP.spec_ok]
+    rfl
+  · by_cases hsg : c.val = 43 ∨ c.val = 45
+    · have hc : c = 43#u8 ∨ c = 45#u8 := by
+        rcases hsg with h | h
+        · exact Or.inl (UScalar.eq_of_val_eq (by simp [h]))
+        · exact Or.inr (UScalar.eq_of_val_eq (by simp [h]))
+      by_cases ht : t = []
+      · subst ht
+        rw [I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_lone_sign src c hs hsg,
+          WP.spec_ok]
+        rcases hc with rfl | rfl <;> rfl
+      · rw [← hs]
+        exact main [c] t (by rw [hs]; rfl) (by rcases hc with rfl | rfl <;> simp) ht
+          (fun h => by simp at h)
+    · rw [← hs]
+      exact main [] (c :: t) (by rw [hs]; rfl) (Or.inl rfl) (List.cons_ne_nil _ _)
+        (fun _ x hx => by simp at hx; subst hx; omega)

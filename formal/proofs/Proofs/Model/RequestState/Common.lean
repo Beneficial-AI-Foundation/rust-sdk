@@ -38,4 +38,26 @@ theorem strIs_toStr (s : String) (h : s.toByteArray.size ≤ U32.max) :
   simp only [Function.comp_apply, Proofs.External.Base64.byte_val]
   exact Nat.mod_eq_of_lt (UInt8.toNat_lt x)
 
+/-- `StrIs m s` (bytes compared as natural numbers) says exactly that the bytes of `m` are the
+UTF-8 bytes `Defs.utf8Bytes s`. -/
+theorem strIs_iff_val_eq_utf8Bytes (m : Str) (s : String) :
+    Defs.RequestState.StrIs m s ↔ m.val = Defs.utf8Bytes s := by
+  rw [Proofs.External.Utf8.utf8Bytes_eq_utf8, Proofs.External.Utf8.utf8_eq]
+  unfold Defs.RequestState.StrIs
+  rw [Proofs.External.Utf8.byteArray_toList]
+  constructor
+  · intro h
+    apply List.map_injective_iff.2 (fun a b hab => UScalar.eq_of_val_eq hab)
+    rw [h, List.map_map]
+    apply List.map_congr_left
+    intro x _
+    simp only [Function.comp_apply, Proofs.External.Base64.byte_val]
+    exact (Nat.mod_eq_of_lt (UInt8.toNat_lt x)).symm
+  · intro h
+    rw [h, List.map_map]
+    apply List.map_congr_left
+    intro x _
+    simp only [Function.comp_apply, Proofs.External.Base64.byte_val]
+    exact Nat.mod_eq_of_lt (UInt8.toNat_lt x)
+
 end Proofs.RequestState

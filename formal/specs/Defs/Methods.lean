@@ -44,23 +44,26 @@ requests, `notifications/tasks/status` and `notifications/elicitation/complete`)
 per version). The union has 22 requests and 12 notifications.
 
 **Recorded derivation command.** The derivation from the pinned schemas is reproduced by the
-following command (run 2026-11-24; output as stated here). A name is a notification exactly when
-it starts with `notifications/`, otherwise a request.
+following command (run 2026-11-24; output as stated here), to be run in an empty directory,
+since the union step globs `*.ts`. A name is a notification exactly when it starts with
+`notifications/`, otherwise a request; `curl -f` makes an HTTP error fail instead of saving the
+error page.
 ```
 B=https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol
 C=b0be8f0f2481be8d5ea5294cf3fa57cd03cedc48
 for v in 2024-11-05 2025-03-26 2025-06-18 2025-11-25 2026-07-28; do
-  curl -s "$B/$C/schema/$v/schema.ts" | tee "$v.ts" | shasum -a 256
+  curl -fsS "$B/$C/schema/$v/schema.ts" | tee "$v.ts" | shasum -a 256
   m=$(grep -ohE 'method: *"[^"]*"' "$v.ts" | LC_ALL=C sort -u)
   echo "$v $(echo "$m" | grep -vc '"notifications/')/$(echo "$m" | grep -c '"notifications/')"
 done
 m=$(grep -ohE 'method: *"[^"]*"' *.ts | LC_ALL=C sort -u)
 echo "union $(echo "$m" | grep -vc '"notifications/')/$(echo "$m" | grep -c '"notifications/')"
+echo "$m"
 ```
 It prints the five sha256 sums above and, as requests/notifications, `15/9`, `15/9`, `16/9`,
-`20/11`, `13/8` for the five versions and `22/12` for the union; the `sort -u` output of the
-last `grep` lists the 34 union names, which are the literals of the checks at the end of the
-file.
+`20/11`, `13/8` for the five versions and `22/12` for the union, and then `$m`: 34 lines of the
+form `method: "x"`, whose names `x` are the 34 union names, the literals of the checks at the
+end of the file (re-run 2026-11-24 in an empty directory with this exact command: same output).
 
 **Code form and recorded bug** (`codeOmits`; plan Section 21, H7, decided by the human on
 2026-11-24). The Rust lists of `is_standard_method` and `is_standard_notification`

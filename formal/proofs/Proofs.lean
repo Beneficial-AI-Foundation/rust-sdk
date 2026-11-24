@@ -40,6 +40,15 @@ import Proofs.Model.RequestState.OpenRs1At
 import Proofs.Model.RequestState.Rs1FallbacksVerify
 import Proofs.Model.RequestState.OpenRs2At
 import Proofs.Model.RequestState.Roundtrip
+import Proofs.Model.JsonRpcMessage
+import Proofs.Model.NumberOrString
+import Proofs.Model.Task
+import Proofs.Model.SamplingContent
+import Proofs.Model.Reference
+import Proofs.Transport.ClientSideSse
+import Proofs.Transport.AsyncRw
+import Proofs.Transport.Tower
+import Proofs.Transport.Auth
 
 /-!
 # Proofs
@@ -51,4 +60,9 @@ proofs (S06, S10): `Common` and the 15 target modules; the laws of the
 external models (S08, S09: `Proofs.External.*`); and the `request_state` proofs of E01–E04
 (S07), E07/E08 (S11), E09a/E09/E10 (S13), E11 (S14) and the round trips (S15, `Roundtrip`), with the
 slice-iterator helper `Proofs.External.Iter`.
+
+Phase 2 (2026-11-24, S28–S32): `Proofs.Model.{JsonRpcMessage, NumberOrString, Task,
+SamplingContent, Reference}` (M01–M14, the joint lemmas, C03), `Proofs.Transport.{ClientSideSse,
+AsyncRw, Tower, Auth}` (T01–T08, A01–A03, C01, C02, C04, C05); the S27 law relating the integer
+parser model to `Defs.parseI64` is in `Proofs.External.IntParse`.
 -/

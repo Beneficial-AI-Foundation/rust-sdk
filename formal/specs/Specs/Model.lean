@@ -1,0 +1,368 @@
+/-
+Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Hoang Le Truong
+-/
+import Defs
+import Proofs.Model.JsonRpcMessage
+import Proofs.Model.NumberOrString
+import Proofs.Model.SamplingContent
+import Proofs.Model.Reference
+
+/-!
+# Spec file for crates/rmcp/src/model.rs (Phase 2: M01–M07, M09–M14, C03)
+
+Statements of the Phase 2 targets of `model.rs` (plan Section 16.1), each restated as a theorem
+`Theorems.model.<Type>.<function>` proved by the spec theorem in `Proofs/Model/<Type>.lean` and
+followed by the assumptions its proof depends on, checked by `#print axioms` under
+`#guard_msgs`. M08 (`model/task.rs`) is in `Specs/Model/Task.lean`. Signed off by the spec owner
+on 2026-11-24 (S24/S25 spec cycle, `formal/docs/STATUS.md`); the signed-off text was in
+`specs/Drafts/Model.lean`, removed at incorporation.
+
+Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
+features `--no-default-features --features request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
+(widened for Phase 2, plan Section 15), with `overflow-checks=true` and `debug-assertions=true`
+(plan Section 1). Aeneas `nightly-2026.08.20-5d08da4`. Line numbers refer to upstream `7caec76`,
+unmodified (plan Section 13); the generated `Source:` lines of `model.rs` are two higher
+(patch 01).
+
+Definitions used: `Defs.JsonRpc` (`kind`, `MessageKind`, `request`, `response`, `notification`,
+`error`, `numericValue`), `Defs.IntParse` (`Defs.parseI64`, through `numericValue`) and
+`Defs.Bytes` (`Defs.utf8Bytes`).
+
+External models used (`trusted/Rmcp/FunsExternal.lean`): M06 and M07 use the models of the
+`Arc` deref (line 761), `str::parse` (line 1023), `i64::from_str` (line 1009, through the S27
+deferred law `Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64`
+in `Specs/External.lean`) and `Result::ok` (`core.result.Result.ok`, line 828); M07 also uses
+`Option`'s `PartialEq` (line 811) and the `Arc<str>` `PartialEq` (line 780), which calls the
+`str` equality `Str.Insts.CoreCmpPartialEqStr.eq` (line 735); M13/M14 use the `String` deref
+model (line 749), which fails with `maximumSizeExceeded` for a Lean `String` of more than
+`Usize.max` bytes (no Rust `String` is), hence their size premises and `_fail` companions; M10
+uses `Vec::is_empty` (`alloc.vec.Vec.is_empty`, line 637) and M12 `<[T]>::first`
+(`core.slice.Slice.first`, line 842). No statement reaches a native-code assumption
+(`…_native.decide.ax_<n>`).
+
+From the Aeneas library (`Aeneas/Std/Vec.lean`; definitions, not trusted models): M09 uses
+`<[T]>::into_vec` (`alloc.slice.Slice.into_vec`), M11 `Vec::len` (`alloc.vec.Vec.len`) and M12
+`Vec::deref` (`alloc.vec.Vec.deref`).
+
+Statements here, in Rust source order: M06 (line 322), M07 (330), M01 (819), M02 (825),
+M03 (831), M04 (837), M05 (843), M09 (2926), M10 (2934), M11 (2942), M12 (2958), M13 (3741, with
+`as_prompt_name_fail`), M14 (3749, with `as_resource_uri_fail`); then the joint lemmas of plan
+Section 16.1 (`SamplingContent.is_empty_eq_len_eq_zero`, `SamplingContent.first_eq_head?_into_vec`,
+`SamplingContent.len_eq_len_into_vec`, `JsonRpcMessage.exactly_one_some`), and last the
+composition theorem C03 `into_result_eq` (plan Section 16.4, proved in
+`Proofs/Model/JsonRpcMessage.lean`).
+
+Not translated (outside the Phase 2 scope, plan Section 13, "Not claimed"): every other item of
+`model.rs`. Besides the thirteen targets, the translation contains only the derived `PartialEq`
+of `NumberOrString` (line 304), which M07 calls; no statement is about it.
+-/
+
+open Aeneas Aeneas.Std Result
+open rmcp  -- for `model.…` in the statements; theorems named in full
+open Defs.JsonRpc
+
+/-- M06 `numeric_string_value`: `None` for a numeric id; for a string id, the value of its bytes
+under `Defs.parseI64` (the `i64::from_str` grammar), `None` if rejected. -/
+theorem Theorems.model.NumberOrString.numeric_string_value (self : model.NumberOrString) :
+    rmcp.model.NumberOrString.numeric_string_value self ⦃ (result : Option I64) =>
+      result.map (·.val) = numericValue self ⦄ :=
+  rmcp.model.NumberOrString.numeric_string_value_spec self
+
+/--
+info: 'Theorems.model.NumberOrString.numeric_string_value' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.NumberOrString.numeric_string_value
+
+/-- M07 `matches_response_id`: `true` iff the ids are equal, or `self` is a number `n` and the
+response id is a string whose `Defs.parseI64` value is `n`. -/
+theorem Theorems.model.NumberOrString.matches_response_id
+    (self response_id : model.NumberOrString) :
+    rmcp.model.NumberOrString.matches_response_id self response_id ⦃ (result : Bool) =>
+      (result = true ↔
+        self = response_id ∨
+          ∃ n : I64, self = .Number n ∧ numericValue response_id = some n.val) ⦄ :=
+  rmcp.model.NumberOrString.matches_response_id_spec self response_id
+
+/--
+info: 'Theorems.model.NumberOrString.matches_response_id' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.NumberOrString.matches_response_id
+
+/-- M01 `into_request`: `Some (request, id)` exactly for the request with that payload and id. -/
+theorem Theorems.model.JsonRpcMessage.into_request
+    {Req Resp Noti : Type} (self : model.JsonRpcMessage Req Resp Noti) :
+    rmcp.model.JsonRpcMessage.into_request self ⦃
+      (result : Option (Req × model.NumberOrString)) =>
+      match result with
+      | some (request, id) => self = Defs.JsonRpc.request request id
+      | none => kind self ≠ .request ⦄ :=
+  rmcp.model.JsonRpcMessage.into_request_spec self
+
+/--
+info: 'Theorems.model.JsonRpcMessage.into_request' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.JsonRpcMessage.into_request
+
+/-- M02 `into_response`: `Some (result, id)` exactly for the response with that result and id. -/
+theorem Theorems.model.JsonRpcMessage.into_response
+    {Req Resp Noti : Type} (self : model.JsonRpcMessage Req Resp Noti) :
+    rmcp.model.JsonRpcMessage.into_response self ⦃
+      (result : Option (Resp × model.NumberOrString)) =>
+      match result with
+      | some (response, id) => self = Defs.JsonRpc.response response id
+      | none => kind self ≠ .response ⦄ :=
+  rmcp.model.JsonRpcMessage.into_response_spec self
+
+/--
+info: 'Theorems.model.JsonRpcMessage.into_response' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.JsonRpcMessage.into_response
+
+/-- M03 `into_notification`: `Some notification` exactly for the notification with that payload. -/
+theorem Theorems.model.JsonRpcMessage.into_notification {Req Resp Noti : Type}
+    (self : model.JsonRpcMessage Req Resp Noti) :
+    rmcp.model.JsonRpcMessage.into_notification self ⦃ (result : Option Noti) =>
+      match result with
+      | some notification => self = Defs.JsonRpc.notification notification
+      | none => kind self ≠ .notification ⦄ :=
+  rmcp.model.JsonRpcMessage.into_notification_spec self
+
+/--
+info: 'Theorems.model.JsonRpcMessage.into_notification' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.JsonRpcMessage.into_notification
+
+/-- M04 `into_error`: `Some (error, id)` exactly for the error with that data and optional id. -/
+theorem Theorems.model.JsonRpcMessage.into_error
+    {Req Resp Noti : Type} (self : model.JsonRpcMessage Req Resp Noti) :
+    rmcp.model.JsonRpcMessage.into_error self ⦃
+      (result : Option (model.ErrorData × Option model.NumberOrString)) =>
+      match result with
+      | some (error, id) => self = Defs.JsonRpc.error error id
+      | none => kind self ≠ .error ⦄ :=
+  rmcp.model.JsonRpcMessage.into_error_spec self
+
+/--
+info: 'Theorems.model.JsonRpcMessage.into_error' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.JsonRpcMessage.into_error
+
+/-- M05 `into_result`: `Some (Ok r, Some i)` for a response, `Some (Err e, i)` for an error, `None`
+for a request or a notification. -/
+theorem Theorems.model.JsonRpcMessage.into_result
+    {Req Resp Noti : Type} (self : model.JsonRpcMessage Req Resp Noti) :
+    rmcp.model.JsonRpcMessage.into_result self ⦃
+      (result : Option (core.result.Result Resp model.ErrorData ×
+        Option model.NumberOrString)) =>
+      match result with
+      | some (.Ok response, some id) => self = Defs.JsonRpc.response response id
+      | some (.Ok _, none) => False
+      | some (.Err error, id) => self = Defs.JsonRpc.error error id
+      | none => kind self = .request ∨ kind self = .notification ⦄ :=
+  rmcp.model.JsonRpcMessage.into_result_spec self
+
+/--
+info: 'Theorems.model.JsonRpcMessage.into_result' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.JsonRpcMessage.into_result
+
+/-- M09 `into_vec`: `Single x` gives `[x]`, `Multiple v` gives `v`. -/
+theorem Theorems.model.SamplingContent.into_vec {T : Type} (self : model.SamplingContent T) :
+    rmcp.model.SamplingContent.into_vec self ⦃ (result : alloc.vec.Vec T) =>
+      match self with
+      | .Single x => result.val = [x]
+      | .Multiple v => result = v ⦄ :=
+  rmcp.model.SamplingContent.into_vec_spec self
+
+/--
+info: 'Theorems.model.SamplingContent.into_vec' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.SamplingContent.into_vec
+
+/-- M10 `is_empty`: `false` for `Single _`; for `Multiple v`, `true` iff `v` is empty. -/
+theorem Theorems.model.SamplingContent.is_empty {T : Type} (self : model.SamplingContent T) :
+    rmcp.model.SamplingContent.is_empty self ⦃ (result : Bool) =>
+      match self with
+      | .Single _ => result = false
+      | .Multiple v => (result = true ↔ v.val = []) ⦄ :=
+  rmcp.model.SamplingContent.is_empty_spec self
+
+/--
+info: 'Theorems.model.SamplingContent.is_empty' depends on axioms: [propext]
+-/
+#guard_msgs in
+#print axioms Theorems.model.SamplingContent.is_empty
+
+/-- M11 `len`: 1 for `Single _`, `v.length` for `Multiple v`. -/
+theorem Theorems.model.SamplingContent.len {T : Type} (self : model.SamplingContent T) :
+    rmcp.model.SamplingContent.len self ⦃ (result : Usize) =>
+      match self with
+      | .Single _ => result.val = 1
+      | .Multiple v => result.val = v.val.length ⦄ :=
+  rmcp.model.SamplingContent.len_spec self
+
+/--
+info: 'Theorems.model.SamplingContent.len' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.SamplingContent.len
+
+/-- M12 `first`: `some x` for `Single x`, the head of `v` for `Multiple v`. -/
+theorem Theorems.model.SamplingContent.first {T : Type} (self : model.SamplingContent T) :
+    rmcp.model.SamplingContent.first self ⦃ (result : Option T) =>
+      match self with
+      | .Single x => result = some x
+      | .Multiple v => result = v.val.head? ⦄ :=
+  rmcp.model.SamplingContent.first_spec self
+
+/--
+info: 'Theorems.model.SamplingContent.first' depends on axioms: [propext]
+-/
+#guard_msgs in
+#print axioms Theorems.model.SamplingContent.first
+
+/-- M13 `as_prompt_name`: for a prompt reference, `Some s` with the UTF-8 bytes of its name (name at
+most `Usize.max` bytes); `None` for a resource reference. -/
+theorem Theorems.model.Reference.as_prompt_name (self : model.Reference)
+    (h_size : ∀ p, self = .Prompt p → p.«name».utf8ByteSize ≤ Usize.max) :
+    rmcp.model.Reference.as_prompt_name self ⦃ (result : Option Str) =>
+      match self with
+      | .Prompt p => ∃ s, result = some s ∧ s.val = Defs.utf8Bytes p.«name»
+      | .Resource _ => result = none ⦄ :=
+  rmcp.model.Reference.as_prompt_name_spec self h_size
+
+/--
+info: 'Theorems.model.Reference.as_prompt_name' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.Reference.as_prompt_name
+
+/-- M13, failing case: a prompt name of more than `Usize.max` bytes gives `fail
+maximumSizeExceeded`. -/
+theorem Theorems.model.Reference.as_prompt_name_fail (p : model.PromptReference)
+    (h_big : Usize.max < p.«name».utf8ByteSize) :
+    rmcp.model.Reference.as_prompt_name (.Prompt p) = fail .maximumSizeExceeded :=
+  rmcp.model.Reference.as_prompt_name_fail p h_big
+
+/--
+info: 'Theorems.model.Reference.as_prompt_name_fail' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.Reference.as_prompt_name_fail
+
+/-- M14 `as_resource_uri`: for a resource reference, `Some s` with the UTF-8 bytes of its URI (URI
+at most `Usize.max` bytes); `None` for a prompt reference. -/
+theorem Theorems.model.Reference.as_resource_uri (self : model.Reference)
+    (h_size : ∀ r, self = .Resource r → r.uri.utf8ByteSize ≤ Usize.max) :
+    rmcp.model.Reference.as_resource_uri self ⦃ (result : Option Str) =>
+      match self with
+      | .Resource r => ∃ s, result = some s ∧ s.val = Defs.utf8Bytes r.uri
+      | .Prompt _ => result = none ⦄ :=
+  rmcp.model.Reference.as_resource_uri_spec self h_size
+
+/--
+info: 'Theorems.model.Reference.as_resource_uri' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.Reference.as_resource_uri
+
+/-- M14, failing case: a resource URI of more than `Usize.max` bytes gives `fail
+maximumSizeExceeded`. -/
+theorem Theorems.model.Reference.as_resource_uri_fail (r : model.ResourceTemplateReference)
+    (h_big : Usize.max < r.uri.utf8ByteSize) :
+    rmcp.model.Reference.as_resource_uri (.Resource r) = fail .maximumSizeExceeded :=
+  rmcp.model.Reference.as_resource_uri_fail r h_big
+
+/--
+info: 'Theorems.model.Reference.as_resource_uri_fail' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.Reference.as_resource_uri_fail
+
+/-- Joint lemma (plan Section 16.1) M10 `= (M11 = 0)`: `is_empty` is `len = 0`, as computations. -/
+theorem Theorems.model.SamplingContent.is_empty_eq_len_eq_zero
+    {T : Type} (self : model.SamplingContent T) :
+    rmcp.model.SamplingContent.is_empty self =
+      (do let n ← rmcp.model.SamplingContent.len self; ok (decide (n.val = 0))) :=
+  rmcp.model.SamplingContent.is_empty_eq_len_eq_zero self
+
+/--
+info: 'Theorems.model.SamplingContent.is_empty_eq_len_eq_zero' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.SamplingContent.is_empty_eq_len_eq_zero
+
+/-- Joint lemma (plan Section 16.1) M12 `= (M09).head?`: `first` is the head of `into_vec`, as
+computations. -/
+theorem Theorems.model.SamplingContent.first_eq_head?_into_vec
+    {T : Type} (self : model.SamplingContent T) :
+    rmcp.model.SamplingContent.first self =
+      (do let v ← rmcp.model.SamplingContent.into_vec self; ok v.val.head?) :=
+  rmcp.model.SamplingContent.first_eq_head?_into_vec self
+
+/--
+info: 'Theorems.model.SamplingContent.first_eq_head?_into_vec' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.SamplingContent.first_eq_head?_into_vec
+
+/-- Joint lemma (plan Section 16.1) M11 `= (M09).length`: `len` is the length of `into_vec`, as
+computations. -/
+theorem Theorems.model.SamplingContent.len_eq_len_into_vec
+    {T : Type} (self : model.SamplingContent T) :
+    rmcp.model.SamplingContent.len self =
+      (do let v ← rmcp.model.SamplingContent.into_vec self; ok (alloc.vec.Vec.len v)) :=
+  rmcp.model.SamplingContent.len_eq_len_into_vec self
+
+/--
+info: 'Theorems.model.SamplingContent.len_eq_len_into_vec' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.SamplingContent.len_eq_len_into_vec
+
+/-- Joint lemma (plan Section 16.1): the calls M01–M04 all succeed and exactly one of their
+results is `some`. -/
+theorem Theorems.model.JsonRpcMessage.exactly_one_some
+    {Req Resp Noti : Type} (self : model.JsonRpcMessage Req Resp Noti) :
+    (do
+      let a ← rmcp.model.JsonRpcMessage.into_request self
+      let b ← rmcp.model.JsonRpcMessage.into_response self
+      let c ← rmcp.model.JsonRpcMessage.into_notification self
+      let d ← rmcp.model.JsonRpcMessage.into_error self
+      ok [a.isSome, b.isSome, c.isSome, d.isSome])
+      ⦃ (result : List Bool) => result.count true = 1 ⦄ :=
+  rmcp.model.JsonRpcMessage.exactly_one_some self
+
+/--
+info: 'Theorems.model.JsonRpcMessage.exactly_one_some' depends on axioms: [propext, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.model.JsonRpcMessage.exactly_one_some
+
+/-- C03 `into_result_eq` (plan Section 16.4; uses M02, M04, M05): `into_result` is `into_response`
+mapped to `(Ok r, Some i)`, or else `into_error` mapped to `(Err e, i)`; an equation of computations
+over the translated functions, for every message. -/
+theorem Theorems.model.into_result_eq {Req Resp Noti : Type}
+    (m : model.JsonRpcMessage Req Resp Noti) :
+    rmcp.model.JsonRpcMessage.into_result m = (do
+      let r ← rmcp.model.JsonRpcMessage.into_response m
+      let e ← rmcp.model.JsonRpcMessage.into_error m
+      ok ((r.map fun (x, i) => (core.result.Result.Ok x, some i)) <|>
+        (e.map fun (x, i) => (core.result.Result.Err x, i)))) :=
+  rmcp.model.into_result_eq m
+
+/--
+info: 'Theorems.model.into_result_eq' depends on axioms: [propext]
+-/
+#guard_msgs in
+#print axioms Theorems.model.into_result_eq

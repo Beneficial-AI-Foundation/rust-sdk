@@ -455,7 +455,7 @@ steps:
 
   - id: S28
     day: D3-5
-    state: NOT_STARTED
+    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
     depends_on: [S24, S26]
     owner: Lean
     files:
@@ -470,7 +470,7 @@ steps:
 
   - id: S29
     day: D4-6
-    state: NOT_STARTED
+    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
     depends_on: [S24, S26]  # and human decision H2 (accepted 2026-11-23)
     owner: Lean
     files:
@@ -484,7 +484,7 @@ steps:
 
   - id: S30
     day: D5-6
-    state: NOT_STARTED
+    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
     depends_on: [S27, S28]
     owner: Lean
     files:
@@ -495,7 +495,7 @@ steps:
 
   - id: S31
     day: D4-8
-    state: NOT_STARTED
+    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
     depends_on: [S21, S25]
     owner: Lean
     files:
@@ -506,7 +506,7 @@ steps:
 
   - id: S32
     day: D6-8
-    state: NOT_STARTED
+    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
     depends_on: [S25, S26, S27]
     owner: Lean
     files:
@@ -517,7 +517,7 @@ steps:
 
   - id: S33
     day: D8-9
-    state: NOT_STARTED
+    state: IN_PROGRESS  # proofs checked, restated and independently reviewed 2026-11-24 (incorporation of S24/S25); awaits human acceptance
     depends_on: [S28, S29, S30, S31, S32]
     owner: Lean + review
     files:

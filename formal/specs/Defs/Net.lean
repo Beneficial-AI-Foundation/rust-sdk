@@ -273,6 +273,16 @@ example : [ipv6 [0, 0, 0, 0, 0, 0xffff, 0x0808, 0x0808],
     ipv6 [0, 0, 0, 0, 0, 0, 0x0808, 0x0808], ipv6 [0x2002, 0x0808, 0x0808, 0, 0, 0, 0, 1]].all
     (fun v => !ipv6Disallowed v) = true := by
   decide
+-- A01, A03/C04: addresses next to the outer edges of the 6to4 (`2002::/16`), IPv4-mapped
+-- (`::ffff:0:0/96`), IPv4-compatible (`::/96`) and NAT64 (`64:ff9b::/96`) prefixes, but outside
+-- them, carry no IPv4 address: the code matches the full leading segments `[0x2002, ..]`,
+-- `[0, 0, 0, 0, 0, 0xffff]`, `[0, 0, 0, 0, 0, 0]` and `[0x64, 0xff9b, 0, 0, 0, 0]` (`auth.rs`
+-- lines 1359–1368 at `7caec76`; plan Section 22, rows A01, A03/C04). Each of the wrong prefixes
+-- `2002::/15`, `::ffff:0:0/95`, `::/95` and `::/80` makes this check fail.
+example : [ipv6 [0x2003, 0xc0a8, 1, 0, 0, 0, 0, 0], ipv6 [0x2001, 0xffff, 0xffff, 0, 0, 0, 0, 0],
+    ipv6 [0, 0, 0, 0, 0, 0xfffe, 0x0a00, 1], ipv6 [0, 0, 0, 0, 0, 1, 0x0a00, 1],
+    ipv6 [0x64, 0xff9b, 0, 0, 1, 0, 0x0a00, 1]].all (fun v => embeddedIpv4 v == none) = true := by
+  decide
 -- A03: special-purpose IPv6 ranges outside the plan's list are not blocked (the H8 scope
 -- note).
 example : [ipv6 [0, 0, 0, 0, 0xffff, 0, 0x0a00, 1], ipv6 [0x100, 0, 0, 0, 0, 0, 0, 1],

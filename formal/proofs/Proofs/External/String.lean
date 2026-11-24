@@ -5,6 +5,7 @@ Authors: Hoang Le Truong
 -/
 import Rmcp.Funs
 import Proofs.External.Base64
+import Defs.Bytes
 
 /-!
 # UTF-8 facts for the `String` models
@@ -13,7 +14,8 @@ Lemmas about `ExtModel.utf8` (the bytes of a Lean `String`) and `ExtModel.strOfB
 `String` with given bytes), used by the specs of the `String`/`str` externals
 (`formal/trusted/Rmcp/FunsExternal.lean`): they are inverse to each other, `utf8` is additive and
 counts `utf8ByteSize` bytes, ASCII text has one byte per character, and the Aeneas `toStr` of a
-literal has the bytes `utf8` gives.
+literal has the bytes `utf8` gives. `utf8Bytes_eq_utf8` identifies `Defs.utf8Bytes` (the encoding
+the Phase 2 definitions use) with `utf8`.
 
 Section "Phase 2: strings and `Arc`" proves the signed-off laws of plan steps S26/S27 for
 `<str as PartialEq>::eq`, `<String as Deref>::deref` and `Arc` (`deref`, `eq`). It needs
@@ -55,6 +57,10 @@ theorem byte_toUInt8 (x : U8) : byte x.val.toUInt8.toNat = x := by
 
 theorem utf8_eq (s : String) : utf8 s = s.toByteArray.data.toList.map (fun x => byte x.toNat) := by
   rw [utf8, byteArray_toList]
+
+/-- `Defs.utf8Bytes`, the encoding of the Phase 2 definitions, is the trusted model's
+`ExtModel.utf8`, by definition. -/
+theorem utf8Bytes_eq_utf8 (s : String) : Defs.utf8Bytes s = ExtModel.utf8 s := rfl
 
 /-- `utf8 s` has `s.utf8ByteSize` bytes. -/
 theorem length_utf8 (s : String) : (utf8 s).length = s.utf8ByteSize := by

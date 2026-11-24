@@ -6,12 +6,12 @@ generated_symbol: rmcp.transport.streamable_http_server.tower.AllowedPort.matche
 translation: LEAN_OK  # S21 (2026-11-23): scripts/aeneas-translate.sh exit 0; lake build passes
 spec: REVIEWED                # signed off by the spec owner 2026-11-24 (S24, after 4 spec-cycle rounds)
 linkage: ORIGINAL  # pending S22: check passes locally on the S22 working tree (2026-11-24); not yet in CI on a commit
-proof: OPEN
+proof: CHECKED  # proved 2026-11-24 (S29, incorporation of S24/S25); proof reviewed by an independent mcp-review agent 2026-11-24 (no blocking finding)
 proof_file: formal/proofs/Proofs/Transport/Tower.lean
 spec_file: formal/specs/Specs/Transport/StreamableHttpServer/Tower.lean
-theorem: null
+theorem: rmcp.transport.streamable_http_server.tower.AllowedPort.matches_spec  # restated as Theorems.tower.AllowedPort.matches
 used_by: []  # Phase 2 targets/composition theorems consuming this theorem (plan Section 16)
-axioms: []  # as printed by `#print axioms` in the spec file
+axioms: [propext, Classical.choice, Quot.sound, rmcp.transport.streamable_http_server.tower.default_port._native.decide.ax_1, rmcp.transport.streamable_http_server.tower.default_port._native.decide.ax_2]  # as printed by `#print axioms` in the spec file
 evidence: [formal/docs/STATUS.md]
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/Transport.lean (S24)
 spec_reviews:
@@ -24,7 +24,7 @@ spec_reviews:
   - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 4, reviewer: a, verdict: no blocking findings, evidence: formal/docs/STATUS.md (S24 spec cycle)}
   - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 4, reviewer: b, verdict: no blocking findings, evidence: formal/docs/STATUS.md (S24 spec cycle)}
 spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-24
-prover: null
+prover: "AI: Claude Code, claude-opus-5-5"  # mcp-lean agent; not the AI spec drafter
 reviewer: null
 behaviour: |-  # derived copy of plan Section 16; informational, not a specification
   `Any`, `Unspecified` -> `true`; `Exact p` -> `(port <|> T07 scheme) = some p`

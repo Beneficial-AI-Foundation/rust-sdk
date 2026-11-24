@@ -24,7 +24,10 @@ Phase 2 (plan steps S26/S27, plan Section 18): the laws of the models of the Pha
 this file as `Theorems.External.<original name>` and proved at stage 6 in
 `Proofs/External/{String,Option,Std,IntParse,Net}.lean`. Signed off by the spec owner on
 2026-11-23; the draft text was in `formal/specs/Drafts/External.lean`, removed at
-incorporation. Each depends on at most `propext`, `Classical.choice` and `Quot.sound`.
+incorporation. Each depends on at most `propext`, `Classical.choice` and `Quot.sound`. The S27
+deferred law `I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64` was signed off
+separately, on 2026-11-24 (S24 sign-off, S24/S25 spec cycle in `formal/docs/STATUS.md`); its
+signed-off text was in `formal/specs/Drafts/Model.lean`, removed at incorporation.
 -/
 
 /-! ## `Proofs/External/Base64.lean` -/
@@ -1528,6 +1531,27 @@ info: 'Theorems.External.core.str.Str.parse_eq' depends on axioms: [propext]
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.str.Str.parse_eq
+
+/-- **S27 deferred law** (signed off 2026-11-24, S24/S25 spec cycle; signed-off text was in
+`specs/Drafts/Model.lean`, removed at incorporation): `i64::from_str` never fails, and returns
+`Ok n` exactly when `Defs.parseI64` accepts the bytes of `src`, with `n.val` its value;
+otherwise `Err _` (error kind unconstrained). M06 uses it. -/
+theorem Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64
+    (src : Str) :
+    I64.Insts.CoreStrTraitsFromStrParseIntError.from_str src
+      ⦃ (result : core.result.Result I64 core.num.error.ParseIntError) =>
+        (match result with
+         | .Ok n => some n.val
+         | .Err _ => none) = Defs.parseI64 src.val ⦄ :=
+  _root_.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64 src
+
+/--
+info: 'Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64
 
 /-! ## `Proofs/External/Net.lean`: IP addresses (Phase 2) -/
 

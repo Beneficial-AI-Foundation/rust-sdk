@@ -278,7 +278,7 @@ once per chunk on a limiter built by `new`, lines 144–155) and on boundary cas
 Section 22 (rows T01/T02 and T03/C01/C02). `observeChunks` folds `observe` over a list of
 chunks, stopping at the first failing chunk, as `BoundedSseByteStream::poll_next` does (lines
 115–141: a failing `observe` sets `failed`, lines 126–127, and a `failed` stream ends at
-line 120). The last checks compare
+lines 120–121: the check at line 120, the return at line 121). The last checks compare
 `observe` from `init` with the declarative `historyOutcome`. -/
 
 /-- `2^64 - 1`, `Usize.max` on the translated 64-bit target (used only by the checks). -/

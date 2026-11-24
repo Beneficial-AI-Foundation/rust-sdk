@@ -83,7 +83,7 @@ open IntParse
 `s` is an optional single sign (`splitSign`) followed by a nonempty list of ASCII digits
 (`isAsciiDigit`) and nothing else; the value is that of the digits (`digitsValue`), negated
 after `-`, and must lie in `[i64Min, i64Max] = [-2^63, 2^63 - 1]` (module docstring: `mod.rs`
-lines 1592–1603, `error.rs` lines 93–129). So `"0"`, `"+0"`, `"-0"`, `"007"`,
+lines 1592–1606, `error.rs` lines 93–129). So `"0"`, `"+0"`, `"-0"`, `"007"`,
 `"9223372036854775807"` and `"-9223372036854775808"` are accepted, while `""`, `"+"`, `"-"`,
 `" 1"`, `"1 "`, `"9223372036854775808"`, `"-9223372036854775809"`, `"+-1"`, `"1_000"` and the
 Arabic-Indic digit `"١"` are rejected. -/
