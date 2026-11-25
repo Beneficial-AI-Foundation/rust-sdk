@@ -729,18 +729,19 @@ steps:
 
   - id: PATCH04-SKILL  # not a plan step; translation patch 04, public skill.rs API K01-K20, plan Sections 2.3, 15 and 19 (amendments 2026-11-25)
     day: 2026-11-25
-    state: IN_PROGRESS  # translated on Aeneas nightly-2026.11.24-fb44cb4 (base b363a8a); records and
-    # docs updated; reviewed (3 rounds of 2, 2 and 1 fresh mcp-review reviewers);
-    # patch 04 (hunks H1-H9), Charon settings, script changes, 40 exact models (12 skill::prim
-    # wrappers, 28 core/alloc/std/serde_json/unicode-general-category functions) with 4 type models,
-    # 3 opaque constants (sha256, nfkc, generalCategory; 0 axioms) and the spec lemmas of the models
-    # signed off by the spec owner 2026-11-25. Linkage: 13 ORIGINAL (K01-K04, K08-K12, K17-K20),
-    # 7 patch-04 (K05-K07, K13-K16); scripts/check-original-linkage.sh passes locally, CI pending.
-    # Pending: the commit (human approval). The K01-K20 specs, proofs and records are SPEC-K01-K20.
-    # Human decisions 2026-11-25: patch 04 with H9; opaque functions with laws as premises (no
-    # axiom); script change (canon + MULTI for the `_::new` and `_::with_meta` globs); 13 targets
-    # ORIGINAL. Lead decisions 2026-11-25: serde_json::Map modelled as BTreeMap; no implemented_by;
-    # <ParseIntError as Debug>::fmt a total model (stated exception).
+    state: ACCEPTED  # accepted by the human owner 2026-11-25; committed 061f014. Translated on
+    # Aeneas nightly-2026.11.24-fb44cb4 (base b363a8a); records and docs updated; reviewed (3 rounds
+    # of 2, 2 and 1 fresh mcp-review reviewers); patch 04 (hunks H1-H9), Charon settings, script
+    # changes, 40 exact models (12 skill::prim wrappers, 28
+    # core/alloc/std/serde_json/unicode-general-category functions) with 4 type models, 3 opaque
+    # constants (sha256, nfkc, generalCategory; 0 axioms) and the spec lemmas of the models signed
+    # off by the spec owner 2026-11-25. Linkage: 13 ORIGINAL (K01-K04, K08-K12, K17-K20), 7 patch-04
+    # (K05-K07, K13-K16); scripts/check-original-linkage.sh passes locally (also on the committed
+    # head de7b8de), CI pending (nothing pushed). The K01-K20 specs, proofs and records are
+    # SPEC-K01-K20. Human decisions 2026-11-25: patch 04 with H9; opaque functions with laws as
+    # premises (no axiom); script change (canon + MULTI for the `_::new` and `_::with_meta` globs);
+    # 13 targets ORIGINAL. Lead decisions 2026-11-25: serde_json::Map modelled as BTreeMap; no
+    # implemented_by; <ParseIntError as Debug>::fmt a total model (stated exception).
     depends_on: [PATCH03-V2]  # patch 04 applies after patches 01-03
     owner: Lead + human owner
     files:
@@ -771,22 +772,23 @@ steps:
 
   - id: SPEC-K01-K20  # not a plan step; specification and proof of K01-K20, public skill.rs API (plan Section 2.3 amendment 2026-11-25)
     day: 2026-11-25
-    state: IN_PROGRESS  # spec cycle of 3 review rounds (2 fresh mcp-review reviewers each; round 1
-    # no blocking finding, rounds 2 and 3 both reviewers ready for sign-off; one cosmetic fix);
-    # differential tests 0 mismatches; 51 statements (20 spec theorems, 3 corollaries of K09, K13,
-    # K16, 10 compositions, 18 consequences of the model) and the definitions Defs.Skill signed off
-    # by the spec owner 2026-11-25. Proved 2026-11-25 by mcp-lean agents (not the drafter), 51/51,
-    # each checked rfl-equal to the signed-off text; phase-C refined; two independent proof
-    # reviews (sound; ready). Incorporated 2026-11-25 (human approval): restated as Theorems.skill.*
-    # in formal/specs/Specs/Model/Skill.lean (51, each rfl-equal to the signed-off text, axioms
-    # pinned by #guard_msgs), modules added to the Proofs and Specs roots, draft removed; lake build
-    # --wfail (3793 jobs), lean-guard build-log/sources/axioms pass; check-original-linkage.sh passes
-    # on a scratch commit of the tree (60/40/34/10 blocks identical). Pending: the commit (human).
-    # Premises: UsizeFits, UriFits, SkillFits and the patch-induced domain restriction NfkcFits
-    # (bridge lemma Defs.Skill.NfkcFits.of_utf8ByteSize_le from the 18x NFKC expansion law, Rust
-    # evidence in formal/trusted/evidence/README.md). Not covered: caller code with side effects,
-    # SHA-256 for inputs of at least 2^61 bytes, the HashSet random source, the serde_json feature
-    # preserve_order. No disagreement found between the statements and skill.rs.
+    state: ACCEPTED  # accepted by the human owner 2026-11-25; committed de7b8de. Spec cycle of 3
+    # review rounds (2 fresh mcp-review reviewers each; round 1 no blocking finding, rounds 2 and 3
+    # both reviewers ready for sign-off; one cosmetic fix); differential tests 0 mismatches; 51
+    # statements (20 spec theorems, 3 corollaries of K09, K13, K16, 10 compositions, 18 consequences
+    # of the model) and the definitions Defs.Skill signed off by the spec owner 2026-11-25. Proved
+    # 2026-11-25 by mcp-lean agents (not the drafter), 51/51, each checked rfl-equal to the
+    # signed-off text; phase-C refined; two independent proof reviews (sound; ready). Incorporated
+    # 2026-11-25 (human approval): restated as Theorems.skill.* in
+    # formal/specs/Specs/Model/Skill.lean (51, each rfl-equal to the signed-off text, axioms pinned
+    # by #guard_msgs), modules added to the Proofs and Specs roots, draft removed; lake build
+    # --wfail (3793 jobs), lean-guard build-log/sources/axioms pass; check-original-linkage.sh
+    # passes on a scratch commit of the tree (60/40/34/10 blocks identical). CI pending (nothing
+    # pushed). Premises: UsizeFits, UriFits, SkillFits and the patch-induced domain restriction
+    # NfkcFits (bridge lemma Defs.Skill.NfkcFits.of_utf8ByteSize_le from the 18x NFKC expansion law,
+    # Rust evidence in formal/trusted/evidence/README.md). Not covered: caller code with side
+    # effects, SHA-256 for inputs of at least 2^61 bytes, the HashSet random source, the serde_json
+    # feature preserve_order. No disagreement found between the statements and skill.rs.
     depends_on: [PATCH04-SKILL]
     owner: Lead + human owner
     files:

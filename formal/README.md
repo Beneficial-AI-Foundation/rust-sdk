@@ -44,7 +44,8 @@ The test-only patch 02 gained 12 boundary tests of R09–R12 and R15 (46 tests; 
 pass on the patched copy). Records: `docs/functions/R09.yaml`–`R15.yaml`.
 
 Public `skill.rs` API (2026-11-25; translation patch 04 and the K01–K20 specifications **signed
-off by the spec owner 2026-11-25; proved; not committed, not accepted**): the twenty public
+off by the spec owner 2026-11-25; proved; committed 061f014 and de7b8de; accepted by the human
+owner 2026-11-25**): the twenty public
 functions of `crates/rmcp/src/model/skill.rs` (K01–K20) translate, 13 from the unmodified source
 (linkage `ORIGINAL`: K01–K04, K08–K12, K17–K20) and 7 with `trusted/patches/04-skill-public.patch`
 (K05–K07, K13–K16). 51 statements (20 spec theorems, 3 corollaries, 10 compositions, 18

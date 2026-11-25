@@ -15,11 +15,11 @@ records incorporated; proofs checked 2026-11-25 (build, guards, independent inco
 committed `0cbd67f`; accepted by the human owner 2026-11-25 (board SPEC-R09-R15).
 
 **Translation patch 04 and K01–K20 specifications (2026-11-25; signed off by the spec owner
-2026-11-25; not committed, not accepted):** the twenty public functions of
-`crates/rmcp/src/model/skill.rs` (K01–K20) translate, 13 from the unmodified source (linkage
-`ORIGINAL`) and 7 with translation patch 04 (linkage `patch-04`); 51 statements signed off after 3
-review rounds and proved (51/51); records `functions/K01.yaml`–`K20.yaml`. See "Public skill.rs API
-(K01–K20)" and "Trusted base" (board PATCH04-SKILL, SPEC-K01-K20).
+2026-11-25; committed 061f014 and de7b8de; accepted by the human owner 2026-11-25):** the twenty
+public functions of `crates/rmcp/src/model/skill.rs` (K01–K20) translate, 13 from the unmodified
+source (linkage `ORIGINAL`) and 7 with translation patch 04 (linkage `patch-04`); 51 statements
+signed off after 3 review rounds and proved (51/51); records `functions/K01.yaml`–`K20.yaml`. See
+"Public skill.rs API (K01–K20)" and "Trusted base" (board PATCH04-SKILL, SPEC-K01-K20).
 
 **Aeneas upgrade (2026-11-24), reviewed and re-signed by the spec owner 2026-11-24:** see "Aeneas upgrade
 (2026-11-24)" below. The results sections below record the state before it (Aeneas
@@ -1133,15 +1133,15 @@ and AI-reviewed (mcp-review), Claude Code, claude-opus-5-5. R16–R17 (`seal_jso
 `formal/trusted/issues/aeneas-serde-ser-mutual-traits.md`.
 
 **Public skill.rs API (K01–K20, 2026-11-25; translation and specifications signed off by the spec
-owner 2026-11-25; not committed, not accepted):** verify the twenty public functions of
-`crates/rmcp/src/model/skill.rs` (upstream `7caec76`, unmodified in the repository): K01
-`Resource::is_directory`, K02 `SkillsCapability::new`, K03 `SkillsCapability::with_directory_read`,
-K04 `SkillResource::new`, K05 `SkillResource::from_bytes`, K06 `SkillResource::verify`, K07
-`sha256_digest`, K08 `SkillFrontmatter::new`, K09 `SkillFrontmatter::with_field`, K10
-`Skill::new`, K11 `Skill::with_meta`, K12 `Skill::name`, K13 `Skill::validate`, K14
-`skill_name_from_uri`, K15 `is_sha256_digest`, K16 `validate_skills`, K17 `GetSkillResult::new`,
-K18 `GetSkillResult::with_ttl_ms`, K19 `GetSkillResult::with_cache_scope`, K20
-`GetSkillResult::with_meta`.
+owner 2026-11-25; committed 061f014 and de7b8de; accepted by the human owner 2026-11-25):** verify
+the twenty public functions of `crates/rmcp/src/model/skill.rs` (upstream `7caec76`, unmodified in
+the repository): K01 `Resource::is_directory`, K02 `SkillsCapability::new`, K03
+`SkillsCapability::with_directory_read`, K04 `SkillResource::new`, K05 `SkillResource::from_bytes`,
+K06 `SkillResource::verify`, K07 `sha256_digest`, K08 `SkillFrontmatter::new`, K09
+`SkillFrontmatter::with_field`, K10 `Skill::new`, K11 `Skill::with_meta`, K12 `Skill::name`, K13
+`Skill::validate`, K14 `skill_name_from_uri`, K15 `is_sha256_digest`, K16 `validate_skills`, K17
+`GetSkillResult::new`, K18 `GetSkillResult::with_ttl_ms`, K19 `GetSkillResult::with_cache_scope`,
+K20 `GetSkillResult::with_meta`.
 - **Translation stage** (board PATCH04-SKILL): translation patch 04 (hunks H1–H9), the Charon
   settings and script changes, 40 exact function models, 4 type models and 3 `opaque` constants
   (`sha256`, `nfkc`, `generalCategory`; 0 axioms), with the spec lemmas of the models in
@@ -1192,8 +1192,9 @@ K18 `GetSkillResult::with_ttl_ms`, K19 `GetSkillResult::with_cache_scope`, K20
   added to the `Proofs` and `Specs` roots; draft removed. `lake build --wfail` (3793 jobs) and
   `lean-guard.sh` build-log, sources and axioms pass; `scripts/check-original-linkage.sh` passes on
   a scratch commit of the tree (Funs 60/60, Types 40/40, templates 34/34 and 10/10 identical).
-- **Pending:** the commit (human approval); the human acceptance of PATCH04-SKILL and
-  SPEC-K01-K20; CI (nothing pushed).
+- **Committed** 061f014 (translation stage) and de7b8de (specs, proofs, records);
+  `check-original-linkage.sh` passes on de7b8de. **Accepted** by the human owner 2026-11-25 (board
+  PATCH04-SKILL and SPEC-K01-K20 ACCEPTED). Pending: CI (nothing pushed).
 
 **Public and internal specifications (2026-11-24, human decision):** `formal/specs/` now holds only
 the public rmcp API (functions `pub` in upstream rmcp): `Specs/Model.lean` (M01–M05, M09–M14, the
@@ -1337,10 +1338,9 @@ then S23 and S34); S35 and S36 `NOT_STARTED`; S37 `ACCEPTED` (results written an
 ## Open items
 
 Human decisions and actions:
-- **Skills API (K01–K20, 2026-11-25):** commit and acceptance of PATCH04-SKILL and SPEC-K01-K20
-  (board); CI (nothing pushed). The 13
-  ORIGINAL skills records wait for the first CI run of the linkage check, as the Phase 2 records
-  do.
+- **Skills API (K01–K20, 2026-11-25):** committed (061f014, de7b8de) and accepted; the 13
+  ORIGINAL skills records wait for the first CI run of the linkage check (push), as the Phase 2
+  records do.
 - **Phase 2 owner and budget (H5)**: not named; blocks S20 acceptance and gate G1 (plan Section 21).
 - **S31 candidate lemma (open, not a signed-off statement):** prove
   `∀ cap ≥ 1, Defs.Sse.observe cap (init m) h = historyOutcome cap m h` (checked only on finite
