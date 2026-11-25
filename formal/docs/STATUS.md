@@ -942,6 +942,39 @@ R15 proves that every codec `new_with_keyring` returns satisfies `CodecValid`. R
 `formal/docs/functions/R09.yaml`–`R15.yaml` (spec `REVIEWED`; proof pending the build and the
 lead's checks). With these, R16–R17 are the only public `request_state.rs` functions not covered.
 
+**Readability rewrite of R01–R15 (2026-11-25; signed off by the spec owner and accepted by the
+human owner 2026-11-25):** the
+public spec file `formal/specs/Specs/Model/RequestState.lean` (18 theorems: R01–R15 and the
+corollaries of R08, R09, R10) was rewritten for human readers without changing any statement's
+meaning. Text changes: the module docstring (summary table first, with "Premises" and "Not
+covered" columns; one glossary of premise keys and inherited exceptions, including the new key
+(I), caller code with side effects outside its state, for R04–R06, R11, R12, R15; the clock rule;
+provenance last); plain-English docstrings; readable binder names in place of generated ones;
+and ten abbreviations appended to `Defs.CodecState` (`strBytes`, `FallbacksKnownForToken`,
+`TranscriptV1Fits`, `TranscriptV2Fits`, `appendIfAbsent`, `IsInvalidKeyring`, `IsKeyTooShort`,
+`entryBytes`, `ItemsConvert`, `mapErrDeserialization`), each with the replaced text as its body;
+no existing definition changed. `formal/specs/README.md` gained key (I). Spec cycle: 5 rounds,
+2 fresh independent `mcp-review` reviewers per round (round 1: 1 blocking docstring finding,
+fixed; rounds 3–5 no blocking; round 5 both reviewers "ready for sign-off"). Spec-owner
+decisions 2026-11-25: ID order and restated text differing from the spec theorems, both recorded
+as exceptions in `docs/STYLE_GUIDE.md` "Spec Files"; optional round-5 wording polish deferred
+(the (F) phrase "for Rust not to panic", the native-code history phrase, R15's caller-code
+premise in the table and README, glossary lines for `rs1`/`rs2`, seal mode, `openAt`, `sealAt`,
+`keyringCheck`, two wraps). Evidence that the meaning is unchanged: a scratch Lean file that
+imports `Specs.Model.RequestState`, contains the 18 theorems of
+`git show 8debe97:formal/specs/Specs/Model/RequestState.lean` with `Theorems.` renamed to
+`SignedOff.` (same `open` lines), and checks for each pair
+`example : type_of% @SignedOff.X = type_of% @Theorems.X := rfl` plus a command comparing the
+binder kinds of the two types binder by binder; `cd formal && lake env lean <file>` exits 0 (18
+`rfl`, 18 binder checks). Negative controls (e.g. `versionV1`→`versionV2` in R07, `≤` for `=` in
+R06, append-always in R12, an implicit binder made explicit) fail, each at the mutated theorem;
+every reviewer re-ran the check and built its own controls. Final validation (round 5): `lake
+build --wfail` (3775 jobs), `lean-guard.sh` sources, build-log and axioms exit 0; all 18
+`#print axioms` lists `[propext, Classical.choice, Quot.sound]`, unchanged. AI-drafted (mcp-spec)
+and AI-reviewed (mcp-review), Claude Code, claude-opus-5-5. R16–R17 (`seal_json`,
+`seal_json_with`) stay untranslated; issue record
+`formal/trusted/issues/aeneas-serde-ser-mutual-traits.md`.
+
 **Public and internal specifications (2026-11-24, human decision):** `formal/specs/` now holds only
 the public rmcp API (functions `pub` in upstream rmcp): `Specs/Model.lean` (M01–M05, M09–M14, the
 `_fail` companions, the Section 16.1 joint lemmas, C03) and `Specs/Model/Task.lean` (M08), with the

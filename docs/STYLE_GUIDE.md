@@ -334,6 +334,8 @@ result.
   the statements use, and lists the items of that Rust file that were not translated (plan
   Section 2.3).
 - Statements appear in Rust source order, composition theorems last.
+  Exception (spec owner, 2026-11-25): `Specs/Model/RequestState.lean` lists R01–R15 in ID order,
+  with the Rust source order given in its module docstring.
 - Each statement is restated as a `theorem` in the `Theorems` namespace (as in the
   curve25519-dalek fork's `ForHumans/Theorems`), with the statement text of the signed-off spec,
   proved by the spec theorem it restates (so Lean checks the restated type against the proved
@@ -343,6 +345,11 @@ result.
   `Theorems.request_state.RequestStateCodec.open_rs1_at`); `Theorems.External.<original name>`
   for the laws of the external models, keeping the original name, because a shorter one could
   shadow a Rust function name that the statements mention.
+  Exception (spec owner, 2026-11-25): the public statements of `Specs/Model/RequestState.lean`
+  use the abbreviations of `Defs.CodecState` and readable binder names, so their text differs
+  from the spec theorems in `formal/proofs/Proofs/Model/RequestState/`; Lean still checks each
+  restated type against the proved one, and each was checked definitionally equal (`rfl`) to its
+  signed-off text (`formal/docs/STATUS.md`, "Readability rewrite of R01–R15").
 
   ```lean
   open rmcp.model.request_state_wire  -- for `Rs1Parts`; the function is still named in full

@@ -86,7 +86,8 @@ and R10).
 Rust functions are `rmcp::model::request_state::…`. Premise keys (the same in the file's
 docstring): **`h_into`** the caller's `Into<Vec<u8>>` conversion of `key` returns the vector `v`
 (user code, which may panic); **(F)** for a token whose first `.`-component is `rs1`, every rs1
-fallback id of the codec is a key id (`CodecFallbacksKnown`; else the code's `expect` panics);
+fallback id of the codec is a key id (`CodecFallbacksKnown`; sufficient, not necessary, for the
+code's `expect` not to panic);
 **(T)** the MAC transcript (`transcriptV1`/`transcriptV2` of the decoded components and `ad`)
 fits in `usize::MAX` bytes; **(L)** `ad.len() + sealed.len() + 36 ≤ usize::MAX` (implies (T));
 **(S)** the seal-mode key id is a key id (`CodecSealKeyKnown`; else the code's `expect` panics);
@@ -109,17 +110,20 @@ first); **(H)** HMAC's bit counter overflows for a transcript of at least `2^61 
 key of at least `2^61` bytes; **(V)** `open_with`, `open_json_with`, `seal_with` only: a transcript
 `Vec` above `isize::MAX` bytes; **(J)** `open_json*`: the `serde_json::from_slice` model (a
 `Deserialize` impl that panics, does not terminate, is non-deterministic or has side effects);
-**(P)** a caller `Drop` impl that panics (R11, R12, R15); **(N)** `HashMap::new` panics if the
-operating system's random source fails (R15).
+**(I)** R04–R06, R11, R12, R15: a caller conversion or iterator (`Into`, `AsRef`,
+`IntoIterator`) with side effects outside its argument or state (global or thread-local state,
+input/output), which the premises do not describe; **(P)** a caller `Drop` impl that panics
+(R11, R12, R15); **(N)** `HashMap::new` panics if the operating system's random source fails
+(R15).
 
 | ID | Rust function | Guarantee | Assumptions | Lean theorem |
 |---|---|---|---|---|
 | R01 | `SealOptions::new` | Returns options with no associated data (empty) and no time-to-live (`None`). | none | [`Theorems.request_state.SealOptions.new`](Specs/Model/RequestState.lean) |
 | R02 | `SealOptions::associated_data` | Returns the options with the associated data set to the argument and the time-to-live unchanged. | none | [`Theorems.request_state.SealOptions.associated_data`](Specs/Model/RequestState.lean) |
 | R03 | `SealOptions::ttl` | Returns the options with the time-to-live set to `Some(ttl)` and the associated data unchanged. | none | [`Theorems.request_state.SealOptions.ttl`](Specs/Model/RequestState.lean) |
-| R04 | `RequestStateCodec::new` (deprecated) | Returns the single-key codec of `v`, for a key of any length; it satisfies `CodecValid`. | `h_into` | [`Theorems.request_state.RequestStateCodec.new`](Specs/Model/RequestState.lean) |
-| R05 | `RequestStateCodec::new_unchecked` | Returns the single-key codec of `v`, for a key of any length; it satisfies `CodecValid`. | `h_into` | [`…RequestStateCodec.new_unchecked`](Specs/Model/RequestState.lean) |
-| R06 | `RequestStateCodec::try_new` | `Ok` of the single-key codec of `v` (satisfying `CodecValid`) exactly when `v` has at least 32 bytes, otherwise `KeyTooShort { minimum: 32, actual: v.len() }`. | `h_into` | [`…RequestStateCodec.try_new`](Specs/Model/RequestState.lean) |
+| R04 | `RequestStateCodec::new` (deprecated) | Returns the single-key codec of `v`, for a key of any length; it satisfies `CodecValid`. | `h_into`; inherited exception (I) | [`Theorems.request_state.RequestStateCodec.new`](Specs/Model/RequestState.lean) |
+| R05 | `RequestStateCodec::new_unchecked` | Returns the single-key codec of `v`, for a key of any length; it satisfies `CodecValid`. | `h_into`; inherited exception (I) | [`…RequestStateCodec.new_unchecked`](Specs/Model/RequestState.lean) |
+| R06 | `RequestStateCodec::try_new` | `Ok` of the single-key codec of `v` (satisfying `CodecValid`) exactly when `v` has at least 32 bytes, otherwise `KeyTooShort { minimum: 32, actual: v.len() }`. | `h_into`; inherited exception (I) | [`…RequestStateCodec.try_new`](Specs/Model/RequestState.lean) |
 | R07 | `RequestStateCodec::open` | Returns exactly `openAt` of the token with no associated data at the clock reading (one reading; says nothing about two calls). | (F); inherited exceptions (K) clock range, (H) HMAC `2^61` | [`…RequestStateCodec.open`](Specs/Model/RequestState.lean) |
 | R08 | `RequestStateCodec::open_with` | Returns exactly `openAt` of the token with associated data `ad` at the clock reading (one reading; says nothing about two calls). | (T), (F); inherited exceptions (K) clock range, (H) HMAC `2^61`, (V) `Vec` above `isize::MAX` | [`…RequestStateCodec.open_with`](Specs/Model/RequestState.lean) |
 | R08 | `open_with` (corollary) | As R08, with the length premise (L) in place of (T). | (L), (F); inherited exceptions (K) clock range, (H) HMAC `2^61`, (V) `Vec` above `isize::MAX` | [`…RequestStateCodec.open_with_of_length_le`](Specs/Model/RequestState.lean) |
@@ -127,11 +131,11 @@ operating system's random source fails (R15).
 | R09 | `seal` (corollary) | As R09, with `CodecValid` and `2 * payload.len() + 512 ≤ isize::MAX` in place of (S), (D). | `CodecValid`, (Ls); inherited exceptions (K), (H) | [`…RequestStateCodec.seal_of_length_le`](Specs/Model/RequestState.lean) |
 | R10 | `RequestStateCodec::seal_with` | Returns the token `sealAt` gives with the options' associated data and time-to-live at the clock reading (one reading; says nothing about two calls). | (S), (D); inherited exceptions (K), (H), (V) | [`…RequestStateCodec.seal_with`](Specs/Model/RequestState.lean) |
 | R10 | `seal_with` (corollary) | As R10, with `CodecValid` and (Ls) in place of (S), (D). | `CodecValid`, (Ls); inherited exceptions (K), (H) | [`…RequestStateCodec.seal_with_of_length_le`](Specs/Model/RequestState.lean) |
-| R11 | `RequestStateCodec::with_rs1_signing` | On a keyring, for a configured key id: `Ok` of the codec with the same keys, seal mode `Rs1 { key_id }` and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exception (P) | [`…RequestStateCodec.with_rs1_signing`](Specs/Model/RequestState.lean) |
-| R12 | `RequestStateCodec::with_rs1_fallback` | On a keyring, for a configured key id: `Ok` of the codec with the same keys and seal mode and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exception (P) | [`…RequestStateCodec.with_rs1_fallback`](Specs/Model/RequestState.lean) |
+| R11 | `RequestStateCodec::with_rs1_signing` | On a keyring, for a configured key id: `Ok` of the codec with the same keys, seal mode `Rs1 { key_id }` and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exceptions (I), (P) | [`…RequestStateCodec.with_rs1_signing`](Specs/Model/RequestState.lean) |
+| R12 | `RequestStateCodec::with_rs1_fallback` | On a keyring, for a configured key id: `Ok` of the codec with the same keys and seal mode and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exceptions (I), (P) | [`…RequestStateCodec.with_rs1_fallback`](Specs/Model/RequestState.lean) |
 | R13 | `RequestStateCodec::open_json` | If `openAt` of the token with no associated data at the clock reading is an error, that error; otherwise the `serde_json::from_slice` outcome of the payload, an error mapped to `Deserialization`. | (F); inherited exceptions (K), (H), (J) | [`…RequestStateCodec.open_json`](Specs/Model/RequestState.lean) |
 | R14 | `RequestStateCodec::open_json_with` | As R13, with associated data `ad`. | (T), (F); inherited exceptions (K), (H), (V), (J) | [`…RequestStateCodec.open_json_with`](Specs/Model/RequestState.lean) |
-| R15 | `RequestStateCodec::new_with_keyring` | `Err` exactly when the Rust checks reject the entries or the active id (`keyringCheck`), with the exact error of the first failure in the Rust order (per entry: empty id, id over 255 bytes, key under 32 bytes, duplicate id; then no entry, active id invalid, active id absent). Otherwise `Ok` of a keyring with exactly the configured keys (ids up to order), seal mode `Rs2 { key_id: active }`, no rs1 fallback, satisfying `CodecValid`. | caller code (iterator, conversions), (U); inherited exceptions (P), (N) | [`…RequestStateCodec.new_with_keyring`](Specs/Model/RequestState.lean) |
+| R15 | `RequestStateCodec::new_with_keyring` | `Err` exactly when the Rust checks reject the entries or the active id (`keyringCheck`), with the exact error of the first failure in the Rust order (per entry: empty id, id over 255 bytes, key under 32 bytes, duplicate id; then no entry, active id invalid, active id absent). Otherwise `Ok` of a keyring with exactly the configured keys (ids up to order), seal mode `Rs2 { key_id: active }`, no rs1 fallback, satisfying `CodecValid`. | caller code (iterator, conversions), (U); inherited exceptions (I), (P), (N) | [`…RequestStateCodec.new_with_keyring`](Specs/Model/RequestState.lean) |
 
 ## Internal guarantees
 

@@ -704,3 +704,25 @@ steps:
       [propext, Classical.choice, Quot.sound]; lake build --wfail and all lean-guard.sh checks
       pass; the clock rule text matches the statements; the patched copy passes its 847 library
       tests; one independent review; commit approved by the human.
+  - id: READ-R01-R15  # not a plan step; readability rewrite of the public request_state.rs statements (human request 2026-11-25)
+    day: 2026-11-25
+    state: ACCEPTED  # accepted by the human owner 2026-11-25. Text signed off by the spec owner
+    # 2026-11-25 after 5 review rounds (2 fresh reviewers each; rounds 3-5 no blocking).
+    # Meaning unchanged: each of the 18 types rfl-equal to 8debe97, binder kinds unchanged.
+    # Spec-owner decisions 2026-11-25: ID order and restated text differing from the spec theorems
+    # (both exceptions in docs/STYLE_GUIDE.md); round-5 wording polish deferred.
+    depends_on: [SPEC-R09-R15]
+    owner: Lead + human owner
+    files:
+      - formal/specs/Specs/Model/RequestState.lean
+      - formal/specs/Defs/CodecState.lean  # header notes; ten abbreviations appended
+      - formal/specs/README.md  # key (I), (F) wording
+      - docs/STYLE_GUIDE.md  # two exceptions
+      - formal/docs/functions/R01.yaml  # to R15.yaml: spec comment and one spec_reviews entry
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/trusted/issues/aeneas-serde-ser-mutual-traits.md  # new; R16-R17 blocker record, cited by the spec file
+    acceptance: >-
+      Every restated theorem keeps its name and its type is definitionally equal to the 8debe97
+      text with the same binder kinds; lake build --wfail and all lean-guard.sh checks pass; the
+      spec owner signs off the text; commit approved by the human.
