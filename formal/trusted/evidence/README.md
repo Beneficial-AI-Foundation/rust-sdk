@@ -237,20 +237,31 @@ Tests: every keyring test of `codec` goes through `Zeroizing::deref` (`two_key_r
   function that reads the clock pure. The callers of `now_ms` are `open` and `open_with`, which
   are translated (`formal/translation/Rmcp/Funs.lean`, `open_with` and `open`) but are not
   targets, and `seal_with`, which was excluded from the translation (Charon `exclude`, B13) until
-  translation patch 03 (2026-11-24, signed off) and is now translated, with `seal` calling it.
+  translation patch 03 (2026-11-24, signed off) and is now translated, with `seal` calling it;
+  `open_json`/`open_json_with` (translated since patch 03) read it through `open_with`. (Since
+  2026-11-24/25 `open`, `open_with` (R07, R08) and `seal`, `seal_with`, `open_json`,
+  `open_json_with` (R09, R10, R13, R14) are specification targets under the review rule below.)
 - **Review rule.** No spec statement mentions the functions
   `rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open`,
-  `…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or `…RequestStateCodec.seal_with` (a
-  variable named `now_ms`, such as the time parameter of E01
+  `…RequestStateCodec.open_with`, `…RequestStateCodec.open_json`,
+  `…RequestStateCodec.open_json_with`, `…RequestStateCodec.seal` or
+  `…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01
   `open_authenticated_body`, is not covered); statements about
-  opening use `open_at`, and about sealing `seal_at`, with an explicit `now` (also in
-  `formal/docs/STATUS.md`). Exceptions (human decisions 2026-11-24), as worded in
-  `formal/README.md`, "Trusted base": the spec theorems of the public `open`/`open_with` and their
-  restatements (postcondition `resultBytes result = openAt … ExtModel.nowMs.val`), and the spec
-  theorems of the public `seal`/`seal_with` and their restatements (postcondition: the result is
-  that of the translated `seal_at` at `ExtModel.nowMs`, `seal_with self payload options` relating
-  to `seal_at self payload options ExtModel.nowMs`); their docstrings state the one-reading caveat
-  and the inherited exceptions; no other statement names `ExtModel.nowMs`.
+  opening use `open_at`, and about sealing `seal_at` (or its `Defs` model `sealAt`), with an
+  explicit `now` (also in `formal/docs/STATUS.md`). Exceptions (human decisions 2026-11-24,
+  extended by the spec owner 2026-11-25), as worded in `formal/README.md`, "Trusted base": the
+  spec theorems of the public `open`, `open_with`, `open_json`, `open_json_with`, `seal` and
+  `seal_with`, their restatements and the corollaries `open_with_spec_of_length_le`,
+  `seal_with_spec_of_length_le` and `seal_spec_of_length_le`, with the postconditions
+  `resultBytes result = openAt … ExtModel.nowMs.val` (`open`/`open_with`); the error of
+  `openAt … ExtModel.nowMs.val` unchanged, otherwise the `ExtModel.serdeJsonFromSlice` outcome
+  for the opened payload with `Err` mapped to `Deserialization` (`open_json`/`open_json_with`);
+  and `sealAt … ExtModel.nowMs.val = some (ExtModel.utf8 result)` (`seal`/`seal_with`; `sealAt`
+  is the `Defs.CodecState` model of the private `seal_at`, human decision 2026-11-25, replacing
+  the earlier wording "the result of the translated `seal_at` at `ExtModel.nowMs`"); their
+  docstrings state the one-reading caveat and the inherited exceptions; no other statement names
+  `ExtModel.nowMs`, and no statement relates two readings. The internal statements of `seal_at`
+  (R10a) and of its round trip with `open_at` (R10b) use explicit times.
 - **Tests.** `codec::within_ttl_opens`, `codec::past_ttl_is_expired` (through `open`).
 
 ## Phase 2 externals (plan steps S26–S27)
@@ -421,8 +432,8 @@ of an address as natural numbers). The opaque carrier `SerdeJsonValue` is listed
 
 ## Public `request_state.rs` API externals (translation patch 03, R09–R15)
 
-**Pending model review** (2026-11-24; human decisions: targets R09–R15, variant A; not signed
-off). Translation patch 03 and the removal of eight Charon `exclude` entries make `seal`,
+**Reviewed in two rounds and signed off by the spec owner 2026-11-24** (human decisions:
+targets R09–R15, variant A). Translation patch 03 and the removal of eight Charon `exclude` entries make `seal`,
 `seal_with` (through the private `seal_at`), `with_rs1_signing`, `with_rs1_fallback`,
 `open_json`, `open_json_with` and `new_with_keyring` translate; the externals they newly reach are
 modelled below (14 functions, 2 types, 3 `opaque` constants, no axiom). Toolchain: Aeneas
@@ -461,17 +472,17 @@ on the patched copy (`byte_identity::*` come from patch 01).
 
 | External | Model | Source (`rust-src` nightly-2026-09-17 unless stated) | Tests |
 |---|---|---|---|
-| `Duration::as_millis` | `secs*1000 + nanos/1_000_000` as `u128` (exact, no overflow) | `core/src/time.rs` 601–604, constants 28, 30 | `key_rotation::rs1_known_answer_is_unchanged`, `key_rotation::rs2_known_answer_matches_wire_specification` (90 s TTL, byte-exact), `ttl::within_ttl_opens`, `ttl::past_ttl_is_expired`, `ttl::ttl_and_associated_data_combine`, `key_rotation::rs2_roundtrips_with_associated_data_and_ttl`, `byte_identity::pinned_tokens_and_open_results_are_unchanged` (TTL tokens of `pinned_cases`) |
+| `Duration::as_millis` | `secs*1000 + nanos/1_000_000` as `u128` (exact, no overflow) | `core/src/time.rs` 601–604, constants 28, 30 | `key_rotation::rs1_known_answer_is_unchanged`, `key_rotation::rs2_known_answer_matches_wire_specification` (90 s TTL, byte-exact), `ttl::within_ttl_opens`, `ttl::past_ttl_is_expired`, `ttl::ttl_and_associated_data_combine`, `key_rotation::rs2_roundtrips_with_associated_data_and_ttl`, `byte_identity::pinned_tokens_and_open_results_are_unchanged` (TTL tokens of `pinned_cases`); since 2026-11-25 (patch 02, `public_api_boundaries::*`): `seal_at_sub_millisecond_ttl_adds_no_millisecond` (`nanos/1_000_000` truncation below 1 ms), `seal_at_truncates_ttl_to_whole_milliseconds` (`secs*1000 + nanos/1_000_000`), `seal_at_clamps_ttl_milliseconds_to_i64_max` (`Duration::MAX` and exactly `2^64` ms: the `u128` value is not truncated to 64 bits) |
 | `str::to_owned` | same bytes as `String`; `fail undef` on non-UTF-8 `Str` | `alloc/src/str.rs` 252–255 | `key_rotation::rolling_migration_is_bidirectionally_compatible`, `key_rotation::multiple_legacy_fallbacks_are_supported` |
-| `HashMap::contains_key` | `find` (as for `get`) is `some`; no hashing | `map.rs` 1268–1274; hashbrown `src/map.rs` 1382–1392, `src/lib.rs` 151–159 (`Equivalent`) | `key_rotation::constructor_invariants_are_enforced` (unknown kid in `with_rs1_*`, absent active kid), `key_rotation::rolling_migration_is_bidirectionally_compatible` (known kid in `with_rs1_*`, followed by the `any → false` path only; the `any → true` path after `contains_key` is covered as stated in the `slice::Iter::any` row) |
+| `HashMap::contains_key` | `find` (as for `get`) is `some`; no hashing | `map.rs` 1268–1274; hashbrown `src/map.rs` 1382–1392, `src/lib.rs` 151–159 (`Equivalent`) | `key_rotation::constructor_invariants_are_enforced` (unknown kid in `with_rs1_*`, absent active kid), `key_rotation::rolling_migration_is_bidirectionally_compatible` (known kid in `with_rs1_*`, followed by the `any → false` path only; the `any → true` path after `contains_key` is covered as stated in the `slice::Iter::any` row); since 2026-11-25 (patch 02, `public_api_boundaries::*`): `rs1_builders_report_exact_messages` (unknown kids `"c"`, `""`, `"A"` in both builders: `contains_key` is byte equality, case-sensitive), `new_with_keyring_reports_exact_messages` and `new_with_keyring_checks_faults_in_source_order` (active kid absent), `rs1_builders_keep_fallbacks_unique_and_ordered` (known kids) |
 | `HashMap::is_empty` | `entries = []` | `map.rs` 745–747; hashbrown `src/map.rs` 824–826 | `key_rotation::constructor_invariants_are_enforced` (empty keyring) |
 | `HashMap::new` (K, V, `RandomState`, `Global`) | empty, `hash_builder := randomState`; OS-RNG panic not modelled | `map.rs` 269–271, 1488–1497; `std/src/hash/random.rs` 55–76; `std/src/sys/random/linux.rs` 166–172 | every `new_with_keyring` test |
 | `HashMap::entry` (helper `ExtModel.HashMap.lookupEntry`) | first entry with `stored.eq(key)` → `Occupied {key, value}`, backward = same map; else `Vacant {key, none}`, backward adds `(key, v)` iff `inserted = some v`; `reserve(1)` not modelled | `map.rs` 1012–1014; hashbrown `src/rustc_entry.rs` 35–54 | `key_rotation::constructor_invariants_are_enforced` (duplicate kid → `InvalidKeyring`), `byte_identity::run3_token_matrix_is_unchanged` and `byte_identity::pinned_tokens_and_open_results_are_unchanged` (keyring codecs of `codecs`), `key_rotation::rotation_keeps_previous_rs2_key_verifiable` |
 | `VacantEntry::insert` | returns `value`; backward records the final value as `inserted` | `map.rs` 2975–2977; hashbrown `src/rustc_entry.rs` 574–579 | as for `entry` |
 | `Hash for str` | write bytes, then `0xff` | `core/src/hash/mod.rs` 865–867 (`write_str`); default `write_str` and the `DefaultHasher` path as for `String` `Hash` | — (instance only required by `contains_key` with `Q = str`; no model hashes) |
 | `Borrow<str> for String` | `String` deref (same bytes) | `alloc/src/str.rs` 233–235 | through `contains_key` in `with_rs1_*` |
-| `String == str` (`PartialEq<str> for String`) | byte equality of `utf8 self` and `other` | `alloc/src/string.rs` 2740–2742, `impl_eq! { String, str }` 2763 | `key_rotation::multiple_legacy_fallbacks_are_supported`, `key_rotation::rolling_migration_is_bidirectionally_compatible` (the `any → false` path: a new kid is appended); no committed test reaches the `any → true` branch (de-duplication when the kid is already in `rs1_fallbacks`): that branch is covered only by reading the source (`request_state.rs` lines 404–406 and 436–438 of the repository source, 394–396 and 426–428 of the patched copy: `if !rs1_fallbacks.iter().any(…) { rs1_fallbacks.push(…) }`); a scratch test (not committed) confirmed that Rust de-duplicates as modelled |
-| `slice::Iter::any` (helper `ExtModel.sliceIterAny`) | call the `FnMut` on `slice[i..]` in order, stop at the first `true`, advance `i` by the consumed count | `core/src/slice/iter/macros.rs` 321–332, instantiated by `iterator!` in `core/src/slice/iter.rs` 140–148 | as for `String == str`, and `with_rs1_signing` in `key_rotation::rolling_migration_is_bidirectionally_compatible` (`any → false` only); no committed test reaches the `any → true` branch (de-duplication when the kid is already in `rs1_fallbacks`): that branch is covered only by reading the source (`request_state.rs` lines 404–406 and 436–438 of the repository source, 394–396 and 426–428 of the patched copy: `if !rs1_fallbacks.iter().any(…) { rs1_fallbacks.push(…) }`); a scratch test (not committed) confirmed that Rust de-duplicates as modelled |
+| `String == str` (`PartialEq<str> for String`) | byte equality of `utf8 self` and `other` | `alloc/src/string.rs` 2740–2742, `impl_eq! { String, str }` 2763 | `key_rotation::multiple_legacy_fallbacks_are_supported`, `key_rotation::rolling_migration_is_bidirectionally_compatible` (the `any → false` path: a new kid is appended); since 2026-11-25 the `any → true` branch (de-duplication when the kid is already in `rs1_fallbacks`; `request_state.rs` lines 404–406 and 436–438 of the repository source, 394–396 and 426–428 of the patched copy: `if !rs1_fallbacks.iter().any(…) { rs1_fallbacks.push(…) }`) is pinned by patch 02's `public_api_boundaries::rs1_builders_keep_fallbacks_unique_and_ordered` (repeated `with_rs1_fallback("b")`, `with_rs1_signing("a")` twice, then `with_rs1_fallback("a")`: the list stays `["b", "a"]`), and the `false` path with order by `rs1_fallbacks_append_in_call_order_and_signing_registers_its_id`; before, only by reading the source and a scratch test |
+| `slice::Iter::any` (helper `ExtModel.sliceIterAny`) | call the `FnMut` on `slice[i..]` in order, stop at the first `true`, advance `i` by the consumed count | `core/src/slice/iter/macros.rs` 321–332, instantiated by `iterator!` in `core/src/slice/iter.rs` 140–148 | as for `String == str`, and `with_rs1_signing` in `key_rotation::rolling_migration_is_bidirectionally_compatible` (`any → false` only); since 2026-11-25 the `any → true` branch (de-duplication) is pinned by patch 02's `public_api_boundaries::rs1_builders_keep_fallbacks_unique_and_ordered` (both builders, a kid already in the list; stop at the first `true`), and the in-order `false` path by `rs1_fallbacks_append_in_call_order_and_signing_registers_its_id`; before, only by reading the source and a scratch test |
 | `Iterator::any` (default) | `next`/closure loop through `Aeneas.Std.loop`; stated exception: an overridden `try_fold` | `core/src/iter/traits/iterator.rs` 2897–2910 | — (declared by the template, called by no generated definition) |
 | `serde_json::from_slice` | `ok (serdeJsonFromSlice inst v)`; stated exceptions: a panicking or non-terminating caller `Deserialize` impl, and a non-deterministic or side-effecting one (global or thread-local state, RNG) | `serde_json-1.0.154/src/de.rs` 2667–2672 | `seal_open_roundtrips_json` (Ok), `key_rotation::serde_is_reached_only_after_integrity_verification` (invalid JSON → `Deserialization`; tampered → integrity error before serde) |
 | `Error::source` (default) | `ok none` | `core/src/error.rs` 111–113 | — (declared by the template because the `serde_core` error traits have `Error` as supertrait; not called) |
@@ -571,6 +582,45 @@ target directory; `F` as above):
 | mutation: `64..=127` → `64..=126` in `is_disallowed_metadata_ipv4` (scratch copy, then restored), the `patched-tests.yml` command filtered to `s34_` | 101, then 0 | `s34_a02_range_boundaries` fails (`100.127.255.255 must be blocked`), 33 passed; after restoring, 34 passed |
 | `DYLD_FALLBACK_LIBRARY_PATH=/usr/lib RMCP_LLBC_DIR=<scratch>/llbcB RMCP_TRANSLATION_DEST=<scratch>/trans scripts/aeneas-translate.sh`, then `diff -r <scratch>/trans formal/translation` | 0, 0 | the translation with both patches is byte-identical to `formal/translation/` (`Funs.lean`, `Types.lean`, the two `External` templates, `translation.json`); `Funs.lean` matches its pin |
 | `DYLD_FALLBACK_LIBRARY_PATH=/usr/lib scripts/check-original-linkage.sh <scratch>/link` | 0 | 41, 27, 30, 9 blocks identical |
+
+**Patch 02 extension (2026-11-25): boundary tests of the public `request_state.rs` API R09–R12,
+R15.** Human decision 2026-11-25 in the R09–R15 spec cycle (findings sR2-a-2, sR2-b-4, sR3-a-3),
+signed off by the spec owner 2026-11-25 with the R09–R15 statements. 12 tests in a new
+`mod public_api_boundaries` inside `model::request_state::tests` (gated as the existing tests);
+patch 02 now adds 46 tests (34 `s34_*` + 12). Expected values come from the upstream source at
+`7caec76` (before patch 03), not from the Lean model (patch header). Each `seal_at` test checks the
+token's 8-byte expiry decoded independently of the codec, and opens the token at the expiry
+(`Ok`) and one millisecond later (`Expired`, when representable) with the private `open_at`.
+
+| Test (`public_api_boundaries::`) | What it pins | Statement |
+|---|---|---|
+| `seal_at_sub_millisecond_ttl_adds_no_millisecond` | TTLs of 999 999 ns, 1 ns and 0 add nothing (single key and keyring) | R10a (`sealExpiry`, `durationMillis`) |
+| `seal_at_truncates_ttl_to_whole_milliseconds` | 1.5 ms → +1, 1 999 999 ns → +1, 2 s + 999 999 ns → +2000 | R10a |
+| `seal_at_clamps_ttl_milliseconds_to_i64_max` | `Duration::MAX`, `i64::MAX + 1` ms, exactly `i64::MAX` ms, exactly `2^64` ms (not truncated to 0) are clamped to `i64::MAX` ms; with `now = i64::MIN`, `Duration::MAX` gives `-1` | R10a |
+| `seal_at_rs1_ring_opens_until_expiry` | a keyring sealing `rs1` after `with_rs1_signing` (the `h_rs1` path): `rs1.` token, opens until its expiry, also for a negative clock | R10a, R10b |
+| `seal_at_saturates_expiry_at_i64_max` | `now + ttl` saturates at `i64::MAX` (`Duration::MAX`, `now` near `i64::MAX`, zero TTL at `i64::MAX`) | R10a |
+| `seal_at_with_negative_now_stores_negative_expiry` | negative and `i64::MIN` clocks store negative expiries (a zero TTL stores `now`) | R10a |
+| `seal_at_expiry_landing_on_zero_never_expires` | an expiry of exactly 0 (`now = -1000`, TTL 1 s) never expires (opens at `i64::MIN` … `i64::MAX`) and equals the token sealed without a TTL | R10a, R10b (`Expired` with expiry 0) |
+| `new_with_keyring_reports_exact_messages` | exact `InvalidKeyring` texts (empty keyring, duplicate id incl. `Display`, active id absent, empty id, id over 255 UTF-8 bytes counted in bytes: 256 two-byte bytes rejected, 255 accepted) and `KeyTooShort { minimum: 32, actual }` for 31 and 0 bytes | R15 (`KeyringFailure.Describes`, message texts) |
+| `new_with_keyring_checks_faults_in_source_order` | per entry: id before key length before duplicate; the first faulty entry stops the loop; after the loop: emptiness, then the active id's validity, then its presence | R15 (`keyringScan`, `keyringCheck`) |
+| `rs1_builders_report_exact_messages` | the four texts of `with_rs1_signing`/`with_rs1_fallback` on a single-key codec and for unknown ids `"c"`, `""`, `"A"` | R11, R12 |
+| `rs1_fallbacks_append_in_call_order_and_signing_registers_its_id` | fallbacks appended in call order; `with_rs1_signing` sets `Rs1 { key_id }` and registers its id (through the `Debug` output) | R11, R12 |
+| `rs1_builders_keep_fallbacks_unique_and_ordered` | no duplicate added by either builder (`any → true` branch), order kept, the last `with_rs1_signing` wins | R11, R12 |
+
+`open_json`/`open_json_with` (R13, R14) get no new test (the existing `seal_open_roundtrips_json`
+and `serde_is_reached_only_after_integrity_verification` cover both outcomes). Models newly
+backed by these tests: `Duration::as_millis`, `HashMap::contains_key`, `String == str` and
+`slice::Iter::any` (rows above), and the error paths of `HashMap::entry`/`is_empty`.
+
+Runs (2026-11-25; reported by the test writer and the lead, same toolchain and command as above;
+not re-run for this record):
+
+| Command | Result |
+|---|---|
+| the `patched-tests.yml` command on the copy with patches 01, 02, 03 | 847 passed, 0 failed (835 + 12) |
+| the same on the copy with patches 01, 02 (no patch 03; patch 03 is behaviour-preserving and changes only the bodies of `seal_at` and `open_json_with`) | 847 passed, 0 failed |
+| re-translation with patches 01–03, `diff -r` against `formal/translation/` | byte-identical |
+| test review (one `mcp-review` agent): 28 seeded mutants of the pinned code | 25 caught; the 3 survivors (findings t02-a-1 … a-3) killed by 2 added tests and the `2^64` ms case of the fix round |
 
 ### M01–M05 (`JsonRpcMessage::into_*`, `model.rs` 819–849)
 

@@ -114,7 +114,7 @@ directions are fixed:
 | --- | --- | --- | --- |
 | `Rmcp` | `translation` | Generated `Rmcp.Types`, `Rmcp.Funs` | Aeneas, `RmcpExternal` |
 | `RmcpExternal` | `trusted` | Hand-written `Rmcp.TypesExternal`, `Rmcp.FunsExternal`: external models (definitions, structures, `opaque` constants; no axiom since S08–S09) | Aeneas, `Rmcp.Types` (the generated `FunsExternal` template imports it) |
-| `Defs` | `specs` | Pure definitions used by public statements (`Defs.Bytes`, `Defs.IntParse`, `Defs.JsonRpc`, `Defs.Wire`, `Defs.CodecState`); definitions used only by internal statements are in `Proofs/Defs/` (module `Proofs.Defs.X`, Lean namespace `Defs.X` unchanged) | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
+| `Defs` | `specs` | Pure definitions used by public statements (`Defs.Bytes`, `Defs.IntParse`, `Defs.JsonRpc`, `Defs.Wire`, `Defs.CodecState`, `Defs.RequestState`); definitions used only by internal statements are in `Proofs/Defs/` (module `Proofs.Defs.X`, Lean namespace `Defs.X` unchanged) | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
 | `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, laws of the external models (`Proofs/External/`; consistency models only if a trusted axiom is added again); internal spec files (`Proofs/Internal/`, private API and model laws) and their definitions (`Proofs/Defs/`) | `Rmcp`, `RmcpExternal`, `Defs` |
 | `Specs` | `specs` | One spec file per Rust source file with public API: each accepted public statement restated as a `theorem` in `Theorems`, and its axioms | `Defs`, `Proofs` |
 

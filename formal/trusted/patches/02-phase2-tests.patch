@@ -1,30 +1,36 @@
 Test-only patch: plan Section 22 boundary cases of the Phase 2 targets that no upstream test
-covers (plan step S34; human decision H3, follow-up of 2026-11-24)
+covers (plan step S34; human decision H3, follow-up of 2026-11-24), and boundary cases of the
+public request_state.rs API R09-R12 and R15 (human decision 2026-11-25, spec-cycle review
+findings sR2-a-2, sR2-b-4 and sR3-a-3)
 
 Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
 01-request-state-wire.patch (scripts/apply-patches.sh applies formal/trusted/patches/*.patch in
 file-name order, patch -p1 -F 0, only to the copy in .llbc/work/; the real source is never
-patched). Files: crates/rmcp/src/model.rs, crates/rmcp/src/model/task.rs,
-crates/rmcp/src/transport/async_rw.rs, crates/rmcp/src/transport/auth.rs,
-crates/rmcp/src/transport/common/client_side_sse.rs,
+patched). Files: crates/rmcp/src/model.rs, crates/rmcp/src/model/request_state.rs,
+crates/rmcp/src/model/task.rs, crates/rmcp/src/transport/async_rw.rs,
+crates/rmcp/src/transport/auth.rs, crates/rmcp/src/transport/common/client_side_sse.rs,
 crates/rmcp/src/transport/streamable_http_server/tower.rs. Generated with git diff in a scratch
 git repository holding the patch-01 copy (one hunk per file, at its end). The patch body below
-is the authoritative content.
+is the authoritative content. 03-request-state-public.patch applies after it; its hunks
+(request_state.rs lines 524-537 of the patch-01 copy) lie before the request_state.rs hunk of
+this patch, so they apply at their recorded lines.
 
 Change: #[cfg(test)] code only. Every added line lies inside a #[cfg(test)] module: at the end
-of the existing test module of model.rs, model/task.rs, async_rw.rs (mod test), auth.rs and
-client_side_sse.rs, and in a new #[cfg(test)] mod phase2_boundary_tests at the end of tower.rs
-(its added lines are one blank separator line, the #[cfg(test)] and mod lines, and the module
-body, comments included).
+of the existing test module of model.rs, model/request_state.rs (mod tests, after patch 01's
+tests), model/task.rs, async_rw.rs (mod test), auth.rs and client_side_sse.rs, and in a new
+#[cfg(test)] mod phase2_boundary_tests at the end of tower.rs (its added lines are one blank
+separator line, the #[cfg(test)] and mod lines, and the module body, comments included).
 No non-test line, no dependency, no Cargo.toml change; no existing line is removed or changed.
-The added tests are named s34_<id>_<case>; each cites its plan Section 22 row and the Lean
-theorem it mirrors. Their expected values are taken from the signed-off Lean statements and
-the Defs they use (Defs.parseI64, Defs.Tower.defaultPort, Defs.Methods lists, Defs.Sse model
-and checks, Defs.Net definitions and checks), not from running the code. They call the
-targets directly (M06/M07 pub(crate), T01-T08 and A01-A03 private: reachable only from
-in-module tests), so they run in the translated feature configuration plus macros, without
-transport-streamable-http-client-reqwest. A test of a feature-gated item carries the item's cfg:
-the M06 test #[cfg(any(feature = "client", feature = "server"))] and the four M07 tests
+
+S34 tests (34, all files but request_state.rs): named s34_<id>_<case>; each cites its plan
+Section 22 row and the Lean theorem it mirrors. Their expected values are taken from the
+signed-off Lean statements and the Defs they use (Defs.parseI64, Defs.Tower.defaultPort,
+Defs.Methods lists, Defs.Sse model and checks, Defs.Net definitions and checks), not from
+running the code. They call the targets directly (M06/M07 pub(crate), T01-T08 and A01-A03
+private: reachable only from in-module tests), so they run in the translated feature
+configuration plus macros, without transport-streamable-http-client-reqwest. A test of a
+feature-gated item carries the item's cfg: the M06 test
+#[cfg(any(feature = "client", feature = "server"))] and the four M07 tests
 #[cfg(feature = "client")], as numeric_string_value and matches_response_id (model.rs lines
 321 and 329 at 7caec76); every other test calls an ungated item or lies in a module gated
 already (transport/: client or server; async_rw, auth, client_side_sse, tower: their features).
@@ -32,20 +38,46 @@ So the crate's tests compile with any feature set, e.g. request-state alone (the
 evidence command). The limiter tests build every start state field by field, never through
 SseEventSizeLimiter::new, which no signed-off statement covers.
 
-Why (plan Section 19, "Tests (human decision H3)"; Section 21, H3): new Rust tests of these
-functions must live in SDK *.rs files, which stay byte-identical to upstream. The S34
-upstream-test map (formal/trusted/evidence/README.md) found 96 uncovered and 8 partial plan
-Section 22 cases; this patch covers them. A test-only patch is a process exception
-(VERIFICATION.md Section 4 defines translation patches as behaviour-preserving edits that make
-an item translate); plan Section 21 (H3) asks for it to be recorded in formal/docs/STATUS.md,
-"Documents", as a further deviation from VERIFICATION.md.
+R09-R12, R15 tests (12, request_state.rs, in a new mod public_api_boundaries inside mod tests,
+gated by request_state.rs's own feature as the existing tests are): named after the behaviour
+they pin. Their expected values are computed from the upstream source at 7caec76 (before patch
+03), not from the Lean model: seal_at's expiry (line 542: now_ms.saturating_add of the TTL in
+whole milliseconds clamped to i64::MAX; 0 without a TTL), the expiry check of open (line 728:
+expiry != 0 && now_ms > expiry), new_with_keyring (lines 329-374), validate_key_length and
+validate_config_kid (lines 755-777), with_rs1_signing and with_rs1_fallback (lines 383-442) and
+the Debug impl (lines 253-276). They cover: seal_at (private; the helper of seal and seal_with,
+R09/R10) with a sub-millisecond TTL, a TTL with nanoseconds, the clamp of Duration::MAX and of
+i64::MAX + 1 ms and of exactly 2^64 ms, saturation near i64::MAX, negative and i64::MIN clocks,
+and an expiry that lands on 0 (the token never expires and equals the token sealed without a
+TTL), each checked by decoding the token's 8-byte expiry independently and by opening at the
+expiry and one millisecond after it (open_at, private), also for a keyring codec that seals rs1
+after with_rs1_signing; the exact InvalidKeyring messages and KeyTooShort fields of
+new_with_keyring (R15) and its fault order (per entry: key id, key length, duplicate; then empty
+keyring, active id validity, active id presence); the exact messages of with_rs1_signing and
+with_rs1_fallback (R11, R12) on a single-key codec and for a missing kid; and their fallback
+list (appended in call order, with_rs1_signing registers its own id, no duplicates, last signing
+id wins) through the Debug output. open_json and open_json_with (R13, R14) get no new test. They
+pass on the copy with patches 01 and 02 and with 01, 02 and 03 (patch 03 is behaviour-preserving
+and changes only the bodies of seal_at and open_json_with).
+
+Why (plan Section 19, "Tests (human decision H3)"; Section 21, H3; human decision
+2026-11-25): new Rust tests of these functions must live in SDK *.rs files, which stay
+byte-identical to upstream. The S34 upstream-test map (formal/trusted/evidence/README.md) found
+96 uncovered and 8 partial plan Section 22 cases; this patch covers them. The spec-cycle review
+of R09-R15 (findings sR2-a-2, sR2-b-4, sR3-a-3) found the expiry edges of seal_at, its rs1
+keyring round trip, and the exact messages and fault order of the keyring constructors pinned by
+no Rust test (the upstream test
+constructor_invariants_are_enforced matches InvalidKeyring(_) and KeyTooShort { .. } only).
+A test-only patch is a process exception (VERIFICATION.md Section 4 defines translation patches
+as behaviour-preserving edits that make an item translate); plan Section 21 (H3) asks for it to
+be recorded in formal/docs/STATUS.md, "Documents", as a further deviation from VERIFICATION.md.
 
 Effect on the translation: none. Charon does not compile #[cfg(test)] items, and every hunk is
 at the end of its file, so no translated item moves (the Source: lines of
-formal/translation/ are unchanged); checked by translating the copy with both patches and
-comparing it byte for byte with formal/translation/ (formal/trusted/evidence/README.md, S34).
+formal/translation/ are unchanged); checked by translating the copy with patches 01-03 and
+comparing it byte for byte with formal/translation/ (formal/trusted/evidence/README.md).
 
-Evidence in CI: patched-tests.yml runs cargo test --locked --lib on the copy with both patches
+Evidence in CI: patched-tests.yml runs cargo test --locked --lib on the copy with all patches
 (translated features plus macros, overflow checks and debug assertions on), which runs these
 tests. Delete this patch if the tests land in the SDK source.
 diff --git a/crates/rmcp/src/model.rs b/crates/rmcp/src/model.rs
@@ -266,6 +298,327 @@ index 315f83c..f491161 100644
 +        assert_eq!(c.len(), 2);
 +        assert_eq!(c.first(), Some(&10));
 +        assert_eq!(c.into_vec(), vec![10, 20]);
++    }
+ }
+diff --git a/crates/rmcp/src/model/request_state.rs b/crates/rmcp/src/model/request_state.rs
+index 6ccb755..8644042 100644
+--- a/crates/rmcp/src/model/request_state.rs
++++ b/crates/rmcp/src/model/request_state.rs
+@@ -2894,4 +2894,316 @@ mod tests {
+             }
+         }
+     }
++
++    // ---- Patch 02 (human decision 2026-11-25; spec-cycle review findings sR2-a-2, sR2-b-4):
++    // boundary cases of the public request_state.rs API R09-R12, R15. ----
++    // Expected values come from the upstream source (origin/main 7caec76, before patch 03), not
++    // from the Lean model: seal_at's expiry `now_ms.saturating_add(ttl.as_millis().min(i64::MAX
++    // as u128) as i64)` (line 542; 0 without a TTL), the expiry check `expiry != 0 && now_ms >
++    // expiry` (line 728), new_with_keyring (lines 329-374), validate_key_length and
++    // validate_config_kid (lines 755-777), with_rs1_signing and with_rs1_fallback (lines
++    // 383-442) and the Debug impl (lines 253-276). seal_at is the private helper of seal and
++    // seal_with (R09, R10); the tests call it with a fixed clock.
++    mod public_api_boundaries {
++        use super::*;
++
++        const KEY: &[u8] = b"public-api-boundary-key-32-bytes";
++        const KEY_B: &[u8] = b"public-api-boundary-key-number-b";
++
++        fn ttl_options(ttl: Duration) -> SealOptions<'static> {
++            SealOptions::new().ttl(ttl)
++        }
++
++        /// The 8-byte big-endian expiry at the front of the token's body segment (segment 1
++        /// of rs1, segment 2 of rs2), decoded independently of the codec.
++        fn expiry_of(token: &str) -> i64 {
++            let segments: Vec<&str> = token.split('.').collect();
++            let body = match segments[0] {
++                "rs1" => segments[1],
++                "rs2" => segments[2],
++                other => panic!("unexpected version {other}"),
++            };
++            let body = URL_SAFE_NO_PAD.decode(body).unwrap();
++            i64::from_be_bytes(body[..8].try_into().unwrap())
++        }
++
++        /// Seals at `now` with `ttl`, checks the stored expiry, and that the token opens at
++        /// the expiry and is `Expired` one millisecond later (when that is representable).
++        fn assert_expiry(codec: &RequestStateCodec, now: i64, ttl: Duration, expiry: i64) {
++            let token = codec.seal_at(b"p", &ttl_options(ttl), now);
++            assert_eq!(expiry_of(&token), expiry, "now {now}, ttl {ttl:?}");
++            assert_eq!(codec.open_at(&token, &[], expiry).unwrap(), b"p");
++            if expiry != 0 && expiry < i64::MAX {
++                assert!(matches!(
++                    codec.open_at(&token, &[], expiry + 1),
++                    Err(RequestStateError::Expired)
++                ));
++            }
++        }
++
++        fn single() -> RequestStateCodec {
++            RequestStateCodec::try_new(KEY).unwrap()
++        }
++
++        fn ring() -> RequestStateCodec {
++            RequestStateCodec::new_with_keyring("a", [("a", KEY), ("b", KEY_B)]).unwrap()
++        }
++
++        fn keyring_message<T: std::fmt::Debug>(
++            result: Result<T, RequestStateError>,
++        ) -> &'static str {
++            match result {
++                Err(RequestStateError::InvalidKeyring(message)) => message,
++                other => panic!("expected InvalidKeyring, got {other:?}"),
++            }
++        }
++
++        fn key_too_short<T: std::fmt::Debug>(
++            result: Result<T, RequestStateError>,
++        ) -> (usize, usize) {
++            match result {
++                Err(RequestStateError::KeyTooShort { minimum, actual }) => (minimum, actual),
++                other => panic!("expected KeyTooShort, got {other:?}"),
++            }
++        }
++
++        #[test]
++        fn seal_at_sub_millisecond_ttl_adds_no_millisecond() {
++            for codec in [single(), ring()] {
++                assert_expiry(&codec, 1_000, Duration::from_nanos(999_999), 1_000);
++                assert_expiry(&codec, 1_000, Duration::from_nanos(1), 1_000);
++                assert_expiry(&codec, 1_000, Duration::ZERO, 1_000);
++            }
++        }
++
++        #[test]
++        fn seal_at_truncates_ttl_to_whole_milliseconds() {
++            for codec in [single(), ring()] {
++                assert_expiry(&codec, 1_000, Duration::new(0, 1_500_000), 1_001);
++                assert_expiry(&codec, 1_000, Duration::from_nanos(1_999_999), 1_001);
++                assert_expiry(&codec, 1_000, Duration::new(2, 999_999), 3_000);
++            }
++        }
++
++        #[test]
++        fn seal_at_clamps_ttl_milliseconds_to_i64_max() {
++            let codec = single();
++            // Duration::MAX is u64::MAX s + 999_999_999 ns: far above i64::MAX ms.
++            assert_expiry(&codec, -1_000, Duration::MAX, i64::MAX - 1_000);
++            // One millisecond above i64::MAX is clamped, exactly i64::MAX is kept.
++            let max_ms = i64::MAX as u64;
++            assert_expiry(&codec, -1, Duration::from_millis(max_ms + 1), i64::MAX - 1);
++            assert_expiry(&codec, -1, Duration::from_millis(max_ms), i64::MAX - 1);
++            assert_expiry(&codec, -1, Duration::from_millis(max_ms - 1), i64::MAX - 2);
++            assert_expiry(&codec, i64::MIN, Duration::MAX, -1);
++            // Exactly 2^64 ms: clamped to i64::MAX ms, not truncated to 64 bits (0 ms).
++            let two_pow_64_ms = Duration::new(18_446_744_073_709_551, 616_000_000);
++            assert_eq!(two_pow_64_ms.as_millis(), 1u128 << 64);
++            assert_expiry(&codec, -1, two_pow_64_ms, i64::MAX - 1);
++        }
++
++        #[test]
++        fn seal_at_rs1_ring_opens_until_expiry() {
++            let codec = ring().with_rs1_signing("a").unwrap();
++            let token = codec.seal_at(b"p", &ttl_options(Duration::from_secs(60)), 1_000);
++            assert!(token.starts_with("rs1."));
++            assert_expiry(&codec, 1_000, Duration::from_secs(60), 61_000);
++            assert_expiry(&codec, -1_000, Duration::from_millis(1), -999);
++        }
++
++        #[test]
++        fn seal_at_saturates_expiry_at_i64_max() {
++            let codec = single();
++            assert_expiry(&codec, 1_000, Duration::MAX, i64::MAX);
++            assert_expiry(&codec, i64::MAX - 10, Duration::from_secs(1), i64::MAX);
++            assert_expiry(&codec, i64::MAX - 1_000, Duration::from_secs(1), i64::MAX);
++            assert_expiry(
++                &codec,
++                i64::MAX - 1_001,
++                Duration::from_secs(1),
++                i64::MAX - 1,
++            );
++            assert_expiry(&codec, i64::MAX, Duration::ZERO, i64::MAX);
++        }
++
++        #[test]
++        fn seal_at_with_negative_now_stores_negative_expiry() {
++            let codec = single();
++            assert_expiry(&codec, -5_000, Duration::from_secs(1), -4_000);
++            assert_expiry(&codec, -1, Duration::ZERO, -1);
++            assert_expiry(&codec, i64::MIN, Duration::ZERO, i64::MIN);
++            assert_expiry(&codec, i64::MIN, Duration::from_millis(1), i64::MIN + 1);
++        }
++
++        #[test]
++        fn seal_at_expiry_landing_on_zero_never_expires() {
++            for codec in [single(), ring()] {
++                let token = codec.seal_at(b"p", &ttl_options(Duration::from_secs(1)), -1_000);
++                assert_eq!(expiry_of(&token), 0);
++                for now in [i64::MIN, -1, 0, 1, 1_000_000, i64::MAX] {
++                    assert_eq!(codec.open_at(&token, &[], now).unwrap(), b"p");
++                }
++                // Same body as a token sealed without a TTL.
++                let no_ttl = codec.seal_at(b"p", &SealOptions::new(), 12_345);
++                assert_eq!(no_ttl, token);
++            }
++        }
++
++        #[test]
++        fn new_with_keyring_reports_exact_messages() {
++            let empty =
++                RequestStateCodec::new_with_keyring("a", std::iter::empty::<(&str, &[u8])>());
++            assert_eq!(
++                keyring_message(empty),
++                "keyring must contain at least one key"
++            );
++
++            let duplicate = RequestStateCodec::new_with_keyring("a", [("a", KEY), ("a", KEY_B)]);
++            let duplicate = duplicate.unwrap_err();
++            assert!(matches!(
++                duplicate,
++                RequestStateError::InvalidKeyring("duplicate key id")
++            ));
++            assert_eq!(
++                duplicate.to_string(),
++                "invalid keyring configuration: duplicate key id"
++            );
++
++            let missing = RequestStateCodec::new_with_keyring("c", [("a", KEY), ("b", KEY_B)]);
++            assert_eq!(
++                keyring_message(missing),
++                "active key id is not present in the keyring"
++            );
++
++            let empty_kid = RequestStateCodec::new_with_keyring("a", [("a", KEY), ("", KEY_B)]);
++            assert_eq!(keyring_message(empty_kid), "key id must not be empty");
++            let empty_active = RequestStateCodec::new_with_keyring("", [("a", KEY)]);
++            assert_eq!(keyring_message(empty_active), "key id must not be empty");
++
++            let kid_256 = "x".repeat(256);
++            let too_long =
++                RequestStateCodec::new_with_keyring("a", [("a", KEY), (&kid_256, KEY_B)]);
++            assert_eq!(keyring_message(too_long), "key id exceeds 255 UTF-8 bytes");
++            // 128 two-byte characters are 256 UTF-8 bytes; 255 bytes are accepted.
++            let wide_256 = "\u{e9}".repeat(128);
++            let wide = RequestStateCodec::new_with_keyring(wide_256.clone(), [(wide_256, KEY)]);
++            assert_eq!(keyring_message(wide), "key id exceeds 255 UTF-8 bytes");
++            let wide_255 = format!("{}a", "\u{e9}".repeat(127));
++            assert!(
++                RequestStateCodec::new_with_keyring(wide_255.clone(), [(wide_255, KEY)]).is_ok()
++            );
++
++            let short = RequestStateCodec::new_with_keyring("a", [("a", vec![7u8; 31])]);
++            assert_eq!(key_too_short(short), (32, 31));
++            let empty_key = RequestStateCodec::new_with_keyring("a", [("a", Vec::<u8>::new())]);
++            assert_eq!(key_too_short(empty_key), (32, 0));
++        }
++
++        #[test]
++        fn new_with_keyring_checks_faults_in_source_order() {
++            // Per entry: key id first, then key length, then duplicate.
++            let kid_first = RequestStateCodec::new_with_keyring("", [("", vec![0u8; 3])]);
++            assert_eq!(keyring_message(kid_first), "key id must not be empty");
++            let long_kid_first =
++                RequestStateCodec::new_with_keyring("a", [("x".repeat(256), vec![0u8; 3])]);
++            assert_eq!(
++                keyring_message(long_kid_first),
++                "key id exceeds 255 UTF-8 bytes"
++            );
++            let key_before_duplicate = RequestStateCodec::new_with_keyring(
++                "a",
++                [("a", KEY.to_vec()), ("a", vec![1u8; 5])],
++            );
++            assert_eq!(key_too_short(key_before_duplicate), (32, 5));
++            // Entries are checked in order: the first fault stops the loop.
++            let duplicate_before_later_fault = RequestStateCodec::new_with_keyring(
++                "a",
++                [("a", KEY.to_vec()), ("a", KEY.to_vec()), ("", vec![])],
++            );
++            assert_eq!(
++                keyring_message(duplicate_before_later_fault),
++                "duplicate key id"
++            );
++            // After the loop: emptiness, then the active id's validity, then its presence.
++            let empty_before_active =
++                RequestStateCodec::new_with_keyring("", std::iter::empty::<(String, Vec<u8>)>());
++            assert_eq!(
++                keyring_message(empty_before_active),
++                "keyring must contain at least one key"
++            );
++            let active_too_long =
++                RequestStateCodec::new_with_keyring("y".repeat(256), [("a", KEY)]);
++            assert_eq!(
++                keyring_message(active_too_long),
++                "key id exceeds 255 UTF-8 bytes"
++            );
++        }
++
++        #[test]
++        fn rs1_builders_report_exact_messages() {
++            let signing_single = single().with_rs1_signing("a");
++            assert_eq!(
++                keyring_message(signing_single),
++                "rs1 transitional signing requires a keyring"
++            );
++            let fallback_single = single().with_rs1_fallback("a");
++            assert_eq!(
++                keyring_message(fallback_single),
++                "rs1 fallbacks require a keyring"
++            );
++
++            for kid in ["c", "", "A"] {
++                assert_eq!(
++                    keyring_message(ring().with_rs1_signing(kid)),
++                    "rs1 signing key id is not present in the keyring"
++                );
++                assert_eq!(
++                    keyring_message(ring().with_rs1_fallback(kid)),
++                    "rs1 fallback key id is not present in the keyring"
++                );
++            }
++        }
++
++        #[test]
++        fn rs1_fallbacks_append_in_call_order_and_signing_registers_its_id() {
++            let codec = ring()
++                .with_rs1_fallback("b")
++                .unwrap()
++                .with_rs1_fallback("a")
++                .unwrap();
++            assert!(format!("{codec:?}").ends_with("rs1_fallbacks: [\"b\", \"a\"] }"));
++            let codec = ring().with_rs1_signing("b").unwrap();
++            assert!(
++                format!("{codec:?}")
++                    .ends_with("seal_mode: Rs1 { key_id: \"b\" }, rs1_fallbacks: [\"b\"] }")
++            );
++        }
++
++        #[test]
++        fn rs1_builders_keep_fallbacks_unique_and_ordered() {
++            let codec = ring()
++                .with_rs1_fallback("b")
++                .unwrap()
++                .with_rs1_fallback("b")
++                .unwrap()
++                .with_rs1_signing("a")
++                .unwrap()
++                .with_rs1_signing("a")
++                .unwrap()
++                .with_rs1_fallback("a")
++                .unwrap();
++            assert_eq!(
++                format!("{codec:?}"),
++                "RequestStateCodec { mode: \"ring\", key_count: 2, keys: \"<redacted>\", \
++                 seal_mode: Rs1 { key_id: \"a\" }, rs1_fallbacks: [\"b\", \"a\"] }"
++            );
++            // The last with_rs1_signing call wins; the fallback list keeps both ids.
++            let codec = codec.with_rs1_signing("b").unwrap();
++            assert_eq!(
++                format!("{codec:?}"),
++                "RequestStateCodec { mode: \"ring\", key_count: 2, keys: \"<redacted>\", \
++                 seal_mode: Rs1 { key_id: \"b\" }, rs1_fallbacks: [\"b\", \"a\"] }"
++            );
++        }
 +    }
  }
 diff --git a/crates/rmcp/src/model/task.rs b/crates/rmcp/src/model/task.rs

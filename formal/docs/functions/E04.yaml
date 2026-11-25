@@ -10,7 +10,7 @@ proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestState/ValidateConfigKid.lean
 spec_file: formal/proofs/Proofs/Internal/Model/RequestState.lean
 theorem: rmcp.model.request_state.RequestStateCodec.validate_config_kid_spec
-used_by: []  # targets whose proofs consume this theorem; used only when constructing a codec (§2.2)
+used_by: [R15]  # targets whose proofs consume this theorem; used only when constructing a codec (§2.2); R15 (new_with_keyring) since 2026-11-25
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file; list changed in the Aeneas upgrade (2026-11-24, nightly-2026.11.24-fb44cb4: standard axioms added and/or native-code axioms dropped), re-signed by the spec owner in the batch re-sign-off of 2026-11-24
 evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 223ff12:formal/docs/evidence/<step>.md
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestState.lean (S05)

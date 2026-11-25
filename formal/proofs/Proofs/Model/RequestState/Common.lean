@@ -6,7 +6,7 @@ Authors: Hoang Le Truong
 module
 public import Rmcp.Funs
 public import Defs.Wire
-public import Proofs.Defs.RequestState
+public import Defs.RequestState
 public import Proofs.External.String
 public import Proofs.External.Std
 

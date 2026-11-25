@@ -226,20 +226,27 @@ opaque sipHash13 : Std.U64 → Std.U64 → List Std.U8 → Std.U64
 /-- **Clock reading** (opaque): the value of `chrono::Utc::now().timestamp_millis()` that
 `RequestStateCodec::now_ms` returns. A single constant cannot model that two readings differ,
 and it makes every function that reads the clock (`now_ms`, `open`, `open_with` and, since
-translation patch 03, `seal`, `seal_with`) pure. Review rule: no spec statement mentions the
-functions `rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open`,
-`…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or `…RequestStateCodec.seal_with` (a
-variable named `now_ms`, such as the time parameter of E01 `open_authenticated_body`, is not
-covered; `formal/README.md`, "Trusted base"). Exceptions (human decisions 2026-11-24;
-`formal/README.md`, "Trusted base"): only the spec theorems of `open` and `open_with` and their
-restatements may name these two functions and `nowMs`, and only with postcondition
-`resultBytes result = openAt … nowMs.val`; only the spec theorems of `seal` and `seal_with` and
-their restatements may name these two functions and `nowMs`, and only with a postcondition that
-states the result as that of the translated `seal_at` at `nowMs` (`seal_with self payload
-options` relates to `seal_at self payload options nowMs`). Their docstrings state the one-reading
-caveat and the inherited exceptions. No other statement names `nowMs`, no statement has a
-premise or conclusion about its value or involves two clock readings, and `now_ms` itself stays
-unmentioned. -/
+translation patch 03, `open_json`, `open_json_with`, `seal`, `seal_with`) pure. Review rule: no
+spec statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
+`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.open_json`,
+`…RequestStateCodec.open_json_with`, `…RequestStateCodec.seal` or
+`…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01
+`open_authenticated_body`, is not covered; `formal/README.md`, "Trusted base"). Exceptions
+(human decisions 2026-11-24, extended 2026-11-25; `formal/README.md`, "Trusted base"): only the
+spec theorems of `open`, `open_with`, `open_json`, `open_json_with`, `seal` and `seal_with`,
+their `Theorems.*` restatements and the corollaries `open_with_spec_of_length_le`,
+`seal_with_spec_of_length_le` and `seal_spec_of_length_le` (and their restatements) may name
+these functions and `nowMs`, and only with these postconditions: `open`/`open_with`,
+`resultBytes result = openAt … nowMs.val`; `open_json`/`open_json_with`, the error of
+`openAt … nowMs.val` unchanged, otherwise the `serdeJsonFromSlice` outcome for the opened
+payload with `Err` mapped to `Deserialization`; `seal`/`seal_with`,
+`sealAt … nowMs.val = some (utf8 result)`, with `sealAt` the `Defs.CodecState` model of the
+private `seal_at` (human decision 2026-11-25; it replaces the earlier wording "the result of the
+translated `seal_at` at `nowMs`"). Their docstrings state the one-reading caveat and the
+inherited exceptions. No other statement names `nowMs`, no statement has a premise or conclusion
+about its value or relates two clock readings, and `now_ms` itself stays unmentioned; the
+internal statements of `seal_at` (R10a) and of its round trip with `open_at` (R10b) use explicit
+times. -/
 opaque nowMs : Std.I64
 
 end ExtModel
@@ -684,14 +691,17 @@ Environmental assumption (stated exception, not modelled): `Utc::now` panics if 
 clock is before 1970 or outside chrono's range (`chrono-0.4.45/src/offset/utc.rs` lines 96–98:
 `duration_since(UNIX_EPOCH).expect("system time before Unix epoch")` and
 `DateTime::from_timestamp(..).unwrap()`); the model assumes a clock within that range. Called
-by the translated wrappers `open` and `open_with` and, since translation patch 03, `seal_with`
-(hence `seal`). Because `nowMs` is one constant, those wrappers are pure in the model; no spec
-statement may mention the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
-`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or
+by the translated wrappers `open` and `open_with` (hence, since translation patch 03,
+`open_json` and `open_json_with`) and, since translation patch 03, `seal_with` (hence `seal`).
+Because `nowMs` is one constant, those wrappers are pure in the model; no spec statement may
+mention the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
+`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.open_json`,
+`…RequestStateCodec.open_json_with`, `…RequestStateCodec.seal` or
 `…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01
 `open_authenticated_body`, is not covered), except as stated at `ExtModel.nowMs` (the spec
-theorems of `open`/`open_with` and of `seal`/`seal_with` and their restatements; human decisions
-2026-11-24). -/
+theorems of `open`/`open_with`, `open_json`/`open_json_with` and `seal`/`seal_with`, their
+restatements and the listed `_of_length_le` corollaries; human decisions 2026-11-24, extended
+2026-11-25). -/
 def model.request_state.RequestStateCodec.now_ms : Result Std.I64 :=
   ok ExtModel.nowMs
 

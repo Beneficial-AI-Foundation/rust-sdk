@@ -1,15 +1,17 @@
 # What is verified: index of the guarantees
 
-> **At a glance.** Lean proves, for 25 Phase 1 and 25 Phase 2 Rust functions of `rmcp` and 8
-> public functions of `request_state.rs` (R01–R08), that the translated call does not panic and
+> **At a glance.** Lean proves, for 25 Phase 1 and 25 Phase 2 Rust functions of `rmcp` and 15
+> public functions of `request_state.rs` (R01–R15), that the translated call does not panic and
 > returns what the statement says. Phase 2 is upstream `7caec76` unmodified; Phase 1 and R01–R08
-> are about a patched copy (translation patch 01). 28 guarantees are about the public API
-> (`Specs/`), 50 about private, crate-internal or patch-only functions and 116 are laws of the
-> trusted models (`../proofs/Proofs/Internal/`): 194 restated theorems. The public
-> `request_state.rs` API is partly covered: 8 of its 17 public functions (R09–R15 translated on
-> the upgraded toolchain via translation patch 03 v2, reviewed and signed off 2026-11-24, their specs
-> not yet written; R16–R17 `seal_json*` excluded, blocked upstream). Main trust items: Charon/Aeneas/Lean, the translated
-> configuration, patch 01, the hand-written models (including the one clock reading of `open`);
+> are about a patched copy (translation patch 01), R09–R15 about the copy with translation
+> patches 01 and 03. 37 guarantees are about the public API
+> (`Specs/`), 53 about private, crate-internal or patch-only functions and 116 are laws of the
+> trusted models (`../proofs/Proofs/Internal/`): 206 restated theorems. The public
+> `request_state.rs` API is covered except 2 of its 17 public functions (R16–R17 `seal_json*`,
+> excluded, blocked upstream); R09–R15 were signed off by the spec owner on 2026-11-25. Main
+> trust items: Charon/Aeneas/Lean, the translated
+> configuration, patches 01 and 03, the hand-written models (including the one clock reading of
+> `open`, `open_json` and `seal`);
 > no native-code assumption remains (35 were locked until the Aeneas upgrade of 2026-11-24, which is
 > reviewed and re-signed by the spec owner 2026-11-24). Two bugs found: H7 (`async_rw` method lists) and H8 (`240.0.0.0/4` not blocked).
 
@@ -21,11 +23,14 @@ about upstream rmcp commit `7caec76`, **unmodified**. This rests on
 `scripts/check-original-linkage.sh`, which checks that the committed translation, generated from
 the patched copy, equals block for block the translation of unmodified `7caec76` for the Phase 2
 targets; it passes locally, and its CI run (step S22) is pending (the records say "pending S22").
-Phase 1 (IDs W, E, S15) and the public `request_state.rs` statements (IDs R; the eight functions
-have the same text upstream, ten lines lower) are about a
+Phase 1 (IDs W, E, S15) and the public `request_state.rs` statements (IDs R; R01–R15 except
+`seal_at` and `open_json_with` have the same text upstream, ten lines lower) are about a
 **patched copy**: `7caec76` plus translation patch 01
 ([`../trusted/patches/01-request-state-wire.patch`](../trusted/patches/01-request-state-wire.patch)),
-which refactors `RequestStateCodec` onto a new module `request_state_wire`; its link to the
+which refactors `RequestStateCodec` onto a new module `request_state_wire`, and for R09–R15
+translation patch 03
+([`../trusted/patches/03-request-state-public.patch`](../trusted/patches/03-request-state-public.patch),
++6/−2 lines in `seal_at` and `open_json_with` so that they translate); their link to the
 unpatched code is tested, not proved. **How to read a statement.** `f x ⦃ r => P r ⦄` means
 "the call `f x` does not panic (no failure, overflow or out-of-bounds access) and its result `r`
 satisfies `P`"; the premises (`h_…`) are the assumptions; a statement `f x = (do …)` says that
@@ -76,23 +81,36 @@ of their failing-case companions; the request-state table below has its own.
 "Joint lemma" rows are the joint lemmas of plan Section 16.1.
 
 **Request-state codec, public API** — [`Specs/Model/RequestState.lean`](Specs/Model/RequestState.lean)
-(`crates/rmcp/src/model/request_state.rs`, patched copy; R01–R08 and one corollary of R08).
+(`crates/rmcp/src/model/request_state.rs`, patched copy; R01–R15 and corollaries of R08, R09
+and R10).
 Rust functions are `rmcp::model::request_state::…`. Premise keys (the same in the file's
 docstring): **`h_into`** the caller's `Into<Vec<u8>>` conversion of `key` returns the vector `v`
 (user code, which may panic); **(F)** for a token whose first `.`-component is `rs1`, every rs1
 fallback id of the codec is a key id (`CodecFallbacksKnown`; else the code's `expect` panics);
 **(T)** the MAC transcript (`transcriptV1`/`transcriptV2` of the decoded components and `ad`)
-fits in `usize::MAX` bytes; **(L)** `ad.len() + sealed.len() + 36 ≤ usize::MAX` (implies (T)).
+fits in `usize::MAX` bytes; **(L)** `ad.len() + sealed.len() + 36 ≤ usize::MAX` (implies (T));
+**(S)** the seal-mode key id is a key id (`CodecSealKeyKnown`; else the code's `expect` panics);
+**(D)** the Lean-model domain of sealing (`SealFits`: transcript within `usize::MAX`, `with_capacity`
+sum within `isize::MAX`); **(Ls)** `ad.len() + 2 * payload.len() + 512 ≤ isize::MAX`; **(R)** the
+Lean-model domain of the keyring builders (`KeyringFits`: key ids within `usize::MAX` bytes, fewer
+than `usize::MAX` fallbacks; met by every Rust value); **(U)** the converted key ids of
+`new_with_keyring` have at most `usize::MAX` bytes (met by every Rust `String`); **caller code**
+(`as_ref`, `into`, the caller's iterator) returns the named values.
 `ad` is the associated data; "exactly `openAt`" means the result is `Ok` of the bytes, or the
 error, that `Defs.CodecState.openAt` gives (the expected result of E11 `open_at`, internal table
-below). R07, R08 and the corollary are specified at the clock reading `ExtModel.nowMs`, one opaque
+below); "`sealAt`" means the token's UTF-8 bytes are those `Defs.CodecState.sealAt` gives (the
+expected result of the private `seal_at`, R10a below). R07–R10, R13, R14 and the corollaries are
+specified at the clock reading `ExtModel.nowMs`, one opaque
 `i64`: each statement holds for that one reading and says nothing about two calls (in Rust two
 calls read different times). Inherited exceptions, **not premises** (inputs where Rust panics but
 the statement promises a result; "What you must trust"): **(K)** the system clock is before 1970
 or outside chrono's range (`Utc::now` panics, even for a malformed token, as the clock is read
 first); **(H)** HMAC's bit counter overflows for a transcript of at least `2^61 − 64` bytes or a
-key of at least `2^61` bytes; **(V)** `open_with` only: a transcript `Vec` above `isize::MAX`
-bytes.
+key of at least `2^61` bytes; **(V)** `open_with`, `open_json_with`, `seal_with` only: a transcript
+`Vec` above `isize::MAX` bytes; **(J)** `open_json*`: the `serde_json::from_slice` model (a
+`Deserialize` impl that panics, does not terminate, is non-deterministic or has side effects);
+**(P)** a caller `Drop` impl that panics (R11, R12, R15); **(N)** `HashMap::new` panics if the
+operating system's random source fails (R15).
 
 | ID | Rust function | Guarantee | Assumptions | Lean theorem |
 |---|---|---|---|---|
@@ -105,6 +123,15 @@ bytes.
 | R07 | `RequestStateCodec::open` | Returns exactly `openAt` of the token with no associated data at the clock reading (one reading; says nothing about two calls). | (F); inherited exceptions (K) clock range, (H) HMAC `2^61` | [`…RequestStateCodec.open`](Specs/Model/RequestState.lean) |
 | R08 | `RequestStateCodec::open_with` | Returns exactly `openAt` of the token with associated data `ad` at the clock reading (one reading; says nothing about two calls). | (T), (F); inherited exceptions (K) clock range, (H) HMAC `2^61`, (V) `Vec` above `isize::MAX` | [`…RequestStateCodec.open_with`](Specs/Model/RequestState.lean) |
 | R08 | `open_with` (corollary) | As R08, with the length premise (L) in place of (T). | (L), (F); inherited exceptions (K) clock range, (H) HMAC `2^61`, (V) `Vec` above `isize::MAX` | [`…RequestStateCodec.open_with_of_length_le`](Specs/Model/RequestState.lean) |
+| R09 | `RequestStateCodec::seal` | Returns the token `sealAt` gives with no associated data and no time-to-live at the clock reading (the token does not depend on the reading, but the clock is read). | (S), (D); inherited exceptions (K), (H) | [`…RequestStateCodec.seal`](Specs/Model/RequestState.lean) |
+| R09 | `seal` (corollary) | As R09, with `CodecValid` and `2 * payload.len() + 512 ≤ isize::MAX` in place of (S), (D). | `CodecValid`, (Ls); inherited exceptions (K), (H) | [`…RequestStateCodec.seal_of_length_le`](Specs/Model/RequestState.lean) |
+| R10 | `RequestStateCodec::seal_with` | Returns the token `sealAt` gives with the options' associated data and time-to-live at the clock reading (one reading; says nothing about two calls). | (S), (D); inherited exceptions (K), (H), (V) | [`…RequestStateCodec.seal_with`](Specs/Model/RequestState.lean) |
+| R10 | `seal_with` (corollary) | As R10, with `CodecValid` and (Ls) in place of (S), (D). | `CodecValid`, (Ls); inherited exceptions (K), (H) | [`…RequestStateCodec.seal_with_of_length_le`](Specs/Model/RequestState.lean) |
+| R11 | `RequestStateCodec::with_rs1_signing` | On a keyring, for a configured key id: `Ok` of the codec with the same keys, seal mode `Rs1 { key_id }` and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exception (P) | [`…RequestStateCodec.with_rs1_signing`](Specs/Model/RequestState.lean) |
+| R12 | `RequestStateCodec::with_rs1_fallback` | On a keyring, for a configured key id: `Ok` of the codec with the same keys and seal mode and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exception (P) | [`…RequestStateCodec.with_rs1_fallback`](Specs/Model/RequestState.lean) |
+| R13 | `RequestStateCodec::open_json` | If `openAt` of the token with no associated data at the clock reading is an error, that error; otherwise the `serde_json::from_slice` outcome of the payload, an error mapped to `Deserialization`. | (F); inherited exceptions (K), (H), (J) | [`…RequestStateCodec.open_json`](Specs/Model/RequestState.lean) |
+| R14 | `RequestStateCodec::open_json_with` | As R13, with associated data `ad`. | (T), (F); inherited exceptions (K), (H), (V), (J) | [`…RequestStateCodec.open_json_with`](Specs/Model/RequestState.lean) |
+| R15 | `RequestStateCodec::new_with_keyring` | `Err` exactly when the Rust checks reject the entries or the active id (`keyringCheck`), with the exact error of the first failure in the Rust order (per entry: empty id, id over 255 bytes, key under 32 bytes, duplicate id; then no entry, active id invalid, active id absent). Otherwise `Ok` of a keyring with exactly the configured keys (ids up to order), seal mode `Rs2 { key_id: active }`, no rs1 fallback, satisfying `CodecValid`. | caller code (iterator, conversions), (U); inherited exceptions (P), (N) | [`…RequestStateCodec.new_with_keyring`](Specs/Model/RequestState.lean) |
 
 ## Internal guarantees
 
@@ -187,13 +214,14 @@ resolved-address filter `AddressClass::of` (`auth/metadata_resolver.rs`); neithe
 (private associated functions of `RequestStateCodec`; E09a `rs1_fallbacks_verify` exists only in
 the patched copy: patch 01 moves the rs1 fallback loop of `open_rs1_at` into it). The callers in
 "Used by" are the public wrappers `open`/`open_with` (through `open_at`; verified as R07, R08),
-`try_new` (verified as R06), `seal`/`seal_with` (through the excluded `seal_at`) and
-`new_with_keyring` (not verified).
+`try_new` (verified as R06), `seal`/`seal_with` (through the private `seal_at`, translated with
+patch 03; verified as R09, R10 through R10a) and `new_with_keyring` (verified as R15).
 Assumption keys (the same in the file's docstring): **(T)** the MAC transcript fits in
 `usize::MAX` bytes; **(C)** the `with_capacity` sum of the token (version, dots, Base64 lengths)
 is at most `isize::MAX` bytes, the largest Rust `String` (`ExtModel.maxStringBytes`); **(D)** the
 token has fewer than `usize::MAX` dots; **(F)** every rs1 fallback id is a key id: of the codec
-(`CodecFallbacksKnown`, a keyring invariant that the excluded constructors establish) for E09 and
+(`CodecFallbacksKnown`, a keyring invariant that the keyring constructors establish: R15, R11,
+R12 preserve `CodecValid`) for E09 and
 E11, of the arguments (`FallbacksKnown`) for E09a; **(R1)**, **(R2)** the round-trip premises in
 the S15 rows. `ad` is the associated data. HMAC means HMAC-SHA256 under `key` (opaque model).
 
@@ -213,6 +241,9 @@ the S15 rows. `ad` is the associated data. HMAC means HMAC-SHA256 under `key` (o
 | S15 | `rs2_roundtrip` | `seal_rs2(kid, key, ad, body)` does not panic, and opening its token (any `str` with its bytes) with `open_rs2_at(self, ·, ad, now_ms)`, with the same associated data `ad`, gives `Ok(body[8..])`. | (R2): (T), (C), body ≥ 8 bytes and not expired at `now_ms`, `kid` is UTF-8 of 1–255 bytes and the codec is a keyring that maps it to `key` | [`…RequestStateCodec.rs2_roundtrip`](../proofs/Proofs/Internal/Model/RequestState.lean) | `seal` then `open` |
 | S15 | `open_at_roundtrip_rs1` | As `rs1_roundtrip`, opening with `open_at(self, ·, ad, now_ms)`, with the same associated data `ad`. | (R1) | [`…RequestStateCodec.open_at_roundtrip_rs1`](../proofs/Proofs/Internal/Model/RequestState.lean) | `seal` then `open` |
 | S15 | `open_at_roundtrip_rs2` | As `rs2_roundtrip`, opening with `open_at(self, ·, ad, now_ms)`, with the same associated data `ad`. | (R2) | [`…RequestStateCodec.open_at_roundtrip_rs2`](../proofs/Proofs/Internal/Model/RequestState.lean) | `seal` then `open` |
+| R10a | `seal_at` (private; translated with patch 03) | At an explicit time `now_ms`, the token's UTF-8 bytes are `Defs.CodecState.sealAt` of the payload, associated data and time-to-live (expiry `now_ms` plus the TTL in whole milliseconds, clamped to `i64`; `rs1` for a single key or an rs1 seal mode, `rs2` otherwise). | the seal-mode key id is a key id; `SealFits` (transcript within `usize::MAX`, capacity within `isize::MAX`); inherited exceptions (H), (V) | [`…RequestStateCodec.seal_at`](../proofs/Proofs/Internal/Model/RequestState.lean) | `seal`, `seal_with` |
+| R10b | `seal_at_roundtrip` | `seal_at(self, payload, options, now)` does not panic, and opening its token (any `str` with its bytes) with `open_at(self, ·, ad, now')`, with the same associated data, gives `Ok(payload)`. | `CodecValid`; an rs1 seal-mode id is an rs1 fallback; `SealFits`; not expired at `now'`; inherited exceptions (H), (V) | [`…RequestStateCodec.seal_at_roundtrip`](../proofs/Proofs/Internal/Model/RequestState.lean) | `seal` then `open` |
+| — | `openAt_eq_ok_of_sealAt_eq_some` (model round trip, no translated function) | `openAt` of a `sealAt` token with the same associated data at a time where it has not expired is `Ok(payload)`. | `CodecValid`; an rs1 seal-mode id is an rs1 fallback; not expired | [`Theorems.request_state.openAt_eq_ok_of_sealAt_eq_some`](../proofs/Proofs/Internal/Model/RequestState.lean) | — |
 
 **Wire functions, Phase 1 (patch-only)** —
 [`Internal/Model/RequestStateWire.lean`](../proofs/Proofs/Internal/Model/RequestStateWire.lean)
@@ -236,7 +267,7 @@ open of request-state tokens. Theorem names are `Theorems.request_state_wire.<fu
 | W12 | `decode_expiry` | The signed (two's-complement) big-endian value of the 8 bytes. | none | [`Theorems.request_state_wire.decode_expiry`](../proofs/Proofs/Internal/Model/RequestStateWire.lean) | `open_frame` (W14) |
 | W13 | `is_expired` | `true` exactly when `expiry ≠ 0` and `now_ms > expiry`. | none | [`Theorems.request_state_wire.is_expired`](../proofs/Proofs/Internal/Model/RequestStateWire.lean) | `open_frame` (W14) |
 | W14 | `open_frame` | `TooShort` below 8 bytes; otherwise `Expired` if W13 holds for the first 8 bytes' value; otherwise `Ok(body[8..])`. | none | [`Theorems.request_state_wire.open_frame`](../proofs/Proofs/Internal/Model/RequestStateWire.lean) | `open_authenticated_body` (E01, patched copy) |
-| W15 | `frame` | Returns `be64(expiry as u64) ++ payload`. | result fits in `usize::MAX` bytes | [`Theorems.request_state_wire.frame`](../proofs/Proofs/Internal/Model/RequestStateWire.lean) | `seal_at` (excluded; patched copy): `seal`, `seal_with` |
+| W15 | `frame` | Returns `be64(expiry as u64) ++ payload`. | result fits in `usize::MAX` bytes | [`Theorems.request_state_wire.frame`](../proofs/Proofs/Internal/Model/RequestStateWire.lean) | `seal_at` (R10a; patched copy): `seal`, `seal_with` |
 | — | `frame_roundtrip` | `open_frame(frame(expiry, payload), now_ms)` is `Ok(payload)`. | frame fits in `usize::MAX` bytes; `expiry` is 0 or `now_ms ≤ expiry` | [`Theorems.request_state_wire.frame_roundtrip`](../proofs/Proofs/Internal/Model/RequestStateWire.lean) | `seal_at` then `open_authenticated_body` (patched copy) |
 
 **Laws of the trusted models** — [`Internal/External.lean`](../proofs/Proofs/Internal/External.lean)
@@ -263,9 +294,13 @@ Rust documentation. Used by: the proofs of all statements above.
 >   this rests on `scripts/check-original-linkage.sh` (the committed translation, generated from
 >   the patched copy, equals block for block the translation of unmodified `7caec76` for the
 >   Phase 2 targets): passes locally, CI pending (S22).
+> - **Translation patch 03** (R09–R15): +6/−2 lines on the patch-01 copy (`let ttl = options.ttl;`
+>   in `seal_at`, an explicit `match` in place of `.map_err(RequestStateError::Deserialization)`
+>   in `open_json_with`), reviewed and signed off 2026-11-24; same computation, covered by the
+>   existing tests and the boundary tests of the test-only patch 02, not proved.
 > - **The models in [`formal/trusted/`](../trusted/)** of the external functions (standard
 >   library, `core::net`, integer parsing, HMAC-SHA256, Base64url, `zeroize`): definitions,
->   structures and five `opaque` constants, no trusted axiom (`axioms.lock` is empty). They do
+>   structures and seven `opaque` constants (five until translation patch 03), no trusted axiom (`axioms.lock` is empty). They do
 >   not appear in `#print axioms`; their fidelity rests on review and their cited sources.
 >   Stated exceptions (`formal/trusted/Rmcp/FunsExternal.lean`, module docstring, "Memory" and
 >   "Size convention"): the models make no claim about inputs of `2^61` bytes or more, which
@@ -279,15 +314,16 @@ Rust documentation. Used by: the proofs of all statements above.
 >   initialisation; non-UTF-8 `Str` bytes; `HashMap::get` assumes `Hash`/`Eq` agree; the clock is
 >   opaque): complete list in [`../docs/STATUS.md`](../docs/STATUS.md), "Stated exceptions of the
 >   external models".
-> - **The clock** (human decision 2026-11-24; [`../README.md`](../README.md), "Trusted base"):
->   the clock is one opaque reading `ExtModel.nowMs`, which makes `open`/`open_with` pure in the
->   model. Only R07, R08 and the R08 corollary may name `open`, `open_with` and
->   `ExtModel.nowMs`, and only with the postcondition `resultBytes result = openAt … nowMs`; likewise
->   (human decision 2026-11-24, for the R09/R10 specs still to be written) only the spec theorems
->   of `seal` and `seal_with` and their restatements may name those two functions and
->   `ExtModel.nowMs`, and only with a postcondition stating the result as that of `seal_at` at
->   `ExtModel.nowMs`; no
->   statement constrains the value of the reading or involves two readings. The model of
+> - **The clock** (human decisions 2026-11-24, extended 2026-11-25; [`../README.md`](../README.md),
+>   "Trusted base"): the clock is one opaque reading `ExtModel.nowMs`, which makes `open`,
+>   `open_with`, `open_json`, `open_json_with`, `seal` and `seal_with` pure in the model. Only
+>   their spec theorems (R07–R10, R13, R14), restatements and the corollaries of R08, R09 and R10
+>   may name these functions and `ExtModel.nowMs`, and only with the postconditions
+>   `resultBytes result = openAt … nowMs` (`open*`), the `openAt … nowMs` error unchanged or else
+>   the `from_slice` outcome mapped `Err` → `Deserialization` (`open_json*`), and
+>   `sealAt … nowMs = some (utf8 result)` (`seal*`; `sealAt` is the model of `seal_at`); no
+>   statement constrains the value of the reading or relates two readings (R10a and R10b use
+>   explicit times). The model of
 >   `now_ms` always returns, while Rust's `Utc::now` panics for a clock before 1970 or outside
 >   chrono's range (exception (K)).
 > - **No native-code assumption** since the Aeneas upgrade of 2026-11-24:
@@ -313,18 +349,17 @@ Rust documentation. Used by: the proofs of all statements above.
   `origin_is_allowed`, `is_allowed_metadata_url`, `AddressClass::of`,
   `MetadataAddressResolver::is_allowed`.
 - URL and HTTP parsing (`Origin` and `Host` headers, `url::Url`), `async` code, DNS resolution.
-- 9 of the 17 public functions of `request_state.rs` (status in
-  [`../docs/STATUS.md`](../docs/STATUS.md), "Public request_state.rs API"): `seal`,
-  `seal_with`, `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with`,
-  `new_with_keyring` (R09–R15: translated since translation patch 03 v2, 2026-11-24, reviewed
-  and signed off 2026-11-24; specifications pending, nothing about them is specified or proved);
+- 2 of the 17 public functions of `request_state.rs` (status in
+  [`../docs/STATUS.md`](../docs/STATUS.md), "Public request_state.rs API"):
   `seal_json`, `seal_json_with` (R16–R17, excluded, blocked upstream: Aeneas does not support the
   mutually recursive `serde_core::ser` traits; once that is fixed they would additionally need the
   variant-constructor workaround of patch 03 hunk 2, since
   `.map_err(RequestStateError::Serialization)` hits "Arrow types are not supported yet" at
-  `request_state.rs` 133:4-133:46 / 461:4-468:5 of the patched copy). Also the private `seal_at` (translated with patch
-  03, not specified). Since no keyring constructor is verified, the codec-state premise (F) is
-  assumed, not derived.
+  `request_state.rs` 133:4-133:46 / 461:4-468:5 of the patched copy).
+- Statements relating two clock readings (for example `seal` then `open` at a later time: R10b
+  and the model round trip state it at explicit times only). The codec-state premises (F) and
+  `CodecValid` are derived for the codecs the verified constructors build (R04–R06, R15, and
+  R11/R12 preserve them), but stay premises of the internal statements.
 - Cryptographic security (HMAC unforgeability), constant-time behaviour, the correctness of the
   `hmac`, `sha2`, `base64` and `zeroize` crates; negative round trips (a tampered token is
   rejected).

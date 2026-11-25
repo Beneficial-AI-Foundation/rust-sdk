@@ -8,8 +8,10 @@ the S19 evidence (git history at 223ff12).
 Phase 2 results: see "Phase 2" → "Phase 2 results (S37, 2026-11-24)".
 
 **Translation patch 03 v2 (2026-11-24, reviewed and signed off 2026-11-24; specs pending):** R09–R15 of the public
-`request_state.rs` API translate on the upgraded toolchain (specs pending); see "Public
-request_state.rs API" and "Trusted base".
+`request_state.rs` API translate on the upgraded toolchain; see "Public
+request_state.rs API" and "Trusted base". **R09–R15 specifications (2026-11-25):** 12 statements
+signed off by the spec owner after 4 review rounds; Lean statements, proofs and
+records incorporated; proofs checked 2026-11-25 (build, guards, independent incorporation review).
 
 **Aeneas upgrade (2026-11-24), reviewed and re-signed by the spec owner 2026-11-24:** see "Aeneas upgrade
 (2026-11-24)" below. The results sections below record the state before it (Aeneas
@@ -35,7 +37,7 @@ See "Phase 2" below. Nothing about the Phase 1 results changes.
 ## Aeneas upgrade (2026-11-24)
 
 **State: reviewed and re-signed by the spec owner 2026-11-24.** Human decision 2026-11-24 ("option 1: full
-migration"); base `d61356a`, branch `upgrade/aeneas-fb44cb4`, not committed. Decisions:
+migration"); base `d61356a`, branch `upgrade/aeneas-fb44cb4`, committed as `deb8d84`. Decisions:
 lead N1–N15, human A1, A2 and the axiom-list, restatement, guard-exemption and module decisions
 below. Nothing here changes a signed-off statement except the forced restatements listed.
 
@@ -573,19 +575,26 @@ Details:
 Review rules that stay in force:
 - **Clock.** `nowMs` is one constant, so every reader of the clock is pure in the model. No spec
   statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
-  `…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or
+  `…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.open_json`,
+  `…RequestStateCodec.open_json_with`, `…RequestStateCodec.seal` or
   `…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01,
-  is not covered); opening is specified through `open_at` and sealing through `seal_at`.
-  Exceptions (human decisions 2026-11-24): only the spec theorems of `open` and `open_with` and their
-  `Theorems.*` restatements may name these two functions and `ExtModel.nowMs`, and only with the
-  postcondition `resultBytes result = openAt … ExtModel.nowMs.val`; only the spec theorems of
-  `seal` and `seal_with` and their `Theorems.*` restatements may name these two functions and
-  `ExtModel.nowMs`, and only with a postcondition that states the result as that of the
-  translated `seal_at` at `ExtModel.nowMs` (`seal_with self payload options` relates to
-  `seal_at self payload options ExtModel.nowMs`). Their docstrings state the
-  one-reading caveat and the inherited exceptions. No other statement names `ExtModel.nowMs`, no
-  statement has a premise or conclusion about its value, and no statement involves two clock
-  readings; `now_ms` itself stays unmentioned.
+  is not covered); opening is specified through `open_at` and sealing through `seal_at` (or its
+  `Defs` model `sealAt`), with an explicit time. Exceptions (human decisions 2026-11-24, extended
+  by the spec owner 2026-11-25): only the spec theorems of `open`, `open_with`, `open_json`,
+  `open_json_with`, `seal` and `seal_with`, their `Theorems.*` restatements and the corollaries
+  `open_with_spec_of_length_le`, `seal_with_spec_of_length_le` and `seal_spec_of_length_le` (and
+  their restatements) may name these functions and `ExtModel.nowMs`, and only with these
+  postconditions: `open`/`open_with`, `resultBytes result = openAt … ExtModel.nowMs.val`;
+  `open_json`/`open_json_with`, the error of `openAt … ExtModel.nowMs.val` unchanged, otherwise
+  the `ExtModel.serdeJsonFromSlice` outcome for the opened payload with `Err` mapped to
+  `Deserialization`; `seal`/`seal_with`, `sealAt … ExtModel.nowMs.val = some (ExtModel.utf8
+  result)`, `sealAt` (`Defs.CodecState`) being the model of the private `seal_at` (human decision
+  2026-11-25; it replaces the earlier wording "the result of the translated `seal_at` at
+  `ExtModel.nowMs`"). Their docstrings state the one-reading caveat and the inherited exceptions.
+  No other statement names `ExtModel.nowMs`, no statement has a premise or conclusion about its
+  value, and no statement relates two clock readings; `now_ms` itself stays unmentioned. The
+  internal statements of `seal_at` (R10a) and of its round trip with `open_at` (R10b) use
+  explicit times.
 - **`HashMap::get`.** Faithful for `Hash`/`Eq` instances that agree and do not fail (only
   `K = Q = String` occurs). Since translation patch 03 the same holds for `contains_key`
   (`K = String`, `Q = str` or `String`) and `entry` (`K = String`).
@@ -784,7 +793,8 @@ an `id`); H8 — `240.0.0.0/4` (except `255.255.255.255`, which is blocked) is n
 recorded, with the statements describing the code; neither is reported upstream yet.
 
 **Evidence beyond the proofs:** every plan Section 22 boundary case is exercised by a Rust test (37
-upstream, 104 through the test-only patch 02); 835 library tests pass locally with both patches;
+upstream, 104 through the test-only patch 02); 835 library tests pass locally with both patches
+(847 since the 12 R09–R15 boundary tests of 2026-11-25, see "Documents");
 one seeded mutation (`64..=127` → `64..=126` in `is_disallowed_metadata_ipv4`) is caught by
 `s34_a02_range_boundaries` (S34; the S34 reviewers caught five more mutants in scratch, not
 recorded as evidence).
@@ -905,6 +915,31 @@ statement, no sign-off, no proof; the clock rule now covers `seal`/`seal_with`, 
 does not support the mutually recursive trait declarations of `serde_core::ser` (minimal
 reproducer kept outside the repository). The earlier patch 03 (R09–R12, on the old toolchain,
 `stash@{0}`) is superseded.
+**Update (R09–R15 specifications, 2026-11-25; incorporated, proofs checked):** the
+statements of R09–R15 passed a spec cycle of 4 review rounds (2, 2, 2 and 1 independent
+`mcp-review` reviewers; every finding fixed; a separate prover proved every round's statements
+verbatim in scratch, `#print axioms` `[propext, Classical.choice, Quot.sound]`) and were signed off
+by the spec owner (Hoang Le Truong) on 2026-11-25, together with the new definitions and the 12
+patch-02 boundary tests. 12 statements: R09 `seal` and its corollary `seal_spec_of_length_le`;
+R10 `seal_with` and its corollary `seal_with_spec_of_length_le`; R11 `with_rs1_signing`; R12
+`with_rs1_fallback`; R13 `open_json`; R14 `open_json_with`; R15 `new_with_keyring` (with a proved
+non-vacuity example); and three internal statements, R10a (the private `seal_at` at an explicit
+time), R10b (`seal_at_roundtrip`: `seal_at` at `now` then `open_at` at `now'` returns the payload
+under `CodecValid`, an rs1 seal-mode id that is an rs1 fallback, `SealFits` and an unexpired
+token) and the `Defs` model round trip `openAt_eq_ok_of_sealAt_eq_some`. Public statements are
+restated as `Theorems.request_state.RequestStateCodec.<fn>` in
+`formal/specs/Specs/Model/RequestState.lean`; R10a, R10b and the model round trip in
+`formal/proofs/Proofs/Internal/Model/RequestState.lean`. Decisions (spec owner 2026-11-25):
+`seal`/`seal_with` are stated through the `Defs` model `sealAt` at `ExtModel.nowMs` (no statement
+equates `seal_with` with the translated `seal_at`); the clock rule covers `open_json`/
+`open_json_with` (review rule in `formal/README.md`, "Trusted base"); `Defs.RequestState` moves
+unchanged to `formal/specs/Defs/`, and the new definitions (`sealAt`, `sealExpiry`, `tokenV1`/
+`tokenV2`, `durationMillis`, `SealFits`, `CodecSealKeyKnown`, `KeyringFits`, `IterYields`,
+`keyringScan`, `keyringCheck`, `KeyringFailure`, seven message texts) go into `Defs.CodecState`;
+`CodecValid` is unchanged (the round trips keep the rs1 premise separate); no `_fail` companions.
+R15 proves that every codec `new_with_keyring` returns satisfies `CodecValid`. Records
+`formal/docs/functions/R09.yaml`–`R15.yaml` (spec `REVIEWED`; proof pending the build and the
+lead's checks). With these, R16–R17 are the only public `request_state.rs` functions not covered.
 
 **Public and internal specifications (2026-11-24, human decision):** `formal/specs/` now holds only
 the public rmcp API (functions `pub` in upstream rmcp): `Specs/Model.lean` (M01–M05, M09–M14, the
@@ -1123,7 +1158,15 @@ Documents:
   `patched-tests.yml`. The repository's SDK `*.rs` files stay unchanged. S34 (all 141 Section 22
   boundary cases covered: 37 by upstream tests, 96 uncovered and 8 partial by patch 02; 835 tests
   pass; reviewed by two agents, a third pass after the fix round) was accepted by the human owner
-  on 2026-11-24, effective when S21 passes CI.
+  on 2026-11-24, effective when S21 passes CI. **Extended 2026-11-25** (human decision in the
+  R09–R15 spec cycle; findings sR2-a-2, sR2-b-4, sR3-a-3; signed off by the spec owner
+  2026-11-25 with the R09–R15 statements): 12 more `#[cfg(test)]` tests in a new
+  `mod public_api_boundaries` of `request_state.rs`'s test module (expiry edges of `seal_at`,
+  its rs1-keyring round trip, the exact `InvalidKeyring`/`KeyTooShort` errors and fault order of
+  `new_with_keyring`, the messages and fallback lists of `with_rs1_signing`/`with_rs1_fallback`;
+  list in `formal/trusted/evidence/README.md`). Patch 02 now adds 46 tests (34 + 12); 847 library
+  tests pass on the copy with patches 01–03 and with 01–02; the re-translation stays
+  byte-identical; one review (25 of 28 mutants caught, the 3 survivors killed by the fix round).
 - `docs/VERIFICATION.md` (kept verbatim) also differs, from 2026-11-24, in what an auditor reads:
   its §7 says `formal/specs/` and not `formal/proofs/`; the statements about private,
   crate-internal and patch-only functions and the model laws are now in

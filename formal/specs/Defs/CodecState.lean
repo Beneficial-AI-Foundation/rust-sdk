@@ -8,6 +8,7 @@ public import Aeneas
 public import Rmcp.Types
 public import Rmcp.FunsExternal
 public import Defs.Wire
+public import Defs.RequestState
 
 @[expose] public section
 
@@ -36,6 +37,8 @@ open Aeneas.Std
 
 open rmcp.model.request_state (RequestStateCodec Keys SealMode RequestStateError)
 open Defs.Wire
+open Defs.RequestState (StrIs kidEmptyMsg kidTooLongMsg)
+open Result (ok)
 
 /-- The key table of a keyring codec: the translated `HashMap<String, Zeroizing<Vec<u8>>>` of
 `Keys::Ring { keys, .. }` (request_state.rs, lines 228–235; plan Section 4, "Standard library":
@@ -284,5 +287,196 @@ def resultBytes (r : core.result.Result (alloc.vec.Vec U8) RequestStateError) :
   match r with
   | .Ok v => .ok v.val
   | .Err e => .error e
+
+/-! ### `InvalidKeyring` messages of the keyring builders -/
+
+/-- The message of `InvalidKeyring` from `with_rs1_signing` on a single-key codec (patched line
+377, upstream 387). -/
+def rs1SigningNeedsKeyringMsg : String := "rs1 transitional signing requires a keyring"
+
+/-- The message of `InvalidKeyring` from `with_rs1_signing` for an id that is not a key id
+(patched line 386, upstream 396). -/
+def rs1SigningKidMissingMsg : String := "rs1 signing key id is not present in the keyring"
+
+/-- The message of `InvalidKeyring` from `with_rs1_fallback` on a single-key codec (patched line
+414, upstream 424). -/
+def rs1FallbackNeedsKeyringMsg : String := "rs1 fallbacks require a keyring"
+
+/-- The message of `InvalidKeyring` from `with_rs1_fallback` for an id that is not a key id
+(patched line 423, upstream 433). -/
+def rs1FallbackKidMissingMsg : String := "rs1 fallback key id is not present in the keyring"
+
+/-- The message of `InvalidKeyring` from `new_with_keyring` for a repeated key id (patched line
+338, upstream 348). -/
+def duplicateKidMsg : String := "duplicate key id"
+
+/-- The message of `InvalidKeyring` from `new_with_keyring` for no keys (patched line 345,
+upstream 355). -/
+def emptyKeyringMsg : String := "keyring must contain at least one key"
+
+/-- The message of `InvalidKeyring` from `new_with_keyring` when the active id is not a key id
+(patched line 353, upstream 363). -/
+def activeKidMissingMsg : String := "active key id is not present in the keyring"
+
+/-! ### Sealing -/
+
+/-- The whole milliseconds of a `Duration`, `Duration::as_millis` (`core/src/time.rs`, lines
+601–604: `secs * 1000 + nanos / 1_000_000`). -/
+def durationMillis (d : core.time.Duration) : Nat :=
+  d.secs.val * 1000 + d.nanos.val / 1000000
+
+/-- **Expiry of a sealed token** (patched lines 534–538, upstream 541–544): `0` without a
+time-to-live; with a time-to-live `d`, `now_ms.saturating_add(d.as_millis().min(i64::MAX as u128)
+as i64)`, i.e. `now + min(ms, i64::MAX)` clamped to the `i64` range. The cast `as i64` is exact
+because its argument is at most `i64::MAX`. The bounds are the Aeneas constants `I64.max`
+(`2^63 - 1`) and `I64.min` (`-2^63`) of `Aeneas/Std/Scalar/Core.lean`. -/
+def sealExpiry (ttl : Option core.time.Duration) (now : Int) : Int :=
+  match ttl with
+  | none => 0
+  | some d => max I64.min (min I64.max (now + min (durationMillis d : Int) I64.max))
+
+/-- The `rs1` token of `body` under `key` and associated data `ad`, as UTF-8 bytes:
+`"rs1." ++ b64(body) ++ "." ++ b64(tag)` with `tag = HMAC-SHA256(key, transcriptV1 ad body)`
+(plan Section 2.2, E07; `seal_rs1`, patched lines 576–587). -/
+def tokenV1 (key ad body : List U8) : List U8 :=
+  versionV1 ++ [dot] ++ ExtModel.b64 body ++ [dot] ++
+    ExtModel.b64 (ExtModel.hmacSha256 key (transcriptV1 ad body)).val
+
+/-- The `rs2` token of `body` under key id bytes `kid`, `key` and `ad`, as UTF-8 bytes:
+`"rs2." ++ b64(kid) ++ "." ++ b64(body) ++ "." ++ b64(tag)` with
+`tag = HMAC-SHA256(key, transcriptV2 kid ad body)` (plan Section 2.2, E08; `seal_rs2`, patched
+lines 589–609). -/
+def tokenV2 (kid key ad body : List U8) : List U8 :=
+  versionV2 ++ [dot] ++ ExtModel.b64 kid ++ [dot] ++ ExtModel.b64 body ++ [dot] ++
+    ExtModel.b64 (ExtModel.hmacSha256 key (transcriptV2 kid ad body)).val
+
+/-- **Expected result of sealing** (`seal_at`, patched lines 533–561, upstream 540–569) at time
+`now`, as the UTF-8 bytes of the token: the body is `frameBytes (sealExpiry ttl now) payload`
+(W15, line 541); a single-key codec seals `rs1` with its key (line 544); a keyring seals with its
+seal-mode key id `kid`, `rs1` with the key stored under `kid` (lines 548–552) or `rs2` with the
+UTF-8 bytes of `kid` and that key (lines 553–558). `none` if the keyring holds no key under
+`kid` (the `expect` at line 549 or 555 panics). The key stored under `kid` is `lookupKey`, the
+model of `HashMap::get`. -/
+def sealAt (codec : RequestStateCodec) (payload ad : List U8) (ttl : Option core.time.Duration)
+    (now : Int) : Option (List U8) :=
+  let body := frameBytes (sealExpiry ttl now) payload
+  match codec.keys with
+  | .Single key => some (tokenV1 key.inner.val ad body)
+  | .Ring keys (.Rs1 kid) _ => (lookupKey keys kid).map fun key => tokenV1 key ad body
+  | .Ring keys (.Rs2 kid) _ =>
+    (lookupKey keys kid).map fun key => tokenV2 (ExtModel.utf8 kid) key ad body
+
+/-- The seal-mode key id of a keyring codec is a key id (the third clause of `CodecValid`); a
+single-key codec satisfies it. It is the part of the codec-state predicate that sealing needs:
+`keys.get(key_id).expect(..)` (patched lines 549 and 555) panics exactly when it fails. -/
+def CodecSealKeyKnown (codec : RequestStateCodec) : Prop :=
+  match codec.keys with
+  | .Single _ => True
+  | .Ring keys seal_mode _ => sealModeKid seal_mode ∈ keyIds keys
+
+/-- **Lean-model domain of sealing** a payload of `payloadLen` bytes with associated data of
+`adLen` bytes (plan Section 3, "W01 and the seal capacities" and "Lean-model domains"): the MAC
+transcript fits in `usize::MAX` bytes (the bound of the Lean model of `Vec::extend_from_slice`;
+`transcriptV1`/`transcriptV2` have `26 + 8 + adLen + expiryLen + payloadLen` and
+`26 + 8 + |kid| + 8 + adLen + expiryLen + payloadLen` bytes, with `expiryLen = 8` the expiry
+prefix of the body) and the capacity sum of `seal_rs1`
+(patched lines 578–580) or `seal_rs2` (lines 594–600) is at most `isize::MAX`
+(`ExtModel.maxStringBytes`; `String::with_capacity` panics above it). The `rs2` case is that of
+a keyring sealing `rs2` with key id `kid`; every other codec seals `rs1`. -/
+def SealFits (codec : RequestStateCodec) (payloadLen adLen : Nat) : Prop :=
+  match codec.keys with
+  | .Ring _ (.Rs2 kid) _ =>
+    domainV2.length + 8 + kid.utf8ByteSize + 8 + adLen + expiryLen + payloadLen ≤ Usize.max ∧
+    versionV2.length + 3 + b64Len kid.utf8ByteSize + b64Len (expiryLen + payloadLen) +
+      b64Len 32 ≤ ExtModel.maxStringBytes
+  | _ =>
+    domainV1.length + 8 + adLen + expiryLen + payloadLen ≤ Usize.max ∧
+    versionV1.length + 2 + b64Len (expiryLen + payloadLen) + b64Len 32 ≤ ExtModel.maxStringBytes
+
+/-! ### Keyring configuration -/
+
+/-- **Lean-model domain of the keyring builders** (`with_rs1_signing`, `with_rs1_fallback`): every
+key id has at most `usize::MAX` UTF-8 bytes (the Lean model of `Borrow<str> for String`, used by
+`contains_key` with a `&str` query, fails above it) and there are fewer than `usize::MAX` rs1
+fallbacks (the Aeneas model of `Vec::push` fails at `usize::MAX` elements). Every Rust value
+satisfies both: a `String` has at most `isize::MAX` bytes, and a `Vec<String>` at most
+`isize::MAX / 24` elements. A single-key codec satisfies it. How a caller discharges it: it
+holds for every value a Rust program can have; along the public constructor chain,
+`new_with_keyring` (R15) yields key ids of 1 to 255 bytes (`CodecValid`) and no fallback, and
+each `with_rs1_signing`/`with_rs1_fallback` (R11/R12) keeps the key table and adds at most one
+fallback, so after `n` builder calls there are at most `n` fallbacks. -/
+def KeyringFits (codec : RequestStateCodec) : Prop :=
+  match codec.keys with
+  | .Single _ => True
+  | .Ring keys _ rs1_fallbacks =>
+    (∀ kid ∈ keyIds keys, kid.utf8ByteSize ≤ Usize.max) ∧
+      rs1_fallbacks.val.length < Usize.max
+
+/-- The iterator `it` of the caller's `Iterator` instance (its `next`) yields the items `items` in
+order and then `None`. Used for the `keys: impl IntoIterator` argument of `new_with_keyring`
+(patched line 328: `for (kid, key) in keys`), whose iterator is caller code. It relies on the
+Aeneas translation of the trait, where `next` is a pure function of the iterator state; stated
+exception: a caller iterator with side effects outside its state (global or thread-local state,
+input/output) is not described. A finite list of items is assumed (an infinite iterator has no
+such list). Kept in `Defs.CodecState` because only the R15 statement uses it. -/
+def IterYields {I T : Type} (next : I → Result (Option T × I)) : I → List T → Prop
+  | it, [] => ∃ it', next it = ok (none, it')
+  | it, x :: xs => ∃ it', next it = ok (some x, it') ∧ IterYields next it' xs
+
+/-- Why `new_with_keyring` rejects its arguments. -/
+inductive KeyringFailure where
+  /-- A key id (configured or active) is empty (`InvalidKeyring(KID_EMPTY_MSG)`). -/
+  | kidEmpty
+  /-- A key id has more than 255 UTF-8 bytes (`InvalidKeyring(KID_TOO_LONG_MSG)`). -/
+  | kidTooLong
+  /-- A key has `actual < 32` bytes (`KeyTooShort { minimum: 32, actual }`). -/
+  | keyTooShort (actual : Nat)
+  /-- A key id occurs twice (`InvalidKeyring("duplicate key id")`). -/
+  | duplicateKid
+  /-- No key (`InvalidKeyring("keyring must contain at least one key")`). -/
+  | emptyKeyring
+  /-- The active id is not a key id (`InvalidKeyring("active key id is not present …")`). -/
+  | activeKidMissing
+
+/-- The error value that each failure of `new_with_keyring` returns: the `InvalidKeyring`
+messages (texts of `Defs.RequestState` and `Defs.CodecState`, related to the `&'static str` by
+`StrIs`) and `KeyTooShort { minimum: 32, actual }` (E03). -/
+def KeyringFailure.Describes : KeyringFailure → RequestStateError → Prop
+  | .kidEmpty, e => ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg kidEmptyMsg
+  | .kidTooLong, e => ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg kidTooLongMsg
+  | .keyTooShort n, e => ∃ minimum actual : Usize, e = .KeyTooShort minimum actual ∧
+      minimum.val = minKeyLength ∧ actual.val = n
+  | .duplicateKid, e => ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg duplicateKidMsg
+  | .emptyKeyring, e => ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg emptyKeyringMsg
+  | .activeKidMissing, e => ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg activeKidMissingMsg
+
+/-- The first rejected entry of a keyring configuration, scanned in order with the ids `seen`
+already accepted (patched lines 328–341, upstream 338–351): for each `(kid, key)`, an empty id
+(E04, line 331), then an id over 255 bytes (E04), then a key under 32 bytes (E03, line 332), then
+an id already accepted (`Entry::Occupied`, lines 333–339); `none` if every entry is accepted. -/
+def keyringScan : List String → List (String × List U8) → Option KeyringFailure
+  | _, [] => none
+  | seen, (kid, key) :: rest =>
+    if kid.utf8ByteSize = 0 then some .kidEmpty
+    else if maxKidLen < kid.utf8ByteSize then some .kidTooLong
+    else if key.length < minKeyLength then some (.keyTooShort key.length)
+    else if kid ∈ seen then some .duplicateKid
+    else keyringScan (seen ++ [kid]) rest
+
+/-- **Expected outcome of `new_with_keyring`** (patched lines 319–364, upstream 329–374) for the
+active id `active` and the converted entries `entries`, in the Rust order of checks: the first
+rejected entry (`keyringScan`); then no entry → `emptyKeyring` (lines 343–347); then the active
+id empty or over 255 bytes (E04, line 350); then the active id not a key id →
+`activeKidMissing` (lines 351–355); otherwise success (lines 357–363). -/
+def keyringCheck (active : String) (entries : List (String × List U8)) :
+    Except KeyringFailure Unit :=
+  match keyringScan [] entries with
+  | some f => .error f
+  | none =>
+    if entries = [] then .error .emptyKeyring
+    else if active.utf8ByteSize = 0 then .error .kidEmpty
+    else if maxKidLen < active.utf8ByteSize then .error .kidTooLong
+    else if active ∈ entries.map Prod.fst then .ok ()
+    else .error .activeKidMissing
 
 end Defs.CodecState

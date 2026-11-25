@@ -6,7 +6,7 @@ Authors: Hoang Le Truong
 module
 public import Rmcp.Funs
 public import Defs.Wire
-public import Proofs.Defs.RequestState
+public import Defs.RequestState
 public import Proofs.External.Std
 public import Proofs.Model.RequestStateWire.CheckKidLen
 public import Proofs.Model.RequestState.Common

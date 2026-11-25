@@ -6,7 +6,7 @@ Authors: Hoang Le Truong
 module
 public import Defs
 public import Defs.Wire
-public import Proofs.Defs.RequestState
+public import Defs.RequestState
 public import Defs.CodecState
 public import Proofs.Model.RequestState.OpenAuthenticatedBody
 public import Proofs.Model.RequestState.ValidateKeyLength
@@ -18,16 +18,18 @@ public import Proofs.Model.RequestState.SealRs2
 public import Proofs.Model.RequestState.OpenRs1At
 public import Proofs.Model.RequestState.Rs1FallbacksVerify
 public import Proofs.Model.RequestState.OpenRs2At
+public import Proofs.Model.RequestState.Seal
 public import Proofs.Model.RequestState.Roundtrip
 
 @[expose] public section
 
 /-!
-# Internal spec file for crates/rmcp/src/model/request_state.rs (Phase 1: E01–E11, round trips)
+# Internal spec file for crates/rmcp/src/model/request_state.rs (E01–E11, round trips, R10a, R10b)
 
 These are guarantees about private associated functions of `RequestStateCodec` (without `pub`),
 kept out of `formal/specs/`, which holds only the public API (human decision 2026-11-24); the
-public wrappers (`seal`, `open`, `try_new`, …) are not verified. E09a `rs1_fallbacks_verify` is
+public wrappers (`seal`, `open`, `try_new`, …) are in `formal/specs/Specs/Model/RequestState.lean`
+(R01–R15). E09a `rs1_fallbacks_verify` is
 patch-only: patch 01 moves the rs1 fallback loop of `open_rs1_at` into it, so it has no upstream
 counterpart. Index of all guarantees: `formal/specs/README.md`.
 
@@ -47,6 +49,9 @@ counterpart. Index of all guarantees: `formal/specs/README.md`.
 | S15 | `rs2_roundtrip` | `seal_rs2`, then `open_rs2_at` (same `ad`): `Ok(body[8..])` | (R2) |
 | S15 | `open_at_roundtrip_rs1` | `seal_rs1`, then `open_at` (same `ad`): `Ok(body[8..])` | (R1) |
 | S15 | `open_at_roundtrip_rs2` | `seal_rs2`, then `open_at` (same `ad`): `Ok(body[8..])` | (R2) |
+| R10a | `seal_at` | `sealAt` at an explicit time | (S), (D) (last section) |
+| R10b | `seal_at_roundtrip` | `seal_at` at `now`, then `open_at` at `now'` (same `ad`): `Ok(payload)` | `CodecValid`, `h_rs1`, (D), not expired |
+| R10b model | `openAt_eq_ok_of_sealAt_eq_some` | `openAt` of a `sealAt` token is the payload | `CodecValid`, `h_rs1`, not expired |
 
 Each row says that the call (for the round trips: sealing, then opening any `str` holding the
 token's bytes) does not panic and that its result satisfies the guarantee, within the HMAC and
@@ -93,8 +98,8 @@ panics, which Aeneas models as failure. Aeneas `nightly-2026.11.24-fb44cb4` (unt
 `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23; translation
 committed at `9bd8144`). Line numbers refer to `request_state.rs` in the patched copy.
 
-Definitions used, in the modules `Defs.Wire`, `Defs.CodecState` (`formal/specs/Defs/`, used by
-public statements too) and `Proofs.Defs.RequestState` (`formal/proofs/Proofs/Defs/`):
+Definitions used, in the modules `Defs.Wire`, `Defs.CodecState` and `Defs.RequestState`
+(`formal/specs/Defs/`, used by public statements too):
 `Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLength`, `maxKidLen`, `b64Len`, `dot`,
 `components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`), `Defs.RequestState`
 (`StrIs`, `kidEmptyMsg`, `kidTooLongMsg`) and `Defs.CodecState` (`KeyTable`, `FallbacksKnown`,
@@ -516,3 +521,81 @@ info: 'Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2' depends o
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2
+
+/-! ## R10a, R10b and the model round trip (translation patch 03; signed off 2026-11-25)
+
+Spec theorems: R10a `seal_at_spec` in `Proofs/Model/RequestState/Seal.lean`; R10b
+`seal_at_roundtrip` and the model round trip `Proofs.RequestState.Roundtrip.
+openAt_eq_ok_of_sealAt_eq_some` in `Proofs/Model/RequestState/Roundtrip.lean`, whose docstrings
+give the full statements. Premise keys: (S) `CodecSealKeyKnown`, (D) `SealFits`; `h_rs1`: an
+`Rs1` seal-mode id is an rs1 fallback. Inherited exceptions (H) HMAC `2^61`, (V) a transcript
+above `isize::MAX` bytes. -/
+
+open rmcp.model.request_state (SealOptions RequestStateCodec)
+open Defs.CodecState (CodecValid sealAt sealExpiry CodecSealKeyKnown SealFits)
+
+/-- R10a `seal_at` (private): the UTF-8 bytes of the token are `sealAt` at the explicit time
+`now_ms`. Premises (S), (D); inherited exceptions (H), (V). -/
+theorem Theorems.request_state.RequestStateCodec.seal_at (self : RequestStateCodec)
+    (payload : Slice Std.U8)
+    (options : SealOptions) (now_ms : Std.I64)
+    (h_key : CodecSealKeyKnown self)
+    (h_fits : SealFits self payload.val.length options.associated_data.val.length) :
+    rmcp.model.request_state.RequestStateCodec.seal_at self payload options now_ms
+      ⦃ (result : String) =>
+      sealAt self payload.val options.associated_data.val options.ttl now_ms.val =
+        some (ExtModel.utf8 result) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_at_spec self payload options now_ms h_key h_fits
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal_at' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal_at
+
+/-- R10b: sealing with `seal_at` at `now`, then opening any `Str` holding the token with
+`open_at` at `now'` (same associated data) gives `Ok` of the payload. Premises `CodecValid`,
+`h_rs1`, (D), not expired at `now'`; inherited exceptions (H), (V). -/
+theorem Theorems.request_state.RequestStateCodec.seal_at_roundtrip (self : RequestStateCodec)
+    (payload : Slice Std.U8)
+    (options : SealOptions) (now now' : Std.I64)
+    (h_valid : CodecValid self)
+    (h_rs1 : ∀ keys kid rs1_fallbacks, self.keys = .Ring keys (.Rs1 kid) rs1_fallbacks →
+      kid ∈ rs1_fallbacks.val)
+    (h_fits : SealFits self payload.val.length options.associated_data.val.length)
+    (h_live : ¬ Expired (sealExpiry options.ttl now.val) now'.val) :
+    rmcp.model.request_state.RequestStateCodec.seal_at self payload options now ⦃
+      (token : String) =>
+      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
+      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
+      rmcp.model.request_state.RequestStateCodec.open_at self sealed options.associated_data
+        now' ⦃ (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+        resultBytes result = .ok payload.val ⦄ ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_at_roundtrip self payload options now now' h_valid
+    h_rs1 h_fits h_live
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal_at_roundtrip' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal_at_roundtrip
+
+/-- Model round trip: `openAt` of a `sealAt` token at a time where it is not expired is the
+payload. Premises `CodecValid`, `h_rs1`, not expired. -/
+theorem Theorems.request_state.openAt_eq_ok_of_sealAt_eq_some (codec : RequestStateCodec)
+    (payload ad : List U8)
+    (ttl : Option core.time.Duration) (now now' : Std.I64) (token : List U8)
+    (h_valid : CodecValid codec)
+    (h_rs1 : ∀ keys kid rs1_fallbacks, codec.keys = .Ring keys (.Rs1 kid) rs1_fallbacks →
+      kid ∈ rs1_fallbacks.val)
+    (h_live : ¬ Expired (sealExpiry ttl now.val) now'.val)
+    (h_seal : sealAt codec payload ad ttl now.val = some token) :
+    openAt codec token ad now'.val = .ok payload :=
+  Proofs.RequestState.Roundtrip.openAt_eq_ok_of_sealAt_eq_some codec payload ad ttl now now' token
+    h_valid h_rs1 h_live h_seal
+
+/--
+info: 'Theorems.request_state.openAt_eq_ok_of_sealAt_eq_some' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.openAt_eq_ok_of_sealAt_eq_some

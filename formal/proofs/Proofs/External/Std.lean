@@ -393,6 +393,49 @@ theorem find?_key_isSome_iff {V : Type} (entries : List (String × V)) (k : Stri
   simp only [Option.isSome_map, List.find?_isSome, decide_eq_true_eq, Prod.exists, exists_and_right,
     exists_eq_right, List.mem_map]
 
+open rmcp in
+/-- **Lookup with a `&str` query** (`HashMap::get`/`contains_key` at `K = String`, `Q = str`, used
+by `with_rs1_signing` and `with_rs1_fallback`): the value of the first entry whose key's UTF-8 bytes
+are the query's bytes, provided every key has at most `Usize.max` bytes (the Lean model of
+`Borrow<str> for String` fails above it; every Rust `String` meets it). -/
+theorem find_borrowStr_eq {V : Type} (q : Str) : ∀ entries : List (String × V),
+    (∀ e ∈ entries, e.1.utf8ByteSize ≤ Usize.max) →
+    ExtModel.HashMap.find alloc.string.String.Insts.CoreBorrowBorrowStr Str.Insts.CoreCmpEq q
+      entries = ok ((entries.find? (fun e => decide (utf8 e.1 = q.val))).map Prod.snd)
+  | [], _ => rfl
+  | (k, v) :: rest, h => by
+    have hk : k.utf8ByteSize ≤ Usize.max := h (k, v) List.mem_cons_self
+    have hk' : (utf8 k).length ≤ Usize.max := by rw [length_utf8]; exact hk
+    have ih := find_borrowStr_eq q rest (fun e he => h e (List.mem_cons_of_mem _ he))
+    obtain ⟨kb, hkb, hkbv⟩ := Proofs.External.WP.exists_ok_of_spec
+      (alloc.string.String.Insts.CoreOpsDerefDerefStr.deref_spec k hk)
+    have hb : alloc.string.String.Insts.CoreBorrowBorrowStr.borrow k = ok kb := hkb
+    rw [ExtModel.HashMap.find]
+    simp only [alloc.string.String.Insts.CoreBorrowBorrowStr, hb, bind_ok, Str.Insts.CoreCmpEq,
+      Str.Insts.CoreCmpPartialEqStr, Str.Insts.CoreCmpPartialEqStr.eq, hkbv, List.find?_cons]
+    by_cases hq : utf8 k = q.val
+    · simp only [hq, decide_true, ↓reduceIte, Option.map_some]
+    · have hq' : ¬ q.val = utf8 k := fun e => hq e.symm
+      simp only [hq, hq', decide_false, Bool.false_eq_true, ↓reduceIte]
+      exact ih
+
+open rmcp in
+/-- The slot lookup of `HashMap::entry` with the `String` equality of the translation is
+`List.find?` by key equality. -/
+theorem lookupEntry_string_eq {V : Type} (q : String) :
+    ∀ entries : List (String × V),
+      ExtModel.HashMap.lookupEntry alloc.string.String.Insts.CoreCmpEq q entries =
+        ok (entries.find? (fun e => decide (e.1 = q)))
+  | [] => rfl
+  | (k, v) :: rest => by
+    simp only [ExtModel.HashMap.lookupEntry, alloc.string.String.Insts.CoreCmpEq,
+      alloc.string.String.Insts.CoreCmpPartialEqString,
+      alloc.string.String.Insts.CoreCmpPartialEqString.eq, bind_ok, List.find?_cons]
+    by_cases h : k = q
+    · simp only [h, decide_true, ↓reduceIte]
+    · simp only [h, decide_false, Bool.false_eq_true, ↓reduceIte]
+      exact lookupEntry_string_eq q rest
+
 end Proofs.External.HashMap
 
 /-- `HashMap::clone`: clones the hash builder, the allocator and every key and value. -/
@@ -447,15 +490,19 @@ theorem alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq {Z : Type} (inst : rmcp.ze
 /-! ## Clock
 
 No statement about the function `RequestStateCodec::now_ms` (nor the functions `open`,
-`open_with`, `seal`, `seal_with`; Lean
-`rmcp.model.request_state.RequestStateCodec.{now_ms, open, open_with, seal, seal_with}`; a
-variable named `now_ms` is not covered): the clock is one
+`open_with`, `open_json`, `open_json_with`, `seal`, `seal_with`; Lean
+`rmcp.model.request_state.RequestStateCodec.{now_ms, open, open_with, open_json,
+open_json_with, seal, seal_with}`; a variable named `now_ms` is not covered): the clock is one
 opaque constant `ExtModel.nowMs`, which makes every reader pure, so a statement about it could
 relate readings in a way the Rust code does not guarantee (review rule, `formal/README.md`,
-"Trusted base"). Statements about opening use `open_at`, and about sealing `seal_at`, with an
-explicit time, except the spec theorems of the public `open`/`open_with` (postcondition
-`openAt … ExtModel.nowMs.val`) and `seal`/`seal_with` (result that of `seal_at` at
-`ExtModel.nowMs`) and their restatements (human decisions 2026-11-24; wording in
+"Trusted base"). Statements about opening use `open_at`, and about sealing `seal_at` (or its
+model `sealAt`), with an explicit time, except the spec theorems of the public `open`/`open_with`
+(postcondition `resultBytes result = openAt … ExtModel.nowMs.val`), `open_json`/`open_json_with`
+(the error of `openAt … ExtModel.nowMs.val` unchanged, otherwise the `serdeJsonFromSlice`
+outcome of the opened payload with `Err` mapped to `Deserialization`) and `seal`/`seal_with`
+(`sealAt … ExtModel.nowMs.val = some (ExtModel.utf8 result)`), their restatements and the
+corollaries `open_with_spec_of_length_le`, `seal_with_spec_of_length_le` and
+`seal_spec_of_length_le` (human decisions 2026-11-24, extended 2026-11-25; wording in
 `formal/README.md`, "Trusted base"). -/
 
 /-! ## Phase 2: slices and ranges -/

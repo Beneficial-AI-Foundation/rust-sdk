@@ -635,7 +635,7 @@ steps:
     state: IN_PROGRESS  # translated on Aeneas nightly-2026.11.24-fb44cb4 (base deb8d84); records and
     # docs updated; reviewed (2 rounds, all findings fixed); patch, Charon settings, linkage script,
     # 14+2 models, 3 opaque constants and the seal clock rule signed off by the spec owner 2026-11-24;
-    # committed. Pending: the R09-R15 specs, proofs and records.
+    # committed. Pending: the R09-R15 specs, proofs and records (tracked as SPEC-R09-R15 below).
     # Human decisions 2026-11-24: targets R09-R15 (R16-R17 stay excluded, blocked upstream);
     # variant A (+6/-2 Rust lines); from_slice modelled as ok of an opaque outcome; clock rule
     # extended to seal/seal_with. The old patch 03 (stash@{0}) is superseded.
@@ -666,3 +666,41 @@ steps:
       unchanged up to its Source line numbers; the patched copy passes the crate's tests; lake build
       --wfail and all lean-guard.sh checks pass; the patch and the new models reviewed by independent
       agents and signed off by the human. Specifying R09-R15 is a separate step.
+
+  - id: SPEC-R09-R15  # not a plan step; specification and proof of R09-R15, public request_state.rs API (plan Section 2.3 amendment 2026-11-25)
+    day: 2026-11-25
+    state: IN_PROGRESS  # spec cycle of 4 review rounds (2, 2, 2, 1 reviewers), every round's
+    # statements proved verbatim in scratch; 12 statements, the new Defs and the 12 patch-02
+    # boundary tests signed off by the spec owner 2026-11-25. Pending: incorporation (Lean
+    # statements and proofs, records, docs, clock rule text: finding sR-a-1), lake build --wfail
+    # and the guards, one review, the commit (human approval).
+    # Spec-owner decisions 2026-11-25: seal/seal_with stated through the Defs model sealAt at
+    # ExtModel.nowMs; clock rule extended to open_json/open_json_with; Defs.RequestState moved
+    # unchanged to formal/specs/Defs/, new definitions in Defs.CodecState; CodecValid unchanged;
+    # R10b (translated round trip) and boundary tests added (H3).
+    depends_on: [PATCH03-V2]
+    owner: Lead + human owner
+    files:
+      - formal/specs/Defs.lean
+      - formal/specs/Defs/CodecState.lean
+      - formal/specs/Defs/RequestState.lean  # moved from formal/proofs/Proofs/Defs/, unchanged
+      - formal/specs/Specs/Model/RequestState.lean
+      - formal/proofs/Proofs.lean
+      - formal/proofs/Proofs/Internal/Model/RequestState.lean
+      - formal/proofs/Proofs/Model/RequestState/*.lean  # Seal, Keyring, OpenJson, NewWithKeyring (new); Roundtrip, Common, ValidateConfigKid
+      - formal/proofs/Proofs/External/Std.lean  # Clock comment; HashMap lemmas find_borrowStr_eq, lookupEntry_string_eq
+      - formal/trusted/Rmcp/FunsExternal.lean  # nowMs and now_ms docstrings only
+      - formal/trusted/patches/02-phase2-tests.patch  # 12 boundary tests (46 in all)
+      - formal/trusted/evidence/README.md
+      - formal/docs/functions/R09.yaml  # to R15.yaml, new; used_by of E03, E04, E07, E08, E11, W15, R08
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - formal/specs/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 2.3 and 4 (amendments)
+      - .github/workflows/patched-tests.yml  # header comment only
+    acceptance: >-
+      The 12 signed-off statements are in the spec files verbatim and proved, with #print axioms
+      [propext, Classical.choice, Quot.sound]; lake build --wfail and all lean-guard.sh checks
+      pass; the clock rule text matches the statements; the patched copy passes its 847 library
+      tests; one independent review; commit approved by the human.

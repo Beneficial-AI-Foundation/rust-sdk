@@ -10,7 +10,7 @@ proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestStateWire/Frame.lean
 spec_file: formal/proofs/Proofs/Internal/Model/RequestStateWire.lean
 theorem: rmcp.model.request_state_wire.frame_spec  # also rmcp.model.request_state_wire.frame_roundtrip (not an ID), same proof and spec file
-used_by: []  # targets whose proofs consume this theorem; none in §2.2 "Built on"; consumed by frame_roundtrip (not an ID)
+used_by: [R10]  # targets whose proofs consume this theorem; none in §2.2 "Built on"; consumed by frame_roundtrip (not an ID); R10 through R10a (seal_at_spec) since 2026-11-25
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file
 evidence: [formal/docs/STATUS.md]  # per-step evidence files removed 2026-11-23 (human decision); history: git show 223ff12:formal/docs/evidence/<step>.md
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestStateWire.lean (S05)

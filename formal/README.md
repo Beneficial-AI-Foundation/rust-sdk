@@ -29,9 +29,19 @@ Translation patch 03 v2 (2026-11-24, human decisions: targets R09–R15, variant
 by the spec owner 2026-11-24; specs pending**): on the upgraded toolchain, `trusted/patches/03-request-state-public.patch`
 (+6/−2 Rust lines) and the Charon-settings change let seven more public `request_state.rs`
 functions translate (R09–R15: `seal`, `seal_with`, `with_rs1_signing`, `with_rs1_fallback`,
-`open_json`, `open_json_with`, `new_with_keyring`); their specifications are not written yet.
+`open_json`, `open_json_with`, `new_with_keyring`).
 `seal_json`/`seal_json_with` (R16–R17) stay excluded, blocked upstream. See "Trusted base" below
 and "Public request_state.rs API" in `docs/STATUS.md`.
+
+R09–R15 specifications (2026-11-25; **signed off by the spec owner after 4 review rounds;
+proved and incorporated; proofs checked 2026-11-25**): 12 statements, the public R09–R15 (with corollaries
+of R09 and R10) in `specs/Specs/Model/RequestState.lean` and the internal R10a (`seal_at` at an
+explicit time), R10b (`seal_at` then `open_at`) and a model round trip in
+`proofs/Proofs/Internal/Model/RequestState.lean`; R15 proves that every codec
+`new_with_keyring` returns is `CodecValid`. The clock rule now covers `open_json`/
+`open_json_with`, and `seal`/`seal_with` are stated through the model `sealAt` ("Trusted base").
+The test-only patch 02 gained 12 boundary tests of R09–R12 and R15 (46 tests; 847 library tests
+pass on the patched copy). Records: `docs/functions/R09.yaml`–`R15.yaml`.
 
 ## Translated configuration
 
@@ -482,7 +492,8 @@ There is one translation patch, `trusted/patches/01-request-state-wire.patch` (t
 `request_state_wire` refactor and its tests on upstream `7caec76`; D2 fallback, human decision
 2026-11-23); before that date there was none. A second, test-only patch,
 `trusted/patches/02-phase2-tests.patch` (S34, human decision H3, 2026-11-24), adds `#[cfg(test)]`
-boundary tests for Phase 2 and changes no translated item; `scripts/apply-patches.sh` applies both.
+boundary tests for Phase 2 (since 2026-11-25 also 12 boundary tests of R09–R12 and R15, 46 in
+all) and changes no translated item; `scripts/apply-patches.sh` applies both.
 A third patch, `trusted/patches/03-request-state-public.patch` (human decisions 2026-11-24:
 targets R09–R15, variant A "minimal Rust change"; **reviewed and signed off 2026-11-24; specs pending**), changes two
 non-test statements of `request_state.rs` (+6/−2 lines) so that the public `seal`, `seal_with`,
@@ -520,21 +531,32 @@ describes its Rust function, with the exceptions stated in its docstring
 `#print axioms`, the `#guard_msgs` lists or `axioms.lock`, so a change to one is caught only by
 review of `trusted/`; the proofs use them since S08/S09 were signed off. Review rule: no spec
 statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
-`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.seal` or
+`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.open_json`,
+`…RequestStateCodec.open_json_with`, `…RequestStateCodec.seal` or
 `…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the
 time parameter of E01 `open_authenticated_body`, is not covered): the single opaque clock reading
 `nowMs` makes those functions pure in
-the model; opening is specified through `open_at` and sealing through `seal_at`. Exceptions
-(human decisions 2026-11-24): only the spec theorems of `open` and `open_with` and their
-`Theorems.*` restatements may name these two functions and `ExtModel.nowMs`, and only with the
-postcondition `resultBytes result = openAt … ExtModel.nowMs.val`; only the spec theorems of
-`seal` and `seal_with` and their `Theorems.*` restatements may name these two functions and
-`ExtModel.nowMs`, and only with a postcondition that states the result as that of the translated
-`seal_at` at `ExtModel.nowMs` (`seal_with self payload options` relates to
-`seal_at self payload options ExtModel.nowMs`). Their docstrings state the
-one-reading caveat and the inherited exceptions. No other statement names `ExtModel.nowMs`, no
-statement has a premise or conclusion about its value, and no statement involves two clock
-readings; `now_ms` itself stays unmentioned.
+the model; opening is specified through `open_at` and sealing through `seal_at` (or its `Defs`
+model `sealAt`), with an explicit time. Exceptions (human decisions 2026-11-24, extended by the
+spec owner 2026-11-25): only the spec theorems of `open`, `open_with`, `open_json`,
+`open_json_with`, `seal` and `seal_with`, their `Theorems.*` restatements and the corollaries
+`open_with_spec_of_length_le`, `seal_with_spec_of_length_le` and `seal_spec_of_length_le` (and
+their restatements) may name these functions and `ExtModel.nowMs`, and only with these
+postconditions:
+- `open`/`open_with`: `resultBytes result = openAt … ExtModel.nowMs.val`;
+- `open_json`/`open_json_with`: if `openAt … ExtModel.nowMs.val` is an error, the result is that
+  error unchanged; otherwise it is the `ExtModel.serdeJsonFromSlice` outcome for the opened
+  payload, with `Ok value ↦ Ok value` and `Err error ↦ Err (Deserialization error)`;
+- `seal`/`seal_with`: `sealAt … ExtModel.nowMs.val = some (ExtModel.utf8 result)`, where
+  `sealAt` (`Defs.CodecState`) is the model of the private `seal_at` (human decision
+  2026-11-25; it replaces the earlier wording "the result of the translated `seal_at` at
+  `ExtModel.nowMs`"; no statement equates `seal_with` with the translated `seal_at`).
+
+Their docstrings state the one-reading caveat and the inherited exceptions. No other statement
+names `ExtModel.nowMs`, no statement has a premise or conclusion about its value, and no
+statement relates two clock readings; `now_ms` itself stays unmentioned. The internal
+statements of the private `seal_at` (R10a) and of its round trip with `open_at` (R10b) use
+explicit times.
 Review rules of the patch 03 opaque constants (reviewed and signed off by the spec owner 2026-11-24): no statement has a premise
 or conclusion about the value of `ExtModel.randomState` or about the `hash_builder` of a map
 built by `HashMap::new`, and no statement states or relies on the equality (or inequality) of

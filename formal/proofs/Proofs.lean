@@ -44,6 +44,10 @@ public import Proofs.Model.RequestState.Rs1FallbacksVerify
 public import Proofs.Model.RequestState.OpenRs2At
 public import Proofs.Model.RequestState.Roundtrip
 public import Proofs.Model.RequestState.Public
+public import Proofs.Model.RequestState.Keyring
+public import Proofs.Model.RequestState.Seal
+public import Proofs.Model.RequestState.OpenJson
+public import Proofs.Model.RequestState.NewWithKeyring
 public import Proofs.Model.JsonRpcMessage
 public import Proofs.Model.NumberOrString
 public import Proofs.Model.Task
@@ -53,7 +57,6 @@ public import Proofs.Transport.ClientSideSse
 public import Proofs.Transport.AsyncRw
 public import Proofs.Transport.Tower
 public import Proofs.Transport.Auth
-public import Proofs.Defs.RequestState
 public import Proofs.Defs.Sse
 public import Proofs.Defs.Net
 public import Proofs.Defs.Methods
