@@ -6,9 +6,11 @@
 # of their own, classified separately from the axioms of formal/trusted/axioms.lock, as in the
 # SPQR project (scripts/AuditHeadline.lean, `isNativeAxiom`).
 #
-# The pinned Aeneas `toStr (s : String) (h : s.toByteArray.size ≤ U32.max := by decide +native)`
-# (Aeneas/Std/String.lean) declares one for every string literal of the translation. Only these
-# may be listed here: `scripts/lean-guard.sh axioms` rejects any native-code axiom whose
+# Up to Aeneas nightly-2026.08.20-5d08da4, `toStr (s : String) (h : s.toByteArray.size ≤ U32.max
+# := by decide +native)` (Aeneas/Std/String.lean) declared one for every string literal of the
+# translation. Since the upgrade to nightly-2026.11.24-fb44cb4, `toStr` proves the side condition
+# with `rw [U32.max_eq]; decide +kernel`, which adds no axiom, and this lock is empty. Only such
+# toStr side conditions may ever be listed here: `scripts/lean-guard.sh axioms` rejects any native-code axiom whose
 # statement is not exactly `decide ("<literal>".toByteArray.size ≤ Aeneas.Std.U32.max) = true`
 # (no universe parameters), even if it is listed.
 #
@@ -32,21 +34,20 @@
 # line here and is not used can change without CI failing (it must still have the toStr form
 # and an Rmcp.Types/Rmcp.Funs module); the translation diff shows it.
 #
-# These axioms state true facts that the kernel can also check: `simp only [U32.max,
-# U32.numBits, UScalarTy.numBits]; decide` proves each with [propext] only (U32.max is
-# @[irreducible], which is why plain `decide` fails). An upstream Aeneas `toStr` that
-# discharges the side condition that way, and a rev bump, would remove them (open item,
-# the S04a evidence (git history at 223ff12)).
+# These axioms stated true facts that the kernel can also check (`simp only [U32.max,
+# U32.numBits, UScalarTy.numBits]; decide` proved each with [propext] only). The open item of the
+# S04a evidence (git history at 223ff12), an upstream Aeneas `toStr` that discharges the side
+# condition in the kernel, was closed by the Aeneas upgrade of 2026-11-24.
 #
 # Updating: regenerate the translation, run `lake build` with Rmcp in the audited roots and
 # `scripts/lean-guard.sh axioms`; the failure message prints the line to add for each
 # used unlisted axiom. Reviewers check that each line belongs to a string literal of the generated
 # code (the literal is printed by the audit) and that the translation diff explains the change.
 #
-# Translation of commit f8fb6a7 with the S04a part 2 Charon settings (derived Debug impls
-# excluded): the five string literals of the target code.
-rmcp.model.request_state.KID_EMPTY_MSG._native.decide.ax_1 Rmcp.Funs sha256:9c9408a5bfa250bca3832132c712f03553820fb787bcd0f0e1e2df65735154c5
-rmcp.model.request_state.KID_TOO_LONG_MSG._native.decide.ax_1 Rmcp.Funs sha256:96dd8f3bcfe92233ac2a6959d92756e64db8864fd009a254daceaa55cf3e8ec6
-rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3 Rmcp.Funs sha256:f0a588d6b2ab00071bc9c2ad4830539895924c2d6ac0bfc215f487d3f1ebd294
-rmcp.model.request_state.VERSION_V1._native.decide.ax_1 Rmcp.Funs sha256:266bab2962c0e0d527821af399f4bab7acc43d6380dc474bf84d61f34fed919b
-rmcp.model.request_state.VERSION_V2._native.decide.ax_1 Rmcp.Funs sha256:58b654cc9f1a61279efa70278732198a04dc9c493a3edf2b0c96cbaabb759e50
+# History. The lock held 35 entries at d61356a (Aeneas nightly-2026.08.20-5d08da4): five Phase 1
+# literals (translation of f8fb6a7, S04a part 2: VERSION_V1, VERSION_V2, KID_EMPTY_MSG,
+# KID_TOO_LONG_MSG and the `expect` message of rs1_fallbacks_verify) and 30 Phase 2 literals (S29,
+# human decision H2): the 18 request and 10 notification method names of async_rw.rs
+# (is_standard_method, is_standard_notification) and "http"/"https" of tower.rs default_port.
+# All 35 were removed with the upgrade to nightly-2026.11.24-fb44cb4 (lead decision N5,
+# 2026-11-24): the translation declares no native-code axiom any more.

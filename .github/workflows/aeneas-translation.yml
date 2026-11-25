@@ -22,6 +22,11 @@
 # the two jobs. A committed verification lockfile shared by both is a human decision
 # (formal/docs/STATUS.md, "Open items").
 #
+# After the stale check, the job runs scripts/check-original-linkage.sh (plan Section 19, S22): the
+# Phase 2 targets translated from the unmodified source (no translation patch) must equal the
+# committed translation, and crates/rmcp/src must be the pinned upstream tree; it builds the
+# dependency graph a second time in $RUNNER_TEMP (hence the longer timeout).
+#
 # Residual risk: the job runs the PR's own scripts and the build scripts / proc macros of the
 # crates.io dependencies in the same job as the check, so a PR that changes scripts/ is checked by
 # its own scripts; review of scripts/ is the barrier (as for lean-build.yml).
@@ -31,6 +36,7 @@ on:
   push:
     branches: [ main ]
     paths:
+      - 'crates/**'   # part (a) of scripts/check-original-linkage.sh pins every tracked file here
       - 'crates/rmcp/src/**'
       - 'crates/rmcp/Cargo.toml'
       - 'crates/rmcp/build.rs'
@@ -48,9 +54,11 @@ on:
       - 'scripts/aeneas-translate.sh'
       - 'scripts/apply-patches.sh'
       - 'scripts/llbc-dir-guard.sh'
+      - 'scripts/check-original-linkage.sh'
       - '.github/workflows/aeneas-translation.yml'
   pull_request:
     paths:
+      - 'crates/**'   # part (a) of scripts/check-original-linkage.sh pins every tracked file here
       - 'crates/rmcp/src/**'
       - 'crates/rmcp/Cargo.toml'
       - 'crates/rmcp/build.rs'
@@ -68,6 +76,7 @@ on:
       - 'scripts/aeneas-translate.sh'
       - 'scripts/apply-patches.sh'
       - 'scripts/llbc-dir-guard.sh'
+      - 'scripts/check-original-linkage.sh'
       - '.github/workflows/aeneas-translation.yml'
   workflow_dispatch:
 
@@ -87,13 +96,13 @@ env:
   # The Rust channel of the pinned bundle's rust-toolchain, used only as a cache path here; it
   # must equal the channel hard-coded next to RUSTC_VV_PINNED in scripts/aeneas-translate.sh
   # (checked by the first step), and is updated with the Aeneas rev.
-  RUST_NIGHTLY: nightly-2026-06-01
+  RUST_NIGHTLY: nightly-2026-09-17
 
 jobs:
   translate:
     name: translation is not stale
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120  # S22: the linkage step builds the dependency graph a second time
     defaults:
       run:
         # Explicit `bash` runs each step with `bash -eo pipefail`.
@@ -157,3 +166,10 @@ jobs:
             exit 1
           fi
           echo "formal/translation/ reproduced exactly; working tree clean"
+
+      # Phase 2 linkage (plan Section 19): translated from the unmodified source (no translation
+      # patch), every Phase 2 block must equal a committed one up to the Source field (file and
+      # lines); otherwise the records' `linkage: ORIGINAL` does not hold. Runs after the
+      # stale-translation check, so the committed translation it compares with is the current one.
+      - name: Check the Phase 2 linkage (unmodified source)
+        run: scripts/check-original-linkage.sh "$RUNNER_TEMP/linkage"

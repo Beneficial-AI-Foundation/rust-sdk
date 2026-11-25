@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
+module
+public import Rmcp.Funs
+public import Defs.Wire
+
+@[expose] public section
 
 /-!
 # Spec theorem for `bytes_eq` (W04)
@@ -37,7 +40,7 @@ theorem bytes_eq_spec (a : Slice U8) (b : Slice U8) :
   split
   · have hne : a.val.length ≠ b.val.length := by
       intro heq
-      simp_all [Slice.len]
+      simp_all only [Slice.len, bne_self_eq_false, Bool.false_eq_true]
     simp only [WP.spec_ok]
     simp only [false_eq_decide_iff]
     intro h
@@ -59,7 +62,8 @@ theorem bytes_eq_spec (a : Slice U8) (b : Slice U8) :
           rw [List.getElem?_eq_getElem hlt, List.getElem?_eq_getElem hlb, ← i2_post, ← i3_post]
           simp_all only [bne_iff_ne, ne_eq, Decidable.not_not]
       · have hab : a.val.length = b.val.length := by
-          simp_all [Slice.len]
+          simp_all only [Slice.len, bne_iff_ne, ne_eq, UScalar.neq_to_neq_val,
+            Usize.ofNatCore_val_eq, Decidable.not_not, Slice.length, UScalar.lt_equiv, not_lt]
         have hia : i.val = a.val.length := by scalar_tac
         simp only [true_eq_decide_iff]
         apply List.ext_getElem?

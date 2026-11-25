@@ -3,80 +3,281 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Proofs
+module
+public import Defs
+public import Proofs.Model.RequestState.Public
+public import Proofs.Model.RequestState.Keyring
+public import Proofs.Model.RequestState.Seal
+public import Proofs.Model.RequestState.OpenJson
+public import Proofs.Model.RequestState.NewWithKeyring
+
+@[expose] public section
 
 /-!
-# Spec file for crates/rmcp/src/model/request_state.rs
+# Spec file for crates/rmcp/src/model/request_state.rs (public API: R01–R15)
 
-Statements of the codec functions of `RequestStateCodec` (plan Section 2.2), in Rust source
-order, each restated as a theorem `Theorems.request_state.RequestStateCodec.<function>` proved by
-the spec theorem in `Proofs/Model/RequestState/` and followed by
-the assumptions its proof depends on, checked by `#print axioms` under `#guard_msgs`. The
-statements were signed off by the spec owner on 2026-11-23 (the S05 evidence (git history at 223ff12)); their signed-off
-text is in `specs/Drafts/RequestState.lean` at commit `9bd8144`.
+Summary (one row per theorem below; index of all guarantees: `formal/specs/README.md`). A row
+about a call `f x ⦃ r => P r ⦄` says that the call does not panic and that its result satisfies
+the guarantee (`RequestStateCodec::` abbreviated `Codec::`).
+
+| ID | Function | Guarantee | Assumptions |
+|---|---|---|---|
+| R01 | `SealOptions::new` | no associated data, no time-to-live | none |
+| R02 | `SealOptions::associated_data` | sets the associated data, keeps the ttl | none |
+| R03 | `SealOptions::ttl` | sets the ttl to `Some ttl`, keeps the associated data | none |
+| R04 | `Codec::new` | single-key codec of `key.into()`, any length | `into` returns |
+| R05 | `Codec::new_unchecked` | single-key codec of `key.into()`, any length | `into` returns |
+| R06 | `Codec::try_new` | that codec if key ≥ 32 bytes, else `KeyTooShort` | `into` returns |
+| R07 | `Codec::open` | exactly `openAt` with no associated data at `nowMs` | (F); (K), (H) |
+| R08 | `Codec::open_with` | exactly `openAt` at `nowMs` | (T), (F); (K), (H), (V) |
+| R08, cor. | `Codec::open_with` | as R08 | (L), (F); (K), (H), (V) |
+| R09 | `Codec::seal` | `sealAt` with no associated data, no ttl, at `nowMs` | (S), (D); (K), (H) |
+| R09 cor. | `Codec::seal` | as R09 | `CodecValid`, (Ls); (K), (H) |
+| R10 | `Codec::seal_with` | `sealAt` with the options at `nowMs` | (S), (D); (K), (H), (V) |
+| R10 cor. | `Codec::seal_with` | as R10 | `CodecValid`, (Ls); (K), (H) |
+| R11 | `Codec::with_rs1_signing` | rs1 seal mode, kid appended to fallbacks once; else `InvalidKeyring` | `as_ref` returns, (R); (P) |
+| R12 | `Codec::with_rs1_fallback` | kid appended to fallbacks once; else `InvalidKeyring` | `as_ref` returns, (R); (P) |
+| R13 | `Codec::open_json` | `openAt` (no ad) at `nowMs`, then the opaque JSON outcome | (F); (K), (H), (J) |
+| R14 | `Codec::open_json_with` | `openAt` at `nowMs`, then the opaque JSON outcome | (T), (F); (K), (H), (V), (J) |
+| R15 | `Codec::new_with_keyring` | `keyringCheck` decides `Ok`/which error; `Ok` ring is `CodecValid` with exactly the given keys | caller code returns, (U); (P), (N) |
+
+Assumption keys (those of the internal E11 statement, `proofs/Proofs/Internal/Model/
+RequestState.lean`): (T) the MAC transcript fits in `usize::MAX` bytes (the bound of the Lean
+model of `Vec::extend_from_slice`); (F) every rs1 fallback id of a keyring codec is a key id
+(`Defs.CodecState.CodecFallbacksKnown`), needed only for a token whose first `.`-component is
+`rs1` (else the code's `expect` panics, patched line 652, upstream 661); (L) associated data
+plus token plus 36 bytes fit in `usize::MAX` (implies (T)). "`into` returns": the caller's
+`Into<Vec<u8>>` conversion returns the vector `v` (it is user code, which may panic).
+`nowMs` is `ExtModel.nowMs`; (K), (H), (V) are inherited exceptions, not premises (below).
+
+This file holds the public API of `request_state.rs` (functions `pub` in upstream rmcp; human
+decision 2026-11-24): the eight public functions that are translated but were not Phase 1
+targets (plan Section 2.3, "Consequences"), plus one corollary of R08 with a simpler premise
+(`open_with_spec_of_length_le`). The private functions E01–E11, E09a and the round trips are in
+`formal/proofs/Proofs/Internal/Model/RequestState.lean`. Each statement is restated as a theorem
+`Theorems.request_state.<Type>.<function>` proved by the spec theorem in
+`Proofs/Model/RequestState/Public.lean` and followed by the assumptions its proof depends on,
+checked by `#print axioms` under `#guard_msgs`. Signed off by the spec owner on 2026-11-24; the
+signed-off text was in `specs/Drafts/RequestState.lean`, removed at incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
-features `--no-default-features --features request-state`, with `overflow-checks=true` and
-`debug-assertions=true` (plan Section 1), so arithmetic overflow panics, which Aeneas models as
-failure. Aeneas `nightly-2026.08.20-5d08da4`; the translation base is the patched copy (patch 01
-on origin/main 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback
-2026-11-23; translation committed at `9bd8144`). Line numbers refer to `request_state.rs` in the
-patched copy.
+`--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
+`transport-streamable-http-server`, `transport-streamable-http-client` and `auth` (plan
+Section 15), with `overflow-checks=true` and `debug-assertions=true` (plan Section 1). Aeneas
+`nightly-2026.11.24-fb44cb4` (until 2026-11-24 `nightly-2026.08.20-5d08da4`). The translation base is the patched copy (patch 01 on origin/main
+`7caec76`, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback 2026-11-23). Each
+clause cites the line in the patched copy ("patched") and at upstream `7caec76` ("upstream").
+The eight functions have the same text in both, ten lines lower upstream (patch 01 removes
+import lines above them); the tests cited are twelve lines lower upstream; what the eight
+functions call differs only below them (`open_at`, `validate_key_length`, `now_ms`, which moves
+55 lines).
 
-Definitions used: `Defs.Wire` (`expiryLen`, `bodyExpiry`, `Expired`, `minKeyLength`, `maxKidLen`,
-`b64Len`, `dot`, `components`, `versionV1`, `versionV2`, `transcriptV1`, `transcriptV2`),
-`Defs.RequestState` (`StrIs`, `kidEmptyMsg`, `kidTooLongMsg`) and `Defs.CodecState` (`KeyTable`,
-`FallbacksKnown`, `CodecFallbacksKnown`, `Rs1Verifies`, `openRs1`, `openRs2`, `openAt`,
-`resultBytes`, `lookupKey`).
+Definitions used: `Defs.Wire` (`components`, `versionV1`, `versionV2`, `transcriptV1`,
+`transcriptV2`, `minKeyLength`) and `Defs.CodecState` (`CodecValid`, `CodecFallbacksKnown`,
+`openAt`, `resultBytes`), all in `formal/specs/Defs/`. No private Rust function is named:
+`openAt` is the expected result of opening defined in `Defs.CodecState`, not the translated
+private `open_at`.
 
-External models used (S08–S09, `trusted/Rmcp/FunsExternal.lean`): E04 uses the model of
-`core.str.Str.len` (the byte length of the `Str`). E04 also depends on the native-code
-assumptions `KID_EMPTY_MSG._native.decide.ax_1` and `KID_TOO_LONG_MSG._native.decide.ax_1`, which
-the pinned Aeneas `toStr` declares for the two message literals of the translation (listed in
-`trusted/native-axioms.lock`; any statement about `validate_config_kid` reaches them).
+External models used (`trusted/Rmcp/FunsExternal.lean`): `zeroize::Zeroizing::new` (R04–R06;
+wraps the vector unchanged, zeroisation on drop is not modelled, plan Section 4);
+`zeroize::Zeroizing::deref` (`zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref`, R06; returns the
+wrapped vector, which `try_new` passes to `validate_key_length`); the clock
+reading `ExtModel.nowMs` through the model of `RequestStateCodec::now_ms` (R07, R08); and,
+through E11, `ExtModel.b64Decode` (also in the premises (T)), `ExtModel.hmacSha256`,
+`ExtModel.utf8`, `ExtModel.b64`, `ExtModel.maxStringBytes` and `ExtModel.strOfBytes?`. The proof
+of R07 uses the laws `Proofs.External.Base64.b64_of_b64Decode` and
+`Proofs.External.Base64.length_b64`, the corollary of R08 the bound
+`ExtModel.b64Decode_length_le`.
 
-External models used by E07–E11 and E09a: `ExtModel.utf8`, `ExtModel.b64`, `ExtModel.b64Decode`,
-`ExtModel.hmacSha256`, `ExtModel.maxStringBytes`, `ExtModel.strOfBytes?`. Stated exceptions (plan
-Section 4, rows "HMAC" and "Standard library"): HMAC SHA-256 always succeeds in the model, while
-its `u64` bit-length counter overflows (a panic under overflow-checks) for a message of at least
-`2^61 - 64` bytes or a key of at least `2^61` bytes; allocation failure is not modelled, and the
-transcript `Vec` is modelled up to `Usize.max` bytes where Rust panics above `isize::MAX`. For
-such inputs a statement promises a result where the Rust code panics. The E07/E08 premises
-`h_len`/`h_cap` are the no-overflow domains of the debug-build semantics. E07 and E08 reach the
-locked native-code assumptions `VERSION_V1._native.decide.ax_1` and
-`VERSION_V2._native.decide.ax_1`;
-E09, E09a and E11 reach `RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`;
-E10 reaches none (all in `trusted/native-axioms.lock`).
+Native-code assumptions: none since the Aeneas upgrade of 2026-11-24 (its `toStr` checks the
+length of a literal in the kernel; `formal/trusted/native-axioms.lock` is empty). Until then R07,
+R08 and the corollary reached
+`rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`
+(through E11). 8 of the 9 `#print axioms` lists below changed in that upgrade (native-code assumption
+dropped, standard axioms added), re-signed by the spec owner in the batch of 2026-11-24.
 
-Statements here, in Rust source order: E11 (line 559), E07 (572), E08 (585), E09 (607),
-E09a (644), E10 (659) (S11, S13, S14), then E01 (695), E03 (704), E04 (714), E02 (725) (S07).
-The E07–E11 and E09a statements were signed off by the spec owner on 2026-11-23 after three
-review rounds (the S05 evidence (git history at 223ff12), "E batch part 2"); their signed-off text was in
-`specs/Drafts/RequestState.lean`, removed at incorporation.
+**Clock (human decision 2026-11-24; `formal/README.md`, "Trusted base"; plan Section 4, row
+"Clock").** This file is the exception to the rule that no statement names
+`RequestStateCodec::open`, `RequestStateCodec::open_with` or `ExtModel.nowMs`. `open` and
+`open_with` read the clock once (`Self::now_ms()`, patched line 500, upstream line 510) and open
+the token at that reading. The model of `RequestStateCodec::now_ms` (patched lines 729–731,
+upstream 784–786) is `ok ExtModel.nowMs`, one opaque `I64` constant. Only the spec theorems of
+`open` and `open_with` (R07, R08 and the corollary of R08) and their restatements here name these
+two functions and `ExtModel.nowMs`, and only with the postcondition
+`resultBytes result = openAt … ExtModel.nowMs.val`; no statement constrains the value of `nowMs`
+or involves two clock readings. Each statement is parametric in the clock: `nowMs` is opaque, so
+it is E11 at an arbitrary `I64` reading, and it says nothing about two calls (in Rust two calls
+read different times; in the model they would see the same constant). The time is not a
+parameter the caller controls.
 
-Composition theorems last (S15, proofs in `Proofs/Model/RequestState/Roundtrip.lean`):
-`rs1_roundtrip`, `rs2_roundtrip`, `open_at_roundtrip_rs1`, `open_at_roundtrip_rs2`. Each says that
-sealing terminates, that some `Str` holds the token's bytes, and that opening any such `Str`
-returns `Ok (body[8..])`, under the plan Section 3 round-trip conditions and the seal statements'
-own size premises. Signed off by the spec owner on 2026-11-23 after two review rounds
-(the S15 evidence (git history at 223ff12)). The rs1 ones reach `VERSION_V1._native.decide.ax_1` and
-`RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`; `rs2_roundtrip` reaches
-`VERSION_V2._native.decide.ax_1`; `open_at_roundtrip_rs2` reaches both `VERSION_V2…` and `…ax_3`.
+Inherited exceptions: inputs or environments where Rust panics but the model, and so the
+statement, promises a result. They are not premises; they are recorded at the models
+(plan Section 4, rows "Clock", "HMAC" and "Standard library").
+(K) Clock: `chrono::Utc::now` panics if the system clock is before 1970 or outside chrono's
+range (`chrono-0.4.45/src/offset/utc.rs` lines 96–98; recorded at the model of `now_ms` in
+`trusted/Rmcp/FunsExternal.lean`). Rust evaluates `Self::now_ms()` before `open_at` (patched
+line 500, upstream 510), so in such an environment even a malformed token panics.
+(H) HMAC: the model of HMAC SHA-256 always succeeds, while the `u64` bit counter of SHA-256
+overflows (a panic under `overflow-checks`) for a transcript of at least `2^61 − 64` bytes or a
+key of at least `2^61` bytes (`sha2-0.11.1/src/block_api.rs` line 66, recorded at the model
+of `prim::hmac_sha256` in `trusted/Rmcp/FunsExternal.lean`; the exception stated for E09 and
+E11).
+(V) `open_with` only: the transcript `Vec` is modelled up to `usize::MAX` bytes, while Rust
+panics above `isize::MAX` bytes. It does not arise for `open`: with no
+associated data a transcript has at most `42 + 3n/4` bytes for a token of `n ≤ isize::MAX`
+bytes.
+
+A statement `f x ⦃ (result : T) => P result ⦄` says that `f x` terminates without panicking and
+that its result satisfies `P` (plan Section 3, "What a spec means"). Every postcondition below
+determines the result uniquely (for `open`/`open_with` through the injectivity of
+`resultBytes`, `Defs.CodecState`).
+
+Statements here, in Rust source order (patched lines): R01 (153), R02 (163), R03 (170), R04
+(278), R05 (286), R06 (298), R07 (476), R08 (495), then the corollary of R08; the R09–R15
+section that follows is grouped by function family (seal, rs1 builders, JSON opening, keyring
+constructor), not in source order. The translated
+functions are written with their full names: inside a theorem named
+`Theorems.request_state.<Type>.<function>` a bare name would resolve to a restated theorem.
+
+R09–R15 (translation patch 03; signed off by the spec owner on 2026-11-25, draft
+outside the repository): `seal`, `seal_with`,
+`with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with` and `new_with_keyring`,
+restated in the last section with their premise keys. `seal` and `seal_with` are, like `open` and
+`open_with`, stated at the clock reading `ExtModel.nowMs` (result `sealAt … ExtModel.nowMs.val`;
+spec-owner decision 2026-11-25). The private `seal_at` (R10a), the round trip of `seal_at` and
+`open_at` (R10b) and the model round trip of `sealAt` and `openAt` are in
+`formal/proofs/Proofs/Internal/Model/RequestState.lean`. The definitions R09–R15 add are in
+`Defs.CodecState`; `Defs.RequestState` (`StrIs`) is in `formal/specs/Defs/` since then.
 -/
 
 open Aeneas Aeneas.Std Result
-open Defs.Wire
-open rmcp.model.request_state  -- for `RequestStateError`; theorems named in full
-open Defs.CodecState (KeyTable FallbacksKnown CodecFallbacksKnown Rs1Verifies openRs1 openRs2
-  openAt resultBytes lookupKey)
+open Defs.Wire (components versionV1 versionV2 transcriptV1 transcriptV2 minKeyLength)
+open Defs.CodecState (CodecValid CodecFallbacksKnown openAt resultBytes)
+open rmcp.model.request_state (SealOptions RequestStateCodec Keys RequestStateError)
 
-open rmcp.model.request_state.RequestStateCodec (open_at) in
-/-- E11 `open_at`: dispatches on the first `.`-component of the token, `"rs1"` to E09 and
-`"rs2"` to E10, anything else to `MalformedFormat`; the result is exactly `openAt`. -/
-theorem Theorems.request_state.RequestStateCodec.open_at
-    (self : RequestStateCodec) (sealed : Str) (associated_data : Slice Std.U8)
-    (now_ms : Std.I64)
+/-- R01 `SealOptions::new`: empty options, no associated data and no time-to-live. -/
+theorem Theorems.request_state.SealOptions.new :
+    rmcp.model.request_state.SealOptions.new ⦃ (result : SealOptions) =>
+      result.associated_data.val = [] ∧
+      result.ttl = none ⦄ :=
+  rmcp.model.request_state.SealOptions.new_spec
+
+/--
+info: 'Theorems.request_state.SealOptions.new' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.SealOptions.new
+
+/-- R02 `SealOptions::associated_data`: sets the associated data and keeps the time-to-live. -/
+theorem Theorems.request_state.SealOptions.associated_data (self : SealOptions)
+    (associated_data : Slice Std.U8) :
+    rmcp.model.request_state.SealOptions.impl.associated_data self associated_data ⦃
+      (result : SealOptions) =>
+      result.associated_data = associated_data ∧
+      result.ttl = self.ttl ⦄ :=
+  rmcp.model.request_state.SealOptions.impl.associated_data_spec self associated_data
+
+/--
+info: 'Theorems.request_state.SealOptions.associated_data' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.SealOptions.associated_data
+
+/-- R03 `SealOptions::ttl`: sets the time-to-live to `Some ttl` and keeps the associated
+data. -/
+theorem Theorems.request_state.SealOptions.ttl (self : SealOptions) (ttl : core.time.Duration) :
+    rmcp.model.request_state.SealOptions.impl.ttl self ttl ⦃ (result : SealOptions) =>
+      result.associated_data = self.associated_data ∧
+      result.ttl = some ttl ⦄ :=
+  rmcp.model.request_state.SealOptions.impl.ttl_spec self ttl
+
+/--
+info: 'Theorems.request_state.SealOptions.ttl' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.SealOptions.ttl
+
+/-- R04 `RequestStateCodec::new` (deprecated): the single-key codec of the vector `key.into()`
+returns, for a key of any length; it satisfies `CodecValid`. -/
+theorem Theorems.request_state.RequestStateCodec.new {T0 : Type}
+    (coreconvertIntoT0VecU8Inst : core.convert.Into T0 (alloc.vec.Vec Std.U8)) (key : T0)
+    (v : alloc.vec.Vec Std.U8) (h_into : coreconvertIntoT0VecU8Inst.into key = ok v) :
+    rmcp.model.request_state.RequestStateCodec.new coreconvertIntoT0VecU8Inst key ⦃
+      (result : RequestStateCodec) =>
+      result.keys = Keys.Single { inner := v } ∧
+      CodecValid result ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.new_spec coreconvertIntoT0VecU8Inst key v h_into
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.new' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.new
+
+/-- R05 `RequestStateCodec::new_unchecked`: the single-key codec of the vector `key.into()`
+returns, for a key of any length; it satisfies `CodecValid`. -/
+theorem Theorems.request_state.RequestStateCodec.new_unchecked {T0 : Type}
+    (coreconvertIntoT0VecU8Inst : core.convert.Into T0 (alloc.vec.Vec Std.U8)) (key : T0)
+    (v : alloc.vec.Vec Std.U8) (h_into : coreconvertIntoT0VecU8Inst.into key = ok v) :
+    rmcp.model.request_state.RequestStateCodec.new_unchecked coreconvertIntoT0VecU8Inst key ⦃
+      (result : RequestStateCodec) =>
+      result.keys = Keys.Single { inner := v } ∧
+      CodecValid result ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.new_unchecked_spec coreconvertIntoT0VecU8Inst key v
+    h_into
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.new_unchecked' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.new_unchecked
+
+/-- R06 `RequestStateCodec::try_new`: `Ok` of the single-key codec iff the key has at least 32
+bytes, else `KeyTooShort { minimum: 32, actual: key.len() }`. -/
+theorem Theorems.request_state.RequestStateCodec.try_new {T0 : Type}
+    (coreconvertIntoT0VecU8Inst : core.convert.Into T0 (alloc.vec.Vec Std.U8)) (key : T0)
+    (v : alloc.vec.Vec Std.U8) (h_into : coreconvertIntoT0VecU8Inst.into key = ok v) :
+    rmcp.model.request_state.RequestStateCodec.try_new coreconvertIntoT0VecU8Inst key ⦃
+      (result : core.result.Result RequestStateCodec RequestStateError) =>
+      match result with
+      | .Ok codec =>
+        minKeyLength ≤ v.val.length ∧
+        codec.keys = Keys.Single { inner := v } ∧
+        CodecValid codec
+      | .Err e =>
+        v.val.length < minKeyLength ∧
+        ∃ minimum actual : Std.Usize, e = .KeyTooShort minimum actual ∧
+          minimum.val = minKeyLength ∧ actual.val = v.val.length ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.try_new_spec coreconvertIntoT0VecU8Inst key v h_into
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.try_new' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.try_new
+
+/-- R07 `RequestStateCodec::open`: exactly `openAt` with no associated data at the clock reading
+`ExtModel.nowMs` (one reading, parametric; nothing about two calls). Premise (F) only;
+inherited exceptions (K), (H). -/
+theorem Theorems.request_state.RequestStateCodec.open (self : RequestStateCodec) (sealed : Str)
+    (h_fallbacks : (components (sealed : Slice Std.U8).val).head? = some versionV1 →
+      CodecFallbacksKnown self) :
+    rmcp.model.request_state.RequestStateCodec.open self sealed ⦃ (result :
+        core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+      resultBytes result = openAt self (sealed : Slice Std.U8).val [] ExtModel.nowMs.val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_spec self sealed h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open
+
+/-- R08 `RequestStateCodec::open_with`: exactly `openAt` at the clock reading `ExtModel.nowMs`
+(one reading, parametric; nothing about two calls). Premises (T), (F); inherited exceptions
+(K), (H), (V). -/
+theorem Theorems.request_state.RequestStateCodec.open_with (self : RequestStateCodec)
+    (sealed : Str) (associated_data : Slice Std.U8)
     (h_len1 : ∀ b t body, components (sealed : Slice Std.U8).val = [versionV1, b, t] →
       ExtModel.b64Decode b = some body →
       (transcriptV1 associated_data.val body).length ≤ Usize.max)
@@ -85,381 +286,314 @@ theorem Theorems.request_state.RequestStateCodec.open_at
       (transcriptV2 kid associated_data.val body).length ≤ Usize.max)
     (h_fallbacks : (components (sealed : Slice Std.U8).val).head? = some versionV1 →
       CodecFallbacksKnown self) :
-    open_at self sealed associated_data now_ms ⦃ (result :
+    rmcp.model.request_state.RequestStateCodec.open_with self sealed associated_data ⦃ (result :
         core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
-      -- lines 565–568; `openAt` (Defs.CodecState) dispatches on `(components _).head?`
-      resultBytes result = openAt self (sealed : Slice Std.U8).val associated_data.val
-        now_ms.val ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.open_at_spec self sealed associated_data now_ms
-    h_len1 h_len2 h_fallbacks
+      resultBytes result =
+        openAt self (sealed : Slice Std.U8).val associated_data.val ExtModel.nowMs.val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_with_spec self sealed associated_data h_len1
+    h_len2 h_fallbacks
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.open_at' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
+info: 'Theorems.request_state.RequestStateCodec.open_with' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.open_at
+#print axioms Theorems.request_state.RequestStateCodec.open_with
 
-/-- E07 `seal_rs1`: the token `"rs1." ++ b64 body ++ "." ++ b64 tag` as UTF-8 bytes, where `tag`
-is the HMAC SHA-256 of `transcriptV1 associated_data body` under `key`. -/
-theorem Theorems.request_state.RequestStateCodec.seal_rs1 (key : Slice Std.U8)
-    (associated_data : Slice Std.U8)
-    (body : Slice Std.U8)
-    (h_len : (transcriptV1 associated_data.val body.val).length ≤ Usize.max)
-    (h_cap : versionV1.length + 2 + b64Len body.val.length + b64Len 32 ≤
+/-- R08, corollary: `open_with` as in R08, exactly `openAt` at the clock reading
+`ExtModel.nowMs` (one reading, parametric; nothing about two calls), with the transcript
+premises (T) replaced by (L): `associated_data.len() + sealed.len() + 36 ≤ usize::MAX`.
+Premise (F); inherited exceptions (K), (H), (V). -/
+theorem Theorems.request_state.RequestStateCodec.open_with_of_length_le
+    (self : RequestStateCodec) (sealed : Str) (associated_data : Slice Std.U8)
+    (h_len : associated_data.val.length + (sealed : Slice Std.U8).val.length + 36 ≤ Usize.max)
+    (h_fallbacks : (components (sealed : Slice Std.U8).val).head? = some versionV1 →
+      CodecFallbacksKnown self) :
+    rmcp.model.request_state.RequestStateCodec.open_with self sealed associated_data ⦃ (result :
+        core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+      resultBytes result =
+        openAt self (sealed : Slice Std.U8).val associated_data.val ExtModel.nowMs.val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_with_spec_of_length_le self sealed
+    associated_data h_len h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_with_of_length_le' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_with_of_length_le
+
+/-! ## R09–R15 (translation patch 03; signed off by the spec owner on 2026-11-25)
+
+Spec theorems in `Proofs/Model/RequestState/{Seal,Keyring,OpenJson,NewWithKeyring}.lean`, where
+the docstrings give the full statements, line citations, premise keys and Rust tests. Premise
+keys: (S) `CodecSealKeyKnown`; (D) `SealFits`; (R) `KeyringFits`; (U) converted key ids of at
+most `usize::MAX` bytes; (T), (F) as above. Inherited exceptions, beyond (K), (H), (V) above:
+(P) a caller `Drop` impl that panics; (N) `HashMap::new` panics if the operating system's random
+source fails; (J) the `serde_json::from_slice` model (`ExtModel.serdeJsonFromSlice`). -/
+
+open Defs.CodecState (keyIds lookupKey sealAt CodecSealKeyKnown SealFits KeyringFits IterYields
+  keyringCheck rs1SigningNeedsKeyringMsg rs1SigningKidMissingMsg rs1FallbackNeedsKeyringMsg
+  rs1FallbackKidMissingMsg)
+open Defs.RequestState (StrIs)
+
+/-- R09 `RequestStateCodec::seal`: the UTF-8 bytes of the token are `sealAt` with no associated
+data and no ttl at the clock reading `ExtModel.nowMs` (one reading, parametric). Premises (S),
+(D); inherited exceptions (K), (H). -/
+theorem Theorems.request_state.RequestStateCodec.seal (self : RequestStateCodec)
+    (payload : Slice Std.U8)
+    (h_key : CodecSealKeyKnown self)
+    (h_fits : SealFits self payload.val.length 0) :
+    rmcp.model.request_state.RequestStateCodec.seal self payload ⦃ (result : String) =>
+      sealAt self payload.val [] none ExtModel.nowMs.val = some (ExtModel.utf8 result) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_spec self payload h_key h_fits
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal
+
+/-- R09, corollary: as R09, with (S) and (D) replaced by `CodecValid` and
+`2 * payload.len() + 512 ≤ isize::MAX`. Inherited exceptions (K), (H). -/
+theorem Theorems.request_state.RequestStateCodec.seal_of_length_le (self : RequestStateCodec)
+    (payload : Slice Std.U8)
+    (h_valid : CodecValid self)
+    (h_len : 2 * payload.val.length + 512 ≤ ExtModel.maxStringBytes) :
+    rmcp.model.request_state.RequestStateCodec.seal self payload ⦃ (result : String) =>
+      sealAt self payload.val [] none ExtModel.nowMs.val = some (ExtModel.utf8 result) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_spec_of_length_le self payload h_valid h_len
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal_of_length_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal_of_length_le
+
+/-- R10 `RequestStateCodec::seal_with`: the UTF-8 bytes of the token are `sealAt` with the
+options at the clock reading `ExtModel.nowMs` (one reading, parametric). Premises (S), (D);
+inherited exceptions (K), (H), (V). -/
+theorem Theorems.request_state.RequestStateCodec.seal_with (self : RequestStateCodec)
+    (payload : Slice Std.U8)
+    (options : SealOptions)
+    (h_key : CodecSealKeyKnown self)
+    (h_fits : SealFits self payload.val.length options.associated_data.val.length) :
+    rmcp.model.request_state.RequestStateCodec.seal_with self payload options ⦃ (result : String) =>
+      sealAt self payload.val options.associated_data.val options.ttl ExtModel.nowMs.val =
+        some (ExtModel.utf8 result) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_with_spec self payload options h_key h_fits
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal_with' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal_with
+
+/-- R10, corollary: as R10, with (S) and (D) replaced by `CodecValid` and
+`associated_data.len() + 2 * payload.len() + 512 ≤ isize::MAX`. Inherited exceptions (K), (H);
+(V) does not arise. -/
+theorem Theorems.request_state.RequestStateCodec.seal_with_of_length_le (self : RequestStateCodec)
+    (payload : Slice Std.U8)
+    (options : SealOptions)
+    (h_valid : CodecValid self)
+    (h_len : options.associated_data.val.length + 2 * payload.val.length + 512 ≤
       ExtModel.maxStringBytes) :
-    rmcp.model.request_state.RequestStateCodec.seal_rs1 key associated_data body ⦃
-      (result : String) =>
-      -- lines 577–582: "rs1", '.', b64(body), '.', b64(tag); tag from line 573
-      ExtModel.utf8 result =
-        versionV1 ++ [dot] ++ ExtModel.b64 body.val ++ [dot] ++
-          ExtModel.b64 (ExtModel.hmacSha256 key.val
-            (transcriptV1 associated_data.val body.val)).val ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.seal_rs1_spec key associated_data body h_len h_cap
+    rmcp.model.request_state.RequestStateCodec.seal_with self payload options ⦃ (result : String) =>
+      sealAt self payload.val options.associated_data.val options.ttl ExtModel.nowMs.val =
+        some (ExtModel.utf8 result) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_with_spec_of_length_le self payload options
+    h_valid h_len
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.seal_rs1' depends on axioms: [propext,
+info: 'Theorems.request_state.RequestStateCodec.seal_with_of_length_le' depends on axioms: [propext,
  Classical.choice,
- Quot.sound,
- VERSION_V1._native.decide.ax_1]
+ Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.seal_rs1
+#print axioms Theorems.request_state.RequestStateCodec.seal_with_of_length_le
 
-/-- E08 `seal_rs2`: the token `"rs2." ++ b64 kid ++ "." ++ b64 body ++ "." ++ b64 tag` as UTF-8
-bytes, where `tag` is the HMAC SHA-256 of `transcriptV2 kid associated_data body` under `key`;
-any kid is accepted. -/
-theorem Theorems.request_state.RequestStateCodec.seal_rs2 (kid : Str) (key : Slice Std.U8)
+/-- R11 `RequestStateCodec::with_rs1_signing`: rs1 seal mode with the given key id, appended to
+the rs1 fallbacks once, preserving `CodecValid`; `InvalidKeyring` for a single-key codec or an
+unknown id. Premises: `as_ref` returns, (R); inherited exception (P). -/
+theorem Theorems.request_state.RequestStateCodec.with_rs1_signing {T0 : Type}
+    (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str)
+    (self : RequestStateCodec) (kid : T0) (k : Str)
+    (h_as_ref : coreconvertAsRefT0StrInst.as_ref kid = ok k)
+    (h_fits : KeyringFits self) :
+    rmcp.model.request_state.RequestStateCodec.with_rs1_signing coreconvertAsRefT0StrInst self kid
+      ⦃ (result :
+        core.result.Result RequestStateCodec RequestStateError) =>
+      match result with
+      | .Ok codec =>
+        ∃ keys seal_mode rs1_fallbacks kidStr,
+          self.keys = .Ring keys seal_mode rs1_fallbacks ∧
+          ExtModel.utf8 kidStr = (k : Slice Std.U8).val ∧ kidStr ∈ keyIds keys ∧
+          (∃ fallbacks : alloc.vec.Vec String,
+            codec.keys = .Ring keys (.Rs1 kidStr) fallbacks ∧
+            fallbacks.val = if kidStr ∈ rs1_fallbacks.val then rs1_fallbacks.val
+              else rs1_fallbacks.val ++ [kidStr]) ∧
+          (CodecValid self → CodecValid codec)
+      | .Err e =>
+        ((∃ key, self.keys = .Single key) ∧
+          ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg rs1SigningNeedsKeyringMsg) ∨
+        ((∃ keys seal_mode rs1_fallbacks, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
+            ∀ kidStr ∈ keyIds keys, ExtModel.utf8 kidStr ≠ (k : Slice Std.U8).val) ∧
+          ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg rs1SigningKidMissingMsg) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.with_rs1_signing_spec coreconvertAsRefT0StrInst self
+    kid k h_as_ref h_fits
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.with_rs1_signing' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.with_rs1_signing
+
+/-- R12 `RequestStateCodec::with_rs1_fallback`: the key id appended to the rs1 fallbacks once,
+preserving `CodecValid`; `InvalidKeyring` for a single-key codec or an unknown id. Premises:
+`as_ref` returns, (R); inherited exception (P). -/
+theorem Theorems.request_state.RequestStateCodec.with_rs1_fallback {T0 : Type}
+    (coreconvertAsRefT0StrInst : core.convert.AsRef T0 Str)
+    (self : RequestStateCodec) (kid : T0) (k : Str)
+    (h_as_ref : coreconvertAsRefT0StrInst.as_ref kid = ok k)
+    (h_fits : KeyringFits self) :
+    rmcp.model.request_state.RequestStateCodec.with_rs1_fallback coreconvertAsRefT0StrInst self kid
+      ⦃ (result :
+        core.result.Result RequestStateCodec RequestStateError) =>
+      match result with
+      | .Ok codec =>
+        ∃ keys seal_mode rs1_fallbacks kidStr,
+          self.keys = .Ring keys seal_mode rs1_fallbacks ∧
+          ExtModel.utf8 kidStr = (k : Slice Std.U8).val ∧ kidStr ∈ keyIds keys ∧
+          (∃ fallbacks : alloc.vec.Vec String,
+            codec.keys = .Ring keys seal_mode fallbacks ∧
+            fallbacks.val = if kidStr ∈ rs1_fallbacks.val then rs1_fallbacks.val
+              else rs1_fallbacks.val ++ [kidStr]) ∧
+          (CodecValid self → CodecValid codec)
+      | .Err e =>
+        ((∃ key, self.keys = .Single key) ∧
+          ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg rs1FallbackNeedsKeyringMsg) ∨
+        ((∃ keys seal_mode rs1_fallbacks, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
+            ∀ kidStr ∈ keyIds keys, ExtModel.utf8 kidStr ≠ (k : Slice Std.U8).val) ∧
+          ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg rs1FallbackKidMissingMsg) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.with_rs1_fallback_spec coreconvertAsRefT0StrInst self
+    kid k h_as_ref h_fits
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.with_rs1_fallback' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.with_rs1_fallback
+
+/-- R14 `RequestStateCodec::open_json_with`: the error of `openAt` at the clock reading
+`ExtModel.nowMs`, or the opaque `serde_json::from_slice` outcome on the opened payload. Premises
+(T), (F); inherited exceptions (K), (H), (V), (J). -/
+theorem Theorems.request_state.RequestStateCodec.open_json_with {T : Type}
+    (serde_coredeDeserializeOwnedInst :
+    rmcp.serde_core.de.DeserializeOwned T) (self : RequestStateCodec) (sealed : Str)
     (associated_data : Slice Std.U8)
-    (body : Slice Std.U8)
-    (h_len : (transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val).length ≤
-      Usize.max)
-    (h_cap : versionV2.length + 3 + b64Len (kid : Slice Std.U8).val.length +
-      b64Len body.val.length + b64Len 32 ≤ ExtModel.maxStringBytes) :
-    rmcp.model.request_state.RequestStateCodec.seal_rs2 kid key associated_data body ⦃
-      (result : String) =>
-      -- lines 597–604: "rs2", '.', b64(kid), '.', b64(body), '.', b64(tag); tag from 586–589
-      ExtModel.utf8 result =
-        versionV2 ++ [dot] ++ ExtModel.b64 (kid : Slice Std.U8).val ++ [dot] ++
-          ExtModel.b64 body.val ++ [dot] ++
-          ExtModel.b64 (ExtModel.hmacSha256 key.val
-            (transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val)).val ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.seal_rs2_spec kid key associated_data body h_len
-    h_cap
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.seal_rs2' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V2._native.decide.ax_1]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.seal_rs2
-
-/-- E09 `open_rs1_at`: the result is exactly `openRs1` (the error order of plan Section 3, then
-E01 on the authenticated body). -/
-theorem Theorems.request_state.RequestStateCodec.open_rs1_at (self : RequestStateCodec)
-    (sealed : Str) (associated_data : Slice Std.U8) (now_ms : Std.I64)
-    (h_count : (sealed : Slice Std.U8).val.count dot < Usize.max)
-    (h_len : ∀ b t body, components (sealed : Slice Std.U8).val = [versionV1, b, t] →
+    (h_len1 : ∀ b t body, components (sealed : Slice Std.U8).val = [versionV1, b, t] →
       ExtModel.b64Decode b = some body →
       (transcriptV1 associated_data.val body).length ≤ Usize.max)
-    (h_fallbacks : CodecFallbacksKnown self) :
-    rmcp.model.request_state.RequestStateCodec.open_rs1_at self sealed associated_data now_ms ⦃
-        (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
-      -- lines 613–640, in the order of plan Section 3 (see `Defs.CodecState.openRs1`)
-      resultBytes result = openRs1 self (sealed : Slice Std.U8).val associated_data.val
-        now_ms.val ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.open_rs1_at_spec self sealed associated_data now_ms
-    h_count h_len h_fallbacks
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.open_rs1_at' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.open_rs1_at
-
-/-- E09a `rs1_fallbacks_verify`: `true` iff some rs1 fallback key verifies the tag over the
-transcript (`Rs1Verifies`). -/
-theorem Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify (keys : KeyTable)
-    (rs1_fallbacks : Slice String) (transcript : Slice Std.U8) (tag : Slice Std.U8)
-    (h_known : FallbacksKnown keys rs1_fallbacks.val) :
-    rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify keys rs1_fallbacks transcript
-        tag ⦃ (result : Bool) =>
-      -- lines 650–656: `verified |= hmac_sha256_verify(key, transcript, tag)` over all ids
-      result = decide (Rs1Verifies keys rs1_fallbacks.val transcript.val tag.val) ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_spec keys rs1_fallbacks
-    transcript tag h_known
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.rs1_fallbacks_verify
-
-/-- E10 `open_rs2_at`: the result is exactly `openRs2` (the error order of plan Section 3, then
-E01 on the decoded body), for every codec. -/
-theorem Theorems.request_state.RequestStateCodec.open_rs2_at (self : RequestStateCodec)
-    (sealed : Str)
-    (associated_data : Slice Std.U8) (now_ms : Std.I64)
-    (h_count : (sealed : Slice Std.U8).val.count dot < Usize.max)
-    (h_len : ∀ k b t kid body, components (sealed : Slice Std.U8).val = [versionV2, k, b, t] →
+    (h_len2 : ∀ k b t kid body, components (sealed : Slice Std.U8).val = [versionV2, k, b, t] →
       ExtModel.b64Decode k = some kid → ExtModel.b64Decode b = some body →
-      (transcriptV2 kid associated_data.val body).length ≤ Usize.max) :
-    rmcp.model.request_state.RequestStateCodec.open_rs2_at self sealed associated_data
-        now_ms ⦃ (result :
-        core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
-      -- lines 665–692, in the order of plan Section 3 (see `Defs.CodecState.openRs2`)
-      resultBytes result = openRs2 self (sealed : Slice Std.U8).val associated_data.val
-        now_ms.val ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.open_rs2_at_spec self sealed associated_data now_ms
-    h_count h_len
+      (transcriptV2 kid associated_data.val body).length ≤ Usize.max)
+    (h_fallbacks : (components (sealed : Slice Std.U8).val).head? = some versionV1 →
+      CodecFallbacksKnown self) :
+    rmcp.model.request_state.RequestStateCodec.open_json_with serde_coredeDeserializeOwnedInst self
+      sealed associated_data ⦃ (result :
+        core.result.Result T RequestStateError) =>
+      match openAt self (sealed : Slice Std.U8).val associated_data.val ExtModel.nowMs.val with
+      | .error e => result = .Err e
+      | .ok payload =>
+        result =
+          match ExtModel.serdeJsonFromSlice serde_coredeDeserializeOwnedInst.DeserializeInst
+              payload with
+          | .Ok value => .Ok value
+          | .Err error => .Err (.Deserialization error) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_json_with_spec serde_coredeDeserializeOwnedInst
+    self sealed associated_data h_len1 h_len2 h_fallbacks
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.open_rs2_at' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'Theorems.request_state.RequestStateCodec.open_json_with' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.open_rs2_at
+#print axioms Theorems.request_state.RequestStateCodec.open_json_with
 
-/-- E01 `open_authenticated_body`: `MalformedFormat` below 8 bytes, otherwise `Expired` if the
-body's expiry has passed, otherwise `Ok` of the bytes after the first 8. -/
-theorem Theorems.request_state.RequestStateCodec.open_authenticated_body
-    (body : alloc.vec.Vec Std.U8) (now_ms : Std.I64) :
-    rmcp.model.request_state.RequestStateCodec.open_authenticated_body body now_ms ⦃ (result :
-        core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+/-- R13 `RequestStateCodec::open_json`: as R14 with no associated data. Premise (F); inherited
+exceptions (K), (H), (J). -/
+theorem Theorems.request_state.RequestStateCodec.open_json {T : Type}
+    (serde_coredeDeserializeOwnedInst :
+    rmcp.serde_core.de.DeserializeOwned T) (self : RequestStateCodec) (sealed : Str)
+    (h_fallbacks : (components (sealed : Slice Std.U8).val).head? = some versionV1 →
+      CodecFallbacksKnown self) :
+    rmcp.model.request_state.RequestStateCodec.open_json serde_coredeDeserializeOwnedInst self
+      sealed ⦃ (result :
+        core.result.Result T RequestStateError) =>
+      match openAt self (sealed : Slice Std.U8).val [] ExtModel.nowMs.val with
+      | .error e => result = .Err e
+      | .ok payload =>
+        result =
+          match ExtModel.serdeJsonFromSlice serde_coredeDeserializeOwnedInst.DeserializeInst
+              payload with
+          | .Ok value => .Ok value
+          | .Err error => .Err (.Deserialization error) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_json_spec serde_coredeDeserializeOwnedInst self
+    sealed h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_json' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_json
+
+/-- R15 `RequestStateCodec::new_with_keyring`: `keyringCheck` decides `Ok` or which error; an
+`Ok` codec is a `CodecValid` keyring with exactly the configured keys, seal mode `Rs2` of the
+active id and no rs1 fallback. Premises: caller code returns, (U); inherited exceptions (P),
+(N). -/
+theorem Theorems.request_state.RequestStateCodec.new_with_keyring
+    {K V T2 T3 Clause3_IntoIter : Type}
+    (coreconvertIntoKStringInst : core.convert.Into K String)
+    (coreconvertIntoVVecU8Inst : core.convert.Into V (alloc.vec.Vec Std.U8))
+    (coreconvertIntoT2StringInst : core.convert.Into T2 String)
+    (coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst :
+      core.iter.traits.collect.IntoIterator T3 (K × V) Clause3_IntoIter)
+    (active_kid : T2) (keys : T3)
+    (it : Clause3_IntoIter) (items : List (K × V))
+    (entries : List (String × alloc.vec.Vec Std.U8)) (active : String)
+    (h_into_iter :
+      coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst.into_iter keys = ok it)
+    (h_yields :
+      IterYields coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst.iteratorInst.next it
+        items)
+    (h_entries : List.Forall₂ (fun (p : K × V) (c : String × alloc.vec.Vec Std.U8) =>
+      coreconvertIntoKStringInst.into p.1 = ok c.1 ∧
+      coreconvertIntoVVecU8Inst.into p.2 = ok c.2) items entries)
+    (h_active : coreconvertIntoT2StringInst.into active_kid = ok active)
+    (h_fit : ∀ c ∈ entries, c.1.utf8ByteSize ≤ Usize.max)
+    (h_fit_active : active.utf8ByteSize ≤ Usize.max) :
+    rmcp.model.request_state.RequestStateCodec.new_with_keyring coreconvertIntoKStringInst
+      coreconvertIntoVVecU8Inst
+      coreconvertIntoT2StringInst coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst
+      active_kid keys ⦃ (result : core.result.Result RequestStateCodec RequestStateError) =>
       match result with
-      | .Ok payload =>
-        expiryLen ≤ body.val.length ∧
-        ¬ Expired (bodyExpiry body.val) now_ms.val ∧
-        payload.val = body.val.drop expiryLen
+      | .Ok codec =>
+        keyringCheck active (entries.map fun c => (c.1, c.2.val)) = .ok () ∧
+        (∃ ring rs1_fallbacks, codec.keys = .Ring ring (.Rs2 active) rs1_fallbacks ∧
+          rs1_fallbacks.val = [] ∧
+          (keyIds ring).Perm (entries.map Prod.fst) ∧
+          (∀ c ∈ entries, lookupKey ring c.1 = some c.2.val) ∧
+          ∃ c ∈ entries, c.1 = active ∧ lookupKey ring active = some c.2.val) ∧
+        CodecValid codec
       | .Err e =>
-        (body.val.length < expiryLen ∧ e = .MalformedFormat) ∨
-        (expiryLen ≤ body.val.length ∧ Expired (bodyExpiry body.val) now_ms.val ∧
-          e = .Expired) ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.open_authenticated_body_spec body now_ms
+        ∃ f, keyringCheck active (entries.map fun c => (c.1, c.2.val)) = .error f ∧
+          f.Describes e ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.new_with_keyring_spec coreconvertIntoKStringInst
+    coreconvertIntoVVecU8Inst coreconvertIntoT2StringInst
+    coreitertraitscollectIntoIteratorT3PairClause3_IntoIterInst active_kid keys it items entries
+    active h_into_iter h_yields h_entries h_active h_fit h_fit_active
 
 /--
-info: 'Theorems.request_state.RequestStateCodec.open_authenticated_body' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
+info: 'Theorems.request_state.RequestStateCodec.new_with_keyring' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.open_authenticated_body
-
-/-- E03 `validate_key_length`: `Ok ()` iff the key has at least `MIN_KEY_LENGTH = 32` bytes,
-otherwise `KeyTooShort { minimum: 32, actual: key.len() }`. -/
-theorem Theorems.request_state.RequestStateCodec.validate_key_length (key : Slice Std.U8) :
-    rmcp.model.request_state.RequestStateCodec.validate_key_length key ⦃ (result :
-        core.result.Result Unit RequestStateError) =>
-      match result with
-      | .Ok _ => minKeyLength ≤ key.val.length
-      | .Err e =>
-        key.val.length < minKeyLength ∧
-        ∃ minimum actual : Std.Usize, e = .KeyTooShort minimum actual ∧
-          minimum.val = minKeyLength ∧ actual.val = key.val.length ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.validate_key_length_spec key
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.validate_key_length' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.validate_key_length
-
-/-- E04 `validate_config_kid`: `Ok ()` iff the UTF-8 byte length of `kid` is in `1..=255`; a
-length of `0` gives `InvalidKeyring` with the text of `KID_EMPTY_MSG`, a length above 255 gives
-`InvalidKeyring` with the text of `KID_TOO_LONG_MSG`. -/
-theorem Theorems.request_state.RequestStateCodec.validate_config_kid (kid : Str) :
-    rmcp.model.request_state.RequestStateCodec.validate_config_kid kid ⦃ (result :
-        core.result.Result Unit RequestStateError) =>
-      match result with
-      | .Ok _ =>
-        1 ≤ (kid : Slice Std.U8).val.length ∧ (kid : Slice Std.U8).val.length ≤ maxKidLen
-      | .Err e =>
-        ((kid : Slice Std.U8).val.length = 0 ∧
-          ∃ msg, e = .InvalidKeyring msg ∧ Defs.RequestState.StrIs msg
-            Defs.RequestState.kidEmptyMsg) ∨
-        (maxKidLen < (kid : Slice Std.U8).val.length ∧
-          ∃ msg, e = .InvalidKeyring msg ∧ Defs.RequestState.StrIs msg
-            Defs.RequestState.kidTooLongMsg) ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.validate_config_kid_spec kid
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.validate_config_kid' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- KID_EMPTY_MSG._native.decide.ax_1,
- KID_TOO_LONG_MSG._native.decide.ax_1]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.validate_config_kid
-
-/-- E02 `b64_len`: equals W01; on the no-overflow domain `b64Len len ≤ Usize.max`, the result is
-`b64Len len = 4 * ((len + 2) / 3)`. -/
-theorem Theorems.request_state.RequestStateCodec.b64_len (len : Std.Usize)
-    (h_no_overflow : b64Len len.val ≤ Usize.max) :
-    rmcp.model.request_state.RequestStateCodec.b64_len len ⦃ (result : Std.Usize) =>
-      result.val = b64Len len.val ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.b64_len_spec len h_no_overflow
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.b64_len' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.b64_len
-
-/-- S15 `rs1_roundtrip`: sealing with E07 `seal_rs1` and opening any `Str` holding the token's
-bytes with E09 `open_rs1_at` (same associated data, accepted key, body of at least 8 bytes, not
-expired) returns `Ok (body[8..])`. -/
-theorem Theorems.request_state.RequestStateCodec.rs1_roundtrip (self : RequestStateCodec)
-    (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8)
-    (now_ms : Std.I64)
-    (h_len : (transcriptV1 associated_data.val body.val).length ≤ Usize.max)
-    (h_cap : versionV1.length + 2 + b64Len body.val.length + b64Len 32 ≤
-      ExtModel.maxStringBytes)
-    (h_body : expiryLen ≤ body.val.length)
-    (h_expiry : ¬ Expired (bodyExpiry body.val) now_ms.val)
-    (h_key : (∃ k, self.keys = .Single k ∧ k.inner.val = key.val) ∨
-      (∃ keys seal_mode rs1_fallbacks kid, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
-        kid ∈ rs1_fallbacks.val ∧ lookupKey keys kid = some key.val))
-    (h_fallbacks : CodecFallbacksKnown self) :
-    rmcp.model.request_state.RequestStateCodec.seal_rs1 key associated_data body ⦃
-      (token : String) =>
-      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
-      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
-      rmcp.model.request_state.RequestStateCodec.open_rs1_at self sealed associated_data
-        now_ms ⦃ (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
-        -- line 640 → E01 line 698: `Ok(payload.to_vec())`, payload = body[8..]
-        resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.rs1_roundtrip self key associated_data body now_ms
-    h_len h_cap h_body h_expiry h_key h_fallbacks
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.rs1_roundtrip' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V1._native.decide.ax_1,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.rs1_roundtrip
-
-/-- S15 `rs2_roundtrip`: sealing with E08 `seal_rs2` and opening any `Str` holding the token's
-bytes with E10 `open_rs2_at` (same associated data, UTF-8 kid of 1 to 255 bytes that the ring maps
-to the key, body of at least 8 bytes, not expired) returns `Ok (body[8..])`. -/
-theorem Theorems.request_state.RequestStateCodec.rs2_roundtrip (self : RequestStateCodec)
-    (kid : Str) (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8)
-    (now_ms : Std.I64) (kidStr : String)
-    (h_len : (transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val).length ≤
-      Usize.max)
-    (h_cap : versionV2.length + 3 + b64Len (kid : Slice Std.U8).val.length +
-      b64Len body.val.length + b64Len 32 ≤ ExtModel.maxStringBytes)
-    (h_body : expiryLen ≤ body.val.length)
-    (h_expiry : ¬ Expired (bodyExpiry body.val) now_ms.val)
-    (h_kid_utf8 : (kid : Slice Std.U8).val = ExtModel.utf8 kidStr)
-    (h_kid_len : 1 ≤ (kid : Slice Std.U8).val.length ∧
-      (kid : Slice Std.U8).val.length ≤ maxKidLen)
-    (h_key : ∃ keys seal_mode rs1_fallbacks, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
-      lookupKey keys kidStr = some key.val) :
-    rmcp.model.request_state.RequestStateCodec.seal_rs2 kid key associated_data body ⦃
-      (token : String) =>
-      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
-      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
-      rmcp.model.request_state.RequestStateCodec.open_rs2_at self sealed associated_data
-        now_ms ⦃ (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
-        -- line 692 → E01 line 698: `Ok(payload.to_vec())`, payload = body[8..]
-        resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.rs2_roundtrip self kid key associated_data body
-    now_ms kidStr h_len h_cap h_body h_expiry h_kid_utf8 h_kid_len h_key
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.rs2_roundtrip' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V2._native.decide.ax_1]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.rs2_roundtrip
-
-/-- S15 `open_at_roundtrip_rs1`: sealing with E07 `seal_rs1` and opening any `Str` holding the
-token's bytes with E11 `open_at` returns `Ok (body[8..])`, under the premises of
-`rs1_roundtrip`. -/
-theorem Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1 (self : RequestStateCodec)
-    (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8)
-    (now_ms : Std.I64)
-    (h_len : (transcriptV1 associated_data.val body.val).length ≤ Usize.max)
-    (h_cap : versionV1.length + 2 + b64Len body.val.length + b64Len 32 ≤
-      ExtModel.maxStringBytes)
-    (h_body : expiryLen ≤ body.val.length)
-    (h_expiry : ¬ Expired (bodyExpiry body.val) now_ms.val)
-    (h_key : (∃ k, self.keys = .Single k ∧ k.inner.val = key.val) ∨
-      (∃ keys seal_mode rs1_fallbacks kid, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
-        kid ∈ rs1_fallbacks.val ∧ lookupKey keys kid = some key.val))
-    (h_fallbacks : CodecFallbacksKnown self) :
-    rmcp.model.request_state.RequestStateCodec.seal_rs1 key associated_data body ⦃
-      (token : String) =>
-      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
-      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
-      rmcp.model.request_state.RequestStateCodec.open_at self sealed associated_data now_ms ⦃
-        (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
-        -- line 566 → line 640 → E01 line 698
-        resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.open_at_roundtrip_rs1 self key associated_data body
-    now_ms h_len h_cap h_body h_expiry h_key h_fallbacks
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V1._native.decide.ax_1,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs1
-
-/-- S15 `open_at_roundtrip_rs2`: sealing with E08 `seal_rs2` and opening any `Str` holding the
-token's bytes with E11 `open_at` returns `Ok (body[8..])`, under the premises of
-`rs2_roundtrip`. -/
-theorem Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2 (self : RequestStateCodec)
-    (kid : Str) (key : Slice Std.U8) (associated_data : Slice Std.U8) (body : Slice Std.U8)
-    (now_ms : Std.I64) (kidStr : String)
-    (h_len : (transcriptV2 (kid : Slice Std.U8).val associated_data.val body.val).length ≤
-      Usize.max)
-    (h_cap : versionV2.length + 3 + b64Len (kid : Slice Std.U8).val.length +
-      b64Len body.val.length + b64Len 32 ≤ ExtModel.maxStringBytes)
-    (h_body : expiryLen ≤ body.val.length)
-    (h_expiry : ¬ Expired (bodyExpiry body.val) now_ms.val)
-    (h_kid_utf8 : (kid : Slice Std.U8).val = ExtModel.utf8 kidStr)
-    (h_kid_len : 1 ≤ (kid : Slice Std.U8).val.length ∧
-      (kid : Slice Std.U8).val.length ≤ maxKidLen)
-    (h_key : ∃ keys seal_mode rs1_fallbacks, self.keys = .Ring keys seal_mode rs1_fallbacks ∧
-      lookupKey keys kidStr = some key.val) :
-    rmcp.model.request_state.RequestStateCodec.seal_rs2 kid key associated_data body ⦃
-      (token : String) =>
-      (∃ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token) ∧
-      ∀ sealed : Str, (sealed : Slice Std.U8).val = ExtModel.utf8 token →
-      rmcp.model.request_state.RequestStateCodec.open_at self sealed associated_data now_ms ⦃
-        (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
-        -- line 567 → line 692 → E01 line 698
-        resultBytes result = .ok (body.val.drop expiryLen) ⦄ ⦄ :=
-  rmcp.model.request_state.RequestStateCodec.open_at_roundtrip_rs2 self kid key associated_data body
-    now_ms kidStr h_len h_cap h_body h_expiry h_kid_utf8 h_kid_len h_key
-
-/--
-info: 'Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- VERSION_V2._native.decide.ax_1,
- RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3]
--/
-#guard_msgs in
-#print axioms Theorems.request_state.RequestStateCodec.open_at_roundtrip_rs2
+#print axioms Theorems.request_state.RequestStateCodec.new_with_keyring

@@ -4,10 +4,13 @@
 # never does. Paths are relative to the repository root; abbreviated paths in the plan's
 # Steps table are expanded from the plan's Section 5 "Files" tree and Section 8 "Steps", with
 # noted deviations (see the comments on individual files).
+# Note (2026-11-24): the `files` lists show the current paths after the public/internal
+# restructure (formal/specs/ = public API; formal/proofs/Proofs/{Internal,Defs}/ = internal), not
+# the paths when each step ran; see formal/docs/STATUS.md, "Public and internal specifications".
 steps:
   - id: S01
     day: D1
-    state: IN_PROGRESS
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when H5 (project owner and budget) is named
     # drafted and agent-reviewed in the working tree; awaiting human sign-off (see evidence)
     depends_on: []
     owner: Lead
@@ -21,9 +24,9 @@ steps:
 
   - id: S02
     day: D1
-    state: IN_PROGRESS
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     # agent role files (.claude/agents/) and guide edits exist in the working tree; CLAUDE.md
-    # and docs/VERIFICATION.md missing; not run through the review cycle as its own step
+    # missing (docs/VERIFICATION.md tracked since af41799); not run through the review cycle as its own step
     depends_on: [S01]
     owner: Lead
     files:
@@ -43,7 +46,7 @@ steps:
 
   - id: S03
     day: D1
-    state: IN_PROGRESS
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when the empty project builds in CI (B10)
     # drafted and agent-reviewed in the working tree (5 rounds); accepted limits and open items
     # recorded in the S03 evidence (git history at 223ff12); awaiting human sign-off
     depends_on: [S01]
@@ -69,7 +72,8 @@ steps:
       - formal/specs/Specs.lean     # placeholder (S03)
       - formal/proofs/Proofs.lean   # placeholder (S03)
     acceptance: >-
-      aeneas-install.sh installs nightly-2026.08.20-5d08da4 and is a no-op on rerun; bundle
+      aeneas-install.sh installs nightly-2026.08.20-5d08da4 (since the Aeneas upgrade of
+      2026-11-24: nightly-2026.11.24-fb44cb4) and is a no-op on rerun; bundle
       versions match Section 5; the pinned Charon reads [package.metadata.charon] (otherwise
       the script passes the same lists as flags, recorded in the evidence); the empty project
       builds in CI (B10); aeneas-translate.sh fails on a nonzero Aeneas exit, a missing
@@ -78,7 +82,7 @@ steps:
 
   - id: S04
     day: D1
-    state: IN_PROGRESS
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
     # drafted and agent-reviewed in the working tree; awaiting human sign-off (see evidence)
     depends_on: [S01]
     owner: Extraction
@@ -89,7 +93,7 @@ steps:
 
   - id: S04a
     day: D1-2
-    state: IN_PROGRESS
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when all three CI workflows pass
     # refactor part (PR 1) drafted and agent-reviewed in the working tree; translation part
     # (PR 2) drafted in the working tree from local commit f8fb6a7 (derived Debug impls
     # excluded, native-axioms.lock); externals started (unreviewed placeholders); awaiting
@@ -127,7 +131,7 @@ steps:
     files:
       - formal/specs/Defs.lean
       - formal/specs/Defs/Wire.lean
-      - formal/specs/Defs/RequestState.lean
+      - formal/proofs/Proofs/Defs/RequestState.lean
       - formal/specs/Drafts/
       - formal/specs/Specs.lean
       - formal/proofs/Proofs.lean
@@ -151,7 +155,7 @@ steps:
       - formal/proofs/Proofs/Model/RequestStateWire/IsExpired.lean
       - formal/proofs/Proofs/Model/RequestStateWire/OpenFrame.lean
       - formal/proofs/Proofs/Model/RequestStateWire/Frame.lean
-      - formal/specs/Specs/Model/RequestStateWire.lean
+      - formal/proofs/Proofs/Internal/Model/RequestStateWire.lean
     acceptance: >-
       W01-W06, W12-W15 checked and recalled; W01 overflow domain explicit.
 
@@ -166,7 +170,7 @@ steps:
       - formal/proofs/Proofs/Model/RequestState/B64Len.lean
       - formal/proofs/Proofs/Model/RequestState/ValidateKeyLength.lean
       - formal/proofs/Proofs/Model/RequestState/ValidateConfigKid.lean
-      - formal/specs/Specs/Model/RequestState.lean
+      - formal/proofs/Proofs/Internal/Model/RequestState.lean
       - formal/specs/Drafts/Staged/RequestState.lean   # staging copy until incorporation
     acceptance: >-
       E01-E04 checked using only W theorems.
@@ -272,7 +276,7 @@ steps:
     owner: Lean
     files:
       - formal/proofs/Proofs/Model/RequestState/Roundtrip.lean
-      - formal/specs/Specs/Model/RequestState.lean   # end of file
+      - formal/proofs/Proofs/Internal/Model/RequestState.lean   # end of file
     acceptance: >-
       Each round-trip theorem accepted on its own; missing ones listed OPEN.
 
@@ -324,3 +328,379 @@ steps:
     acceptance: >-
       Honest per-function status, trusted base, bugs found, open items, cost; next-sprint
       scope.
+
+  # ---- Phase 2 (plan Part II, Section 21). Added at S20, 2026-11-23. ----
+  - id: S20
+    day: D1
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when H5 (project owner and budget) is named
+    depends_on: []
+    owner: Lead + human
+    files:
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/docs/functions/{M01..M14,T01..T08,A01..A03}.yaml
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+      - docs/STYLE_GUIDE.md
+      - docs/REVIEWER_GUIDE.md
+      - docs/AI_PR_REVIEW_QUESTIONS.md
+    acceptance: >-
+      25 records (linkage ORIGINAL pending S22); owner and budget named; H1-H5 decided; guides updated for plan Section 20 paths and the linkage check.
+
+  - id: S21
+    day: D1
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when the three CI workflows are green
+    depends_on: [S20]
+    owner: Extraction
+    files:
+      - crates/rmcp/Cargo.toml
+      - scripts/aeneas-translate.sh
+      - .github/workflows/patched-tests.yml
+      - formal/translation/**
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/README.md
+      - docs/WORKFLOW_AND_PR_GUIDE.md  # configuration text, feature flags (deferred from S20)
+      - docs/AI_PR_REVIEW_QUESTIONS.md  # procedure commands, feature flags (deferred from S20)
+      - formal/proofs/Proofs/Internal/Model/RequestState.lean  # module docstring only: widened configuration
+      - formal/proofs/Proofs/Internal/Model/RequestStateWire.lean  # module docstring only: widened configuration
+      - scripts/lean_guard.py  # pinned exception for generated files (human decisions 2026-11-23)
+      - formal/trusted/translation-pins.txt  # sha256 + exact-line pin (trusted)
+      - scripts/lean-guard.sh  # header comment of that exception
+      - formal/proofs/Proofs/External/Std.lean  # `ok` qualified (human decision 2026-11-23)
+      - formal/docs/functions/{M01..M14,T01..T08,A01..A03}.yaml  # translation, generated_symbol
+      - formal/docs/STATUS.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 5 (toStr note), 15 (pin, glob, test features), 21 (S21 row)
+    acceptance: >-
+      Translation regenerated with the widened configuration; script fails on a missing or duplicated Phase 2 target; every Phase 1 block byte-identical; new externals as opaque placeholders (no axiom); three CI workflows green; lake build and lean-guard.sh checks pass.
+
+  - id: S22
+    day: D1-2
+    state: IN_PROGRESS  # accepted by the human owner 2026-11-24; becomes ACCEPTED when the check passes in CI
+    depends_on: [S21]
+    owner: Extraction
+    files:
+      - scripts/check-original-linkage.sh
+      - .github/workflows/aeneas-translation.yml
+      - scripts/aeneas-translate.sh  # RMCP_TARGET_SET, refusals, pin note
+      - scripts/apply-patches.sh  # RMCP_NO_PATCHES
+      - formal/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 19, 21, 25
+      - formal/docs/functions/{M01..M14,T01..T08,A01..A03}.yaml  # linkage comment
+      - formal/docs/STATUS.md
+    acceptance: >-
+      The check passes on the S22 commit; it fails (1) at part (a) on a committed change under crates/ or in crates/rmcp/Cargo.toml outside the Charon table, and (2) at part (b) on a seeded translation patch changing a Phase 2 body, with the translation regenerated.
+
+  - id: S23
+    day: D2
+    state: IN_PROGRESS  # reviewed 2026-11-24 (2 reviewers, no blocking); signed off by the spec owner 2026-11-24; becomes ACCEPTED when S21 and S22 pass CI (plan Section 21: dependencies govern acceptance)
+    depends_on: [S21, S22]
+    owner: Reviewers + spec owner
+    files:
+      - formal/docs/STATUS.md
+    acceptance: >-
+      Charon settings, opaque AuthorizationManager type, widened configuration and placeholders reviewed (>= 2) and signed off.
+
+  - id: S24
+    day: D2-3
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S20]
+    owner: Spec drafter + reviewers + spec owner
+    files:
+      - formal/specs/Defs/JsonRpc.lean
+      - formal/specs/Defs/IntParse.lean
+      - formal/proofs/Proofs/Defs/Methods.lean
+      - formal/proofs/Proofs/Defs/Tower.lean
+      - formal/specs/Defs/Bytes.lean
+      - formal/specs/Drafts/
+    acceptance: >-
+      M01-M14, T04-T08, C03, C05 and the plan Section 16.1 joint lemmas statements reviewed by >= 2 agents and signed off.
+
+  - id: S25
+    day: D2-4
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S20]
+    owner: Spec drafter + reviewers + spec owner
+    files:
+      - formal/proofs/Proofs/Defs/Sse.lean
+      - formal/proofs/Proofs/Defs/Net.lean
+      - formal/specs/Drafts/
+    acceptance: >-
+      T01-T03, A01-A03, C01, C02, C04 statements reviewed by >= 2 agents and signed off.
+
+  - id: S26
+    day: D3-4
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S21]
+    owner: Extraction + reviewers + spec owner
+    files:
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/proofs/Proofs/External/String.lean
+      - formal/proofs/Proofs/External/Std.lean
+      - formal/proofs/Proofs/External/Option.lean
+      - formal/proofs/Proofs/Internal/External.lean
+      - formal/trusted/evidence/README.md
+    acceptance: >-
+      Models (strings, Arc, Option, Result, slices) are definitions; laws reviewed by >= 2 agents, signed off and proved.
+
+  - id: S27
+    day: D3-5
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S21, S24]
+    owner: Extraction + reviewers + spec owner
+    files:
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/proofs/Proofs/External/Net.lean
+      - formal/proofs/Proofs/External/IntParse.lean
+      - formal/proofs/Proofs/Internal/External.lean
+      - formal/trusted/evidence/README.md
+    acceptance: >-
+      core::net and integer-parsing models; laws reviewed by >= 2 agents, signed off and proved; the parseI64 law after S24; no placeholder left. The differential tests were dropped (human decision 2026-11-23; plan Section 18 amendment).
+
+  - id: S28
+    day: D3-5
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S24, S26]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/JsonRpcMessage.lean
+      - formal/proofs/Proofs/Model/Task.lean
+      - formal/proofs/Proofs/Model/SamplingContent.lean
+      - formal/proofs/Proofs/Model/Reference.lean
+      - formal/specs/Specs/Model.lean
+      - formal/specs/Specs/Model/Task.lean
+    acceptance: >-
+      M01-M05, M08-M14, C03 and the plan Section 16.1 joint lemmas checked and restated.
+
+  - id: S29
+    day: D4-6
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S24, S26]  # and human decision H2 (accepted 2026-11-23)
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Transport/AsyncRw.lean
+      - formal/proofs/Proofs/Transport/Tower.lean
+      - formal/proofs/Proofs/Internal/Transport/AsyncRw.lean
+      - formal/proofs/Proofs/Internal/Transport/StreamableHttpServer/Tower.lean
+      - formal/trusted/native-axioms.lock  # emptied by the Aeneas upgrade 2026-11-24
+    # Aeneas upgrade 2026-11-24 (reviewed and re-signed by the spec owner 2026-11-24): the 30 entries were removed,
+    # native-axioms.lock is empty (lead decision N5) and the #guard_msgs lists no longer show
+    # native-code axioms; the acceptance below records the step as run.
+    acceptance: >-
+      T04-T08, C05 checked; 30 native-lock entries (H2); #guard_msgs lists show them.
+
+  - id: S30
+    day: D5-6
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S27, S28]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Model/NumberOrString.lean
+      - formal/specs/Specs/Model.lean
+    acceptance: >-
+      M06, M07 checked.
+
+  - id: S31
+    day: D4-8
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S21, S25]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Transport/ClientSideSse.lean
+      - formal/proofs/Proofs/Internal/Transport/Common/ClientSideSse.lean
+    acceptance: >-
+      T01-T03, C01, C02 checked.
+
+  - id: S32
+    day: D6-8
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S25, S26, S27]
+    owner: Lean
+    files:
+      - formal/proofs/Proofs/Transport/Auth.lean
+      - formal/proofs/Proofs/Internal/Transport/Auth.lean
+    acceptance: >-
+      A01-A03, C04 checked.
+
+  - id: S33
+    day: D8-9
+    state: ACCEPTED  # accepted by the human owner 2026-11-24
+    depends_on: [S28, S29, S30, S31, S32]
+    owner: Lean + review
+    files:
+      - formal/specs/Specs/
+      - formal/specs/Defs.lean  # library roots: the lead updates them from S24 to S33 (plan Section 20)
+      - formal/specs/Specs.lean
+      - formal/proofs/Proofs.lean
+    acceptance: >-
+      Every Phase 2 theorem restated; each spec file's module docstring states the widened configuration.
+
+  - id: S34
+    day: D2-9
+    state: IN_PROGRESS  # 141 cases mapped; 96 uncovered + 8 partial covered by test-only patch 02 (human decision 2026-11-24); reviewed; accepted by the human owner 2026-11-24, becomes ACCEPTED when S21 passes CI
+    depends_on: [S21]
+    owner: Review
+    files:
+      - formal/trusted/evidence/README.md
+      - formal/trusted/patches/02-phase2-tests.patch  # created 2026-11-24 (H3)
+      - formal/docs/STATUS.md  # H3 process exception, "Documents"
+      - .github/workflows/patched-tests.yml  # header comment only
+    acceptance: >-
+      Each plan Section 22 boundary case covered by an upstream test, a differential test or (H3 exception) patch 02, and the tests pass.
+
+  - id: S35
+    day: D9
+    state: NOT_STARTED
+    depends_on: [S22, S29]
+    owner: Lead
+    files:
+    acceptance: >-
+      Linkage check (part (a): a change under crates/; part (b): a seeded translation patch), missing target and removed native-lock entry each shown to fail once on a throwaway branch.
+    # Aeneas upgrade 2026-11-24: native-axioms.lock is empty, so "removed native-lock entry" cannot
+    # be shown as written; the lead decides the replacement check (e.g. a seeded native-code axiom).
+
+  - id: S36
+    day: D9-10
+    state: NOT_STARTED
+    depends_on: [S35]
+    owner: Review
+    files:
+    acceptance: >-
+      Fresh clone: install, translate, linkage check, lake build and lean-guard.sh checks pass.
+
+  - id: S37
+    day: D10
+    state: ACCEPTED  # Phase 2 results (STATUS.md, formal/README.md); reviewed; accepted by the human owner 2026-11-24
+    depends_on: []   # plan: board state; no success required; S37 is mandatory
+    owner: Lead + human owner
+    files:
+      - formal/docs/STATUS.md
+      - formal/README.md
+    acceptance: >-
+      Phase 2 results (plan Section 25), trusted-base delta, bugs found, open items, cost; Phase 3 scope.
+
+  - id: AEN-UPG  # not a plan step; Aeneas upgrade, plan Section 26 (amendment 2026-11-24)
+    day: 2026-11-24
+    state: IN_PROGRESS  # migrated; reviewed (2 rounds + RangeInclusive review, all findings
+    # fixed); human batch re-sign-off 2026-11-24 (spec owner). Pending: translation-pins.txt hand
+    # edit (sources guard), a clean aeneas-archive run, and the commit (human approval)
+    depends_on: [S37]
+    owner: Lead + human owner
+    files:  # full scope: `git diff --name-only d61356a` (2026-11-24), grouped
+      # toolchain pins
+      - formal/lakefile.toml
+      - formal/lake-manifest.json
+      - formal/lean-toolchain
+      # translation (regenerated)
+      - formal/translation/Rmcp/Funs.lean
+      - formal/translation/Rmcp/Types.lean
+      - formal/translation/translation.json
+      # trusted base
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/native-axioms.lock  # emptied (N5)
+      - formal/trusted/aeneas-bundle.sha256
+      - formal/trusted/translation-pins.txt  # edited by the human (A1)
+      - formal/trusted/evidence/README.md
+      # scripts and CI
+      - scripts/aeneas-translate.sh  # N1, N2, Rust pin
+      - scripts/check-original-linkage.sh
+      - scripts/lean-axiom-audit.lean  # N11
+      - scripts/lean-guard.sh
+      - scripts/lean_guard.py  # pins, N3/N4 exemptions, N10, N13
+      - .github/workflows/aeneas-translation.yml
+      - .github/workflows/lean-build.yml
+      - .github/workflows/patched-tests.yml
+      # Lean sources: 72 files (module conversion N12, forced restatements N7, axiom lists, docstrings)
+      - formal/specs/**/*.lean
+      - formal/proofs/**/*.lean
+      # records and documents
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/docs/functions/*.yaml  # 29 records: 28 axiom lists and the E10 comment
+      - formal/README.md
+      - formal/specs/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Section 26 (amendment)
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+      - docs/AI_PR_REVIEW_QUESTIONS.md
+    acceptance: >-
+      Aeneas nightly-2026.11.24-fb44cb4 / Lean 4.36 / Rust nightly-2026-09-17; lake build --wfail
+      and all lean-guard.sh checks pass; every changed #print axioms list only gains propext,
+      Classical.choice or Quot.sound or loses native-code axioms; forced restatements name-only
+      (N7) or the reviewed RangeInclusive laws; human batch re-sign-off recorded by the human.
+
+  - id: PATCH03-V2  # not a plan step; translation patch 03 v2, plan Sections 2.3 and 9 (amendments 2026-11-24)
+    day: 2026-11-24
+    state: IN_PROGRESS  # translated on Aeneas nightly-2026.11.24-fb44cb4 (base deb8d84); records and
+    # docs updated; reviewed (2 rounds, all findings fixed); patch, Charon settings, linkage script,
+    # 14+2 models, 3 opaque constants and the seal clock rule signed off by the spec owner 2026-11-24;
+    # committed. Pending: the R09-R15 specs, proofs and records (tracked as SPEC-R09-R15 below).
+    # Human decisions 2026-11-24: targets R09-R15 (R16-R17 stay excluded, blocked upstream);
+    # variant A (+6/-2 Rust lines); from_slice modelled as ok of an opaque outcome; clock rule
+    # extended to seal/seal_with. The old patch 03 (stash@{0}) is superseded.
+    depends_on: [AEN-UPG]
+    owner: Lead + human owner
+    files:
+      - formal/trusted/patches/03-request-state-public.patch  # new
+      - crates/rmcp/Cargo.toml  # Charon table only: 8 exclude entries removed; serde_core exclude -> opaque
+      - scripts/aeneas-translate.sh  # PINNED_DEPS: serde_core 1.0.229
+      - scripts/check-original-linkage.sh  # exclude == ["serde"], EXTERNAL_OPAQUE pin (adds serde_core)
+      - formal/translation/Rmcp/Funs.lean
+      - formal/translation/Rmcp/Types.lean
+      - formal/translation/translation.json
+      - formal/trusted/translation-pins.txt
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/evidence/README.md
+      - formal/proofs/Proofs/External/Std.lean  # Clock section comment only
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - formal/specs/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 2.3, 4, 9, 26 (amendments)
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+    acceptance: >-
+      seal, seal_with, seal_at, with_rs1_signing, with_rs1_fallback, open_json, open_json_with and
+      new_with_keyring translate with real bodies and no sorry; every earlier generated block is
+      unchanged up to its Source line numbers; the patched copy passes the crate's tests; lake build
+      --wfail and all lean-guard.sh checks pass; the patch and the new models reviewed by independent
+      agents and signed off by the human. Specifying R09-R15 is a separate step.
+
+  - id: SPEC-R09-R15  # not a plan step; specification and proof of R09-R15, public request_state.rs API (plan Section 2.3 amendment 2026-11-25)
+    day: 2026-11-25
+    state: ACCEPTED  # accepted by the human owner 2026-11-25; committed 0cbd67f. Spec cycle of
+    # 4 review rounds (2, 2, 2, 1 reviewers), every round's statements proved verbatim in scratch;
+    # 12 statements, the new Defs and the 12 patch-02 boundary tests signed off by the spec owner
+    # 2026-11-25; incorporated with lake build --wfail, the guards, 847 patched tests and one
+    # independent incorporation review (no blocking finding).
+    # Spec-owner decisions 2026-11-25: seal/seal_with stated through the Defs model sealAt at
+    # ExtModel.nowMs; clock rule extended to open_json/open_json_with; Defs.RequestState moved
+    # unchanged to formal/specs/Defs/, new definitions in Defs.CodecState; CodecValid unchanged;
+    # R10b (translated round trip) and boundary tests added (H3).
+    depends_on: [PATCH03-V2]
+    owner: Lead + human owner
+    files:
+      - formal/specs/Defs.lean
+      - formal/specs/Defs/CodecState.lean
+      - formal/specs/Defs/RequestState.lean  # moved from formal/proofs/Proofs/Defs/, unchanged
+      - formal/specs/Specs/Model/RequestState.lean
+      - formal/proofs/Proofs.lean
+      - formal/proofs/Proofs/Internal/Model/RequestState.lean
+      - formal/proofs/Proofs/Model/RequestState/*.lean  # Seal, Keyring, OpenJson, NewWithKeyring (new); Roundtrip, Common, ValidateConfigKid
+      - formal/proofs/Proofs/External/Std.lean  # Clock comment; HashMap lemmas find_borrowStr_eq, lookupEntry_string_eq
+      - formal/trusted/Rmcp/FunsExternal.lean  # nowMs and now_ms docstrings only
+      - formal/trusted/patches/02-phase2-tests.patch  # 12 boundary tests (46 in all)
+      - formal/trusted/evidence/README.md
+      - formal/docs/functions/R09.yaml  # to R15.yaml, new; used_by of E03, E04, E07, E08, E11, W15, R08
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - formal/specs/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 2.3 and 4 (amendments)
+      - .github/workflows/patched-tests.yml  # header comment only
+    acceptance: >-
+      The 12 signed-off statements are in the spec files verbatim and proved, with #print axioms
+      [propext, Classical.choice, Quot.sound]; lake build --wfail and all lean-guard.sh checks
+      pass; the clock rule text matches the statements; the patched copy passes its 847 library
+      tests; one independent review; commit approved by the human.

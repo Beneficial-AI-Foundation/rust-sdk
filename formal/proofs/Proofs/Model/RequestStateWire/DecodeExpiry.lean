@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
+module
+public import Rmcp.Funs
+public import Defs.Wire
+
+@[expose] public section
 
 /-!
 # Spec theorem for `decode_expiry` (W12)
@@ -28,7 +31,9 @@ open Defs.Wire
 theorem toNat_fromLEBytes (l : List Byte) :
     (BitVec.fromLEBytes l).toNat = l.foldr (fun b acc => b.toNat + 256 * acc) 0 := by
   induction l with
-  | nil => simp [BitVec.fromLEBytes]
+  | nil =>
+    simp only [List.length_nil, Nat.mul_zero, BitVec.fromLEBytes, BitVec.toNat_ofNat, pow_zero,
+      Nat.zero_mod, List.foldr_nil]
   | cons b l ih =>
     rw [BitVec.fromLEBytes]
     have hb : b.toNat < 2 ^ 8 := b.isLt
@@ -41,14 +46,14 @@ theorem toNat_fromLEBytes (l : List Byte) :
     have h1 : 2 ^ (8 * (l.length + 1)) = 2 ^ (8 * l.length) * 2 ^ 8 := by
       rw [← Nat.pow_add, Nat.mul_add, Nat.mul_one]
     have hx : x % 2 ^ (8 * (l.length + 1)) = x := Nat.mod_eq_of_lt (by
-      rw [h1]; have : 0 < 2 ^ 8 := by norm_num
+      rw [h1]; have : 0 < 2 ^ 8 := Nat.two_pow_pos 8
       nlinarith)
     have hc : c % 2 ^ (8 * (l.length + 1)) = c := Nat.mod_eq_of_lt (by
-      rw [h1]; have : 0 < 2 ^ (8 * l.length) := Nat.pow_pos (by norm_num)
+      rw [h1]; have : 0 < 2 ^ (8 * l.length) := Nat.two_pow_pos _
       nlinarith)
     rw [hx, hc, Nat.shiftLeft_eq]
     have hs : x * 2 ^ 8 % 2 ^ (8 * (l.length + 1)) = x * 2 ^ 8 := Nat.mod_eq_of_lt (by
-      rw [h1]; have : 0 < 2 ^ 8 := by norm_num
+      rw [h1]; have : 0 < 2 ^ 8 := Nat.two_pow_pos 8
       nlinarith)
     rw [hs, Nat.or_comm, ← Nat.shiftLeft_eq, ← Nat.shiftLeft_add_eq_or_of_lt hb,
       Nat.shiftLeft_eq]

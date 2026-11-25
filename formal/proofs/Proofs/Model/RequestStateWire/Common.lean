@@ -3,9 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.NextDot
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.NextDot
+public import Proofs.External.WP
+
+@[expose] public section
 
 /-!
 # Shared lemmas for the `request_state_wire` proofs
@@ -38,18 +42,45 @@ open Defs.Wire
 theorem length_splitOnP {α : Type} (p : α → Bool) (l : List α) :
     (l.splitOnP p).length = l.countP p + 1 := by
   induction l with
-  | nil => simp
+  | nil =>
+    simp only [List.splitOnP_nil, List.length_cons, List.length_nil, zero_add, List.countP_nil]
   | cons x xs ih =>
-    rw [List.splitOnP_cons_eq_if_modifyHead, List.countP_cons]
-    split <;> simp_all
+    rw [List.splitOnP_cons_eq_ite_modifyHead, List.countP_cons]
+    split <;> simp_all only [Bool.not_eq_true, List.length_cons, List.length_modifyHead, add_zero]
 
 /-- The number of `.`-components is one more than the number of `.` bytes. -/
 theorem length_components (s : List U8) : (components s).length = s.count dot + 1 := by
-  rw [components, List.splitOn, length_splitOnP, List.count]
+  rw [components, List.splitOn_eq_splitOnP, length_splitOnP, List.count]
+
+/-- A byte string is its `.`-components joined by `.`: its length is the sum of the lengths of
+the components plus one for each of the (number of components − 1) dots. -/
+theorem length_eq_sum_map_length_components (s : List U8) :
+    s.length = ((components s).map List.length).sum + ((components s).length - 1) := by
+  have key : ∀ L : List (List U8),
+      ([dot].intercalate L).length = (L.map List.length).sum + (L.length - 1) := by
+    intro L
+    induction L with
+    | nil => rfl
+    | cons l L ih =>
+      cases L with
+      | nil =>
+        simp only [List.intercalate_singleton, List.map_cons, List.map_nil, List.sum_cons,
+          List.sum_nil, List.length_cons, List.length_nil]
+        omega
+      | cons l' zs =>
+        rw [List.intercalate_cons_cons, List.length_append, List.length_append, ih]
+        simp only [List.map_cons, List.sum_cons, List.length_cons, List.length_nil]
+        omega
+  conv_lhs => rw [← List.intercalate_splitOn (xs := s) dot]
+  exact key (components s)
+
+/-- `be64 n` has 8 bytes. -/
+theorem length_be64 (n : Nat) : (be64 n).length = 8 := by
+  simp only [be64, List.length_map, List.length_range]
 
 /-- A frame is 8 bytes longer than its payload. -/
 theorem length_frameBytes (e : Int) (p : List U8) : (frameBytes e p).length = 8 + p.length := by
-  simp [frameBytes, be64OfInt, be64]
+  rw [frameBytes, List.length_append, be64OfInt, length_be64]
 
 /-- Reading back the 8 big-endian bytes of `n` gives `n mod 2 ^ 64`. -/
 theorem beNat_be64 (n : Nat) : beNat (be64 n) = n % 2 ^ 64 := by
@@ -63,7 +94,7 @@ theorem beNat_be64 (n : Nat) : beNat (be64 n) = n % 2 ^ 64 := by
 range. -/
 theorem bodyExpiry_frameBytes (e : Int) (p : List U8) (h1 : -2 ^ 63 ≤ e) (h2 : e < 2 ^ 63) :
     bodyExpiry (frameBytes e p) = e := by
-  have hl : (be64OfInt e).length = 8 := by simp [be64OfInt, be64]
+  have hl : (be64OfInt e).length = 8 := by rw [be64OfInt, length_be64]
   rw [bodyExpiry, frameBytes, expiryLen, List.take_append_of_le_length (by omega),
     List.take_of_length_le (by omega), be64OfInt, beNat_be64, toInt64]
   split_ifs <;> omega
@@ -74,8 +105,8 @@ theorem count_take_add_one (s : List U8) (i : Nat) (h : i < s.length) :
   rw [List.take_add_one, List.getElem?_eq_getElem h, Option.toList_some, List.count_append,
     List.count_singleton]
   by_cases hd : s[i] = dot
-  · simp [hd]
-  · simp [hd]
+  · simp only [hd, BEq.rfl, ↓reduceIte]
+  · simp only [beq_iff_eq, hd, ↓reduceIte]
 
 /-! ## Translated library functions -/
 
@@ -87,21 +118,17 @@ theorem extend_from_slice_spec (v : alloc.vec.Vec U8) (s : Slice U8)
     alloc.vec.Vec.extend_from_slice core.clone.CloneU8 v s ⦃ (r : alloc.vec.Vec U8) =>
       r.val = v.val ++ s.val ⦄ := by
   unfold alloc.vec.Vec.extend_from_slice
-  rw [dif_pos h]
-  obtain ⟨s', hs', heq⟩ := WP.spec_imp_exists
-    (Slice.clone_spec (clone := core.clone.CloneU8.clone) (s := s) (fun _ _ => rfl))
-  subst heq
-  split
-  · simp_all
-  · simp_all
-  · simp_all
+  rw [dite_eq_left h]
+  apply WP.spec_bind (List.clone_spec (clone := core.clone.CloneU8.clone) (fun _ _ => rfl))
+  intro l hl
+  rw [WP.spec_ok, alloc.vec.Vec.from_val, hl.1]
 
 /-- The big-endian bytes of a 64-bit bit vector: byte `i` is `v / 256 ^ (7 - i)` mod 256. -/
 theorem toBEBytes_eq (v : BitVec 64) :
     v.toBEBytes = (List.range 8).map fun i => BitVec.ofNat 8 (v.toNat / 256 ^ (7 - i)) := by
   rw [BitVec.toBEBytes]
   iterate 9 (rw [BitVec.toLEBytes]; simp only [gt_iff_lt, Nat.reduceSub, Nat.lt_irrefl,
-    Nat.ofNat_pos, if_true, if_false])
+    Nat.ofNat_pos, ite_true, ite_false])
   simp only [List.reverse_cons, List.reverse_nil, List.range_succ, List.range_zero,
     List.map_cons, List.map_nil, List.nil_append, List.cons_append]
   have hv : v.toNat < 2 ^ 64 := v.isLt
@@ -120,8 +147,8 @@ theorem map_mk_toBEBytes (x : U64) :
   rfl
 
 /-- The bytes of `u64::to_be_bytes x` are `be64 x.val`. -/
-theorem val_to_be_bytes (x : U64) : (core.num.U64.to_be_bytes x).val = be64 x.val :=
-  map_mk_toBEBytes x
+theorem val_to_be_bytes (x : U64) : (core.num.U64.to_be_bytes x).val = be64 x.val := by
+  rw [core.num.U64.to_be_bytes, Array.from_val, map_mk_toBEBytes]
 
 /-- The slice `(x.to_be_bytes())[..]` passed to `extend_from_slice` in `frame`, `transcript_v1`
 and `transcript_v2` (`Array.to_slice` in `Rmcp.Funs`) holds the bytes `be64 x.val`. -/
@@ -151,18 +178,13 @@ theorem next_dot_le_length (s : Slice U8) (start : Usize) :
 /-! ## Splitting on `.` and the results of `next_dot` (for S10: W07–W09) -/
 
 /-- A byte string without `.` is its own single component. -/
-theorem components_eq_singleton (l : List U8) (h : ∀ x ∈ l, x ≠ dot) : components l = [l] := by
-  rw [components, List.splitOn_eq_splitOnP]
-  exact List.splitOnP_eq_singleton fun x hx => by
-    simpa only [beq_eq_false_iff_ne, ne_eq, UScalar.neq_to_neq_val] using h x hx
+theorem components_eq_singleton (l : List U8) (h : ∀ x ∈ l, x ≠ dot) : components l = [l] :=
+  List.splitOn_eq_singleton fun hm => h dot hm rfl
 
 /-- Splitting at the first `.`: the part before it is the first component. -/
 theorem components_append_dot (a b : List U8) (h : ∀ x ∈ a, x ≠ dot) :
-    components (a ++ dot :: b) = a :: components b := by
-  rw [components, List.splitOn_eq_splitOnP]
-  exact List.splitOnP_append_cons_of_forall_mem (fun x hx => by
-    simpa only [beq_eq_false_iff_ne, ne_eq, UScalar.neq_to_neq_val] using h x hx) dot
-    (by simp only [BEq.rfl]) b
+    components (a ++ dot :: b) = a :: components b :=
+  List.splitOn_append_cons_self_of_not_mem (fun hm => h dot hm rfl) b
 
 /-- A byte string with exactly one component is that component. -/
 theorem components_eq_singleton_of_length_eq_one (l : List U8) (h : (components l).length = 1) :
@@ -230,12 +252,8 @@ theorem val_DOMAIN_V2 : rmcp.model.request_state_wire.DOMAIN_V2.val = domainV2 :
   unfold rmcp.model.request_state_wire.DOMAIN_V2
   rfl
 
-/-- `be64 n` has 8 bytes. -/
-theorem length_be64 (n : Nat) : (be64 n).length = 8 := by
-  simp only [be64, List.length_map, List.length_range]
-
 /-- The cast `usize as u64` is exact: `Usize` has 32 or 64 bits. -/
-theorem val_cast_U64 (x : Usize) : (UScalar.cast .U64 x).val = x.val := by
+theorem val_cast_u64 (x : Usize) : (UScalar.cast .U64 x).val = x.val := by
   apply UScalar.cast_val_mod_pow_greater_numBits_eq
   simp only [UScalarTy.Usize_numBits_eq, UScalarTy.U64_numBits_eq]
   rcases System.Platform.numBits_eq with h | h <;> omega

@@ -3,13 +3,16 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.Model.RequestStateWire.Common
-import Proofs.Model.RequestStateWire.VersionOf
-import Proofs.Model.RequestState.OpenRs1At
-import Proofs.Model.RequestState.OpenRs2At
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.Model.RequestStateWire.Common
+public import Proofs.Model.RequestStateWire.VersionOf
+public import Proofs.Model.RequestState.OpenRs1At
+public import Proofs.Model.RequestState.OpenRs2At
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::open_at` (E11)
@@ -84,8 +87,9 @@ theorem open_at_spec (self : RequestStateCodec) (sealed : Str) (associated_data 
       resultBytes result = openAt self (sealed : Slice Std.U8).val associated_data.val
         now_ms.val ⦄ := by
   unfold open_at
-  simp only [core.str.Str.as_bytes, bind_tc_ok]
+  step as ⟨sb, hsb⟩
   step as ⟨o, ho⟩
+  rw [hsb] at ho
   rcases o with _ | ⟨_ | _⟩
   · simp only at ho
     simp only [resultBytes, openAt, ho.1, ↓reduceIte, ho.2, WP.spec_ok]

@@ -3,8 +3,9 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Aeneas
-import Rmcp.Types
+module
+public import Aeneas
+public import Rmcp.Types
 
 /-!
 External functions of the `rmcp` translation (`Rmcp.Funs` imports this module).
@@ -21,26 +22,44 @@ where it has one (the external functions of other crates; the five opaque `rmcp`
 four `prim` functions and `RequestStateCodec::now_ms`, have none in the template). **This module
 declares no axiom.** The two things the models cannot compute are `opaque` constants, which
 add no axiom: the HMAC-SHA256 reference function `ExtModel.hmacSha256` and the clock reading
-`ExtModel.nowMs` (and, for the unused hasher, `ExtModel.sipHash13`).
+`ExtModel.nowMs` (and, for the unused hasher, `ExtModel.sipHash13`). The 26 external functions
+that the Phase 2 translation (plan step S21) added were temporary `opaque` placeholders; plan
+steps S26/S27 replaced them by definitions (sections "Phase 2", plan Section 18): string and
+`Arc` equality and deref; `Option::or_else`, `Option` equality, `Result::ok`, `slice::first`,
+`slice::strip_suffix`, slice-array equality, `SlicePattern::as_slice` of arrays and
+`RangeInclusive::contains`, each the `core` body transcribed; `str::parse` and
+`i64::from_str` (Rust's radix-10 grammar and error kinds); and the `Ipv4Addr`/`Ipv6Addr`
+functions transcribed from `core/src/net/ip_addr.rs`. None of them needs an `opaque` constant.
+Translation patch 03 (human decisions 2026-11-24, targets R09–R15) added the models of the last
+section, for `seal`/`seal_with`, `with_rs1_signing`/`with_rs1_fallback`, `open_json`/
+`open_json_with` and `new_with_keyring`, with two more `opaque` constants (no axiom):
+`ExtModel.randomState` (the hash keys of a new map) and `ExtModel.serdeJsonFromSlice` (the
+outcome of a caller's `Deserialize` impl).
+The conventions below apply to all models.
+
+Ordering note (S21): the generated external `core.result.Result.ok` shadows Aeneas' `ok` for
+every declaration after it in the namespace `core.result.Result` (and for proofs that open it), so
+such code must write `Aeneas.Std.Result.ok`; the models above it (`is_err`, `map_err`) are
+unaffected.
 
 Each definition returns `ok` exactly where the Rust function returns and `fail` where it
 panics, with the exceptions stated in its docstring. Two conventions apply throughout:
 
 * **Memory.** Allocation failure (out of memory) is not modelled (plan Section 4: unlimited
   memory is not established). A `String` that would grow beyond `isize::MAX` bytes is a
-  deterministic Rust panic ("capacity overflow": `RawVec::grow_amortized`, lines 502–533 of
-  `alloc/src/raw_vec/mod.rs`, through `finish_grow`, lines 543–568, and
-  `RawVec::try_allocate_in`, lines 446–482, compute the layout with `layout_array`, lines
-  896–902, which returns `CapacityOverflow` for a layout larger than `isize::MAX`; `handle_error`,
-  lines 887–892, turns it into the panic) and is modelled as `fail panic`
+  deterministic Rust panic ("capacity overflow": `RawVec::grow_amortized`, lines 516–547 of
+  `alloc/src/raw_vec/mod.rs`, through `finish_grow`, lines 557–580, and
+  `RawVec::try_allocate_in`, lines 458–496, compute the layout with `layout_array`, lines
+  929–935, which returns `CapacityOverflow` for a layout larger than `isize::MAX`; `handle_error`,
+  lines 920–925, turns it into the panic) and is modelled as `fail panic`
   (`ExtModel.growString`). A panic that depends on the capacity history (amortized doubling
   past `isize::MAX` while the length still fits) is not modelled, so `ok` from a `String`
   model means "returns, or aborts or panics for memory reasons".
 * **`Str`.** The Aeneas `Str` is `Slice U8` and admits byte sequences that are not UTF-8,
   while a Rust `&str` is always UTF-8. Functions that only read the bytes (`str::len`,
-  `str::as_bytes`) are modelled on all of `Str`; `String::push_str`, which builds a `String`
-  from the bytes, returns `fail undef` outside the Rust domain (a non-UTF-8 `&str` is undefined
-  behaviour in Rust).
+  `str::as_bytes`, `str` equality, `i64::from_str`) are modelled on all of `Str`;
+  `String::push_str`, which builds a `String` from the bytes, returns `fail undef` outside the
+  Rust domain (a non-UTF-8 `&str` is undefined behaviour in Rust).
 * **Size convention.** A `Slice` or `String` of the model may be up to `Usize.max` bytes long,
   more than any machine can hold. The models make no claim about inputs of at least `2^61`
   bytes (2 EiB): such an input cannot exist in a running process on the translated target
@@ -48,12 +67,20 @@ panics, with the exceptions stated in its docstring. Two conventions apply throu
   paging), and plan Section 4 does not model memory limits. The only behaviour this convention
   hides is the SHA-256 length overflow of the HMAC functions (section HMAC).
 
-Source paths: `/rustc/library/…` is the `rust-src` of the pinned toolchain `nightly-2026-06-01`;
+Source paths: `/rustc/library/…` is the `rust-src` of the pinned toolchain `nightly-2026-09-17`
+(Aeneas upgrade, 2026-11-24: every cited `rust-src` range was compared with `nightly-2026-06-01`
+and renumbered. Behaviour is unchanged except for `core.ops.range.RangeInclusive.contains`
+(`RangeBounds::end_bound` of an exhausted `RangeInclusive` is now `Excluded(start)`; changed in
+the Aeneas upgrade, human decision 2026-11-24; model reviewed 2026-11-24, re-signed 2026-11-24). Textual changes without a
+change of behaviour: `RawVec::finish_grow` uses `map_err` instead of a `match`,
+`SlicePartialEq::equal_same_length` a `for` instead of a `while` loop, `i64::from_ascii_radix`
+is now `from_ascii_bytes_radix_impl` (same body, renamed panic helper), and comments);
 `/cargo/registry/…` is the crate at the version in the path. `scripts/aeneas-translate.sh`
 pins every crate cited here (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`,
 `digest 0.11.3`, `zeroize 1.9.2`, `chrono 0.4.45` and `serde_json 1.0.154` (plan Section 4). The
 Rust tests that check the models are listed in `formal/trusted/evidence/README.md`.
 -/
+@[expose] public section
 open Aeneas Aeneas.Std Result ControlFlow Error
 open rmcp
 
@@ -96,7 +123,7 @@ length. Opaque because its value is not modelled (plan Section 4; the correctnes
 `hmac`/`sha2` crates is not established). The value given here only shows that the type is
 inhabited; an `opaque` constant does not unfold to it. -/
 opaque hmacSha256 : List Std.U8 → List Std.U8 → Std.Array Std.U8 32#usize :=
-  fun _ _ => ⟨List.replicate 32 (byte 0), by simp⟩
+  fun _ _ => Std.Array.from (List.replicate 32 (byte 0)) (by simp)
 
 /-! ### Base64url without padding -/
 
@@ -198,11 +225,28 @@ opaque sipHash13 : Std.U64 → Std.U64 → List Std.U8 → Std.U64
 
 /-- **Clock reading** (opaque): the value of `chrono::Utc::now().timestamp_millis()` that
 `RequestStateCodec::now_ms` returns. A single constant cannot model that two readings differ,
-and it makes every function that reads the clock (`now_ms`, `open`, `open_with`) pure. Review
-rule: no spec statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
-`…RequestStateCodec.open` or `…RequestStateCodec.open_with` (a variable named `now_ms`, such as the
-time parameter of E01 `open_authenticated_body`, is not covered; `formal/README.md`, "Trusted
-base"). -/
+and it makes every function that reads the clock (`now_ms`, `open`, `open_with` and, since
+translation patch 03, `open_json`, `open_json_with`, `seal`, `seal_with`) pure. Review rule: no
+spec statement mentions the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
+`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.open_json`,
+`…RequestStateCodec.open_json_with`, `…RequestStateCodec.seal` or
+`…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01
+`open_authenticated_body`, is not covered; `formal/README.md`, "Trusted base"). Exceptions
+(human decisions 2026-11-24, extended 2026-11-25; `formal/README.md`, "Trusted base"): only the
+spec theorems of `open`, `open_with`, `open_json`, `open_json_with`, `seal` and `seal_with`,
+their `Theorems.*` restatements and the corollaries `open_with_spec_of_length_le`,
+`seal_with_spec_of_length_le` and `seal_spec_of_length_le` (and their restatements) may name
+these functions and `nowMs`, and only with these postconditions: `open`/`open_with`,
+`resultBytes result = openAt … nowMs.val`; `open_json`/`open_json_with`, the error of
+`openAt … nowMs.val` unchanged, otherwise the `serdeJsonFromSlice` outcome for the opened
+payload with `Err` mapped to `Deserialization`; `seal`/`seal_with`,
+`sealAt … nowMs.val = some (utf8 result)`, with `sealAt` the `Defs.CodecState` model of the
+private `seal_at` (human decision 2026-11-25; it replaces the earlier wording "the result of the
+translated `seal_at` at `nowMs`"). Their docstrings state the one-reading caveat and the
+inherited exceptions. No other statement names `nowMs`, no statement has a premise or conclusion
+about its value or relates two clock readings, and `now_ms` itself stays unmentioned; the
+internal statements of `seal_at` (R10a) and of its round trip with `open_at` (R10b) use explicit
+times. -/
 opaque nowMs : Std.I64
 
 end ExtModel
@@ -273,50 +317,27 @@ def model.request_state_wire.prim.b64_decode (input : Slice Std.U8) :
     Result (Option (alloc.vec.Vec Std.U8)) :=
   match h : ExtModel.b64Decode input.val with
   | none => ok none
-  | some l => ok (some ⟨l, (ExtModel.b64Decode_length_le _ _ h).trans input.property⟩)
+  | some l => ok (some (alloc.vec.Vec.from l ((ExtModel.b64Decode_length_le _ _ h).trans input.property)))
 
 /-! ## Standard library -/
 
-/-- [core::borrow::{impl core::borrow::Borrow<T> for T}::borrow]:
-    Source: '/rustc/library/core/src/borrow.rs', lines 214:4-214:26
-    Name pattern: [core::borrow::{core::borrow::Borrow<@T, @T>}::borrow]
-    Visibility: public
-
-**Model:** the identity (`fn borrow(&self) -> &T { self }`, lines 214–216). -/
-@[rust_fun "core::borrow::{core::borrow::Borrow<@T, @T>}::borrow"]
-def core.borrow.Borrow.Blanket.borrow {T : Type} (self : T) : Result T :=
-  ok self
-
-/-- [core::option::{core::option::Option<T>}::ok_or]:
-    Source: '/rustc/library/core/src/option.rs', lines 1334:4-1334:73
-    Name pattern: [core::option::{core::option::Option<@T>}::ok_or]
-    Visibility: public
-
-**Model:** `Some v ↦ Ok v`, `None ↦ Err err` (lines 1334–1339). -/
-@[rust_fun "core::option::{core::option::Option<@T>}::ok_or"]
-def core.option.Option.ok_or {T : Type} {E : Type} (self : Option T) (err : E) :
-    Result (core.result.Result T E) :=
-  match self with
-  | some v => ok (core.result.Result.Ok v)
-  | none => ok (core.result.Result.Err err)
-
 /-- [core::option::{impl core::default::Default for core::option::Option<T>}::default]:
-    Source: '/rustc/library/core/src/option.rs', lines 2313:4-2313:29
+    Source: '/rustc/library/core/src/option.rs', lines 2314:4-2314:29
     Name pattern: [core::option::{core::default::Default<core::option::Option<@T>>}::default]
     Visibility: public
 
-**Model:** `None` (lines 2313–2315). -/
+**Model:** `None` (lines 2314–2316). -/
 @[rust_fun
   "core::option::{core::default::Default<core::option::Option<@T>>}::default"]
 def core.option.Option.Insts.CoreDefaultDefault.default (T : Type) : Result (Option T) :=
   ok none
 
 /-- [core::result::{core::result::Result<T, E>}::is_err]:
-    Source: '/rustc/library/core/src/result.rs', lines 646:4-646:38
+    Source: '/rustc/library/core/src/result.rs', lines 647:4-647:38
     Name pattern: [core::result::{core::result::Result<@T, @E>}::is_err]
     Visibility: public
 
-**Model:** `true` exactly for `Err` (`!self.is_ok()`, lines 646–648). -/
+**Model:** `true` exactly for `Err` (`!self.is_ok()`, lines 647–649). -/
 @[rust_fun "core::result::{core::result::Result<@T, @E>}::is_err"]
 def core.result.Result.is_err {T : Type} {E : Type} (self : core.result.Result T E) :
     Result Bool :=
@@ -324,49 +345,32 @@ def core.result.Result.is_err {T : Type} {E : Type} (self : core.result.Result T
   | core.result.Result.Ok _ => ok false
   | core.result.Result.Err _ => ok true
 
-/-- [core::result::{core::result::Result<T, E>}::map_err]:
-    Source: '/rustc/library/core/src/result.rs', lines 962:4-964:53
-    Name pattern: [core::result::{core::result::Result<@T, @E>}::map_err]
-    Visibility: public
-
-**Model:** `Ok t ↦ Ok t`; `Err e ↦ Err (op e)`, calling the closure through its `FnOnce`
-instance, whose failure propagates (lines 962–970). -/
-@[rust_fun "core::result::{core::result::Result<@T, @E>}::map_err"]
-def core.result.Result.map_err {T : Type} {E : Type} {F : Type} {O : Type}
-    (opsfunctionFnOnceOTupleEFInst : core.ops.function.FnOnce O E F)
-    (self : core.result.Result T E) (op : O) : Result (core.result.Result T F) :=
-  match self with
-  | core.result.Result.Ok t => ok (core.result.Result.Ok t)
-  | core.result.Result.Err e => do
-    let f ← opsfunctionFnOnceOTupleEFInst.call_once op e
-    ok (core.result.Result.Err f)
-
 /-- [core::slice::{impl core::default::Default for &'_0 [T]}::default]:
-    Source: '/rustc/library/core/src/slice/mod.rs', lines 5637:4-5637:24
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 5655:4-5655:24
     Name pattern: [core::slice::{core::default::Default<&'0 [@T]>}::default]
     Visibility: public
 
-**Model:** the empty slice (`&[]`, lines 5637–5639). -/
+**Model:** the empty slice (`&[]`, lines 5655–5657). -/
 @[rust_fun "core::slice::{core::default::Default<&'0 [@T]>}::default"]
 def Shared0Slice.Insts.CoreDefaultDefault.default (T : Type) : Result (Slice T) :=
   ok (Slice.new T)
 
 /-- [core::str::{str}::len]:
-    Source: '/rustc/library/core/src/str/mod.rs', lines 153:4-153:36
+    Source: '/rustc/library/core/src/str/mod.rs', lines 155:4-155:36
     Name pattern: [core::str::{str}::len]
     Visibility: public
 
-**Model:** the number of bytes (`self.as_bytes().len()`, lines 153–155), for every `Str`. -/
+**Model:** the number of bytes (`self.as_bytes().len()`, lines 155–157), for every `Str`. -/
 @[rust_fun "core::str::{str}::len"]
 def core.str.Str.len (self : Str) : Result Std.Usize :=
   ok (Slice.len (self : Slice Std.U8))
 
 /-- [core::str::{str}::as_bytes]:
-    Source: '/rustc/library/core/src/str/mod.rs', lines 498:4-498:41
+    Source: '/rustc/library/core/src/str/mod.rs', lines 514:4-514:41
     Name pattern: [core::str::{str}::as_bytes]
     Visibility: public
 
-**Model:** the same bytes (a `transmute` of `&str` to `&[u8]`, lines 498–501), for every
+**Model:** the same bytes (a `transmute` of `&str` to `&[u8]`, lines 514–517), for every
 `Str`. -/
 @[rust_fun "core::str::{str}::as_bytes"]
 def core.str.Str.as_bytes (self : Str) : Result (Slice Std.U8) :=
@@ -383,19 +387,19 @@ def ExtModel.HashMap.find {K V Q : Type} (coreborrowBorrowInst : core.borrow.Bor
     if b then ok (some v) else ExtModel.HashMap.find coreborrowBorrowInst corecmpEqInst k rest
 
 /-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::get]:
-    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1035:4-1038:21
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1034:4-1037:21
     Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::get]
     Visibility: public
 
 **Model:** lookup by key equality: the value of the first entry whose key `key` satisfies
 `k == key.borrow()` (`ExtModel.HashMap.find`). The Rust function is `self.base.get(k)`
-(lines 1035–1041), i.e. hashbrown 0.17.1 `HashMap::get` (`src/map.rs`): `None` on an empty
+(lines 1034–1040), i.e. hashbrown 0.17.1 `HashMap::get` (`src/map.rs`): `None` on an empty
 table, otherwise it hashes `k` with `make_hash` and returns the entry for which
 `Equivalent::equivalent` (`k == key.borrow()`) holds among the entries with a matching hash.
 
 Why hashing is not modelled: for a `Hash`/`Eq` pair that agree (`a == b → hash a = hash b`,
 required by the `HashMap` documentation, lines 37–47, and for the borrowed form `Q`, lines
-1019–1021), the probe finds the entry with an
+1018–1020), the probe finds the entry with an
 equal key whatever the hash values are, and a map has at most one such entry. For the only
 instance in the translation, `K = Q = String`, equality is byte equality and `Hash` writes the
 bytes, so they agree; hashing a `String` never panics, and `String` equality does not fail.
@@ -415,12 +419,12 @@ def std.collections.hash.map.HashMap.get
   ExtModel.HashMap.find coreborrowBorrowInst corecmpEqInst1 k self.entries
 
 /-- [std::collections::hash::map::{impl core::clone::Clone for std::collections::hash::map::HashMap<K, V, S, A>}::clone]:
-    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1438:4-1438:27
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1437:4-1437:27
     Name pattern: [std::collections::hash::map::{core::clone::Clone<std::collections::hash::map::HashMap<@K, @V, @S, @A>>}::clone]
     Visibility: public
 
 **Model:** clones the hash builder, the allocator and every key and value
-(`Self { base: self.base.clone() }`, lines 1438–1440; hashbrown 0.17.1 `src/map.rs`
+(`Self { base: self.base.clone() }`, lines 1437–1439; hashbrown 0.17.1 `src/map.rs`
 `impl Clone for HashMap`: `hash_builder.clone()`, `table.clone()`). -/
 @[rust_fun
   "std::collections::hash::map::{core::clone::Clone<std::collections::hash::map::HashMap<@K, @V, @S, @A>>}::clone"]
@@ -542,12 +546,12 @@ def alloc.string.String.from_utf8 (vec : alloc.vec.Vec Std.U8) :
   | none => ok (core.result.Result.Err { bytes := vec })
 
 /-- [alloc::string::{alloc::string::String}::push_str]:
-    Source: '/rustc/library/alloc/src/string.rs', lines 1110:4-1110:44
+    Source: '/rustc/library/alloc/src/string.rs', lines 1122:4-1122:44
     Name pattern: [alloc::string::{alloc::string::String}::push_str]
     Visibility: public
 
 **Model:** appends the string whose UTF-8 bytes are `string`
-(`self.vec.extend_from_slice(string.as_bytes())`, lines 1110–1112), subject to the `String`
+(`self.vec.extend_from_slice(string.as_bytes())`, lines 1122–1124), subject to the `String`
 length limit (`ExtModel.growString`). `fail undef` if `string` is not UTF-8, which no Rust
 `&str` is. -/
 @[rust_fun "alloc::string::{alloc::string::String}::push_str"]
@@ -557,11 +561,11 @@ def alloc.string.String.push_str (self : String) (string : Str) : Result String 
   | none => fail undef
 
 /-- [alloc::string::{alloc::string::String}::push]:
-    Source: '/rustc/library/alloc/src/string.rs', lines 1425:4-1425:36
+    Source: '/rustc/library/alloc/src/string.rs', lines 1451:4-1451:36
     Name pattern: [alloc::string::{alloc::string::String}::push]
     Visibility: public
 
-**Model:** appends the character (its UTF-8 encoding, lines 1425–1435), subject to the
+**Model:** appends the character (its UTF-8 encoding, lines 1451–1461), subject to the
 `String` length limit (`ExtModel.growString`). A Lean `Char` is a Unicode scalar value, as a
 Rust `char` is. -/
 @[rust_fun "alloc::string::{alloc::string::String}::push"]
@@ -569,36 +573,36 @@ def alloc.string.String.push (self : String) (ch : Char) : Result String :=
   ExtModel.growString (self.push ch)
 
 /-- [alloc::string::{alloc::string::String}::as_bytes]:
-    Source: '/rustc/library/alloc/src/string.rs', lines 1454:4-1454:41
+    Source: '/rustc/library/alloc/src/string.rs', lines 1480:4-1480:41
     Name pattern: [alloc::string::{alloc::string::String}::as_bytes]
     Visibility: public
 
-**Model:** the UTF-8 bytes (`self.vec.as_slice()`, lines 1454–1456). A Rust `String` has at
+**Model:** the UTF-8 bytes (`self.vec.as_slice()`, lines 1480–1482). A Rust `String` has at
 most `isize::MAX` bytes, so the bytes always fit in a slice; a Lean `String` longer than
 `Usize.max` bytes, which no Rust `String` is, gives `fail maximumSizeExceeded`. -/
 @[rust_fun "alloc::string::{alloc::string::String}::as_bytes"]
 def alloc.string.String.as_bytes (self : String) : Result (Slice Std.U8) :=
-  if h : (ExtModel.utf8 self).length ≤ Usize.max then ok ⟨ExtModel.utf8 self, h⟩
+  if h : (ExtModel.utf8 self).length ≤ Usize.max then ok (Std.Slice.from (ExtModel.utf8 self) h)
   else fail maximumSizeExceeded
 
 /-- [alloc::string::{impl core::clone::Clone for alloc::string::String}::clone]:
-    Source: '/rustc/library/alloc/src/string.rs', lines 2364:4-2364:27
+    Source: '/rustc/library/alloc/src/string.rs', lines 2425:4-2425:27
     Name pattern: [alloc::string::{core::clone::Clone<alloc::string::String>}::clone]
     Visibility: public
 
-**Model:** the same string (`String { vec: self.vec.clone() }`, lines 2364–2366). -/
+**Model:** the same string (`String { vec: self.vec.clone() }`, lines 2425–2427). -/
 @[rust_fun "alloc::string::{core::clone::Clone<alloc::string::String>}::clone"]
 def alloc.string.String.Insts.CoreCloneClone.clone (self : String) : Result String :=
   ok self
 
 /-- [alloc::string::{impl core::hash::Hash for alloc::string::String}::hash]:
-    Source: '/rustc/library/alloc/src/string.rs', lines 2740:4-2740:51
+    Source: '/rustc/library/alloc/src/string.rs', lines 2801:4-2801:51
     Name pattern: [alloc::string::{core::hash::Hash<alloc::string::String>}::hash]
     Visibility: public
 
 **Model:** writes the UTF-8 bytes, then the byte `0xff`, through the hasher instance
-(`(**self).hash(hasher)`, lines 2740–2742; `impl Hash for str` calls `state.write_str(self)`,
-`core/src/hash/mod.rs` lines 862–866, whose default is `self.write(s.as_bytes());
+(`(**self).hash(hasher)`, lines 2801–2803; `impl Hash for str` calls `state.write_str(self)`,
+`core/src/hash/mod.rs` lines 863–867, whose default is `self.write(s.as_bytes());
 self.write_u8(0xff)`, lines 550–553). For `DefaultHasher` the same bytes are written:
 `DefaultHasher::write_str` forwards to `SipHasher13::write_str` (`std/src/hash/random.rs`
 lines 135–137, `core/src/hash/sip.rs` lines 237–239), which reaches the override
@@ -612,18 +616,9 @@ def alloc.string.String.Insts.CoreHashHash.hash {H : Type}
     (corehashHasherInst : core.hash.Hasher H) (self : String) (state : H) : Result H := do
   let bytes ← alloc.string.String.as_bytes self
   let state ← corehashHasherInst.write state bytes
-  corehashHasherInst.write state ⟨[ExtModel.byte 255], by scalar_tac⟩
+  corehashHasherInst.write state (Std.Slice.from [ExtModel.byte 255] (by scalar_tac))
 
-/-- [alloc::vec::{alloc::vec::Vec<T>}::is_empty]:
-    Source: '/rustc/library/alloc/src/vec/mod.rs', lines 3085:4-3085:40
-    Name pattern: [alloc::vec::{alloc::vec::Vec<@T>}::is_empty]
-    Visibility: public
-
-**Model:** `len == 0` (lines 3085–3087). -/
-@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::is_empty"]
-def alloc.vec.Vec.is_empty {T : Type} (_A : Type) (self : alloc.vec.Vec T) : Result Bool :=
-  ok (decide (self.val.length = 0))
-
+set_option linter.dupNamespace false in
 /-- [zeroize::{impl zeroize::Zeroize for Z}::zeroize]:
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.2/src/lib.rs', lines 282:4-282:25
     Name pattern: [zeroize::{zeroize::Zeroize<@Z>}::zeroize]
@@ -689,18 +684,846 @@ def zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref {Z : Type}
 /-! ## Clock -/
 
 /-- [rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::now_ms]:
-    Source: 'crates/rmcp/src/model/request_state.rs', lines 729:4-731:5
+    Source: 'crates/rmcp/src/model/request_state.rs', lines 733:4-735:5
 
 **Model:** `ok nowMs`, an opaque value (`chrono::Utc::now().timestamp_millis()`).
 Environmental assumption (stated exception, not modelled): `Utc::now` panics if the system
 clock is before 1970 or outside chrono's range (`chrono-0.4.45/src/offset/utc.rs` lines 96–98:
 `duration_since(UNIX_EPOCH).expect("system time before Unix epoch")` and
 `DateTime::from_timestamp(..).unwrap()`); the model assumes a clock within that range. Called
-by the translated wrappers `open` and `open_with` (not targets); `seal_with`, which also reads
-the clock, is excluded from the translation. Because `nowMs` is one constant, those wrappers
-are pure in the model; no spec statement may mention the functions
-`rmcp.model.request_state.RequestStateCodec.now_ms`, `…RequestStateCodec.open` or
-`…RequestStateCodec.open_with` (a variable named `now_ms`, such as the time parameter of E01
-`open_authenticated_body`, is not covered). -/
+by the translated wrappers `open` and `open_with` (hence, since translation patch 03,
+`open_json` and `open_json_with`) and, since translation patch 03, `seal_with` (hence `seal`).
+Because `nowMs` is one constant, those wrappers are pure in the model; no spec statement may
+mention the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
+`…RequestStateCodec.open`, `…RequestStateCodec.open_with`, `…RequestStateCodec.open_json`,
+`…RequestStateCodec.open_json_with`, `…RequestStateCodec.seal` or
+`…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01
+`open_authenticated_body`, is not covered), except as stated at `ExtModel.nowMs` (the spec
+theorems of `open`/`open_with`, `open_json`/`open_json_with` and `seal`/`seal_with`, their
+restatements and the listed `_of_length_le` corollaries; human decisions 2026-11-24, extended
+2026-11-25). -/
 def model.request_state.RequestStateCodec.now_ms : Result Std.I64 :=
   ok ExtModel.nowMs
+
+/-! ## Phase 2: strings and `Arc`
+
+Plan steps S26/S27 replaced the 26 placeholders of plan step S21 by the models of this and the
+following sections (plan Section 18). -/
+
+/-- [core::str::traits::{impl core::cmp::PartialEq<str> for str}::eq]:
+    Source: '/rustc/library/core/src/str/traits.rs', lines 29:4-29:37
+    Name pattern: [core::str::traits::{core::cmp::PartialEq<str, str>}::eq]
+    Visibility: public
+
+**Model:** byte-list equality (`self.as_bytes() == other.as_bytes()`, lines 29–31; slice
+equality of `u8`: equal lengths and equal bytes, `core/src/slice/cmp.rs` lines 14–29), for every
+`Str`. -/
+@[rust_fun "core::str::traits::{core::cmp::PartialEq<str, str>}::eq"]
+def Str.Insts.CoreCmpPartialEqStr.eq (self : Str) (other : Str) : Result Bool :=
+  ok (decide (self.val = other.val))
+
+/-- [alloc::string::{impl core::ops::deref::Deref<str> for alloc::string::String}::deref]:
+    Source: '/rustc/library/alloc/src/string.rs', lines 2896:4-2896:27
+    Name pattern: [alloc::string::{core::ops::deref::Deref<alloc::string::String, str>}::deref]
+    Visibility: public
+
+**Model:** the UTF-8 bytes of the string, the identity on bytes (`self.as_str()`, lines
+2835–2837; `String::as_str` is `str::from_utf8_unchecked(self.vec.as_slice())`), defined as the
+model of `String::as_bytes`, which returns the same bytes: `fail maximumSizeExceeded` only for a
+Lean `String` longer than `Usize.max` bytes, which no Rust `String` is. -/
+@[rust_fun
+  "alloc::string::{core::ops::deref::Deref<alloc::string::String, str>}::deref"]
+def alloc.string.String.Insts.CoreOpsDerefDerefStr.deref (self : String) : Result Str :=
+  alloc.string.String.as_bytes self
+
+/-- [alloc::sync::{impl core::ops::deref::Deref<T> for alloc::sync::Arc<T>}::deref]:
+    Source: '/rustc/library/alloc/src/sync.rs', lines 2570:4-2570:25
+    Name pattern: [alloc::sync::{core::ops::deref::Deref<alloc::sync::Arc<@T>, @T>}::deref]
+    Visibility: public
+
+**Model:** the shared value, a projection (`&self.inner().data`, lines 2570–2572). The
+allocator parameter `A` is not used. -/
+@[rust_fun
+  "alloc::sync::{core::ops::deref::Deref<alloc::sync::Arc<@T>, @T>}::deref"]
+def alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref {T : Type} (_A : Type)
+    (self : alloc.sync.Arc T) : Result T :=
+  ok self.data
+
+/-- [alloc::sync::{impl core::cmp::PartialEq<alloc::sync::Arc<T>> for alloc::sync::Arc<T>}::eq]:
+    Source: '/rustc/library/alloc/src/sync.rs', lines 3745:4-3745:43
+    Name pattern: [alloc::sync::{core::cmp::PartialEq<alloc::sync::Arc<@T>, alloc::sync::Arc<@T>>}::eq]
+    Visibility: public
+
+**Model:** value equality, through the instance of `T` (its failure propagates): `**self ==
+**other`, the generic `ArcEqIdent::eq` (lines 3745–3747, 3694–3698).
+Stated exception: for `T: Eq` Rust specializes to `ptr::eq(self, other) || **self == **other`
+(lines 3713–3717). The model has no pointers, so it always compares the values. The two agree
+whenever the equality of `T` is reflexive and does not fail; `Eq` asks for reflexivity
+(`core/src/cmp.rs` lines 295–304; `MarkerEq`, `alloc/src/rc.rs` lines 2727–2729), not for the
+absence of failure. The only instance in the translation, `T = str`, is byte equality, which has
+both. -/
+@[rust_fun
+  "alloc::sync::{core::cmp::PartialEq<alloc::sync::Arc<@T>, alloc::sync::Arc<@T>>}::eq"]
+def alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq {T : Type} (_A : Type)
+    (corecmpPartialEqInst : core.cmp.PartialEq T T) (self : alloc.sync.Arc T)
+    (other : alloc.sync.Arc T) : Result Bool :=
+  corecmpPartialEqInst.eq self.data other.data
+
+/-! ## Phase 2: `Option`, `Result`, slices and ranges -/
+
+/-- [core::option::{core::option::Option<T>}::or_else]:
+    Source: '/rustc/library/core/src/option.rs', lines 1645:4-1650:28
+    Name pattern: [core::option::{core::option::Option<@T>}::or_else]
+    Visibility: public
+
+**Model:** `Some x ↦ Some x`; `None ↦ f()`, calling the closure through its `FnOnce`
+instance, whose failure propagates (lines 1645–1656). -/
+@[rust_fun "core::option::{core::option::Option<@T>}::or_else"]
+def core.option.Option.or_else {T : Type} {F : Type}
+    (opsfunctionFnOnceFTupleOptionInst : core.ops.function.FnOnce F Unit (Option T))
+    (self : Option T) (f : F) : Result (Option T) :=
+  match self with
+  | some x => ok (some x)
+  | none => opsfunctionFnOnceFTupleOptionInst.call_once f ()
+
+/-- [core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq]:
+    Source: '/rustc/library/core/src/option.rs', lines 2441:4-2441:38
+    Name pattern: [core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq]
+    Visibility: public
+
+**Model:** `(Some l, Some r) ↦ l == r` through the instance of `T` (its failure propagates);
+`(None, None) ↦ true`; otherwise `false` (lines 2441–2450). -/
+@[rust_fun
+  "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::eq"]
+def core.option.Option.Insts.CoreCmpPartialEqOption.eq {T : Type}
+    (cmpPartialEqInst : core.cmp.PartialEq T T) (self : Option T) (other : Option T) :
+    Result Bool :=
+  match self, other with
+  | some l, some r => cmpPartialEqInst.eq l r
+  | some _, none => ok false
+  | none, some _ => ok false
+  | none, none => ok true
+
+/-- [core::result::{core::result::Result<T, E>}::ok]:
+    Source: '/rustc/library/core/src/result.rs', lines 709:4-712:28
+    Name pattern: [core::result::{core::result::Result<@T, @E>}::ok]
+    Visibility: public
+
+**Model:** `Ok x ↦ Some x`, `Err _ ↦ None` (lines 709–718). Inside its own namespace `ok`
+names this definition, hence `Aeneas.Std.Result.ok` (module docstring, ordering note). -/
+@[rust_fun "core::result::{core::result::Result<@T, @E>}::ok"]
+def core.result.Result.ok {T : Type} {E : Type} (self : core.result.Result T E) :
+    Result (Option T) :=
+  match self with
+  | core.result.Result.Ok x => Aeneas.Std.Result.ok (some x)
+  | core.result.Result.Err _ => Aeneas.Std.Result.ok none
+
+/-- [core::slice::{[T]}::first]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 157:4-157:43
+    Name pattern: [core::slice::{[@T]}::first]
+    Visibility: public
+
+**Model:** the first element, `None` for the empty slice
+(`if let [first, ..] = self { Some(first) } else { None }`, lines 157–159). -/
+@[rust_fun "core::slice::{[@T]}::first"]
+def core.slice.Slice.first {T : Type} (self : Slice T) : Result (Option T) :=
+  match self.val with
+  | first :: _ => ok (some first)
+  | [] => ok none
+
+/-- Slice equality for slices of equal length (`SlicePartialEq::equal_same_length`,
+`core/src/slice/cmp.rs` lines 125–137): compares the elements left to right with `ne` of the
+instance (`*lhs.add(idx) != *rhs.add(idx)`) and returns `false` at the first pair for which `ne`
+holds, `true` at the end; a failure of `ne` propagates. Rust specializes the loop to a byte
+comparison for `BytewiseEq` types (lines 143–157; such as `u8`, `u16`), whose `ne` is the
+negation of byte equality and does not fail, so the result is the same. On lists of different
+lengths it compares the common prefix; the callers below check the lengths first. -/
+def ExtModel.sliceEqSameLength {T U : Type} (inst : core.cmp.PartialEq T U) :
+    List T → List U → Result Bool
+  | a :: l, b :: r => do
+    let d ← inst.ne a b
+    if d then ok false else ExtModel.sliceEqSameLength inst l r
+  | _, _ => ok true
+
+/-- Slice equality `[T] == [U]` (`impl PartialEq<[U]> for [T]`, `core/src/slice/cmp.rs` lines
+14–29): `false` if the lengths differ, otherwise `ExtModel.sliceEqSameLength`. -/
+def ExtModel.sliceEq {T U : Type} (inst : core.cmp.PartialEq T U) (l : List T) (r : List U) :
+    Result Bool :=
+  if l.length = r.length then ExtModel.sliceEqSameLength inst l r else ok false
+
+/-- [core::slice::{[T]}::strip_suffix]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 2731:4-2733:21
+    Name pattern: [core::slice::{[@T]}::strip_suffix]
+    Visibility: public
+
+**Model:** the Rust body transcribed (lines 2731–2745): take the suffix as a slice through the
+`SlicePattern` instance; if `n = suffix.len() ≤ len = self.len()`, split `self` at `len - n`
+(`core.slice.Slice.split_at` of the Aeneas library) and return `Some head` if the tail equals
+the suffix (`ExtModel.sliceEq`, i.e. `tail == suffix`); otherwise `None`. Failures of
+`as_slice` and of the element equality propagate; the subtraction and the split do not fail
+since `n ≤ len`. -/
+@[rust_fun "core::slice::{[@T]}::strip_suffix"]
+def core.slice.Slice.strip_suffix {T : Type} {P : Type}
+    (SlicePatternInst : core.slice.SlicePattern P T) (cmpPartialEqInst : core.cmp.PartialEq T T)
+    (self : Slice T) (suffix : P) : Result (Option (Slice T)) := do
+  let suffix ← SlicePatternInst.as_slice suffix
+  let len := Slice.len self
+  let n := Slice.len suffix
+  if n ≤ len then
+    let mid ← len - n
+    let (head, tail) ← core.slice.Slice.split_at self mid
+    let b ← ExtModel.sliceEq cmpPartialEqInst tail.val suffix.val
+    if b then ok (some head) else ok none
+  else ok none
+
+/-- [core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T]}::eq]:
+    Source: '/rustc/library/core/src/array/equality.rs', lines 48:4-48:40
+    Name pattern: [core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq]
+    Visibility: public
+
+**Model:** `false` unless the slice has length `N` (`self.as_array::<N>()` is `None`,
+`core/src/slice/mod.rs` lines 855–865); otherwise array equality `[T; N] == [U; N]`
+(lines 48–53, then lines 10–12 and `SpecArrayEq::spec_eq`, lines 143–145: `a[..] == b[..]`),
+which is slice equality of two slices of length `N` (`ExtModel.sliceEqSameLength`). The
+`BytewiseEq` specialization of `spec_eq` (lines 152–158) gives the same result, as for slices
+(see `ExtModel.sliceEqSameLength`). -/
+@[rust_fun "core::array::equality::{core::cmp::PartialEq<[@T], [@U; @N]>}::eq"]
+def Slice.Insts.CoreCmpPartialEqArray.eq {T : Type} {U : Type} {N : Std.Usize}
+    (cmpPartialEqInst : core.cmp.PartialEq T U) (self : Slice T) (other : Array U N) :
+    Result Bool :=
+  if self.val.length = N.val then ExtModel.sliceEqSameLength cmpPartialEqInst self.val other.val
+  else ok false
+
+/-- [core::slice::{impl core::slice::SlicePattern<T> for [T; N]}::as_slice]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 5696:4-5696:39
+    Name pattern: [core::slice::{core::slice::SlicePattern<[@T; @N], @T>}::as_slice]
+    Visibility: public
+
+**Model:** the same elements as a slice (`self`, an unsizing coercion, lines 5696–5698;
+`Array.to_slice` of the Aeneas library). -/
+@[rust_fun "core::slice::{core::slice::SlicePattern<[@T; @N], @T>}::as_slice"]
+def Array.Insts.CoreSliceSlicePattern.as_slice {T : Type} {N : Std.Usize} (self : Array T N) :
+    Result (Slice T) :=
+  ok (Aeneas.Std.Array.to_slice self)
+
+/-- [core::ops::range::{core::ops::range::RangeInclusive<Idx>}::contains]:
+    Source: '/rustc/library/core/src/ops/range.rs', lines 539:4-542:44
+    Name pattern: [core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::contains]
+    Visibility: public
+
+**Model:** `start <= item && item <= end`, or `start <= item && item < start` when the range is
+exhausted, with `&&` short-circuiting and failures of the comparisons propagating. `contains`
+calls `RangeBounds::contains` (lines 539–545), which is `(match start_bound { Included(s) => s
+<= item, .. }) && (match end_bound { Included(e) => item <= e, Excluded(e) => item < e, .. })`
+(lines 886–900); for `RangeInclusive` the start bound is `Included(start)` and the end bound is
+`Excluded(start)` if `exhausted` ("bounds which are always empty: Included(start)..Excluded(start)"),
+else `Included(end)` (lines 1142–1157). `start <= item` is `le` of the instance
+`Idx: PartialOrd<U>`; `item <= end` and `item < start` are `le` and `lt` of `U: PartialOrd<Idx>`;
+the instance `Idx: PartialOrd<Idx>` is not called. For an exhausted range the result is `false`
+whenever the two instances are consistent (`start <= item` and `item < start` cannot both hold),
+but the model still calls `lt`, as Rust does, so its failure propagates. Changed in the Aeneas
+upgrade (human decision 2026-11-24; model reviewed 2026-11-24, re-signed 2026-11-24): up to `nightly-2026-06-01` the end
+bound of an exhausted range was `Excluded(end)`. -/
+@[rust_fun
+  "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::contains"]
+def core.ops.range.RangeInclusive.contains {Idx : Type} {U : Type}
+    (_cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
+    (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U)
+    (cmpPartialOrdInst2 : core.cmp.PartialOrd U Idx)
+    (self : core.ops.range.RangeInclusive Idx) (item : U) : Result Bool := do
+  let lower ← cmpPartialOrdInst1.le self.start item
+  if lower then
+    if self.exhausted then cmpPartialOrdInst2.lt item self.start
+    else cmpPartialOrdInst2.le item self.«end»
+  else ok false
+
+/-! ## Phase 2: integer parsing -/
+
+/-- The value of an ASCII decimal digit, `none` for every other byte: `(*c as char)
+.to_digit(10)` (`core/src/char/methods.rs` lines 409–431, `to_digit`: `'0'`–`'9'` only for
+radix 10; a byte cast to `char` is `U+0000`–`U+00FF`, so no other byte is a digit). -/
+def ExtModel.decDigit? (c : Std.U8) : Option Nat :=
+  if 48 ≤ c.val ∧ c.val ≤ 57 then some (c.val - 48) else none
+
+/-- The digit loop of `i64::from_ascii_bytes_radix_impl` for radix 10 (`core/src/num/mod.rs` lines
+1810–1862): from the accumulated value `acc`, read the digits left to right; a byte that is not
+a digit is `InvalidDigit`; otherwise the next value is `acc * 10 + d` (positive) or
+`acc * 10 - d` (negative), and a value outside `[-2^63, 2^63)` is `PosOverflow` (positive) or
+`NegOverflow` (negative). This is the checked loop of the source (lines 1834–1860): at each
+digit the digit is checked before the overflow of `checked_mul`, then `checked_add` or
+`checked_sub` is checked, and for an accumulated value of the right sign the next value is out
+of range exactly when the multiplication or the addition overflows. For at most 15 digits Rust
+runs an unchecked loop instead (lines 1810–1833; `can_not_overflow`, lines 1575–1577:
+`digits.len() <= 2 * 8 - 1`), whose values lie in range, so the checks above never fire there
+either. -/
+def ExtModel.i64DigitLoop (positive : Bool) (acc : Int) :
+    List Std.U8 → Except ExtModel.IntErrorKind Int
+  | [] => .ok acc
+  | c :: rest =>
+    match ExtModel.decDigit? c with
+    | none => .error .InvalidDigit
+    | some d =>
+      let next : Int := if positive then acc * 10 + d else acc * 10 - d
+      if -2 ^ 63 ≤ next ∧ next < 2 ^ 63 then ExtModel.i64DigitLoop positive next rest
+      else .error (if positive then .PosOverflow else .NegOverflow)
+
+/-- `i64::from_ascii_bytes_radix_impl(src, 10)` (`core/src/num/mod.rs` lines 1775–1863), as an integer or
+an error kind: empty input is `Empty`; a single `+` or `-` is `InvalidDigit`; a leading `+` or
+`-` is removed and sets the sign (the type is signed); then `ExtModel.i64DigitLoop` from `0`. -/
+def ExtModel.i64FromAscii (src : List Std.U8) : Except ExtModel.IntErrorKind Int :=
+  match src with
+  | [] => .error .Empty
+  | [c] =>
+    if c.val = 43 ∨ c.val = 45 then .error .InvalidDigit
+    else ExtModel.i64DigitLoop true 0 [c]
+  | c :: rest =>
+    if c.val = 43 then ExtModel.i64DigitLoop true 0 rest
+    else if c.val = 45 then ExtModel.i64DigitLoop false 0 rest
+    else ExtModel.i64DigitLoop true 0 (c :: rest)
+
+/-- [core::num::{impl core::str::traits::FromStr<core::num::error::ParseIntError> for i64}::from_str]:
+    Source: '/rustc/library/core/src/num/mod.rs', lines 1632:12-1632:68
+    Name pattern: [core::num::{core::str::traits::FromStr<i64, core::num::error::ParseIntError>}::from_str]
+    Visibility: public
+
+**Model:** `Ok v` where `ExtModel.i64FromAscii` gives the integer `v`, `Err { kind }` where it
+gives the error kind. Rust: `from_str(src) = i64::from_str_radix(src, 10)` (lines 1632–1634),
+which is `i64::from_ascii_bytes_radix_impl(src.as_bytes(), 10)` (lines 1683–1685); radix 10 passes the
+radix check, so this never panics. Grammar: an optional single `+` or `-`, then at least one
+ASCII digit and nothing else; leading zeros are allowed; whitespace, `_` and non-ASCII digits
+are `InvalidDigit`; error kinds as reported by Rust (`Empty`, `InvalidDigit`, `PosOverflow`,
+`NegOverflow`; the first error met from the left wins, a non-digit before an overflow at the
+same position). The model reads only the bytes, as Rust does, so it is defined on every `Str`.
+The integer `v` lies in `[-2^63, 2^63)` (checked by the loop), so it is the value of the
+`I64` built from it. -/
+@[rust_fun
+  "core::num::{core::str::traits::FromStr<i64, core::num::error::ParseIntError>}::from_str"]
+def I64.Insts.CoreStrTraitsFromStrParseIntError.from_str (src : Str) :
+    Result (core.result.Result Std.I64 core.num.error.ParseIntError) :=
+  match ExtModel.i64FromAscii src.val with
+  | .ok v => ok (core.result.Result.Ok ⟨BitVec.ofInt 64 v⟩)
+  | .error kind => ok (core.result.Result.Err { kind })
+
+/-- [core::str::{str}::parse]:
+    Source: '/rustc/library/core/src/str/mod.rs', lines 2781:4-2781:56
+    Name pattern: [core::str::{str}::parse]
+    Visibility: public
+
+**Model:** dispatches to the `FromStr` instance (`FromStr::from_str(self)`, lines 2781–2783);
+its failure propagates. -/
+@[rust_fun "core::str::{str}::parse"]
+def core.str.Str.parse {F : Type} {Clause0_Err : Type}
+    (traitsFromStrInst : core.str.traits.FromStr F Clause0_Err) (self : Str) :
+    Result (core.result.Result F Clause0_Err) :=
+  traitsFromStrInst.from_str self
+
+/-! ## Phase 2: IP addresses
+
+Transcribed from `library/core/src/net/ip_addr.rs` of the pinned toolchain. An `Ipv4Addr` is
+its four octets and an `Ipv6Addr` its eight segments (`Rmcp.TypesExternal`); every function
+below is total and never panics, like its Rust source. -/
+
+/-- The number whose big-endian digits in base `b` are `l` (most significant first):
+`u32::from_be_bytes` for four octets with `b = 256`, and `u128::from_be_bytes` of the sixteen
+octets of an IPv6 address for its eight segments with `b = 65536`. -/
+def ExtModel.beNat (b : Nat) (l : List Nat) : Nat :=
+  l.foldl (fun acc d => acc * b + d) 0
+
+/-- The octets of an IPv4 address as natural numbers, most significant first. -/
+def ExtModel.ipv4Nats (a : core.net.ip_addr.Ipv4Addr) : List Nat :=
+  a.addrOctets.val.map (fun o => o.val)
+
+/-- The segments of an IPv6 address as natural numbers, most significant first. -/
+def ExtModel.ipv6Nats (a : core.net.ip_addr.Ipv6Addr) : List Nat :=
+  a.addrSegments.val.map (fun s => s.val)
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 697:4-697:41
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets]
+    Visibility: public
+
+**Model:** the four octets (`self.octets`, lines 697–699). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets"]
+def core.net.ip_addr.Ipv4Addr.octets (self : core.net.ip_addr.Ipv4Addr) :
+    Result (Array Std.U8 4#usize) :=
+  ok self.addrOctets
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 757:4-757:46
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified]
+    Visibility: public
+
+**Model:** `u32::from_be_bytes(self.octets) == 0` (lines 757–759), i.e. `0.0.0.0`. -/
+@[rust_fun
+  "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified"]
+def core.net.ip_addr.Ipv4Addr.is_unspecified (self : core.net.ip_addr.Ipv4Addr) :
+    Result Bool :=
+  ok (decide (ExtModel.beNat 256 (ExtModel.ipv4Nats self) = 0))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 779:4-779:43
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback]
+    Visibility: public
+
+**Model:** `self.octets()[0] == 127` (lines 779–781), i.e. `127.0.0.0/8`. The index is in
+bounds (four octets); the default of `getD` is never used. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback"]
+def core.net.ip_addr.Ipv4Addr.is_loopback (self : core.net.ip_addr.Ipv4Addr) : Result Bool :=
+  ok (decide ((ExtModel.ipv4Nats self).getD 0 0 = 127))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 810:4-810:42
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private]
+    Visibility: public
+
+**Model:** the match of lines 810–817: `[10, ..]`, `[172, b, ..]` with `16 ≤ b ≤ 31`, and
+`[192, 168, ..]` are private (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`); everything else
+is not. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private"]
+def core.net.ip_addr.Ipv4Addr.is_private (self : core.net.ip_addr.Ipv4Addr) : Result Bool :=
+  match ExtModel.ipv4Nats self with
+  | 10 :: _ => ok true
+  | 172 :: b :: _ => ok (decide (b ≥ 16 ∧ b ≤ 31))
+  | 192 :: 168 :: _ => ok true
+  | _ => ok false
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 838:4-838:45
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local]
+    Visibility: public
+
+**Model:** `matches!(self.octets(), [169, 254, ..])` (lines 838–840), i.e. `169.254.0.0/16`. -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local"]
+def core.net.ip_addr.Ipv4Addr.is_link_local (self : core.net.ip_addr.Ipv4Addr) :
+    Result Bool :=
+  match ExtModel.ipv4Nats self with
+  | 169 :: 254 :: _ => ok true
+  | _ => ok false
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1039:4-1039:44
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast]
+    Visibility: public
+
+**Model:** `self.octets()[0] >= 224 && self.octets()[0] <= 239` (lines 1039–1041), i.e.
+`224.0.0.0/4`. The default of `getD` is never used (four octets). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast"]
+def core.net.ip_addr.Ipv4Addr.is_multicast (self : core.net.ip_addr.Ipv4Addr) :
+    Result Bool :=
+  ok (decide ((ExtModel.ipv4Nats self).getD 0 0 ≥ 224 ∧
+    (ExtModel.ipv4Nats self).getD 0 0 ≤ 239))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1061:4-1061:44
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast]
+    Visibility: public
+
+**Model:** `u32::from_be_bytes(self.octets()) == u32::from_be_bytes(Self::BROADCAST.octets())`
+(lines 1061–1063), with `BROADCAST = 255.255.255.255` (line 681). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast"]
+def core.net.ip_addr.Ipv4Addr.is_broadcast (self : core.net.ip_addr.Ipv4Addr) :
+    Result Bool :=
+  ok (decide (ExtModel.beNat 256 (ExtModel.ipv4Nats self) =
+    ExtModel.beNat 256 [255, 255, 255, 255]))
+
+/-- [core::net::ip_addr::{impl core::convert::From<u32> for core::net::ip_addr::Ipv4Addr}::from]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1318:4-1318:32
+    Name pattern: [core::net::ip_addr::{core::convert::From<core::net::ip_addr::Ipv4Addr, u32>}::from]
+    Visibility: public
+
+**Model:** the big-endian bytes of `ip` as octets: `Ipv4Addr::from_bits(ip)` (lines 1318–1320),
+which is `Ipv4Addr { octets: bits.to_be_bytes() }` (lines 637–639), so the first octet is
+`ip / 2^24` and the last `ip mod 256` (`ExtModel.byte` takes the value modulo 256). -/
+@[rust_fun
+  "core::net::ip_addr::{core::convert::From<core::net::ip_addr::Ipv4Addr, u32>}::from"]
+def core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from (ip : Std.U32) :
+    Result core.net.ip_addr.Ipv4Addr :=
+  ok { addrOctets := Std.Array.from [ExtModel.byte (ip.val / 2 ^ 24), ExtModel.byte (ip.val / 2 ^ 16),
+                   ExtModel.byte (ip.val / 2 ^ 8), ExtModel.byte ip.val] (by simp) }
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1525:4-1525:44
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments]
+    Visibility: public
+
+**Model:** the eight segments, which the model stores (lines 1525–1540 compute them from the
+sixteen octets as big-endian `u16` values; see `core.net.ip_addr.Ipv6Addr`). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments"]
+def core.net.ip_addr.Ipv6Addr.segments (self : core.net.ip_addr.Ipv6Addr) :
+    Result (Array Std.U16 8#usize) :=
+  ok self.addrSegments
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1588:4-1588:46
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified]
+    Visibility: public
+
+**Model:** `u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED
+.octets())` (lines 1588–1590), with `UNSPECIFIED = ::` (line 1509), i.e. all segments zero. The
+`u128` of the octets is `ExtModel.beNat 65536` of the segments. -/
+@[rust_fun
+  "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified"]
+def core.net.ip_addr.Ipv6Addr.is_unspecified (self : core.net.ip_addr.Ipv6Addr) :
+    Result Bool :=
+  ok (decide (ExtModel.beNat 65536 (ExtModel.ipv6Nats self) =
+    ExtModel.beNat 65536 [0, 0, 0, 0, 0, 0, 0, 0]))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1612:4-1612:43
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback]
+    Visibility: public
+
+**Model:** `u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST
+.octets())` (lines 1612–1614), with `LOCALHOST = ::1` (line 1492). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback"]
+def core.net.ip_addr.Ipv6Addr.is_loopback (self : core.net.ip_addr.Ipv6Addr) : Result Bool :=
+  ok (decide (ExtModel.beNat 65536 (ExtModel.ipv6Nats self) =
+    ExtModel.beNat 65536 [0, 0, 0, 0, 0, 0, 0, 1]))
+
+/-- [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 1972:4-1972:44
+    Name pattern: [core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast]
+    Visibility: public
+
+**Model:** `(self.segments()[0] & 0xff00) == 0xff00` (lines 1972–1974), i.e. `ff00::/8`. The
+default of `getD` is never used (eight segments). -/
+@[rust_fun "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast"]
+def core.net.ip_addr.Ipv6Addr.is_multicast (self : core.net.ip_addr.Ipv6Addr) :
+    Result Bool :=
+  ok (decide ((self.addrSegments.val.getD 0 0#u16 &&& 0xff00#u16) = 0xff00#u16))
+
+/-! ## Public `request_state.rs` API (R09–R15)
+
+External functions reached by the public functions `seal`, `seal_with` (through the private
+`seal_at`), `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with` and
+`new_with_keyring` once their `exclude` entries are removed (translation patch 03). Every model
+is a definition; the two values a model cannot compute are the `opaque` constants
+`ExtModel.randomState` (the hash keys of a new map) and `ExtModel.serdeJsonFromSlice` (the
+outcome of a user `Deserialize` impl), which add no axiom. -/
+
+/-- [core::time::{core::time::Duration}::as_millis]:
+    Source: '/rustc/library/core/src/time.rs', lines 601:4-601:41
+    Name pattern: [core::time::{core::time::Duration}::as_millis]
+    Visibility: public
+
+**Model:** `secs * 1000 + nanos / 1_000_000` as a `u128` (`self.secs as u128 * MILLIS_PER_SEC
+as u128 + (self.nanos.as_inner() / NANOS_PER_MILLI) as u128`, lines 601–604, with
+`NANOS_PER_MILLI = 1_000_000` and `MILLIS_PER_SEC = 1_000`, lines 28 and 30). Exact: the value
+is below `2^64 * 1000 + 1000 < 2^128`, so the `u128` arithmetic neither overflows nor panics and
+`BitVec.ofNat 128` does not wrap. -/
+@[rust_fun "core::time::{core::time::Duration}::as_millis"]
+def core.time.Duration.as_millis (self : core.time.Duration) : Result Std.U128 :=
+  ok ⟨BitVec.ofNat 128 (self.secs.val * 1000 + self.nanos.val / 1000000)⟩
+
+/-- [alloc::str::{impl alloc::borrow::ToOwned<alloc::string::String> for str}::to_owned]:
+    Source: '/rustc/library/alloc/src/str.rs', lines 252:4-252:32
+    Name pattern: [alloc::str::{alloc::borrow::ToOwned<str, alloc::string::String>}::to_owned]
+    Visibility: public
+
+**Model:** the `String` with the same UTF-8 bytes
+(`String::from_utf8_unchecked(self.as_bytes().to_owned())`, lines 252–255). `fail undef` if
+the bytes are not UTF-8, which no Rust `&str` is (the `Str` convention above, as for
+`String::push_str`). A Rust `&str` has at most `isize::MAX` bytes, so the copy never hits the
+capacity-overflow panic (memory convention above). -/
+@[rust_fun "alloc::str::{alloc::borrow::ToOwned<str, alloc::string::String>}::to_owned"]
+def Str.Insts.AllocBorrowToOwnedString.to_owned (self : Str) : Result String :=
+  match ExtModel.strOfBytes? self.val with
+  | some s => ok s
+  | none => fail undef
+
+/-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::contains_key]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1268:4-1271:21
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::contains_key]
+    Visibility: public
+
+**Model:** `true` exactly when some entry's key `key` satisfies `k == key.borrow()`, i.e. when
+`ExtModel.HashMap.find` (the lookup of the `get` model) returns `some`. The Rust function is
+`self.base.contains_key(k)` (lines 1268–1274), i.e. hashbrown 0.17.1 `HashMap::contains_key`
+(`src/map.rs` lines 1382–1392): `false` on an empty table, otherwise
+`self.table.get(hash, equivalent_key(k)).is_some()`, the same hash and `Equivalent` probe as
+`get`. Hashing is not modelled, for the reason given at `std.collections.hash.map.HashMap.get`:
+faithful for `Hash`/`Eq` instances that agree and do not fail. The instances in the translation
+are `K = String` with `Q = str` (`with_rs1_signing`, `with_rs1_fallback`) and with `Q = String`
+(`new_with_keyring`); `String` and `str` equality are byte equality, `Hash for String` hashes the
+bytes as `Hash for str` does (`(**self).hash(hasher)`), and `Borrow<str> for String` returns the
+same bytes, so they agree, and none fails. Unlike `get`, the result does not depend on which of
+several equal keys is found, so it is exact also for a map with duplicate keys. -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::contains_key"]
+def std.collections.hash.map.HashMap.contains_key
+    {K : Type} {V : Type} {S : Type} {A : Type} {Q : Type} {Clause2_Hasher : Type}
+    (_corecmpEqInst : core.cmp.Eq K) (_corehashHashInst : core.hash.Hash K)
+    (_corehashBuildHasherInst : core.hash.BuildHasher S Clause2_Hasher)
+    (coreborrowBorrowInst : core.borrow.Borrow K Q) (_corehashHashInst1 : core.hash.Hash Q)
+    (corecmpEqInst1 : core.cmp.Eq Q)
+    (self : std.collections.hash.map.HashMap K V S A) (k : Q) : Result Bool := do
+  let r ← ExtModel.HashMap.find coreborrowBorrowInst corecmpEqInst1 k self.entries
+  ok r.isSome
+
+/-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::is_empty]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 745:4-745:34
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::is_empty]
+    Visibility: public
+
+**Model:** `true` exactly when the map has no entry (`self.base.is_empty()`, lines 745–747;
+hashbrown 0.17.1 `self.len() == 0`, `src/map.rs` lines 824–826). Exact also for an entry list
+with duplicate keys (emptiness does not depend on duplicates). -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::is_empty"]
+def std.collections.hash.map.HashMap.is_empty {K : Type} {V : Type} {S : Type} {A : Type}
+    (self : std.collections.hash.map.HashMap K V S A) : Result Bool :=
+  ok self.entries.isEmpty
+
+/-- **Hash keys of a new map** (opaque): the `RandomState` that `HashMap::new` stores. Rust
+takes it from a per-thread pair of random keys, read once from the operating system, whose
+first key is incremented on every `RandomState::new` (`std/src/hash/random.rs` lines 55–76), so
+two maps built on the same thread get different keys (maps on different threads get independent
+random keys). One constant cannot model that, and nothing in the value model
+depends on the keys (no model hashes for a lookup; `std.collections.hash.map.HashMap.get`).
+Review rule: no statement has a premise or conclusion about the value of `randomState` or about
+the `hash_builder` of a map built by `HashMap::new`; and no statement states or relies on the
+equality (or inequality) of two maps, or of two codecs containing them, built by distinct
+`HashMap::new` calls (for example two results of `new_with_keyring`): in the model they share
+`randomState`, in Rust their `RandomState` keys differ on the same thread and are independent random keys
+otherwise (`std/src/hash/random.rs` lines 71–75).
+The `hash_builder` is unobservable through the modelled API. -/
+opaque ExtModel.randomState : std.hash.random.RandomState :=
+  { k0 := 0#u64, k1 := 0#u64 }
+
+/-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, std::hash::random::RandomState, alloc::alloc::Global>}::new]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 269:4-269:46
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, std::hash::random::RandomState, alloc::alloc::Global>}::new]
+    Visibility: public
+
+**Model:** the empty map with hash builder `ExtModel.randomState` and the `Global` allocator
+(`Default::default()`, lines 269–271, i.e. `HashMap::with_hasher(RandomState::new())`, lines
+1488–1497; `RandomState::new`, `std/src/hash/random.rs` lines 55–76). Stated exception: the
+keys of the `RandomState` are random in Rust and an unknown constant here (see
+`ExtModel.randomState`). Not modelled: `hashmap_random_keys` panics if the operating system's
+random source fails (`std/src/sys/random/linux.rs` lines 166–172, `getrandom`), an
+environmental assumption like the clock's. -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, std::hash::random::RandomState, alloc::alloc::Global>}::new"]
+def std.collections.hash.map.HashMapKVRandomStateGlobal.new (K : Type) (V : Type) :
+    Result (std.collections.hash.map.HashMap K V std.hash.random.RandomState
+      alloc.alloc.Global) :=
+  ok { hash_builder := ExtModel.randomState, alloc := alloc.alloc.Global.mk, entries := [] }
+
+/-- The first entry of `entries` whose key is equal to `key` as `rustc_entry` compares
+(`stored.eq(&key)` through the `Eq` instance of `K`; its failures propagate). -/
+def ExtModel.HashMap.lookupEntry {K V : Type} (corecmpEqInst : core.cmp.Eq K) (key : K) :
+    List (K × V) → Result (Option (K × V))
+  | [] => ok none
+  | (k, v) :: rest => do
+    let b ← corecmpEqInst.partialEqInst.eq k key
+    if b then ok (some (k, v)) else ExtModel.HashMap.lookupEntry corecmpEqInst key rest
+
+/-- [std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::entry]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 1012:4-1012:57
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::entry]
+    Visibility: public
+
+**Model:** if an entry with a key equal to `key` exists (`ExtModel.HashMap.lookupEntry`), an
+`Occupied` entry with that slot's key and value, and a backward function that returns the map
+unchanged; otherwise a `Vacant` entry for `key` with nothing inserted, and a backward function
+that adds `(key, v)` to the map if the final entry holds an inserted value `v`, and otherwise
+returns the map unchanged. The Rust function is `map_entry(self.base.rustc_entry(key))` (lines
+1012–1014), i.e. hashbrown 0.17.1 `rustc_entry` (`src/rustc_entry.rs` lines 35–54): it hashes
+`key`, probes for a slot whose key satisfies `q.0.eq(&key)`, and returns `Occupied` (the passed
+`key` is dropped) or, after `self.reserve(1)`, `Vacant` with the hash and the key. Hashing is
+not modelled, for the reason given at `std.collections.hash.map.HashMap.get` (faithful for
+`Hash`/`Eq` instances that agree and do not fail; the only instance is `K = String`). The
+backward function of an `Occupied` entry ignores the final entry: no translated function and no
+model changes an occupied entry. Not modelled: the allocation of `reserve(1)` (memory
+convention above; its capacity-overflow panic needs more than `isize::MAX` bytes of
+entries). -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::HashMap<@K, @V, @S, @A>}::entry"]
+def std.collections.hash.map.HashMap.entry
+    {K : Type} {V : Type} {S : Type} {A : Type} {Clause2_Hasher : Type}
+    (corecmpEqInst : core.cmp.Eq K) (_corehashHashInst : core.hash.Hash K)
+    (_corehashBuildHasherInst : core.hash.BuildHasher S Clause2_Hasher)
+    (self : std.collections.hash.map.HashMap K V S A) (key : K) :
+    Result ((std.collections.hash.map.Entry K V A) ×
+      (std.collections.hash.map.Entry K V A → std.collections.hash.map.HashMap K V S A)) := do
+  let found ← ExtModel.HashMap.lookupEntry corecmpEqInst key self.entries
+  match found with
+  | some (k, v) =>
+    ok (std.collections.hash.map.Entry.Occupied { key := k, value := v }, fun _ => self)
+  | none =>
+    ok (std.collections.hash.map.Entry.Vacant { key := key, inserted := none },
+      fun e => match e with
+        | std.collections.hash.map.Entry.Vacant { key := k, inserted := some v } =>
+          { self with entries := self.entries ++ [(k, v)] }
+        | _ => self)
+
+/-- [std::collections::hash::map::{std::collections::hash::map::VacantEntry<'a, K, V, A>}::insert]:
+    Source: '/rustc/library/std/src/collections/hash/map.rs', lines 2975:4-2975:46
+    Name pattern: [std::collections::hash::map::{std::collections::hash::map::VacantEntry<'a, @K, @V, @A>}::insert]
+    Visibility: public
+
+**Model:** returns `value` (the new slot, as the `&'a mut V` that Rust returns), with a
+backward function that records the final value `v` of that reference as the entry's inserted
+value. The Rust function is `self.base.insert(value)` (lines 2975–2977), i.e. hashbrown 0.17.1
+`RustcVacantEntry::insert` (`src/rustc_entry.rs` lines 574–579): `insert_no_grow` of
+`(self.key, value)` at the hash, into capacity that `rustc_entry` reserved, then a reference to
+the value; it does not fail. The map is updated by the backward function of
+`std.collections.hash.map.HashMap.entry`. -/
+@[rust_fun
+  "std::collections::hash::map::{std::collections::hash::map::VacantEntry<'a, @K, @V, @A>}::insert"]
+def std.collections.hash.map.VacantEntry.insert {K : Type} {V : Type} {A : Type}
+    (self : std.collections.hash.map.VacantEntry K V A) (value : V) :
+    Result (V × (V → std.collections.hash.map.VacantEntry K V A)) :=
+  ok (value, fun v => { self with inserted := some v })
+
+/-- **Outcome of `serde_json::from_slice`** (opaque): `serdeJsonFromSlice inst v` is what
+`serde_json::from_slice::<T>(v)` returns for the `Deserialize` instance `inst` of `T`: `Ok` of
+the value it builds or `Err` of a `serde_json` error. Opaque because it depends on the
+`Deserialize` impl of the caller's type `T` (arbitrary code, derived or hand-written) and on the
+whole `serde_json` parser, neither of which is translated (plan Section 4: the crate's
+correctness is out of scope). A statement can only say that the result of `open_json_with` is
+this outcome, for the opened payload, mapped as the Rust code maps it. The model is a function
+of `inst` and the bytes, so it assumes a deterministic `Deserialize` impl without side effects;
+stated exception: an impl that is non-deterministic or has side effects (global or thread-local
+state, a random number generator). Review rule (as for two clock readings): no statement relates
+two calls of `open_json`/`open_json_with` (or of `serde_json::from_slice`), for example by
+equating their results. -/
+noncomputable opaque ExtModel.serdeJsonFromSlice {T : Type} (inst : serde_core.de.Deserialize T)
+    (v : List Std.U8) : core.result.Result T serde_json.error.Error :=
+  core.result.Result.Err (Classical.choice inferInstance)
+
+/-- [serde_json::de::from_slice]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/de.rs', lines 2667:0-2669:27
+    Name pattern: [serde_json::de::from_slice]
+    Visibility: public
+
+**Model:** `ok (serdeJsonFromSlice inst v)`, an opaque outcome (`from_trait(read::SliceRead::new
+(v))`, lines 2667–2672: `T::deserialize` on a slice deserializer, then `Deserializer::end`,
+which rejects trailing non-whitespace). Stated exceptions: the model claims that the call
+returns; a `Deserialize` impl of the caller's type that panics, aborts or does not terminate is
+not modelled (derived impls and `serde_json`'s own code return an `Err` instead of panicking;
+its recursion limit of 128 nested levels turns deep input into `Err`, `de.rs`
+`check_recursion!`); nor is one that is non-deterministic or has side effects (global or
+thread-local state, a random number generator), since the model returns the same outcome for
+the same instance and bytes. Review rule (as for two clock readings): no statement relates two
+calls of `from_slice` (or of `open_json`/`open_json_with`). -/
+@[rust_fun "serde_json::de::from_slice"]
+noncomputable def serde_json.de.from_slice {T : Type} (serde_coredeDeserializeInst : serde_core.de.Deserialize T)
+    (v : Slice Std.U8) : Result (core.result.Result T serde_json.error.Error) :=
+  ok (ExtModel.serdeJsonFromSlice serde_coredeDeserializeInst v.val)
+
+/-- [core::error::Error::source]:
+    Source: '/rustc/library/core/src/error.rs', lines 111:4-111:54
+    Name pattern: [core::error::Error::source]
+    Visibility: public
+
+**Model:** `None`, the body of the default method (lines 111–113). Declared by the Aeneas
+template because the `serde_core` error traits (opaque crate) have `core::error::Error` as a
+supertrait; no generated definition calls it. -/
+@[rust_fun "core::error::Error::source"]
+def core.error.Error.source.default {Self : Type} (_ErrorInst : core.error.Error Self)
+    (_self : Self) : Result (Option (Dyn (fun _dyn => core.error.Error _dyn))) :=
+  ok none
+
+/-- [core::hash::impls::{impl core::hash::Hash for str}::hash]:
+    Source: '/rustc/library/core/src/hash/mod.rs', lines 865:8-865:48
+    Name pattern: [core::hash::impls::{core::hash::Hash<str>}::hash]
+    Visibility: public
+
+**Model:** writes the bytes, then the byte `0xff`, through the hasher instance
+(`state.write_str(self)`, lines 865–867; the default `Hasher::write_str` is `self.write(s.as_bytes());
+self.write_u8(0xff)`, and `DefaultHasher` writes the same bytes, as stated at
+`alloc.string.String.Insts.CoreHashHash.hash`, which is the same function on the `String`'s
+bytes). Defined for every `Str`. No model hashes for a lookup; the instance is required by the
+signatures of `HashMap::contains_key` with `Q = str`. -/
+@[rust_fun "core::hash::impls::{core::hash::Hash<str>}::hash"]
+def Str.Insts.CoreHashHash.hash {H : Type} (HasherInst : core.hash.Hasher H) (self : Str)
+    (state : H) : Result H := do
+  let state ← HasherInst.write state self
+  HasherInst.write state (Std.Slice.from [ExtModel.byte 255] (by scalar_tac))
+
+/-- [alloc::str::{impl core::borrow::Borrow<str> for alloc::string::String}::borrow]:
+    Source: '/rustc/library/alloc/src/str.rs', lines 233:4-233:28
+    Name pattern: [alloc::str::{core::borrow::Borrow<alloc::string::String, str>}::borrow]
+    Visibility: public
+
+**Model:** the UTF-8 bytes of the string (`&self[..]`, lines 233–235: the full-range index of
+`String`, which is `self.as_str()`), defined as the model of `String`'s `Deref<str>`, which
+returns the same bytes: `fail maximumSizeExceeded` only for a Lean `String` longer than
+`Usize.max` bytes, which no Rust `String` is. -/
+@[rust_fun "alloc::str::{core::borrow::Borrow<alloc::string::String, str>}::borrow"]
+def alloc.string.String.Insts.CoreBorrowBorrowStr.borrow (self : String) : Result Str :=
+  alloc.string.String.Insts.CoreOpsDerefDerefStr.deref self
+
+/-- [alloc::string::{impl core::cmp::PartialEq<str> for alloc::string::String}::eq]:
+    Source: '/rustc/library/alloc/src/string.rs', lines 2740:12-2740:46
+    Name pattern: [alloc::string::{core::cmp::PartialEq<alloc::string::String, str>}::eq]
+    Visibility: public
+
+**Model:** byte equality of the string's UTF-8 bytes and `other`
+(`PartialEq::eq(&self[..], &other[..])`, lines 2740–2742, generated by `impl_eq! { String,
+str }`, line 2763: `str` equality of the two byte sequences), for every `Str`. -/
+@[rust_fun "alloc::string::{core::cmp::PartialEq<alloc::string::String, str>}::eq"]
+def alloc.string.String.Insts.CoreCmpPartialEqStr.eq (self : String) (other : Str) :
+    Result Bool :=
+  ok (decide (ExtModel.utf8 self = other.val))
+
+/-- The model of `slice::Iter::any`: given the list of remaining elements, call the closure on each in
+order and stop at the first `true`. Returns the result and the number of elements consumed. -/
+def ExtModel.sliceIterAny {T F : Type} (inst : core.ops.function.FnMut F T Bool) :
+    List T → F → Result (Bool × Nat)
+  | [], _ => ok (false, 0)
+  | x :: rest, f => do
+    let (b, f) ← inst.call_mut f x
+    if b then ok (true, 1)
+    else do
+      let (r, n) ← ExtModel.sliceIterAny inst rest f
+      ok (r, n + 1)
+
+/-- [core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::any]:
+    Source: '/rustc/library/core/src/slice/iter/macros.rs', lines 321:12-324:45
+    Name pattern: [core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::any]
+    Visibility: public
+
+**Model:** calls the closure (through its `FnMut` instance, whose failures propagate) on the
+remaining elements in order, stops at the first `true`, and returns whether one was found and
+the iterator advanced past every element it consumed. The Rust function is the slice override
+of `Iterator::any` (lines 321–332, instantiated for `Iter` by `iterator!`,
+`core/src/slice/iter.rs` lines 140–148): `while let Some(x) = self.next() { if f(x) { return
+true; } } false`. The remaining elements of the Aeneas `Iter` are `slice[i..]`
+(`Aeneas.Std.core.slice.iter.IteratorSliceIter.next`). -/
+@[rust_fun
+  "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>}::any"]
+def core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any {T : Type} {F : Type}
+    (opsfunctionFnMutFTupleSharedATBoolInst : core.ops.function.FnMut F T Bool)
+    (self : core.slice.iter.Iter T) (f : F) : Result (Bool × (core.slice.iter.Iter T)) := do
+  let (b, n) ← ExtModel.sliceIterAny opsfunctionFnMutFTupleSharedATBoolInst
+    (self.slice.val.drop self.i) f
+  ok (b, { self with i := self.i + n })
+
+/-- [core::iter::traits::iterator::Iterator::any]:
+    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 2897:4-2900:37
+    Name pattern: [core::iter::traits::iterator::Iterator::any]
+    Visibility: public
+
+**Model:** calls `next` and the closure alternately until the closure returns `true` (result
+`true`) or `next` returns `None` (result `false`), through the `loop` combinator of the Aeneas
+library, which is `div` if this never happens. The Rust default method is
+`self.try_fold((), check(f)) == ControlFlow::Break(())` (lines 2897–2910), and the default
+`try_fold` is that `next` loop. Stated exception: an iterator that overrides `try_fold` is
+modelled by the loop. Declared by the Aeneas template; no generated definition calls it (the
+translated code calls the slice override above). -/
+@[rust_fun "core::iter::traits::iterator::Iterator::any"]
+def core.iter.traits.iterator.Iterator.any.default {Self : Type} {F : Type} {Clause0_Item : Type}
+    (IteratorInst : core.iter.traits.iterator.Iterator Self Clause0_Item)
+    (opsfunctionFnMutFTupleClause0_ItemBoolInst :
+      core.ops.function.FnMut F Clause0_Item Bool)
+    (self : Self) (f : F) : Result (Bool × Self) :=
+  loop (fun (st : Self × F) => do
+      let (o, it) ← IteratorInst.next st.1
+      match o with
+      | none => ok (ControlFlow.done (false, it))
+      | some x => do
+        let (b, f) ← opsfunctionFnMutFTupleClause0_ItemBoolInst.call_mut st.2 x
+        if b then ok (ControlFlow.done (true, it)) else ok (ControlFlow.cont (it, f)))
+    (self, f)

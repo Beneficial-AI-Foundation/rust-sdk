@@ -8,7 +8,7 @@ spec: REVIEWED                # signed off by the spec owner 2026-11-23 (lead de
 linkage: patch-01  # patch 01 (formal/trusted/patches/01-request-state-wire.patch), D2 fallback 2026-11-23
 proof: CHECKED
 proof_file: formal/proofs/Proofs/Model/RequestStateWire/ComponentCount.lean
-spec_file: formal/specs/Specs/Model/RequestStateWire.lean
+spec_file: formal/proofs/Proofs/Internal/Model/RequestStateWire.lean
 theorem: rmcp.model.request_state_wire.component_count_spec
 used_by: []  # targets whose proofs consume this theorem; none in §2.2 "Built on"; §8 batch 2 lists W06 as needed by W07–W11
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file

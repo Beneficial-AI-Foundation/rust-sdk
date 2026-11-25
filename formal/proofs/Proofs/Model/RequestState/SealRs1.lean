@@ -3,16 +3,19 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.External.Base64
-import Proofs.External.String
-import Proofs.External.Prim
-import Proofs.External.Std
-import Proofs.Model.RequestStateWire.TranscriptV1
-import Proofs.Model.RequestState.B64Len
-import Proofs.Model.RequestState.Common
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.External.Base64
+public import Proofs.External.String
+public import Proofs.External.Prim
+public import Proofs.External.Std
+public import Proofs.Model.RequestStateWire.TranscriptV1
+public import Proofs.Model.RequestState.B64Len
+public import Proofs.Model.RequestState.Common
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::seal_rs1` (E07)
@@ -71,11 +74,12 @@ theorem seal_rs1_spec (key : Slice Std.U8) (associated_data : Slice Std.U8)
   rw [val_VERSION_V1] at hi
   step as ⟨i1, hi1⟩
   step as ⟨i3, hi3⟩
-  have hi3' : i3.val = b64Len body.val.length := by simpa using hi3
-  have hv' : v.deref.val = transcriptV1 associated_data.val body.val := hv
+  have hi3' : i3.val = b64Len body.val.length := by simpa only [Usize.ofNatCore_val_eq] using hi3
+  have hv' : v.deref.val = transcriptV1 associated_data.val body.val := by
+    rw [alloc.vec.Vec.deref, Slice.from_val]; exact hv
   step as ⟨i4, hi4⟩
-  simp only [lift, bind_tc_ok]
-  have hts : (tag.to_slice).val = tag.val := rfl
+  simp only [lift]
+  have hts : (tag.to_slice).val = tag.val := Array.val_to_slice tag
   have htl : tag.val.length = 32 := tag.property
   step as ⟨i6, hi6⟩
   have hi6' : i6.val = 44 := by
@@ -83,7 +87,8 @@ theorem seal_rs1_spec (key : Slice Std.U8) (associated_data : Slice Std.U8)
   step as ⟨i7, hi7⟩
   step as ⟨out, hout⟩
   step with alloc.string.String.push_str_spec out model.request_state.VERSION_V1 "rs1"
-    (by rw [val_VERSION_V1, utf8_rs1]) (by rw [hout, val_VERSION_V1]; simp; omega)
+    (by rw [val_VERSION_V1, utf8_rs1])
+    (by rw [hout, val_VERSION_V1]; simp only [String.utf8ByteSize_empty, zero_add]; omega)
     as ⟨out1, hout1, hout1'⟩
   have hl1 : out1.utf8ByteSize = 3 := by
     rw [← length_utf8, hout1', hout, val_VERSION_V1, utf8_empty]; rfl
@@ -99,10 +104,11 @@ theorem seal_rs1_spec (key : Slice Std.U8) (associated_data : Slice Std.U8)
   step as ⟨out4, hout4, hout4'⟩
   · rw [hl3]; have : '.'.utf8Size = 1 := rfl; omega
   have hl4 : out4.utf8ByteSize = 5 + (b64 body.val).length := by
-    rw [← length_utf8, hout4', List.length_append, length_utf8, hl3, hdot]; simp; omega
+    rw [← length_utf8, hout4', List.length_append, length_utf8, hl3, hdot]
+    simp only [List.length_cons, List.length_nil, zero_add]; omega
   step as ⟨out5, hout5⟩
   rw [hout5, hout4', hout3, hout2', hout1', hout, val_VERSION_V1, utf8_empty, hdot, hts,
     htag, hv']
-  simp
+  simp only [List.nil_append, List.append_assoc, List.cons_append]
 
 end rmcp.model.request_state.RequestStateCodec

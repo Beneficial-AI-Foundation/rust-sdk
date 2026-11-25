@@ -3,9 +3,12 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.FunsExternal
-import Proofs.External.Base64
-import Proofs.External.String
+module
+public import Rmcp.FunsExternal
+public import Proofs.External.Base64
+public import Proofs.External.String
+
+@[expose] public section
 
 /-!
 # Specs of the `prim` externals (HMAC-SHA256, Base64url)
@@ -31,7 +34,7 @@ Always succeeds (any key length) with the HMAC-SHA256 tag `hmacSha256 key msg`. 
 theorem hmac_sha256_spec (key : Slice U8) (msg : Slice U8) :
     hmac_sha256 key msg ⦃ (result : Std.Array U8 32#usize) =>
       result = hmacSha256 key.val msg.val ⦄ := by
-  simp [hmac_sha256]
+  simp only [hmac_sha256, WP.spec_ok]
 
 /-- **Spec theorem for `rmcp::model::request_state_wire::prim::hmac_sha256_verify`**
 
@@ -41,11 +44,11 @@ of `msg` under `key`. -/
 theorem hmac_sha256_verify_spec (key : Slice U8) (msg : Slice U8) (tag : Slice U8) :
     hmac_sha256_verify key msg tag ⦃ (result : Bool) =>
       result = decide (tag.val = (hmacSha256 key.val msg.val).val) ⦄ := by
-  simp [hmac_sha256_verify]
+  simp only [hmac_sha256_verify, WP.spec_ok]
 
 /-- A tag whose length is not 32 is rejected (in particular a truncated tag). -/
-theorem hmac_sha256_verify_wrong_length (key : Slice U8) (msg : Slice U8) (tag : Slice U8)
-    (h : tag.length ≠ 32) : hmac_sha256_verify key msg tag = ok false := by
+theorem hmac_sha256_verify_eq_ok_false_of_length_ne (key : Slice U8) (msg : Slice U8)
+    (tag : Slice U8) (h : tag.length ≠ 32) : hmac_sha256_verify key msg tag = ok false := by
   simp only [hmac_sha256_verify, ok.injEq, decide_eq_false_iff_not]
   intro heq
   apply h
@@ -56,7 +59,7 @@ theorem hmac_sha256_verify_wrong_length (key : Slice U8) (msg : Slice U8) (tag :
 theorem hmac_sha256_verify_hmac_sha256 (key : Slice U8) (msg : Slice U8) (tag : Slice U8)
     (h : tag.val = (hmacSha256 key.val msg.val).val) :
     hmac_sha256_verify key msg tag = ok true := by
-  simp [hmac_sha256_verify, h]
+  simp only [hmac_sha256_verify, h, decide_true]
 
 /-- **Spec theorem for `rmcp::model::request_state_wire::prim::b64_encode_into`**
 
@@ -70,23 +73,23 @@ theorem b64_encode_into_spec (input : Slice U8) (out : String)
     b64_encode_into input out ⦃ (result : String) =>
       utf8 result = utf8 out ++ b64 input.val ⦄ := by
   have hb : utf8 (String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))) =
-      b64 input.val := utf8_ofList_ascii _ (b64_ascii _)
+      b64 input.val := utf8_ofList_ascii _ (val_lt_128_of_mem_b64 _)
   have hlen : (out ++ String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))
       ).utf8ByteSize ≤ maxStringBytes := by
     rw [← length_utf8, utf8_append, hb, List.length_append, length_utf8, length_b64]; exact h
-  simp only [b64_encode_into, growString, if_pos hlen, WP.spec_ok, utf8_append, hb]
+  simp only [b64_encode_into, growString, ite_eq_left hlen, WP.spec_ok, utf8_append, hb]
 
 /-- Beyond the `String` limit, `b64_encode_into` panics. -/
 theorem b64_encode_into_fail (input : Slice U8) (out : String)
     (h : maxStringBytes < out.utf8ByteSize + (4 * input.length + 2) / 3) :
     b64_encode_into input out = fail Error.panic := by
   have hb : utf8 (String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))) =
-      b64 input.val := utf8_ofList_ascii _ (b64_ascii _)
+      b64 input.val := utf8_ofList_ascii _ (val_lt_128_of_mem_b64 _)
   have hlen : ¬ (out ++ String.ofList ((b64 input.val).map (fun b => Char.ofNat b.val))
       ).utf8ByteSize ≤ maxStringBytes := by
     rw [← length_utf8, utf8_append, hb, List.length_append, length_utf8, length_b64]
     simp only [Slice.length] at h; omega
-  simp only [b64_encode_into, growString, if_neg hlen]
+  simp only [b64_encode_into, growString, ite_eq_right hlen]
 
 /-- **Spec theorem for `rmcp::model::request_state_wire::prim::b64_decode`**
 
@@ -97,6 +100,7 @@ theorem b64_decode_spec (input : Slice U8) :
     b64_decode input ⦃ (result : Option (alloc.vec.Vec U8)) =>
       result.map (fun v => v.val) = b64Decode input.val ⦄ := by
   unfold b64_decode
-  split <;> simp_all
+  split <;> simp_all only [Option.map_eq_none_iff, WP.spec_ok, Option.map_some,
+              alloc.vec.Vec.from_val]
 
 end model.request_state_wire.prim

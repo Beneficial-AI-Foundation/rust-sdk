@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
+module
+public import Rmcp.Funs
+public import Defs.Wire
+
+@[expose] public section
 
 /-!
 # Spec theorem for `key_length_ok` (W02)
@@ -30,6 +33,8 @@ theorem key_length_ok_spec (len : Usize) :
     key_length_ok len ⦃ (result : Bool) =>
       result = decide (minKeyLength ≤ len.val) ⦄ := by
   unfold key_length_ok
-  simp [MIN_KEY_LENGTH, minKeyLength]
+  simp only [MIN_KEY_LENGTH, ge_iff_le, UScalar.le_equiv, UScalar.ofNatCore_val_eq, minKeyLength,
+    WP.spec_ok]
+  rfl
 
 end rmcp.model.request_state_wire

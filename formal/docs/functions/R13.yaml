@@ -1,0 +1,29 @@
+id: R13
+rust_symbol: rmcp::model::request_state::RequestStateCodec::open_json
+source_file: crates/rmcp/src/model/request_state.rs  # in the patched copy (patches 01-03 on 7caec76); line numbers refer to it (patch 02 adds test lines at the end only)
+source_line: 509  # in the patched copy; upstream 7caec76: 519
+generated_symbol: rmcp.model.request_state.RequestStateCodec.open_json
+translation: LEAN_OK  # translates since translation patch 03 v2 (2026-11-24, signed off)
+spec: REVIEWED  # signed off by the spec owner 2026-11-25 after 4 review rounds (public request_state.rs API, R09-R15)
+linkage: patch-03  # translated from the copy with patches 01-03; not covered by scripts/check-original-linkage.sh
+proof: CHECKED  # proved 2026-11-25; lake build --wfail and the four guards pass; incorporation reviewed by an independent mcp-review agent (no blocking finding)
+proof_file: formal/proofs/Proofs/Model/RequestState/OpenJson.lean
+spec_file: formal/specs/Specs/Model/RequestState.lean
+theorem: rmcp.model.request_state.RequestStateCodec.open_json_spec  # restated as Theorems.request_state.RequestStateCodec.open_json (under the clock rule)
+used_by: []
+axioms: [propext, Classical.choice, Quot.sound]  # intended `#print axioms` (scratch proof of the signed-off statement); to be confirmed by the #guard_msgs check in the spec file
+evidence: [formal/docs/STATUS.md]
+spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # mcp-spec drafter; draft outside the repository (spec cycle R09-R15, 2026-11-25)
+spec_reviews:
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: "no counterexample; 1 judgment blocking acceptance (sR-a-1, clock rule text), non-blocking findings fixed", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: "no blocking findings; judgment findings fixed or decided by the lead", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: a, verdict: "no blocking findings; R10b and boundary tests added (human decision)", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: b, verdict: "no blocking findings; judgment findings fixed", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: a, verdict: "no blocking findings; non-blocking findings fixed", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: b, verdict: "no blocking findings; judgment finding (message texts placement) fixed", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 4, reviewer: a, verdict: "approve; no blocking or judgment findings (2 cosmetic, fixed)", evidence: formal/docs/STATUS.md}
+spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-25
+prover: "AI: Claude Code, claude-opus-5-5"  # mcp-lean agents; not the drafter
+reviewer: null
+behaviour: |-  # informational, not a specification
+  opening with no associated data at the clock reading (`openAt … ExtModel.nowMs.val`): its error unchanged, otherwise the opaque serde_json::from_slice outcome of the payload with Err mapped to Deserialization

@@ -102,7 +102,7 @@ this project that the roots reach). It exits with 1 if
    `#print axioms` collects; an axiom in `all` that none of them names is reported as reached
    only through the wider edges of the walk, and both counts are printed;
 4. the kernel rejects a project constant when all of them are replayed
-   (`Lean.Environment.replay`, as `leanchecker` does) into a base environment imported from
+   (`Lean.Kernel.Environment.replay`, as `leanchecker` does) into a base environment imported from
    the non-project modules that project modules import. This catches declarations added
    without a kernel check (`debug.skipKernelTC`, `addDecl` from a metaprogram) and `.olean`
    files altered after elaboration. The base environment must not contain a project module
@@ -474,7 +474,7 @@ def main (args : List String) : IO UInt32 := do
       return 1
   let skipped : Nat := newConsts.fold (init := 0) fun n _ ci =>
     if ci.isUnsafe || ci.isPartial then n + 1 else n
-  if let .error e ← (base.replay newConsts).toBaseIO then
+  if let .error e ← (Lean.Kernel.Environment.replay newConsts base.toKernelEnv).toBaseIO then
     IO.eprintln s!"[axiom-audit] kernel replay: {e}"
     IO.eprintln "[axiom-audit] error: the kernel rejects a project constant on replay"
     return 1

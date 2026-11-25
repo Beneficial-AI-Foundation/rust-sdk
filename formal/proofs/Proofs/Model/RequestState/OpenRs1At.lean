@@ -3,18 +3,22 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Defs.CodecState
-import Proofs.External.Base64
-import Proofs.External.String
-import Proofs.External.Std
-import Proofs.External.Prim
-import Proofs.Model.RequestStateWire.Common
-import Proofs.Model.RequestStateWire.ParseRs1
-import Proofs.Model.RequestStateWire.TranscriptV1
-import Proofs.Model.RequestState.OpenAuthenticatedBody
-import Proofs.Model.RequestState.Rs1FallbacksVerify
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Defs.CodecState
+public import Proofs.External.Base64
+public import Proofs.External.String
+public import Proofs.External.Std
+public import Proofs.External.Prim
+public import Proofs.Model.RequestStateWire.Common
+public import Proofs.Model.RequestStateWire.ParseRs1
+public import Proofs.Model.RequestStateWire.TranscriptV1
+public import Proofs.Model.RequestState.OpenAuthenticatedBody
+public import Proofs.Model.RequestState.Rs1FallbacksVerify
+public import Proofs.Model.RequestState.Common
+
+@[expose] public section
 
 /-!
 # Spec theorem for `RequestStateCodec::open_rs1_at` (E09)
@@ -77,10 +81,11 @@ whereas the `u64` bit-length counter of SHA-256 overflows, a panic under `overfl
 transcript of at least `2^61 − 64` bytes or a key (the single key, or a key tried by E09a) of at
 least `2^61` bytes. For such inputs the statement promises a result where the Rust code panics.
 
-Assumptions: through E09a (lines 628–635) the statement reaches the locked native-code assumption
+Assumptions: no native-code assumption since the Aeneas upgrade of 2026-11-24 (its `toStr`
+checks the length of a literal in the kernel). Until then, through E09a (lines 628–635), the
+statement reached the locked native-code assumption
 `rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body._native.decide.ax_3`
-(`toStr "validated rs1 fallback key"`, the `expect` message of line 652;
-`formal/trusted/native-axioms.lock`), so its `#print axioms` list will include it. -/
+(`toStr "validated rs1 fallback key"`, the `expect` message of line 652). -/
 @[step]
 theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
     (associated_data : Slice Std.U8) (now_ms : Std.I64)
@@ -95,9 +100,10 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
       resultBytes result = openRs1 self (sealed : Slice Std.U8).val associated_data.val
         now_ms.val ⦄ := by
   unfold open_rs1_at
-  simp only [core.str.Str.as_bytes, bind_tc_ok]
-  apply WP.spec_bind (rmcp.model.request_state_wire.parse_rs1_spec _ h_count)
+  step as ⟨sb, hsb⟩
+  apply WP.spec_bind (rmcp.model.request_state_wire.parse_rs1_spec _ (hsb ▸ h_count))
   intro o ho
+  rw [hsb] at ho
   cases o with
   | none =>
     rw [WP.spec_ok]
@@ -105,12 +111,12 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
     split
     · rename_i v b t hc
       have : v ≠ Defs.Wire.versionV1 := fun hv => ho b t (hv ▸ hc)
-      simp [resultBytes, this]
-    · simp [resultBytes]
+      simp only [resultBytes, ne_eq, this, not_false_eq_true, ↓reduceIte]
+    · simp only [resultBytes]
   | some rp =>
     simp only at ho
     have hrs : openRs1 self (sealed : Slice Std.U8).val associated_data.val now_ms.val =
-        (if Defs.CodecState.NoRs1Fallback self then .error .UnknownKeyId else
+        (if Defs.CodecState.noRs1Fallback self then .error .UnknownKeyId else
           match ExtModel.b64Decode rp.body.val, ExtModel.b64Decode rp.tag.val with
           | none, _ => .error .InvalidEncoding
           | some _, none => .error .InvalidEncoding
@@ -118,35 +124,39 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
             if Defs.CodecState.Rs1Accepts self (transcriptV1 associated_data.val body) tag
             then Defs.CodecState.openBody body now_ms.val
             else .error .IntegrityCheckFailed) := by
-      unfold openRs1; rw [ho]; simp only [ne_eq, not_true_eq_false, if_false]; rfl
+      unfold openRs1; rw [ho]; simp only [ne_eq, not_true_eq_false, ite_false]; rfl
     rw [hrs]
     rcases self with ⟨keys⟩
     cases keys with
     | Single key =>
-      simp only [Defs.CodecState.NoRs1Fallback, Bool.false_eq_true, if_false]
+      simp only [Defs.CodecState.noRs1Fallback, Bool.false_eq_true, ite_false]
       apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.body)
       intro o1 ho1
       cases o1 with
       | none =>
         simp only [Option.map_none] at ho1
-        simp [core.option.Option.ok_or, core.result.Result.Insts.CoreOpsTry.branch,
-          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-          ← ho1, resultBytes]
+        simp only [core.option.Option.ok_or_eq, core.result.Result.Insts.CoreOpsTry.branch,
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual,
+          core.convert.FromSame.from, bind_ok, bind_tc_ok, resultBytes, ← ho1, WP.spec_ok]
       | some body =>
         simp only [Option.map_some] at ho1
-        simp only [core.option.Option.ok_or, core.result.Result.Insts.CoreOpsTry.branch,
-          bind_tc_ok]
+        simp only [core.option.Option.ok_or_eq, core.result.Result.Insts.CoreOpsTry.branch,
+          bind_ok]
         apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.tag)
         intro o2 ho2
         cases o2 with
         | none =>
           simp only [Option.map_none] at ho2
-          simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-            ← ho1, ← ho2, resultBytes]
+          simp only [
+            core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual,
+            core.convert.FromSame.from, bind_ok, bind_tc_ok, resultBytes, ← ho1, ← ho2,
+            WP.spec_ok]
         | some tag =>
           simp only [Option.map_some] at ho2
-          simp only [bind_tc_ok]
-          have hl := h_len rp.body.val rp.tag.val body.val ho ho1.symm
+          simp only [bind_ok]
+          have hl : (transcriptV1 associated_data.val body.deref.val).length ≤ Usize.max := by
+            rw [alloc.vec.Vec.deref, Slice.from_val]
+            exact h_len rp.body.val rp.tag.val body.val ho ho1.symm
           apply WP.spec_bind (rmcp.model.request_state_wire.transcript_v1_spec _ _ hl)
           intro tr htr
           step as ⟨kv, hkv⟩
@@ -154,93 +164,77 @@ theorem open_rs1_at_spec (self : RequestStateCodec) (sealed : Str)
           apply WP.spec_bind (model.request_state_wire.prim.hmac_sha256_verify_spec _ _ _)
           intro ver hver
           rw [← ho1, ← ho2]
-          simp only [alloc.vec.Vec.deref, htr] at hver
+          simp only [alloc.vec.Vec.deref, Slice.from_val, htr] at hver
           by_cases hacc : Defs.CodecState.Rs1Accepts ⟨.Single key⟩
             (transcriptV1 associated_data.val body.val) tag.val
           · have hv : ver = true := by
               simp only [Defs.CodecState.Rs1Accepts, Defs.CodecState.TagVerifies] at hacc
-              simp [hver, hacc]
-            simp only [hv, if_true, if_pos hacc]
-            apply WP.spec_mono
-              (rmcp.model.request_state.RequestStateCodec.open_authenticated_body_spec body now_ms)
-            intro r hr
-            unfold Defs.CodecState.openBody
-            cases r with
-            | Ok p =>
-              obtain ⟨h1, h2, h3⟩ := hr
-              simp [resultBytes, Defs.Wire.expiryLen] at *
-              simp [show ¬ body.val.length < 8 by omega, h2, h3]
-            | Err e =>
-              rcases hr with ⟨h1, he⟩ | ⟨h1, h2, he⟩
-              · simp [resultBytes, he, Defs.Wire.expiryLen] at *; simp [h1]
-              · simp [resultBytes, he, Defs.Wire.expiryLen] at *
-                simp [show ¬ body.val.length < 8 by omega, h2]
+              simp only [hver, hacc, decide_true]
+            simp only [hv, ite_true, ite_eq_left hacc]
+            exact open_authenticated_body_openBody body now_ms
           · have hv : ver = false := by
               simp only [Defs.CodecState.Rs1Accepts, Defs.CodecState.TagVerifies] at hacc
-              simp [hver, hacc]
-            simp [hv, if_neg hacc, resultBytes]
+              simp only [hver, hacc, decide_false]
+            simp only [hv, Bool.false_eq_true, ↓reduceIte, resultBytes, ite_eq_right hacc,
+              WP.spec_ok]
     | Ring keys mode fbs =>
-      apply WP.spec_bind (alloc.vec.Vec.is_empty_spec _ fbs)
+      apply WP.spec_bind (alloc.vec.Vec.is_empty_spec fbs)
       intro b hb
+      subst hb
       by_cases hemp : fbs.val = []
-      · have hnf : Defs.CodecState.NoRs1Fallback ⟨.Ring keys mode fbs⟩ = true := by
-          simp [Defs.CodecState.NoRs1Fallback, hemp]
-        simp [hb, hemp, hnf, resultBytes]
-      have hnf : Defs.CodecState.NoRs1Fallback ⟨.Ring keys mode fbs⟩ = false := by
-        simp [Defs.CodecState.NoRs1Fallback, hemp]
-      simp only [hb, hemp, decide_false, Bool.false_eq_true, if_false, hnf]
+      · have hnf : Defs.CodecState.noRs1Fallback ⟨.Ring keys mode fbs⟩ = true := by
+          simp only [Defs.CodecState.noRs1Fallback, hemp, List.isEmpty_nil]
+        simp only [hemp, decide_true, ↓reduceIte, resultBytes, hnf, WP.spec_ok]
+      have hnf : Defs.CodecState.noRs1Fallback ⟨.Ring keys mode fbs⟩ = false := by
+        simp only [Defs.CodecState.noRs1Fallback, List.isEmpty_eq_false_iff, ne_eq, hemp,
+          not_false_eq_true]
+      simp only [hemp, decide_false, Bool.false_eq_true, ite_false, hnf]
       apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.body)
       intro o1 ho1
       cases o1 with
       | none =>
         simp only [Option.map_none] at ho1
-        simp [core.option.Option.ok_or, core.result.Result.Insts.CoreOpsTry.branch,
-          core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-          ← ho1, resultBytes]
+        simp only [core.option.Option.ok_or_eq, core.result.Result.Insts.CoreOpsTry.branch,
+          core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual,
+          core.convert.FromSame.from, bind_ok, bind_tc_ok, resultBytes, ← ho1, WP.spec_ok]
       | some body =>
         simp only [Option.map_some] at ho1
-        simp only [core.option.Option.ok_or, core.result.Result.Insts.CoreOpsTry.branch,
-          bind_tc_ok]
+        simp only [core.option.Option.ok_or_eq, core.result.Result.Insts.CoreOpsTry.branch,
+          bind_ok]
         apply WP.spec_bind (model.request_state_wire.prim.b64_decode_spec rp.tag)
         intro o2 ho2
         cases o2 with
         | none =>
           simp only [Option.map_none] at ho2
-          simp [core.result.Result.Insts.CoreOpsTryTraitFromResidualResultInfallible.from_residual,
-            ← ho1, ← ho2, resultBytes]
+          simp only [
+            core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual,
+            core.convert.FromSame.from, bind_ok, bind_tc_ok, resultBytes, ← ho1, ← ho2,
+            WP.spec_ok]
         | some tag =>
           simp only [Option.map_some] at ho2
-          simp only [bind_tc_ok]
-          have hl := h_len rp.body.val rp.tag.val body.val ho ho1.symm
+          simp only [bind_ok]
+          have hl : (transcriptV1 associated_data.val body.deref.val).length ≤ Usize.max := by
+            rw [alloc.vec.Vec.deref, Slice.from_val]
+            exact h_len rp.body.val rp.tag.val body.val ho ho1.symm
           apply WP.spec_bind (rmcp.model.request_state_wire.transcript_v1_spec _ _ hl)
           intro tr htr
-          apply WP.spec_bind (rs1_fallbacks_verify_spec keys _ _ _ h_fallbacks)
+          have hfk : Defs.CodecState.FallbacksKnown keys fbs.deref.val := by
+            rw [alloc.vec.Vec.deref, Slice.from_val]; exact h_fallbacks
+          apply WP.spec_bind (rs1_fallbacks_verify_spec keys _ _ _ hfk)
           intro ver hver
           rw [← ho1, ← ho2]
-          simp only [alloc.vec.Vec.deref, htr] at hver
+          simp only [alloc.vec.Vec.deref, Slice.from_val, htr] at hver
           by_cases hacc : Defs.CodecState.Rs1Accepts ⟨.Ring keys mode fbs⟩
             (transcriptV1 associated_data.val body.val) tag.val
           · have hv : ver = true := by
               simp only [Defs.CodecState.Rs1Accepts] at hacc
-              simp [hver, hacc]
-            simp only [hv, if_true, if_pos hacc]
-            apply WP.spec_mono
-              (rmcp.model.request_state.RequestStateCodec.open_authenticated_body_spec body now_ms)
-            intro r hr
-            unfold Defs.CodecState.openBody
-            cases r with
-            | Ok p =>
-              obtain ⟨h1, h2, h3⟩ := hr
-              simp [resultBytes, Defs.Wire.expiryLen] at *
-              simp [show ¬ body.val.length < 8 by omega, h2, h3]
-            | Err e =>
-              rcases hr with ⟨h1, he⟩ | ⟨h1, h2, he⟩
-              · simp [resultBytes, he, Defs.Wire.expiryLen] at *; simp [h1]
-              · simp [resultBytes, he, Defs.Wire.expiryLen] at *
-                simp [show ¬ body.val.length < 8 by omega, h2]
+              simp only [hver, hacc, decide_true]
+            simp only [hv, ite_true, ite_eq_left hacc]
+            exact open_authenticated_body_openBody body now_ms
           · have hv : ver = false := by
               simp only [Defs.CodecState.Rs1Accepts] at hacc
-              simp [hver, hacc]
-            simp [hv, if_neg hacc, resultBytes]
+              simp only [hver, hacc, decide_false]
+            simp only [hv, Bool.false_eq_true, ↓reduceIte, resultBytes, ite_eq_right hacc,
+              WP.spec_ok]
 
 end rmcp.model.request_state.RequestStateCodec

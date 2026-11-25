@@ -3,9 +3,12 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.Common
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.Common
+
+@[expose] public section
 
 /-!
 # Spec theorem for `component_count` (W06)
@@ -53,16 +56,17 @@ theorem component_count_spec (s : Slice U8)
     · have hlt : i.val < s.val.length := by scalar_tac
       have hc := count_take_add_one s.val i.val hlt
       have hle := (List.take_sublist (i.val + 1) s.val).count_le dot
-      split
-      · have hd : s.val[i.val] = dot := by rw [← i2_post]; simp_all [dot]
-        rw [if_pos hd] at hc
+      split <;> rename_i hb
+      · have hd : s.val[i.val] = dot := by rw [← i2_post]; exact hb
+        rw [ite_eq_left hd] at hc
         step*
-      · have hd : ¬ s.val[i.val] = dot := by rw [← i2_post]; simp_all [dot]
-        rw [if_neg hd] at hc
+      · have hd : ¬ s.val[i.val] = dot := by rw [← i2_post]; exact hb
+        rw [ite_eq_right hd] at hc
         step*
     · have hia : i.val = s.val.length := by scalar_tac
       rw [hn, hia, List.take_length]
       exact ⟨rfl, rfl⟩
-  · simp
+  · simp only [UScalar.ofNatCore_val_eq, Slice.length, zero_le, List.take_zero, List.count_nil,
+      zero_add, and_self]
 
 end rmcp.model.request_state_wire

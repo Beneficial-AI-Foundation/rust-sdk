@@ -1,0 +1,18 @@
+# Pinned exceptions to the metaprogramming-word rule of scripts/lean_guard.py `sources` for
+# generated files (human decision 2026-11-23, plan step S21). Read by review: this is part of the
+# trusted base. Entries:
+#   file <path under formal/> sha256 <hex>
+#   line <line number> <META word> <exact text of that line>
+# A META word in a generated file is excused only at a pinned line number, only if it is the
+# pinned word, the line has exactly the pinned text, and the file's bytes have the pinned sha256.
+# Any hand edit (which changes the hash) gets the strict rule; stale or unused entries are errors.
+# The guard cannot see lexical context: a pinned line is safe only where Lean reads its word
+# inside a string literal. So when the translation changes legitimately, regenerate it with
+# scripts/aeneas-translate.sh (aeneas-translation.yml must reproduce it byte for byte), read each
+# pinned line in context in the new file (no open string or comment before it), and update the
+# hash, line numbers and texts here in the same reviewed PR.
+#
+# T06 `transport.async_rw.is_standard_method` compares the method with the MCP method name
+# "initialize", a Lean command keyword.
+file translation/Rmcp/Funs.lean sha256 44e37d225001ceea4d807604c4d19a158c81afd1ed2bd009941616a01bc0b27e
+line 2563 initialize   let b ← Str.Insts.CoreCmpPartialEqStr.eq method (toStr "initialize")

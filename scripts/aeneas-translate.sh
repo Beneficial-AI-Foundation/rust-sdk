@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Translate the request-state targets of rmcp to Lean with the pinned Charon and
-# Aeneas (plan Section 9, "Charon settings"), into formal/translation/.
+# Translate the verification targets of rmcp (Phase 1 request-state, Phase 2 protocol,
+# transport and SSRF foundations) to Lean with the pinned Charon and Aeneas (plan Section 9,
+# "Charon settings", and Section 15), into formal/translation/.
 #
 # What is translated is set in [package.metadata.charon] of crates/rmcp/Cargo.toml,
 # which the pinned Charon reads itself; this script fixes only the configuration.
@@ -23,7 +24,8 @@
 #     them, contains or lies inside the source (except <source>/.llbc), or exists, is not
 #     empty and has no marker file .rmcp-llbc-dir from an earlier run (the repository's own
 #     .llbc excepted); see scripts/llbc-dir-guard.sh,
-#   - a dependency version different from the pinned list below (Cargo.lock is
+#   - a pinned crate (PINNED_DEPS) whose version on rmcp's own edges, in the translated
+#     configuration, differs from its pin (since S21; see the check below) (Cargo.lock is
 #     git-ignored and never copied into .llbc/work/, so the dependencies are resolved
 #     afresh on every run and this is what catches drift; plan Section 4), or any
 #     dependency of rmcp in the translated configuration that does not come from the
@@ -31,11 +33,17 @@
 #   - a nonzero Charon exit, or an LLBC file flagged with errors,
 #   - [package.metadata.charon] with a key other than start_from, hide_marker_traits,
 #     exclude, opaque, or with an empty or missing start_from/exclude/opaque list,
-#   - Charon options recorded in the LLBC that differ from those lists, or that widen the
-#     translation (rustc_args, include, start_from_if_exists, start_from_attribute,
-#     extract_opaque_bodies, start_from_pub), or a target other than TARGET_TRIPLE,
+#   - an LLBC whose preset is not Aeneas, without overflow checks, or for a target other than
+#     TARGET_TRIPLE (Charon >= 0.1.324 no longer records its options in the LLBC; the lists of
+#     [package.metadata.charon] are checked on the translation instead, below),
+#   - a translated item (translation.json) that matches an exclude pattern, a function, type or
+#     global that matches an opaque pattern but has a body, a local (rmcp) item without a body
+#     that matches no opaque pattern, or a start_from pattern that matches no translated item
+#     (widening options cannot be set: the metadata keys are restricted as above, the command
+#     line is fixed here and CHARON_* variables are refused),
 #   - a nonzero Aeneas exit,
-#   - a target missing from Funs.lean, or any `sorry` in the generated files.
+#   - a target missing from Funs.lean, a Phase 2 `_` glob matching other than exactly one
+#     definition, or any `sorry` in the generated files.
 # formal/translation/ is replaced only when every check passes.
 #
 # Usage:
@@ -64,6 +72,8 @@
 #
 # Environment (default to the repository; used for scratch runs):
 #   RMCP_SOURCE_ROOT        workspace to translate (passed to apply-patches.sh)
+#   RMCP_TARGET_SET         all (default) or phase2 (scripts/check-original-linkage.sh)
+#   RMCP_NO_PATCHES         1: no translation patch applied (passed to apply-patches.sh)
 #   RMCP_LLBC_DIR           work directory (default: <repo>/.llbc)
 #   RMCP_TRANSLATION_DEST   output directory (default: <repo>/formal/translation);
 #                           required when RMCP_SOURCE_ROOT is not the repository
@@ -79,7 +89,10 @@ CRATE_DIR="$WORK/crates/rmcp"
 TARGET_TRIPLE="x86_64-unknown-linux-gnu"
 # Fixed profile settings, passed to every cargo call (also through Charon).
 CONFIG_ARGS=(--config 'profile.dev.overflow-checks=true' --config 'profile.dev.debug-assertions=true')
-FEATURE_ARGS=(--target "$TARGET_TRIPLE" --no-default-features --features request-state)
+# Phase 2 widened the feature list (plan Section 15, human decision H1); the Phase 1 output is
+# byte-identical under it.
+FEATURES="request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth"
+FEATURE_ARGS=(--target "$TARGET_TRIPLE" --no-default-features --features "$FEATURES")
 CARGO_ARGS=("${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" --lib)
 
 # crates/rmcp/build.rs (installs git hooks; prints no cargo: directive, so it adds no cfg,
@@ -89,7 +102,8 @@ BUILD_RS_SHA256="31b905abf91292bab290271e993e347e06a1944e6305f742f69dbd01e6b8934
 
 # Dependency versions the external models of plan Section 4 rely on: hmac, sha2, base64
 # resolved at S03; digest, zeroize, chrono, serde_json added at S08-S09, whose models cite their
-# sources (formal/trusted/evidence/README.md).
+# sources (formal/trusted/evidence/README.md); serde_core added with translation patch 03
+# (2026-11-24: opaque crate whose trait declarations, e.g. DeserializeOwned, are translated).
 PINNED_DEPS=(
   "hmac 0.13.0"
   "sha2 0.11.1"
@@ -98,6 +112,7 @@ PINNED_DEPS=(
   "zeroize 1.9.2"
   "chrono 0.4.45"
   "serde_json 1.0.154"
+  "serde_core 1.0.229"
 )
 
 # Lean names of the targets (plan Section 2): each needs a `def` in Funs.lean.
@@ -127,7 +142,46 @@ TARGETS=(
   model.request_state.RequestStateCodec.rs1_fallbacks_verify  # E09a
   model.request_state.RequestStateCodec.open_rs2_at         # E10
   model.request_state.RequestStateCodec.open_at             # E11
+  # Phase 2 (plan Section 16): existing upstream functions, unmodified.
+  model.JsonRpcMessage.into_request                         # M01
+  model.JsonRpcMessage.into_response                        # M02
+  model.JsonRpcMessage.into_notification                    # M03
+  model.JsonRpcMessage.into_error                           # M04
+  model.JsonRpcMessage.into_result                          # M05
+  model.NumberOrString.numeric_string_value                 # M06
+  model.NumberOrString.matches_response_id                  # M07
+  model.task.TaskStatus.is_terminal                         # M08
+  model.SamplingContent.into_vec                            # M09
+  model.SamplingContent.is_empty                            # M10
+  model.SamplingContent.len                                 # M11
+  model.SamplingContent.first                               # M12
+  model.Reference.as_prompt_name                            # M13
+  model.Reference.as_resource_uri                           # M14
+  transport.common.client_side_sse.SseEventSizeLimiter.check_limit  # T01
+  transport.common.client_side_sse.SseEventSizeLimiter.finish_line  # T02
+  transport.common.client_side_sse.SseEventSizeLimiter.observe      # T03
+  transport.async_rw.without_carriage_return                # T04
+  transport.async_rw.is_standard_notification               # T05
+  transport.async_rw.is_standard_method                     # T06
+  transport.streamable_http_server.tower.default_port       # T07
+  transport.streamable_http_server.tower.AllowedPort.matches  # T08
+  transport.auth.AuthorizationManager.embedded_ipv4         # A01
+  transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4  # A02
+  transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6  # A03
 )
+
+
+# RMCP_TARGET_SET=phase2 (used only by scripts/check-original-linkage.sh, plan Section 19): check
+# only the Phase 2 targets; the Phase 1 targets (model.request_state*) exist only with patch 01.
+case "${RMCP_TARGET_SET:-all}" in
+  all) ;;
+  phase2)
+    phase2=()
+    for t in "${TARGETS[@]}"; do [[ "$t" == model.request_state* ]] || phase2+=("$t"); done
+    TARGETS=("${phase2[@]}")
+    ;;
+  *) printf '[aeneas-translate] error: RMCP_TARGET_SET must be all or phase2\n' >&2; exit 1 ;;
+esac
 
 log() { printf '[aeneas-translate] %s\n' "$*"; }
 die() { printf '[aeneas-translate] error: %s\n' "$*" >&2; exit 1; }
@@ -145,6 +199,47 @@ check_output() {
     printf '[aeneas-translate] missing target: %s\n' "${missing[@]}" >&2
     die "${#missing[@]} target(s) have no definition in Funs.lean"
   fi
+  # Each `_` glob in [package.metadata.charon].start_from matches exactly one Rust item (plan
+  # Section 15, rule 3): counted as distinct local `rust_name`s in translation.json that match the
+  # glob segment by segment (`_` = any one path element; `{...}`, `<...>` nest). More than one means
+  # the glob also caught another (e.g. a new upstream) item; none means it caught nothing.
+  local manifest="${2:-$ROOT/crates/rmcp/Cargo.toml}" globs
+  [[ -f "$out/translation.json" ]] || die "no translation.json in $out"
+  globs="$(python3 -I - "$manifest" "$out/translation.json" <<'PY'
+import json, sys, tomllib
+manifest, tj = sys.argv[1], sys.argv[2]
+start = tomllib.load(open(manifest, "rb"))["package"]["metadata"]["charon"]["start_from"]
+def segs(path):
+    out, depth, cur, i = [], 0, "", 0
+    while i < len(path):
+        c = path[i]
+        if c == ">" and i > 0 and path[i - 1] == "-":
+            pass  # the `->` of a fn type is no closing bracket
+        elif c in "{<([":
+            depth += 1
+        elif c in "}>)]":
+            depth -= 1
+        if depth == 0 and path.startswith("::", i):
+            out.append(cur); cur = ""; i += 2; continue
+        cur += c; i += 1
+    return out + [cur]
+names = {f["rust_name"] for f in json.load(open(tj))["functions"] if f.get("is_local")}
+bad = 0
+for g in start:
+    gs = segs(g)
+    if "_" not in gs:
+        continue
+    hits = sorted(n for n in names
+                  if len(segs(n)) == len(gs) and all(a == "_" or a == b for a, b in zip(gs, segs(n))))
+    if len(hits) != 1:
+        bad += 1
+        print(f"BAD {g}: {len(hits)} Rust items: {hits}")
+    else:
+        print(f"OK {g}")
+sys.exit(1 if bad else 0)
+PY
+)" || { printf '%s\n' "$globs" | grep '^BAD' >&2; die "a Phase 2 \`_\` glob does not match exactly one Rust item (plan Section 15)"; }
+  log "$(grep -c '^OK' <<<"$globs") \`_\` globs of start_from each match exactly one Rust item"
   # grep: exit 0 = match, 1 = no match, anything else = error (not swallowed).
   sorries=""
   while IFS= read -r -d '' f; do
@@ -163,6 +258,11 @@ check_output() {
   log "all ${#TARGETS[@]} targets defined in Funs.lean; no sorry"
 }
 
+# The linkage-check switches are for a full scratch translation only (see below); in --check
+# mode RMCP_TARGET_SET would silently shrink the target list.
+if [[ "${1:-}" == "--check" && ( -n "${RMCP_NO_PATCHES:-}" || "${RMCP_TARGET_SET:-all}" != all ) ]]; then
+  die "RMCP_NO_PATCHES / RMCP_TARGET_SET are for a full scratch translation only"
+fi
 MODE=full
 if [[ "${1:-}" == "--check" ]]; then
   [[ $# -eq 2 ]] || die "usage: $0 --check <output-dir>"
@@ -225,6 +325,13 @@ if [[ "$MODE" == full ]]; then
     die "RMCP_TRANSLATION_DEST ($DEST_C) is inside the repository but is not formal/translation"
   fi
 fi
+# The linkage-check switches (RMCP_NO_PATCHES, RMCP_TARGET_SET) only ever translate into a
+# scratch directory outside the repository; never into formal/translation/.
+if [[ -n "${RMCP_NO_PATCHES:-}" || "${RMCP_TARGET_SET:-all}" != all ]]; then
+  [[ "$MODE" == full ]] || die "RMCP_NO_PATCHES / RMCP_TARGET_SET are for a full scratch translation only"
+  within "$DEST_C" "$ROOT_C" \
+    && die "RMCP_NO_PATCHES / RMCP_TARGET_SET need RMCP_TRANSLATION_DEST outside the repository (got $DEST_C)"
+fi
 
 # The work directory gets rsync --delete (work/) and rm -rf (out/, cargo-home/); see
 # scripts/llbc-dir-guard.sh for what is refused. On success it holds the marker file.
@@ -251,18 +358,18 @@ if [[ "$MODE" == full ]]; then
   RUST_CHANNEL="$(sed -n 's/^channel[[:space:]]*=[[:space:]]*"\(.*\)"/\1/p' "$BUNDLE/rust-toolchain")"
   CHANNEL_FROM="bundle channel"
 else
-  RUST_CHANNEL="${RUSTUP_TOOLCHAIN:-nightly-2026-06-01}"
+  RUST_CHANNEL="${RUSTUP_TOOLCHAIN:-nightly-2026-09-17}"
   CHANNEL_FROM="RUSTUP_TOOLCHAIN"
 fi
 export RUSTUP_TOOLCHAIN="$RUST_CHANNEL"
 # The toolchain actually selected (RUSTUP_HOME may point at any rustup home): the `rustc` on
 # PATH, which cargo runs and whose sysroot provides the librustc_driver that charon-driver
 # loads, must report the pinned nightly; Charon must have been built for the same channel.
-# RUSTC_VV_PINNED is the `rustc -vV` of nightly-2026-06-01 (commit date 2026-05-31); it
+# RUSTC_VV_PINNED is the `rustc -vV` of nightly-2026-09-17 (commit date 2026-09-16); it
 # changes with the Aeneas rev ("Pinned toolchain").
-[[ "$RUST_CHANNEL" == "nightly-2026-06-01" ]] \
-  || die "$CHANNEL_FROM $RUST_CHANNEL, but RUSTC_VV_PINNED is for nightly-2026-06-01 (update it with the Aeneas rev)"
-RUSTC_VV_PINNED="commit-hash: 14210df0e27ccd7d9e6a05b8085cbd438e4bbc65 commit-date: 2026-05-31 release: 1.98.0-nightly"
+[[ "$RUST_CHANNEL" == "nightly-2026-09-17" ]] \
+  || die "$CHANNEL_FROM $RUST_CHANNEL, but RUSTC_VV_PINNED is for nightly-2026-09-17 (update it with the Aeneas rev)"
+RUSTC_VV_PINNED="commit-hash: 923c95cdf5ba65cea505aa2ea829f578e1506ed8 commit-date: 2026-09-16 release: 1.100.0-nightly"
 command -v rustc >/dev/null 2>&1 || die "rustc not found"
 rustc_vv="$(rustc -vV)" || die "rustc -vV failed for toolchain $RUST_CHANNEL${RUSTUP_HOME:+ (RUSTUP_HOME=$RUSTUP_HOME)}"
 got_vv="$(awk -F': ' '$1 == "release" || $1 == "commit-hash" || $1 == "commit-date" { printf "%s%s: %s", (n++ ? " " : ""), $1, $2 }' <<<"$rustc_vv")"
@@ -353,14 +460,61 @@ if [[ -n "$foreign" ]]; then
 fi
 rootline="$(awk '$1 == "rmcp"' <<<"$tree")"
 [[ "$rootline" == "rmcp v"*" ($(pwd -P))" ]] || die "unexpected rmcp package(s) in the tree: $rootline"
-for entry in "${PINNED_DEPS[@]}"; do
-  name="${entry% *}"
-  want="${entry#* }"
-  got="$(awk -v n="$name" '$1 == n { sub(/^v/, "", $2); print $2 }' <<<"$tree" | sort -u | tr '\n' ' ')"
-  got="${got% }"
-  [[ "$got" == "$want" ]] || die "dependency $name resolves to '${got:-none}', pinned $want"
-  log "dependency $name $got from crates.io (pinned)"
-done
+# Pinned versions are checked on rmcp's own edges (human decision 2026-11-23, S21), in the
+# translated configuration: the graph is the normal-edge dependency tree of rmcp for
+# FEATURE_ARGS (`cargo tree --prefix depth`, the configuration Charon builds; `cargo metadata` would
+# give the workspace-unified graph, with features only other members enable). The version that
+# counts is one rmcp reaches through edges whose intermediate packages are all pinned crates
+# (rmcp -> hmac -> digest counts; rmcp -> oauth2 -> sha2 does not). Each pinned crate must have
+# exactly one such version, equal to the pin (so it must be present). Other versions used only by
+# other crates (the Phase 2 features bring oauth2 with sha2 0.10, digest 0.10, base64 0.22) are
+# logged and allowed: no translated target calls them, and the models describe only the versions
+# rmcp uses.
+deptree="$(cargo tree --color never --locked "${CONFIG_ARGS[@]}" "${FEATURE_ARGS[@]}" -e normal \
+  --prefix depth --format '{p}')" || die "cargo tree (depth) failed"
+pin_report="$(PINS="${PINNED_DEPS[*]}" python3 -I -c '
+import os, re, sys
+words = os.environ["PINS"].split(" ")
+pins = {words[i]: words[i + 1] for i in range(0, len(words), 2)}
+line_rx = re.compile(r"^(\d+)(\S+) v(\S+)")
+children, stack, root, allv = {}, [], None, {}
+for line in sys.stdin.read().splitlines():
+    m = line_rx.match(line)
+    if not m:
+        sys.exit("unparsed cargo tree line: " + line)
+    depth, node = int(m.group(1)), (m.group(2), m.group(3))
+    allv.setdefault(node[0], set()).add(node[1])
+    del stack[depth:]
+    if depth == 0:
+        if root is not None or node[0] != "rmcp":
+            sys.exit("unexpected root in cargo tree: " + line)
+        root = node
+    else:
+        children.setdefault(stack[-1], set()).add(node)
+    stack.append(node)
+reach, todo = set(), [root]
+while todo:
+    for dep in children.get(todo.pop(), ()):
+        if dep[0] in pins and dep not in reach:
+            reach.add(dep)
+            todo.append(dep)
+ownv = {}
+for name, ver in reach:
+    ownv.setdefault(name, set()).add(ver)
+bad, none, sep = 0, ["none"], ", "
+for name, want in pins.items():
+    own = sorted(ownv.get(name, ()))
+    other = sorted(allv.get(name, set()) - set(own))
+    if own != [want]:
+        print(f"BAD {name} on rmcp edges resolves to {own or none}, pinned {want}")
+        bad += 1
+    else:
+        print(f"OK {name} {want}" + (f" (other versions used only by other crates: {sep.join(other)})" if other else ""))
+sys.exit(1 if bad else 0)
+' <<<"$deptree")" || { printf '%s\n' "$pin_report" >&2; die "pinned dependency check failed"; }
+while IFS= read -r line; do
+  log "dependency ${line#OK } from crates.io (pinned, on rmcp's own edges)"
+done <<<"$pin_report"
 
 # 3. [package.metadata.charon], checked before Charon runs. It may hold only the four
 # documented keys, and the three lists must be present and non-empty. The pinned
@@ -405,30 +559,32 @@ set -e
 [[ $rc -eq 0 ]] || die "charon exited with $rc"
 [[ "$(jq -r '.has_errors' "$LLBC_FILE")" == "false" ]] || die "charon reported errors in $LLBC_FILE"
 # The build script ran for the target and printed nothing (no cfg, flag or env directive).
+# Old cargo layout: build/rmcp-<hash>/output; the build-dir layout of cargo 1.100
+# (nightly-2026-09-17): build/rmcp/<hash>/run/stdout.
 outs=()
 while IFS= read -r f; do outs+=("$f"); done \
-  < <(find "$CARGO_TARGET_DIR/$TARGET_TRIPLE" -path '*/build/rmcp-*/output' -type f 2>/dev/null | sort)
+  < <(find "$CARGO_TARGET_DIR/$TARGET_TRIPLE" \( -path '*/build/rmcp-*/output' -o -path '*/build/rmcp/*/run/stdout' \) -type f 2>/dev/null | sort)
 [[ ${#outs[@]} -gt 0 ]] || die "no build-script output of rmcp under $CARGO_TARGET_DIR/$TARGET_TRIPLE"
 for f in "${outs[@]}"; do
   [[ ! -s "$f" ]] || { cat "$f" >&2; die "rmcp build script emitted directives ($f)"; }
 done
 
-# The options recorded in the LLBC (translated.options) must be exactly those lists ...
-for key in start_from opaque exclude; do
-  want="$(jq -c --arg k "$key" '.[$k] | sort' <<<"$meta")"
-  got="$(jq -c --arg k "$key" '.translated.options[$k] | sort' "$LLBC_FILE")"
-  [[ "$want" == "$got" ]] || die "charon option $key is $got, but Cargo.toml says $want"
-done
-# ... with nothing that widens the translation ...
-for check in 'rustc_args == []' 'include == []' 'start_from_if_exists == []' \
-             'start_from_attribute == []' 'extract_opaque_bodies == false' 'start_from_pub == false'; do
-  jq -e ".translated.options | .$check" "$LLBC_FILE" >/dev/null \
-    || die "charon option check failed: $check (got $(jq -c ".translated.options.${check%% *}" "$LLBC_FILE"))"
-done
+# Charon >= 0.1.324 no longer records its options in the LLBC (translated.options); it keeps only
+# the preset and the runtime checks. Charon reads its options from [package.metadata.charon]
+# (whose keys are restricted above to start_from, hide_marker_traits, exclude and opaque, so no
+# widening option such as include, start_from_pub or extract_opaque_bodies can be set there),
+# from the command line fixed by this script, and from no environment variable (CHARON_* is
+# refused). That Charon applied the three lists is checked on the translated items after Aeneas
+# (step 6, check_charon_settings, lead decision N1 of the Aeneas upgrade). Here: the preset and
+# the overflow checks recorded in the LLBC ...
+[[ "$(jq -r '.translated.preset' "$LLBC_FILE")" == "Aeneas" ]] \
+  || die "LLBC preset is $(jq -c '.translated.preset' "$LLBC_FILE"), expected \"Aeneas\""
+jq -e '.translated.runtime_checks.overflow_checks == true' "$LLBC_FILE" >/dev/null \
+  || die "LLBC runtime_checks: overflow_checks is not true ($(jq -c '.translated.runtime_checks' "$LLBC_FILE"))"
 # ... and for the fixed target only.
 targets="$(jq -c '[.translated.target_information[].key]' "$LLBC_FILE")"
 [[ "$targets" == "[\"$TARGET_TRIPLE\"]" ]] || die "LLBC target information is $targets, expected [\"$TARGET_TRIPLE\"]"
-log "charon applied [package.metadata.charon] (start_from, opaque, exclude); no widening options; target $TARGET_TRIPLE"
+log "LLBC: preset Aeneas, overflow checks on, target $TARGET_TRIPLE"
 
 # 5. Aeneas, into a scratch directory; formal/translation/ is replaced only on success.
 OUT="$LLBC/out"
@@ -441,10 +597,68 @@ rc=$?
 set -e
 [[ $rc -eq 0 ]] || die "aeneas exited with $rc"
 
+# 5b. Charon applied [package.metadata.charon] (lead decision N1): checked on every item of the
+# translation, by its Rust name in translation.json (Aeneas's record of the LLBC items, in
+# Charon's name-pattern syntax). A pattern matches a name with the same leading path elements
+# (`_` matches any one element), i.e. the item itself and the items below it, as in Charon.
+#  - exclude: no translated item matches an exclude pattern;
+#  - opaque: every function matching an opaque pattern has no body (is_opaque), and every local
+#    (rmcp) function without a body matches an opaque pattern (no body is silently dropped); the
+#    same for types and globals, whose opacity is their file (an *External_Template.lean);
+#  - start_from: every pattern matches at least one translated item.
+python3 -I - "$OUT/translation.json" "$meta" <<'PY' || die "Charon settings check on the translation failed"
+import json, sys
+meta = json.loads(sys.argv[2])
+tr = json.load(open(sys.argv[1], encoding="utf-8"))
+def elems(name):
+    out, depth, cur, i = [], 0, "", 0
+    while i < len(name):
+        if name.startswith("::", i) and depth == 0:
+            out.append(cur); cur = ""; i += 2; continue
+        c = name[i]
+        depth += (c in "{<[(") - (c in "}>])")
+        cur += c; i += 1
+    out.append(cur)
+    return out
+def matches(pat, name):
+    p, n = elems(pat), elems(name)
+    return len(n) >= len(p) and all(a == "_" or a == b for a, b in zip(p, n))
+items = [(k, d) for k in ("functions", "types", "globals", "trait_decls", "trait_impls") for d in tr.get(k, [])]
+errs = []
+for d_kind, d in items:
+    for pat in meta["exclude"]:
+        if matches(pat, d["rust_name"]):
+            errs.append(f"excluded by {pat!r} but translated: {d['rust_name']}")
+for d in tr.get("functions", []):
+    op = [p for p in meta["opaque"] if matches(p, d["rust_name"])]
+    if op and not d.get("is_opaque"):
+        errs.append(f"opaque by {op[0]!r} but has a body: {d['rust_name']}")
+    if d.get("is_local") and d.get("is_opaque") and not op:
+        errs.append(f"local function without a body, not in opaque: {d['rust_name']}")
+# Types and globals carry no is_opaque: Aeneas emits an opaque one into an External template.
+for k in ("types", "globals"):
+    for d in tr.get(k, []):
+        op = [p for p in meta["opaque"] if matches(p, d["rust_name"])]
+        ext = d.get("lean_file", "").endswith("External_Template.lean")
+        if op and not ext:
+            errs.append(f"opaque by {op[0]!r} but translated with a definition: {d['rust_name']}")
+        if d.get("is_local") and ext and not op:
+            errs.append(f"local {k[:-1]} emitted as external, not in opaque: {d['rust_name']}")
+for pat in meta["start_from"]:
+    if not any(matches(pat, d["rust_name"]) for _, d in items):
+        errs.append(f"start_from {pat!r} matches no translated item")
+for e in errs:
+    print(f"[aeneas-translate] {e}", file=sys.stderr)
+if errs:
+    sys.exit(1)
+print(f"[aeneas-translate] charon settings applied: {len(items)} translated items; none excluded, "
+      f"opaque items bodiless, {len(meta['start_from'])} start_from patterns matched")
+PY
+
 # 6. Output checks, then install. rsync --delete replaces DEST; as a second guard (besides the
 # path checks at the top) DEST must be absent, empty, or hold only an earlier output
 # (Rmcp/ and translation.json), so that a wrong path can never delete anything else.
-check_output "$OUT"
+check_output "$OUT" "$CRATE_DIR/Cargo.toml"
 if [[ -d "$DEST_C" ]]; then
   others="$(find "$DEST_C" -mindepth 1 -maxdepth 1 ! -name Rmcp ! -name translation.json -print | head -5)"
   [[ -z "$others" ]] || die "RMCP_TRANSLATION_DEST ($DEST_C) holds files that are not a translation output: $others"
@@ -454,3 +668,20 @@ fi
 mkdir -p "$DEST_C"
 rsync -a --delete --checksum "$OUT/" "$DEST_C/"
 log "translation written to $DEST"
+# The metaprogramming-word pin of lean_guard.py (formal/trusted/translation-pins.txt; S21) is tied
+# to the sha256 of Funs.lean. Report whether the new output still matches it: a mismatch is not an
+# error here, but lean-guard.sh sources will apply the strict rule until the pin is updated in a
+# reviewed PR.
+pins="$ROOT/formal/trusted/translation-pins.txt"
+[[ -z "${RMCP_NO_PATCHES:-}" && "${RMCP_TARGET_SET:-all}" == all ]] || pins=/dev/null/none  # linkage run: no pin note
+dest_c="$(canon_path "$DEST")"
+if [[ -f "$pins" && -f "$dest_c/Rmcp/Funs.lean" ]]; then
+  want="$(awk '$1 == "file" && $2 == "translation/Rmcp/Funs.lean" { print $4 }' "$pins")"
+  got="$(sha256sum "$dest_c/Rmcp/Funs.lean" 2>/dev/null || shasum -a 256 "$dest_c/Rmcp/Funs.lean")"
+  got="${got%% *}"
+  if [[ "$want" == "$got" ]]; then
+    log "Funs.lean matches its pin in formal/trusted/translation-pins.txt"
+  else
+    log "note: Funs.lean sha256 $got differs from the pin ($want); update formal/trusted/translation-pins.txt in a reviewed PR"
+  fi
+fi

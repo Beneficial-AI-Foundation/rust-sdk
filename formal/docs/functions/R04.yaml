@@ -1,0 +1,25 @@
+id: R04
+rust_symbol: rmcp::model::request_state::RequestStateCodec::new
+source_file: crates/rmcp/src/model/request_state.rs  # in the patched copy (patch 01 on 7caec76); the function body is identical upstream (10 lines lower)
+source_line: 278  # in the patched copy
+generated_symbol: rmcp.model.request_state.RequestStateCodec.new
+translation: LEAN_OK  # already in the committed translation (Phase 1 configuration)
+spec: REVIEWED  # signed off by the spec owner 2026-11-24 after 2 review rounds (public request_state.rs API)
+linkage: patch-01  # translated from the patched copy; not covered by scripts/check-original-linkage.sh
+proof: CHECKED  # proved 2026-11-24; reviewed by an independent mcp-review agent (no blocking finding)
+proof_file: formal/proofs/Proofs/Model/RequestState/Public.lean
+spec_file: formal/specs/Specs/Model/RequestState.lean
+theorem: rmcp.model.request_state.RequestStateCodec.new_spec  # restated as Theorems.request_state.RequestStateCodec.new
+used_by: []
+axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file; list changed in the Aeneas upgrade (2026-11-24, nightly-2026.11.24-fb44cb4: standard axioms added and/or native-code axioms dropped), re-signed by the spec owner in the batch re-sign-off of 2026-11-24
+evidence: [formal/docs/STATUS.md]
+spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/RequestState.lean
+spec_reviews:
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: "no counterexample; 2 judgment (docstring exceptions, clock rule) for open/open_with", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: no blocking findings, evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: a, verdict: no blocking findings, evidence: formal/docs/STATUS.md}
+spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-24
+prover: "AI: Claude Code, claude-opus-5-5"  # mcp-lean agent; not the drafter
+reviewer: null
+behaviour: |-  # informational, not a specification
+  single-key codec for any key length (= `new_unchecked`)

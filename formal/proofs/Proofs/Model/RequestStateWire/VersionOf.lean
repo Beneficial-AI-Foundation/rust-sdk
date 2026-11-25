@@ -3,10 +3,13 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.Common
-import Proofs.Model.RequestStateWire.BytesEq
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.Common
+public import Proofs.Model.RequestStateWire.BytesEq
+
+@[expose] public section
 
 /-!
 # Spec theorem for `version_of` (W07)

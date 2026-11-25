@@ -3,8 +3,11 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
+module
+public import Rmcp.Funs
+public import Defs.Wire
+
+@[expose] public section
 
 /-!
 # Spec theorem for `check_kid_len` (W03)
@@ -36,8 +39,9 @@ theorem check_kid_len_spec (len : Usize) :
       | .Err .TooLong => maxKidLen < len.val
       | .Ok () => 0 < len.val ∧ len.val ≤ maxKidLen ⦄ := by
   unfold check_kid_len
-  simp [MAX_KID_LEN, maxKidLen]
-  split_ifs <;> simp_all
+  simp only [MAX_KID_LEN, gt_iff_lt, UScalar.lt_equiv, UScalar.ofNatCore_val_eq, maxKidLen]
+  split_ifs <;> simp_all only [UScalar.neq_to_neq_val, UScalar.ofNatCore_val_eq, not_lt_zero,
+    lt_self_iff_false, zero_le, not_lt, and_true, WP.spec_ok]
   scalar_tac
 
 end rmcp.model.request_state_wire

@@ -11,3 +11,9 @@ a47c3f7affc11e58f734ce618b81e2d0024c19bae23e00b372317307c92dd2d0  nightly-2026.0
 ede5f3050c8e390fd5c640f80b9af55e42c7c322b352439f472191fdc65c3f20  nightly-2026.08.20-5d08da4/lean-build-aeneas-arm64-apple-darwin24.6.0.tar.gz
 ab9f39005724f637c8ce3e12808ac3ebead8b2cdb8858883943f7ac5dca0bc73  nightly-2026.08.20-5d08da4/lean-build-aeneas-x86_64-unknown-linux-gnu.tar.gz
 ce2c57c50da814a52b5a8a47f77d5195117881a0b8f9cc03f4cfc026d3579b67  nightly-2026.08.20-5d08da4/lean-build-aeneas-aarch64-unknown-linux-gnu.tar.gz
+1882dad9f4f6e9750a98230d9527b0d2367b013ca89e9aefefcff4c7128798b3  nightly-2026.11.24-fb44cb4/aeneas-macos-aarch64.tar.gz
+165949cce8f8c2a55acee718579e2a7cfb58e72b48fc08159ad10c5418533542  nightly-2026.11.24-fb44cb4/aeneas-linux-x86_64.tar.gz
+01b3310611467cf73dd3485b67b7847d96d6178ae49ee6d8c3962ceb20b47a4b  nightly-2026.11.24-fb44cb4/aeneas-linux-aarch64.tar.gz
+5b38790725ae3dfdd193942c076fe6df16d1485a00275cd4d1c8a8dd4623213a  nightly-2026.11.24-fb44cb4/lean-build-aeneas-arm64-apple-darwin24.6.0.tar.gz
+7baeb79bdd253c8c1a131964532a23399f221663a6fd1161f086df5b48f61736  nightly-2026.11.24-fb44cb4/lean-build-aeneas-x86_64-unknown-linux-gnu.tar.gz
+8d1c16ce077bd163ecc38a846caab9cda57be07f3afa89999bdd52ca314672ba  nightly-2026.11.24-fb44cb4/lean-build-aeneas-aarch64-unknown-linux-gnu.tar.gz

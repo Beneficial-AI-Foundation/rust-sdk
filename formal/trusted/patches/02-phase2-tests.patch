@@ -1,0 +1,1312 @@
+Test-only patch: plan Section 22 boundary cases of the Phase 2 targets that no upstream test
+covers (plan step S34; human decision H3, follow-up of 2026-11-24), and boundary cases of the
+public request_state.rs API R09-R12 and R15 (human decision 2026-11-25, spec-cycle review
+findings sR2-a-2, sR2-b-4 and sR3-a-3)
+
+Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
+01-request-state-wire.patch (scripts/apply-patches.sh applies formal/trusted/patches/*.patch in
+file-name order, patch -p1 -F 0, only to the copy in .llbc/work/; the real source is never
+patched). Files: crates/rmcp/src/model.rs, crates/rmcp/src/model/request_state.rs,
+crates/rmcp/src/model/task.rs, crates/rmcp/src/transport/async_rw.rs,
+crates/rmcp/src/transport/auth.rs, crates/rmcp/src/transport/common/client_side_sse.rs,
+crates/rmcp/src/transport/streamable_http_server/tower.rs. Generated with git diff in a scratch
+git repository holding the patch-01 copy (one hunk per file, at its end). The patch body below
+is the authoritative content. 03-request-state-public.patch applies after it; its hunks
+(request_state.rs lines 524-537 of the patch-01 copy) lie before the request_state.rs hunk of
+this patch, so they apply at their recorded lines.
+
+Change: #[cfg(test)] code only. Every added line lies inside a #[cfg(test)] module: at the end
+of the existing test module of model.rs, model/request_state.rs (mod tests, after patch 01's
+tests), model/task.rs, async_rw.rs (mod test), auth.rs and client_side_sse.rs, and in a new
+#[cfg(test)] mod phase2_boundary_tests at the end of tower.rs (its added lines are one blank
+separator line, the #[cfg(test)] and mod lines, and the module body, comments included).
+No non-test line, no dependency, no Cargo.toml change; no existing line is removed or changed.
+
+S34 tests (34, all files but request_state.rs): named s34_<id>_<case>; each cites its plan
+Section 22 row and the Lean theorem it mirrors. Their expected values are taken from the
+signed-off Lean statements and the Defs they use (Defs.parseI64, Defs.Tower.defaultPort,
+Defs.Methods lists, Defs.Sse model and checks, Defs.Net definitions and checks), not from
+running the code. They call the targets directly (M06/M07 pub(crate), T01-T08 and A01-A03
+private: reachable only from in-module tests), so they run in the translated feature
+configuration plus macros, without transport-streamable-http-client-reqwest. A test of a
+feature-gated item carries the item's cfg: the M06 test
+#[cfg(any(feature = "client", feature = "server"))] and the four M07 tests
+#[cfg(feature = "client")], as numeric_string_value and matches_response_id (model.rs lines
+321 and 329 at 7caec76); every other test calls an ungated item or lies in a module gated
+already (transport/: client or server; async_rw, auth, client_side_sse, tower: their features).
+So the crate's tests compile with any feature set, e.g. request-state alone (the Phase 1
+evidence command). The limiter tests build every start state field by field, never through
+SseEventSizeLimiter::new, which no signed-off statement covers.
+
+R09-R12, R15 tests (12, request_state.rs, in a new mod public_api_boundaries inside mod tests,
+gated by request_state.rs's own feature as the existing tests are): named after the behaviour
+they pin. Their expected values are computed from the upstream source at 7caec76 (before patch
+03), not from the Lean model: seal_at's expiry (line 542: now_ms.saturating_add of the TTL in
+whole milliseconds clamped to i64::MAX; 0 without a TTL), the expiry check of open (line 728:
+expiry != 0 && now_ms > expiry), new_with_keyring (lines 329-374), validate_key_length and
+validate_config_kid (lines 755-777), with_rs1_signing and with_rs1_fallback (lines 383-442) and
+the Debug impl (lines 253-276). They cover: seal_at (private; the helper of seal and seal_with,
+R09/R10) with a sub-millisecond TTL, a TTL with nanoseconds, the clamp of Duration::MAX and of
+i64::MAX + 1 ms and of exactly 2^64 ms, saturation near i64::MAX, negative and i64::MIN clocks,
+and an expiry that lands on 0 (the token never expires and equals the token sealed without a
+TTL), each checked by decoding the token's 8-byte expiry independently and by opening at the
+expiry and one millisecond after it (open_at, private), also for a keyring codec that seals rs1
+after with_rs1_signing; the exact InvalidKeyring messages and KeyTooShort fields of
+new_with_keyring (R15) and its fault order (per entry: key id, key length, duplicate; then empty
+keyring, active id validity, active id presence); the exact messages of with_rs1_signing and
+with_rs1_fallback (R11, R12) on a single-key codec and for a missing kid; and their fallback
+list (appended in call order, with_rs1_signing registers its own id, no duplicates, last signing
+id wins) through the Debug output. open_json and open_json_with (R13, R14) get no new test. They
+pass on the copy with patches 01 and 02 and with 01, 02 and 03 (patch 03 is behaviour-preserving
+and changes only the bodies of seal_at and open_json_with).
+
+Why (plan Section 19, "Tests (human decision H3)"; Section 21, H3; human decision
+2026-11-25): new Rust tests of these functions must live in SDK *.rs files, which stay
+byte-identical to upstream. The S34 upstream-test map (formal/trusted/evidence/README.md) found
+96 uncovered and 8 partial plan Section 22 cases; this patch covers them. The spec-cycle review
+of R09-R15 (findings sR2-a-2, sR2-b-4, sR3-a-3) found the expiry edges of seal_at, its rs1
+keyring round trip, and the exact messages and fault order of the keyring constructors pinned by
+no Rust test (the upstream test
+constructor_invariants_are_enforced matches InvalidKeyring(_) and KeyTooShort { .. } only).
+A test-only patch is a process exception (VERIFICATION.md Section 4 defines translation patches
+as behaviour-preserving edits that make an item translate); plan Section 21 (H3) asks for it to
+be recorded in formal/docs/STATUS.md, "Documents", as a further deviation from VERIFICATION.md.
+
+Effect on the translation: none. Charon does not compile #[cfg(test)] items, and every hunk is
+at the end of its file, so no translated item moves (the Source: lines of
+formal/translation/ are unchanged); checked by translating the copy with patches 01-03 and
+comparing it byte for byte with formal/translation/ (formal/trusted/evidence/README.md).
+
+Evidence in CI: patched-tests.yml runs cargo test --locked --lib on the copy with all patches
+(translated features plus macros, overflow checks and debug assertions on), which runs these
+tests. Delete this patch if the tests land in the SDK source.
+diff --git a/crates/rmcp/src/model.rs b/crates/rmcp/src/model.rs
+index 315f83c..f491161 100644
+--- a/crates/rmcp/src/model.rs
++++ b/crates/rmcp/src/model.rs
+@@ -6284,4 +6284,215 @@ mod tests {
+             result
+         );
+     }
++
++    // ---- Patch 02 (plan step S34, human decision H3): plan Section 22 boundary cases. ----
++    // Expected values come from the signed-off Lean statements, not from running the code:
++    // M01-M05 and C03 `formal/specs/Specs/Model.lean`, M06/M07
++    // `formal/proofs/Proofs/Internal/Model.lean` with `Defs.parseI64`
++    // (`formal/specs/Defs/IntParse.lean`), M09-M12 `formal/specs/Specs/Model.lean`.
++
++    type S34Message = JsonRpcMessage<&'static str, u32, char>;
++
++    fn s34_error() -> ErrorData {
++        ErrorData::new(ErrorCode::INTERNAL_ERROR, "s34", None)
++    }
++
++    // plan §22 M01–M05 (`Request`); Theorems.model.JsonRpcMessage.into_request, into_response,
++    // into_notification, into_error, into_result (M05: `None` for a request).
++    #[test]
++    fn s34_m01_m05_request() {
++        let m: S34Message = JsonRpcMessage::request("req", NumberOrString::Number(1));
++        assert_eq!(
++            m.clone().into_request(),
++            Some(("req", NumberOrString::Number(1)))
++        );
++        assert_eq!(m.clone().into_response(), None);
++        assert_eq!(m.clone().into_notification(), None);
++        assert_eq!(m.clone().into_error(), None);
++        assert_eq!(m.into_result(), None);
++    }
++
++    // plan §22 M01–M05 (`Response`); Theorems.model.JsonRpcMessage.into_request, into_response,
++    // into_notification, into_error, into_result (M05: `(Ok r, Some id)`); C03
++    // Theorems.model.into_result_eq.
++    #[test]
++    fn s34_m01_m05_response() {
++        let m: S34Message = JsonRpcMessage::response(7, NumberOrString::Number(1));
++        assert_eq!(m.clone().into_request(), None);
++        assert_eq!(
++            m.clone().into_response(),
++            Some((7, NumberOrString::Number(1)))
++        );
++        assert_eq!(m.clone().into_notification(), None);
++        assert_eq!(m.clone().into_error(), None);
++        assert_eq!(
++            m.into_result(),
++            Some((Ok(7), Some(NumberOrString::Number(1))))
++        );
++    }
++
++    // plan §22 M01–M05 (`Notification`); Theorems.model.JsonRpcMessage.into_request,
++    // into_response, into_notification, into_error, into_result (M05: `None` for a notification).
++    #[test]
++    fn s34_m01_m05_notification() {
++        let m: S34Message = JsonRpcMessage::notification('n');
++        assert_eq!(m.clone().into_request(), None);
++        assert_eq!(m.clone().into_response(), None);
++        assert_eq!(m.clone().into_notification(), Some('n'));
++        assert_eq!(m.clone().into_error(), None);
++        assert_eq!(m.into_result(), None);
++    }
++
++    // plan §22 M01–M05 (`Error` with `id = Some`); Theorems.model.JsonRpcMessage.into_request,
++    // into_response, into_notification, into_error, into_result (M05: `(Err e, id)`); C03
++    // Theorems.model.into_result_eq.
++    #[test]
++    fn s34_m01_m05_error_with_id() {
++        let id = Some(NumberOrString::String("e1".into()));
++        let m: S34Message = JsonRpcMessage::error(s34_error(), id.clone());
++        assert_eq!(m.clone().into_request(), None);
++        assert_eq!(m.clone().into_response(), None);
++        assert_eq!(m.clone().into_notification(), None);
++        assert_eq!(m.clone().into_error(), Some((s34_error(), id.clone())));
++        assert_eq!(m.into_result(), Some((Err(s34_error()), id)));
++    }
++
++    // plan §22 M01–M05 (`Error` with `id = None`); Theorems.model.JsonRpcMessage.into_error
++    // (`Some (e, none)`), into_result (`(Err e, none)`), the other three `None`.
++    #[test]
++    fn s34_m01_m05_error_without_id() {
++        let m: S34Message = JsonRpcMessage::error(s34_error(), None);
++        assert_eq!(m.clone().into_request(), None);
++        assert_eq!(m.clone().into_response(), None);
++        assert_eq!(m.clone().into_notification(), None);
++        assert_eq!(m.clone().into_error(), Some((s34_error(), None)));
++        assert_eq!(m.into_result(), Some((Err(s34_error()), None)));
++    }
++
++    // plan §22 M06/M07 (the fourteen strings; M06 direct); Theorems.model.NumberOrString.
++    // numeric_string_value: the value of the bytes under `Defs.parseI64` (optional single sign,
++    // at least one ASCII digit, nothing else, value in [-2^63, 2^63 - 1]), `None` if rejected.
++    // Gated like `numeric_string_value` (model.rs, `#[cfg(any(feature = "client", feature =
++    // "server"))]`).
++    #[cfg(any(feature = "client", feature = "server"))]
++    #[test]
++    fn s34_m06_numeric_string_value_boundary_strings() {
++        let cases: [(&str, Option<i64>); 14] = [
++            ("0", Some(0)),
++            ("+0", Some(0)),
++            ("-0", Some(0)),
++            ("007", Some(7)),
++            ("", None),
++            ("+", None),
++            ("-", None),
++            (" 1", None),
++            ("1 ", None),
++            ("9223372036854775807", Some(9_223_372_036_854_775_807)),
++            ("9223372036854775808", None),
++            ("-9223372036854775808", Some(-9_223_372_036_854_775_807 - 1)),
++            ("-9223372036854775809", None),
++            ("\u{0661}", None), // Arabic-Indic digit one: not an ASCII digit
++        ];
++        for (s, expected) in cases {
++            assert_eq!(
++                NumberOrString::String(s.into()).numeric_string_value(),
++                expected,
++                "numeric_string_value of String({s:?})"
++            );
++        }
++        // A numeric id has no string value (`numericValue (.Number _) = none`).
++        assert_eq!(NumberOrString::Number(0).numeric_string_value(), None);
++    }
++
++    // plan §22 M06/M07 (`Number 1` vs `String "1"`); Theorems.model.NumberOrString.
++    // matches_response_id: `self = .Number n` and `parseI64 "1" = some n`, so `true`.
++    #[cfg(feature = "client")] // gated like `matches_response_id`
++    #[test]
++    fn s34_m07_number_matches_numeric_string() {
++        assert!(NumberOrString::Number(1).matches_response_id(&NumberOrString::String("1".into())));
++    }
++
++    // plan §22 M06/M07 (`String "1"` vs `Number 1`); Theorems.model.NumberOrString.
++    // matches_response_id: the ids differ and `self` is not a number, so `false`.
++    #[cfg(feature = "client")] // gated like `matches_response_id`
++    #[test]
++    fn s34_m07_string_does_not_match_number() {
++        assert!(
++            !NumberOrString::String("1".into()).matches_response_id(&NumberOrString::Number(1))
++        );
++    }
++
++    // plan §22 M06/M07 (equal strings); Theorems.model.NumberOrString.matches_response_id:
++    // `self = response_id`, so `true`.
++    #[cfg(feature = "client")] // gated like `matches_response_id`
++    #[test]
++    fn s34_m07_equal_strings_match() {
++        assert!(
++            NumberOrString::String("abc".into())
++                .matches_response_id(&NumberOrString::String("abc".into()))
++        );
++        assert!(
++            NumberOrString::String("1".into())
++                .matches_response_id(&NumberOrString::String("1".into()))
++        );
++    }
++
++    // plan §22 M06/M07 (unequal strings); Theorems.model.NumberOrString.matches_response_id:
++    // the ids differ and `self` is not a number, so `false`, even when both parse to 1.
++    #[cfg(feature = "client")] // gated like `matches_response_id`
++    #[test]
++    fn s34_m07_unequal_strings_do_not_match() {
++        assert!(
++            !NumberOrString::String("abc".into())
++                .matches_response_id(&NumberOrString::String("abd".into()))
++        );
++        assert!(
++            !NumberOrString::String("1".into())
++                .matches_response_id(&NumberOrString::String("01".into()))
++        );
++    }
++
++    // plan §22 M09–M12 (`Single`); Theorems.model.SamplingContent.into_vec (`[x]`), is_empty
++    // (`false`), len (1), first (`some x`).
++    #[test]
++    fn s34_m09_m12_single() {
++        let c = SamplingContent::Single(10);
++        assert!(!c.is_empty());
++        assert_eq!(c.len(), 1);
++        assert_eq!(c.first(), Some(&10));
++        assert_eq!(c.into_vec(), vec![10]);
++    }
++
++    // plan §22 M09–M12 (`Multiple []`); Theorems.model.SamplingContent.into_vec (`v`), is_empty
++    // (`true` iff `v` is empty), len (`v.length`), first (`v.head?`).
++    #[test]
++    fn s34_m09_m12_multiple_empty() {
++        let c: SamplingContent<i32> = SamplingContent::Multiple(vec![]);
++        assert!(c.is_empty());
++        assert_eq!(c.len(), 0);
++        assert_eq!(c.first(), None);
++        assert_eq!(c.into_vec(), Vec::<i32>::new());
++    }
++
++    // plan §22 M09–M12 (`Multiple [x]`); Theorems.model.SamplingContent.into_vec, is_empty, len,
++    // first.
++    #[test]
++    fn s34_m09_m12_multiple_one() {
++        let c = SamplingContent::Multiple(vec![10]);
++        assert!(!c.is_empty());
++        assert_eq!(c.len(), 1);
++        assert_eq!(c.first(), Some(&10));
++        assert_eq!(c.into_vec(), vec![10]);
++    }
++
++    // plan §22 M09–M12 (`Multiple [x, y]`); Theorems.model.SamplingContent.into_vec, is_empty,
++    // len, first.
++    #[test]
++    fn s34_m09_m12_multiple_two() {
++        let c = SamplingContent::Multiple(vec![10, 20]);
++        assert!(!c.is_empty());
++        assert_eq!(c.len(), 2);
++        assert_eq!(c.first(), Some(&10));
++        assert_eq!(c.into_vec(), vec![10, 20]);
++    }
+ }
+diff --git a/crates/rmcp/src/model/request_state.rs b/crates/rmcp/src/model/request_state.rs
+index 6ccb755..8644042 100644
+--- a/crates/rmcp/src/model/request_state.rs
++++ b/crates/rmcp/src/model/request_state.rs
+@@ -2894,4 +2894,316 @@ mod tests {
+             }
+         }
+     }
++
++    // ---- Patch 02 (human decision 2026-11-25; spec-cycle review findings sR2-a-2, sR2-b-4):
++    // boundary cases of the public request_state.rs API R09-R12, R15. ----
++    // Expected values come from the upstream source (origin/main 7caec76, before patch 03), not
++    // from the Lean model: seal_at's expiry `now_ms.saturating_add(ttl.as_millis().min(i64::MAX
++    // as u128) as i64)` (line 542; 0 without a TTL), the expiry check `expiry != 0 && now_ms >
++    // expiry` (line 728), new_with_keyring (lines 329-374), validate_key_length and
++    // validate_config_kid (lines 755-777), with_rs1_signing and with_rs1_fallback (lines
++    // 383-442) and the Debug impl (lines 253-276). seal_at is the private helper of seal and
++    // seal_with (R09, R10); the tests call it with a fixed clock.
++    mod public_api_boundaries {
++        use super::*;
++
++        const KEY: &[u8] = b"public-api-boundary-key-32-bytes";
++        const KEY_B: &[u8] = b"public-api-boundary-key-number-b";
++
++        fn ttl_options(ttl: Duration) -> SealOptions<'static> {
++            SealOptions::new().ttl(ttl)
++        }
++
++        /// The 8-byte big-endian expiry at the front of the token's body segment (segment 1
++        /// of rs1, segment 2 of rs2), decoded independently of the codec.
++        fn expiry_of(token: &str) -> i64 {
++            let segments: Vec<&str> = token.split('.').collect();
++            let body = match segments[0] {
++                "rs1" => segments[1],
++                "rs2" => segments[2],
++                other => panic!("unexpected version {other}"),
++            };
++            let body = URL_SAFE_NO_PAD.decode(body).unwrap();
++            i64::from_be_bytes(body[..8].try_into().unwrap())
++        }
++
++        /// Seals at `now` with `ttl`, checks the stored expiry, and that the token opens at
++        /// the expiry and is `Expired` one millisecond later (when that is representable).
++        fn assert_expiry(codec: &RequestStateCodec, now: i64, ttl: Duration, expiry: i64) {
++            let token = codec.seal_at(b"p", &ttl_options(ttl), now);
++            assert_eq!(expiry_of(&token), expiry, "now {now}, ttl {ttl:?}");
++            assert_eq!(codec.open_at(&token, &[], expiry).unwrap(), b"p");
++            if expiry != 0 && expiry < i64::MAX {
++                assert!(matches!(
++                    codec.open_at(&token, &[], expiry + 1),
++                    Err(RequestStateError::Expired)
++                ));
++            }
++        }
++
++        fn single() -> RequestStateCodec {
++            RequestStateCodec::try_new(KEY).unwrap()
++        }
++
++        fn ring() -> RequestStateCodec {
++            RequestStateCodec::new_with_keyring("a", [("a", KEY), ("b", KEY_B)]).unwrap()
++        }
++
++        fn keyring_message<T: std::fmt::Debug>(
++            result: Result<T, RequestStateError>,
++        ) -> &'static str {
++            match result {
++                Err(RequestStateError::InvalidKeyring(message)) => message,
++                other => panic!("expected InvalidKeyring, got {other:?}"),
++            }
++        }
++
++        fn key_too_short<T: std::fmt::Debug>(
++            result: Result<T, RequestStateError>,
++        ) -> (usize, usize) {
++            match result {
++                Err(RequestStateError::KeyTooShort { minimum, actual }) => (minimum, actual),
++                other => panic!("expected KeyTooShort, got {other:?}"),
++            }
++        }
++
++        #[test]
++        fn seal_at_sub_millisecond_ttl_adds_no_millisecond() {
++            for codec in [single(), ring()] {
++                assert_expiry(&codec, 1_000, Duration::from_nanos(999_999), 1_000);
++                assert_expiry(&codec, 1_000, Duration::from_nanos(1), 1_000);
++                assert_expiry(&codec, 1_000, Duration::ZERO, 1_000);
++            }
++        }
++
++        #[test]
++        fn seal_at_truncates_ttl_to_whole_milliseconds() {
++            for codec in [single(), ring()] {
++                assert_expiry(&codec, 1_000, Duration::new(0, 1_500_000), 1_001);
++                assert_expiry(&codec, 1_000, Duration::from_nanos(1_999_999), 1_001);
++                assert_expiry(&codec, 1_000, Duration::new(2, 999_999), 3_000);
++            }
++        }
++
++        #[test]
++        fn seal_at_clamps_ttl_milliseconds_to_i64_max() {
++            let codec = single();
++            // Duration::MAX is u64::MAX s + 999_999_999 ns: far above i64::MAX ms.
++            assert_expiry(&codec, -1_000, Duration::MAX, i64::MAX - 1_000);
++            // One millisecond above i64::MAX is clamped, exactly i64::MAX is kept.
++            let max_ms = i64::MAX as u64;
++            assert_expiry(&codec, -1, Duration::from_millis(max_ms + 1), i64::MAX - 1);
++            assert_expiry(&codec, -1, Duration::from_millis(max_ms), i64::MAX - 1);
++            assert_expiry(&codec, -1, Duration::from_millis(max_ms - 1), i64::MAX - 2);
++            assert_expiry(&codec, i64::MIN, Duration::MAX, -1);
++            // Exactly 2^64 ms: clamped to i64::MAX ms, not truncated to 64 bits (0 ms).
++            let two_pow_64_ms = Duration::new(18_446_744_073_709_551, 616_000_000);
++            assert_eq!(two_pow_64_ms.as_millis(), 1u128 << 64);
++            assert_expiry(&codec, -1, two_pow_64_ms, i64::MAX - 1);
++        }
++
++        #[test]
++        fn seal_at_rs1_ring_opens_until_expiry() {
++            let codec = ring().with_rs1_signing("a").unwrap();
++            let token = codec.seal_at(b"p", &ttl_options(Duration::from_secs(60)), 1_000);
++            assert!(token.starts_with("rs1."));
++            assert_expiry(&codec, 1_000, Duration::from_secs(60), 61_000);
++            assert_expiry(&codec, -1_000, Duration::from_millis(1), -999);
++        }
++
++        #[test]
++        fn seal_at_saturates_expiry_at_i64_max() {
++            let codec = single();
++            assert_expiry(&codec, 1_000, Duration::MAX, i64::MAX);
++            assert_expiry(&codec, i64::MAX - 10, Duration::from_secs(1), i64::MAX);
++            assert_expiry(&codec, i64::MAX - 1_000, Duration::from_secs(1), i64::MAX);
++            assert_expiry(
++                &codec,
++                i64::MAX - 1_001,
++                Duration::from_secs(1),
++                i64::MAX - 1,
++            );
++            assert_expiry(&codec, i64::MAX, Duration::ZERO, i64::MAX);
++        }
++
++        #[test]
++        fn seal_at_with_negative_now_stores_negative_expiry() {
++            let codec = single();
++            assert_expiry(&codec, -5_000, Duration::from_secs(1), -4_000);
++            assert_expiry(&codec, -1, Duration::ZERO, -1);
++            assert_expiry(&codec, i64::MIN, Duration::ZERO, i64::MIN);
++            assert_expiry(&codec, i64::MIN, Duration::from_millis(1), i64::MIN + 1);
++        }
++
++        #[test]
++        fn seal_at_expiry_landing_on_zero_never_expires() {
++            for codec in [single(), ring()] {
++                let token = codec.seal_at(b"p", &ttl_options(Duration::from_secs(1)), -1_000);
++                assert_eq!(expiry_of(&token), 0);
++                for now in [i64::MIN, -1, 0, 1, 1_000_000, i64::MAX] {
++                    assert_eq!(codec.open_at(&token, &[], now).unwrap(), b"p");
++                }
++                // Same body as a token sealed without a TTL.
++                let no_ttl = codec.seal_at(b"p", &SealOptions::new(), 12_345);
++                assert_eq!(no_ttl, token);
++            }
++        }
++
++        #[test]
++        fn new_with_keyring_reports_exact_messages() {
++            let empty =
++                RequestStateCodec::new_with_keyring("a", std::iter::empty::<(&str, &[u8])>());
++            assert_eq!(
++                keyring_message(empty),
++                "keyring must contain at least one key"
++            );
++
++            let duplicate = RequestStateCodec::new_with_keyring("a", [("a", KEY), ("a", KEY_B)]);
++            let duplicate = duplicate.unwrap_err();
++            assert!(matches!(
++                duplicate,
++                RequestStateError::InvalidKeyring("duplicate key id")
++            ));
++            assert_eq!(
++                duplicate.to_string(),
++                "invalid keyring configuration: duplicate key id"
++            );
++
++            let missing = RequestStateCodec::new_with_keyring("c", [("a", KEY), ("b", KEY_B)]);
++            assert_eq!(
++                keyring_message(missing),
++                "active key id is not present in the keyring"
++            );
++
++            let empty_kid = RequestStateCodec::new_with_keyring("a", [("a", KEY), ("", KEY_B)]);
++            assert_eq!(keyring_message(empty_kid), "key id must not be empty");
++            let empty_active = RequestStateCodec::new_with_keyring("", [("a", KEY)]);
++            assert_eq!(keyring_message(empty_active), "key id must not be empty");
++
++            let kid_256 = "x".repeat(256);
++            let too_long =
++                RequestStateCodec::new_with_keyring("a", [("a", KEY), (&kid_256, KEY_B)]);
++            assert_eq!(keyring_message(too_long), "key id exceeds 255 UTF-8 bytes");
++            // 128 two-byte characters are 256 UTF-8 bytes; 255 bytes are accepted.
++            let wide_256 = "\u{e9}".repeat(128);
++            let wide = RequestStateCodec::new_with_keyring(wide_256.clone(), [(wide_256, KEY)]);
++            assert_eq!(keyring_message(wide), "key id exceeds 255 UTF-8 bytes");
++            let wide_255 = format!("{}a", "\u{e9}".repeat(127));
++            assert!(
++                RequestStateCodec::new_with_keyring(wide_255.clone(), [(wide_255, KEY)]).is_ok()
++            );
++
++            let short = RequestStateCodec::new_with_keyring("a", [("a", vec![7u8; 31])]);
++            assert_eq!(key_too_short(short), (32, 31));
++            let empty_key = RequestStateCodec::new_with_keyring("a", [("a", Vec::<u8>::new())]);
++            assert_eq!(key_too_short(empty_key), (32, 0));
++        }
++
++        #[test]
++        fn new_with_keyring_checks_faults_in_source_order() {
++            // Per entry: key id first, then key length, then duplicate.
++            let kid_first = RequestStateCodec::new_with_keyring("", [("", vec![0u8; 3])]);
++            assert_eq!(keyring_message(kid_first), "key id must not be empty");
++            let long_kid_first =
++                RequestStateCodec::new_with_keyring("a", [("x".repeat(256), vec![0u8; 3])]);
++            assert_eq!(
++                keyring_message(long_kid_first),
++                "key id exceeds 255 UTF-8 bytes"
++            );
++            let key_before_duplicate = RequestStateCodec::new_with_keyring(
++                "a",
++                [("a", KEY.to_vec()), ("a", vec![1u8; 5])],
++            );
++            assert_eq!(key_too_short(key_before_duplicate), (32, 5));
++            // Entries are checked in order: the first fault stops the loop.
++            let duplicate_before_later_fault = RequestStateCodec::new_with_keyring(
++                "a",
++                [("a", KEY.to_vec()), ("a", KEY.to_vec()), ("", vec![])],
++            );
++            assert_eq!(
++                keyring_message(duplicate_before_later_fault),
++                "duplicate key id"
++            );
++            // After the loop: emptiness, then the active id's validity, then its presence.
++            let empty_before_active =
++                RequestStateCodec::new_with_keyring("", std::iter::empty::<(String, Vec<u8>)>());
++            assert_eq!(
++                keyring_message(empty_before_active),
++                "keyring must contain at least one key"
++            );
++            let active_too_long =
++                RequestStateCodec::new_with_keyring("y".repeat(256), [("a", KEY)]);
++            assert_eq!(
++                keyring_message(active_too_long),
++                "key id exceeds 255 UTF-8 bytes"
++            );
++        }
++
++        #[test]
++        fn rs1_builders_report_exact_messages() {
++            let signing_single = single().with_rs1_signing("a");
++            assert_eq!(
++                keyring_message(signing_single),
++                "rs1 transitional signing requires a keyring"
++            );
++            let fallback_single = single().with_rs1_fallback("a");
++            assert_eq!(
++                keyring_message(fallback_single),
++                "rs1 fallbacks require a keyring"
++            );
++
++            for kid in ["c", "", "A"] {
++                assert_eq!(
++                    keyring_message(ring().with_rs1_signing(kid)),
++                    "rs1 signing key id is not present in the keyring"
++                );
++                assert_eq!(
++                    keyring_message(ring().with_rs1_fallback(kid)),
++                    "rs1 fallback key id is not present in the keyring"
++                );
++            }
++        }
++
++        #[test]
++        fn rs1_fallbacks_append_in_call_order_and_signing_registers_its_id() {
++            let codec = ring()
++                .with_rs1_fallback("b")
++                .unwrap()
++                .with_rs1_fallback("a")
++                .unwrap();
++            assert!(format!("{codec:?}").ends_with("rs1_fallbacks: [\"b\", \"a\"] }"));
++            let codec = ring().with_rs1_signing("b").unwrap();
++            assert!(
++                format!("{codec:?}")
++                    .ends_with("seal_mode: Rs1 { key_id: \"b\" }, rs1_fallbacks: [\"b\"] }")
++            );
++        }
++
++        #[test]
++        fn rs1_builders_keep_fallbacks_unique_and_ordered() {
++            let codec = ring()
++                .with_rs1_fallback("b")
++                .unwrap()
++                .with_rs1_fallback("b")
++                .unwrap()
++                .with_rs1_signing("a")
++                .unwrap()
++                .with_rs1_signing("a")
++                .unwrap()
++                .with_rs1_fallback("a")
++                .unwrap();
++            assert_eq!(
++                format!("{codec:?}"),
++                "RequestStateCodec { mode: \"ring\", key_count: 2, keys: \"<redacted>\", \
++                 seal_mode: Rs1 { key_id: \"a\" }, rs1_fallbacks: [\"b\", \"a\"] }"
++            );
++            // The last with_rs1_signing call wins; the fallback list keeps both ids.
++            let codec = codec.with_rs1_signing("b").unwrap();
++            assert_eq!(
++                format!("{codec:?}"),
++                "RequestStateCodec { mode: \"ring\", key_count: 2, keys: \"<redacted>\", \
++                 seal_mode: Rs1 { key_id: \"b\" }, rs1_fallbacks: [\"b\", \"a\"] }"
++            );
++        }
++    }
+ }
+diff --git a/crates/rmcp/src/model/task.rs b/crates/rmcp/src/model/task.rs
+index bbdd1c9..0da2300 100644
+--- a/crates/rmcp/src/model/task.rs
++++ b/crates/rmcp/src/model/task.rs
+@@ -541,4 +541,18 @@ mod tests {
+         let roundtrip: GetTaskResult = serde_json::from_value(value).unwrap();
+         assert_eq!(roundtrip, result);
+     }
++
++    // ---- Patch 02 (plan step S34, human decision H3): plan Section 22 boundary cases. ----
++    // Expected values from the signed-off statement in `formal/specs/Specs/Model/Task.lean`.
++
++    // plan §22 M08 (each of the five statuses); Theorems.task.TaskStatus.is_terminal: `true`
++    // exactly for `Completed`, `Failed` and `Cancelled`.
++    #[test]
++    fn s34_m08_is_terminal_each_status() {
++        assert!(!TaskStatus::Working.is_terminal());
++        assert!(!TaskStatus::InputRequired.is_terminal());
++        assert!(TaskStatus::Completed.is_terminal());
++        assert!(TaskStatus::Failed.is_terminal());
++        assert!(TaskStatus::Cancelled.is_terminal());
++    }
+ }
+diff --git a/crates/rmcp/src/transport/async_rw.rs b/crates/rmcp/src/transport/async_rw.rs
+index 47d0e05..de18c69 100644
+--- a/crates/rmcp/src/transport/async_rw.rs
++++ b/crates/rmcp/src/transport/async_rw.rs
+@@ -1041,4 +1041,185 @@ mod test {
+             }),
+         );
+     }
++
++    // ---- Patch 02 (plan step S34, human decision H3): plan Section 22 boundary cases. ----
++    // Expected values from the signed-off statements in
++    // `formal/proofs/Proofs/Internal/Transport/AsyncRw.lean` and the lists of `Defs.Methods`
++    // (`formal/proofs/Proofs/Defs/Methods.lean`), copied below; not from the code's lists.
++
++    // plan §22 T04 (empty, "\r", "a\r", "a\r\r", "a"); Theorems.async_rw.without_carriage_return:
++    // the last byte dropped iff it is 13, else the slice unchanged.
++    #[test]
++    fn s34_t04_without_carriage_return() {
++        let cases: [(&[u8], &[u8]); 5] = [
++            (b"", b""),
++            (b"\r", b""),
++            (b"a\r", b"a"),
++            (b"a\r\r", b"a\r"),
++            (b"a", b"a"),
++        ];
++        for (input, expected) in cases {
++            assert_eq!(
++                without_carriage_return(input),
++                expected,
++                "without_carriage_return({input:?})"
++            );
++        }
++    }
++
++    /// `Defs.Methods.standardRequests` (22 core request names, union of five schemas).
++    const S34_STANDARD_REQUESTS: [&str; 22] = [
++        "initialize",
++        "ping",
++        "resources/list",
++        "resources/templates/list",
++        "resources/read",
++        "resources/subscribe",
++        "resources/unsubscribe",
++        "prompts/list",
++        "prompts/get",
++        "tools/list",
++        "tools/call",
++        "tasks/get",
++        "tasks/result",
++        "tasks/cancel",
++        "tasks/list",
++        "logging/setLevel",
++        "sampling/createMessage",
++        "completion/complete",
++        "roots/list",
++        "elicitation/create",
++        "server/discover",
++        "subscriptions/listen",
++    ];
++
++    /// `Defs.Methods.standardNotifications` (12 core notification names).
++    const S34_STANDARD_NOTIFICATIONS: [&str; 12] = [
++        "notifications/cancelled",
++        "notifications/initialized",
++        "notifications/progress",
++        "notifications/resources/list_changed",
++        "notifications/resources/updated",
++        "notifications/prompts/list_changed",
++        "notifications/tools/list_changed",
++        "notifications/tasks/status",
++        "notifications/message",
++        "notifications/roots/list_changed",
++        "notifications/elicitation/complete",
++        "notifications/subscriptions/acknowledged",
++    ];
++
++    /// `Defs.Methods.codeOmits` (recorded bug, human decision H7).
++    const S34_CODE_OMITS: [&str; 6] = [
++        "tasks/get",
++        "tasks/result",
++        "tasks/cancel",
++        "tasks/list",
++        "notifications/tasks/status",
++        "notifications/elicitation/complete",
++    ];
++
++    /// The right-hand side of Theorems.async_rw.is_standard_notification.
++    fn s34_expected_t05(m: &str) -> bool {
++        S34_STANDARD_NOTIFICATIONS.contains(&m) && !S34_CODE_OMITS.contains(&m)
++    }
++
++    /// The right-hand side of Theorems.async_rw.is_standard_method.
++    fn s34_expected_t06(m: &str) -> bool {
++        (S34_STANDARD_REQUESTS.contains(&m) || S34_STANDARD_NOTIFICATIONS.contains(&m))
++            && !S34_CODE_OMITS.contains(&m)
++    }
++
++    fn s34_check_t05_t06(m: &str) {
++        let t05 = is_standard_notification(m);
++        let t06 = is_standard_method(m);
++        assert_eq!(t05, s34_expected_t05(m), "is_standard_notification({m:?})");
++        assert_eq!(t06, s34_expected_t06(m), "is_standard_method({m:?})");
++        // C05: Theorems.async_rw.is_standard_method_of_is_standard_notification.
++        assert!(!t05 || t06, "C05 on {m:?}");
++    }
++
++    // plan §22 T05/T06/C05 (every listed name: all 22 + 12 core names, incl. the six of
++    // `codeOmits`); Theorems.async_rw.is_standard_notification, is_standard_method,
++    // is_standard_method_of_is_standard_notification.
++    #[test]
++    fn s34_t05_t06_every_listed_name() {
++        let mut accepted_requests = 0;
++        let mut accepted_notifications = 0;
++        for m in S34_STANDARD_REQUESTS {
++            s34_check_t05_t06(m);
++            accepted_requests += usize::from(is_standard_method(m));
++        }
++        for m in S34_STANDARD_NOTIFICATIONS {
++            s34_check_t05_t06(m);
++            accepted_notifications += usize::from(is_standard_notification(m));
++        }
++        // `Defs.Methods`: 18 requests and 10 notifications after `codeOmits`.
++        assert_eq!(accepted_requests, 18);
++        assert_eq!(accepted_notifications, 10);
++    }
++
++    // plan §22 T05/T06/C05 (prefix and suffix of a name); the theorems above: byte equality
++    // with a listed name, so `false`.
++    #[test]
++    fn s34_t05_t06_prefix_and_suffix() {
++        for m in [
++            "tools/lis",
++            "tools/",
++            "notifications/",
++            "notifications/cancel",
++            "pin",
++            "ools/list",
++            "list",
++            "cancelled",
++            "/cancelled",
++            "tools/list2",
++            "tools/list/",
++            "pingx",
++            "notifications/cancelledx",
++        ] {
++            assert!(
++                !s34_expected_t06(m),
++                "probe {m:?} must not be a listed name"
++            );
++            s34_check_t05_t06(m);
++        }
++    }
++
++    // plan §22 T05/T06/C05 (case variant); the theorems above: case-sensitive, so `false`.
++    #[test]
++    fn s34_t05_t06_case_variant() {
++        for m in [
++            "PING",
++            "Ping",
++            "Tools/List",
++            "tools/LIST",
++            "logging/setlevel",
++            "Notifications/Cancelled",
++            "notifications/CANCELLED",
++        ] {
++            assert!(
++                !s34_expected_t06(m),
++                "probe {m:?} must not be a listed name"
++            );
++            s34_check_t05_t06(m);
++        }
++    }
++
++    // plan §22 T05/T06/C05 (`notifications/unknown`); the theorems above: not listed, so
++    // `false` for both (T06 was not determined by any upstream test).
++    #[test]
++    fn s34_t05_t06_notifications_unknown() {
++        assert!(!is_standard_notification("notifications/unknown"));
++        assert!(!is_standard_method("notifications/unknown"));
++        s34_check_t05_t06("notifications/unknown");
++    }
++
++    // plan §22 T05/T06/C05 (empty); the theorems above: `false` for both.
++    #[test]
++    fn s34_t05_t06_empty() {
++        assert!(!is_standard_notification(""));
++        assert!(!is_standard_method(""));
++        s34_check_t05_t06("");
++    }
+ }
+diff --git a/crates/rmcp/src/transport/auth.rs b/crates/rmcp/src/transport/auth.rs
+index 3d7816b..f677981 100644
+--- a/crates/rmcp/src/transport/auth.rs
++++ b/crates/rmcp/src/transport/auth.rs
+@@ -10739,4 +10739,235 @@ mod tests {
+         );
+         assert!(store.lock.try_lock().is_ok());
+     }
++
++    // ---- Patch 02 (plan step S34, human decision H3): plan Section 22 boundary cases. ----
++    // Expected values from the signed-off statements in
++    // `formal/proofs/Proofs/Internal/Transport/Auth.lean` and the definitions of `Defs.Net`
++    // (`formal/proofs/Proofs/Defs/Net.lean`): the addresses are those of its kernel-checked
++    // regression checks (`ipv4 a b c d`, `ipv6 [s0, .., s7]`), with the values it pins; not
++    // from running the code. Direct calls of the private associated functions.
++
++    fn s34_v4(a: u8, b: u8, c: u8, d: u8) -> std::net::Ipv4Addr {
++        std::net::Ipv4Addr::new(a, b, c, d)
++    }
++
++    fn s34_v6(s: [u16; 8]) -> std::net::Ipv6Addr {
++        std::net::Ipv6Addr::from(s)
++    }
++
++    // plan §22 A01 (all seven cases, incl. `::` and `64:ff9b:1::1`); Theorems.auth.
++    // AuthorizationManager.embedded_ipv4 = `Defs.Net.embeddedIpv4` (the A01 checks of `Net`,
++    // and the addresses next to the four prefixes, which carry no IPv4 address).
++    #[test]
++    fn s34_a01_embedded_ipv4() {
++        let cases: [([u16; 8], Option<std::net::Ipv4Addr>); 15] = [
++            // `::ffff:a.b.c.d`
++            (
++                [0, 0, 0, 0, 0, 0xffff, 0x0a00, 0x0001],
++                Some(s34_v4(10, 0, 0, 1)),
++            ),
++            // `64:ff9b::a.b.c.d`
++            (
++                [0x64, 0xff9b, 0, 0, 0, 0, 0xc0a8, 0x0101],
++                Some(s34_v4(192, 168, 1, 1)),
++            ),
++            // `::a.b.c.d`
++            ([0, 0, 0, 0, 0, 0, 0x0808, 0x0808], Some(s34_v4(8, 8, 8, 8))),
++            // `::`
++            ([0, 0, 0, 0, 0, 0, 0, 0], None),
++            // `::1`
++            ([0, 0, 0, 0, 0, 0, 0, 1], None),
++            // `::2` (IPv4-compatible, not `::` or `::1`)
++            ([0, 0, 0, 0, 0, 0, 0, 2], Some(s34_v4(0, 0, 0, 2))),
++            // `2002:abcd:ef01::`
++            (
++                [0x2002, 0xabcd, 0xef01, 0, 0, 0, 0, 0],
++                Some(s34_v4(171, 205, 239, 1)),
++            ),
++            // `64:ff9b:1::1` (local-use NAT64: not embedded)
++            ([0x64, 0xff9b, 1, 0, 0, 0, 0, 1], None),
++            // `::ffff:0:a00:1` (IPv4-translated: not embedded)
++            ([0, 0, 0, 0, 0xffff, 0, 0x0a00, 0x0001], None),
++            // Teredo
++            (
++                [0x2001, 0, 0x4136, 0xe378, 0x8000, 0x63bf, 0x3fff, 0xfdd2],
++                None,
++            ),
++            // next to the 6to4, IPv4-mapped, IPv4-compatible and NAT64 prefixes, outside them
++            ([0x2003, 0xc0a8, 1, 0, 0, 0, 0, 0], None),
++            ([0x2001, 0xffff, 0xffff, 0, 0, 0, 0, 0], None),
++            ([0, 0, 0, 0, 0, 0xfffe, 0x0a00, 1], None),
++            ([0, 0, 0, 0, 0, 1, 0x0a00, 1], None),
++            ([0x64, 0xff9b, 0, 0, 1, 0, 0x0a00, 1], None),
++        ];
++        for (segments, expected) in cases {
++            assert_eq!(
++                AuthorizationManager::embedded_ipv4(s34_v6(segments)),
++                expected,
++                "embedded_ipv4({})",
++                s34_v6(segments)
++            );
++        }
++    }
++
++    // plan §22 A02 (first and last address of each range, the addresses just outside, a public
++    // address); Theorems.auth.AuthorizationManager.is_disallowed_metadata_ipv4 =
++    // `Defs.Net.ipv4Disallowed` (the two A02 lists of `Net`; `240.0.0.0` is not blocked: the
++    // bug recorded under H8).
++    #[test]
++    fn s34_a02_range_boundaries() {
++        let inside = [
++            s34_v4(10, 0, 0, 0),
++            s34_v4(10, 255, 255, 255),
++            s34_v4(172, 16, 0, 0),
++            s34_v4(172, 31, 255, 255),
++            s34_v4(192, 168, 0, 0),
++            s34_v4(192, 168, 255, 255),
++            s34_v4(127, 0, 0, 0),
++            s34_v4(127, 255, 255, 255),
++            s34_v4(169, 254, 0, 0),
++            s34_v4(169, 254, 255, 255),
++            s34_v4(255, 255, 255, 255),
++            s34_v4(0, 0, 0, 0),
++            s34_v4(224, 0, 0, 0),
++            s34_v4(239, 255, 255, 255),
++            s34_v4(0, 255, 255, 255),
++            s34_v4(100, 64, 0, 0),
++            s34_v4(100, 127, 255, 255),
++            s34_v4(198, 18, 0, 0),
++            s34_v4(198, 19, 255, 255),
++        ];
++        let outside = [
++            s34_v4(9, 255, 255, 255),
++            s34_v4(11, 0, 0, 0),
++            s34_v4(172, 15, 255, 255),
++            s34_v4(172, 32, 0, 0),
++            s34_v4(192, 167, 255, 255),
++            s34_v4(192, 169, 0, 0),
++            s34_v4(126, 255, 255, 255),
++            s34_v4(128, 0, 0, 0),
++            s34_v4(169, 253, 255, 255),
++            s34_v4(169, 255, 0, 0),
++            s34_v4(255, 255, 255, 254),
++            s34_v4(1, 0, 0, 0),
++            s34_v4(223, 255, 255, 255),
++            s34_v4(240, 0, 0, 0),
++            s34_v4(100, 63, 255, 255),
++            s34_v4(100, 128, 0, 0),
++            s34_v4(198, 17, 255, 255),
++            s34_v4(198, 20, 0, 0),
++            s34_v4(8, 8, 8, 8), // a public address
++        ];
++        for a in inside {
++            assert!(
++                AuthorizationManager::is_disallowed_metadata_ipv4(a),
++                "{a} must be blocked"
++            );
++        }
++        for a in outside {
++            assert!(
++                !AuthorizationManager::is_disallowed_metadata_ipv4(a),
++                "{a} must not be blocked"
++            );
++        }
++    }
++
++    // plan §22 A03/C04 (each listed prefix boundary, a public IPv6 address); Theorems.auth.
++    // AuthorizationManager.is_disallowed_metadata_ipv6 = `Defs.Net.ipv6Disallowed` (the two
++    // A03/C04 boundary lists of `Net`).
++    #[test]
++    fn s34_a03_prefix_boundaries() {
++        let f = 0xffff;
++        let inside: [[u16; 8]; 12] = [
++            [0, 0, 0, 0, 0, 0, 0, 1],
++            [0, 0, 0, 0, 0, 0, 0, 0],
++            [0xff00, 0, 0, 0, 0, 0, 0, 0],
++            [f, f, f, f, f, f, f, f],
++            [0xfe80, 0, 0, 0, 0, 0, 0, 0],
++            [0xfebf, f, f, f, f, f, f, f],
++            [0xfc00, 0, 0, 0, 0, 0, 0, 0],
++            [0xfdff, f, f, f, f, f, f, f],
++            [0x2001, 0, 0, 0, 0, 0, 0, 0],
++            [0x2001, 0, f, f, f, f, f, f],
++            [0x64, 0xff9b, 1, 0, 0, 0, 0, 0],
++            [0x64, 0xff9b, 1, f, f, f, 0x0808, 0x0808],
++        ];
++        let outside: [[u16; 8]; 11] = [
++            [0xfeff, f, f, f, f, f, f, f],
++            [0xfe7f, f, f, f, f, f, f, f],
++            [0xfec0, 0, 0, 0, 0, 0, 0, 0],
++            [0xfbff, f, f, f, f, f, f, f],
++            [0xfe00, 0, 0, 0, 0, 0, 0, 0],
++            [0x2001, 1, 0, 0, 0, 0, 0, 0],
++            [0x2000, f, f, f, f, f, f, f],
++            [0x64, 0xff9b, 0, 0, 0, 1, 0, 0],
++            [0x64, 0xff9b, 2, 0, 0, 0, 0, 0],
++            [0x64, 0xff9b, 0, f, f, f, f, f],
++            [0x2606, 0x4700, 0, 0, 0, 0, 0, 0x1111], // a public address
++        ];
++        for s in inside {
++            assert!(
++                AuthorizationManager::is_disallowed_metadata_ipv6(s34_v6(s)),
++                "{} must be blocked",
++                s34_v6(s)
++            );
++        }
++        for s in outside {
++            assert!(
++                !AuthorizationManager::is_disallowed_metadata_ipv6(s34_v6(s)),
++                "{} must not be blocked",
++                s34_v6(s)
++            );
++        }
++    }
++
++    // plan §22 A03/C04 (an embedded blocked IPv4 in each of the four forms; the same forms with
++    // a public one); Theorems.auth.AuthorizationManager.is_disallowed_metadata_ipv6 (the two
++    // embedded-form lists of `Net`, plus 169.254.169.254 in the NAT64, IPv4-compatible and 6to4
++    // forms that upstream reaches only through A01 and A02) and C04
++    // is_disallowed_metadata_ipv6_eq_of_embedded_ipv4_eq_ok_some (A03 = A02 of the embedded
++    // address), checked on every address of this test.
++    #[test]
++    fn s34_a03_c04_embedded_forms() {
++        let blocked: [[u16; 8]; 8] = [
++            [0, 0, 0, 0, 0, 0xffff, 0xa9fe, 0xa9fe], // IPv4-mapped 169.254.169.254
++            [0x64, 0xff9b, 0, 0, 0, 0, 0x7f00, 1],   // NAT64 127.0.0.1
++            [0x64, 0xff9b, 0, 0, 0, 0, 0xa9fe, 0xa9fe], // NAT64 169.254.169.254
++            [0, 0, 0, 0, 0, 0, 0x0a00, 1],           // IPv4-compatible 10.0.0.1
++            [0, 0, 0, 0, 0, 0, 0xa9fe, 0xa9fe],      // IPv4-compatible 169.254.169.254
++            [0x2002, 0xc0a8, 0x0001, 0, 0, 0, 0, 1], // 6to4 192.168.0.1
++            [0x2002, 0xa9fe, 0xa9fe, 0, 0, 0, 0, 0], // 6to4 169.254.169.254
++            [0, 0, 0, 0, 0, 0, 0, 2],                // IPv4-compatible 0.0.0.2
++        ];
++        let public: [[u16; 8]; 4] = [
++            [0, 0, 0, 0, 0, 0xffff, 0x0808, 0x0808],
++            [0x64, 0xff9b, 0, 0, 0, 0, 0x0808, 0x0808],
++            [0, 0, 0, 0, 0, 0, 0x0808, 0x0808],
++            [0x2002, 0x0808, 0x0808, 0, 0, 0, 0, 1],
++        ];
++        for s in blocked {
++            assert!(
++                AuthorizationManager::is_disallowed_metadata_ipv6(s34_v6(s)),
++                "{} must be blocked",
++                s34_v6(s)
++            );
++        }
++        for s in public {
++            assert!(
++                !AuthorizationManager::is_disallowed_metadata_ipv6(s34_v6(s)),
++                "{} must not be blocked",
++                s34_v6(s)
++            );
++        }
++        for s in blocked.into_iter().chain(public) {
++            let v4 = AuthorizationManager::embedded_ipv4(s34_v6(s))
++                .unwrap_or_else(|| panic!("{} embeds an IPv4 address", s34_v6(s)));
++            assert_eq!(
++                AuthorizationManager::is_disallowed_metadata_ipv6(s34_v6(s)),
++                AuthorizationManager::is_disallowed_metadata_ipv4(v4),
++                "C04 on {}",
++                s34_v6(s)
++            );
++        }
++    }
+ }
+diff --git a/crates/rmcp/src/transport/common/client_side_sse.rs b/crates/rmcp/src/transport/common/client_side_sse.rs
+index 26d2f77..b1e3c2b 100644
+--- a/crates/rmcp/src/transport/common/client_side_sse.rs
++++ b/crates/rmcp/src/transport/common/client_side_sse.rs
+@@ -877,4 +877,150 @@ mod tests {
+         assert!(policy.retry(2).is_some());
+         assert!(policy.retry(3).is_none());
+     }
++
++    // ---- Patch 02 (plan step S34, human decision H3): plan Section 22 boundary cases. ----
++    // Expected values (verdict and state) from the signed-off statements in
++    // `formal/proofs/Proofs/Internal/Transport/Common/ClientSideSse.lean` and the model
++    // `Defs.Sse` (`formal/proofs/Proofs/Defs/Sse.lean`, with `cap = usize::MAX`), mostly its
++    // kernel-checked regression checks; not from running the code. These call the limiter
++    // directly, so the state after a call (not observable through `bounded_sse_stream`) is
++    // checked too. State tuple: (max_size, retained_size, line_size, line_is_comment,
++    // previous_was_cr), the fields of `Defs.Sse.State`. Start states are built explicitly with
++    // `s34_limiter` (`Defs.Sse.init n` = (n, 0, 0, false, false)), not with
++    // `SseEventSizeLimiter::new`, which no signed-off statement covers.
++
++    type S34State = (usize, usize, usize, bool, bool);
++
++    fn s34_limiter(st: S34State) -> SseEventSizeLimiter {
++        SseEventSizeLimiter {
++            max_size: st.0,
++            retained_size: st.1,
++            line_size: st.2,
++            line_is_comment: st.3,
++            previous_was_cr: st.4,
++        }
++    }
++
++    fn s34_state(l: &SseEventSizeLimiter) -> S34State {
++        (
++            l.max_size,
++            l.retained_size,
++            l.line_size,
++            l.line_is_comment,
++            l.previous_was_cr,
++        )
++    }
++
++    // plan §22 T01/T02 (saturating past `max`); Theorems.client_side_sse.SseEventSizeLimiter.
++    // check_limit (`Err` iff `satAdd(retained, line) > max`) and finish_line (`Defs.Sse.
++    // finishLine`: `retained := satAdd(satAdd(retained, line), 1)`, then T01). `Sse`:
++    // `satAdd usizeMax64 usizeMax64 1 = usizeMax64`, `withinLimit` at the cap.
++    #[test]
++    fn s34_t01_t02_saturating_past_max() {
++        let m = usize::MAX;
++        // T01: the sum saturates at usize::MAX, which is within a bound of usize::MAX ...
++        assert_eq!(s34_limiter((m, m, m, false, false)).check_limit(), Ok(()));
++        assert_eq!(
++            s34_limiter((m, m - 1, 2, false, false)).check_limit(),
++            Ok(())
++        );
++        // ... and past a bound of usize::MAX - 1.
++        assert_eq!(
++            s34_limiter((m - 1, m - 1, 2, false, false)).check_limit(),
++            Err(())
++        );
++        assert_eq!(
++            s34_limiter((m - 1, m, m, false, false)).check_limit(),
++            Err(())
++        );
++        // T01 at and one above the bound, for reference.
++        assert_eq!(s34_limiter((9, 4, 5, false, false)).check_limit(), Ok(()));
++        assert_eq!(s34_limiter((9, 5, 5, false, false)).check_limit(), Err(()));
++
++        // T02 on a non-comment line: retained saturates at usize::MAX.
++        let mut l = s34_limiter((m, 1, m, false, false));
++        assert_eq!(l.finish_line(), Ok(()));
++        assert_eq!(s34_state(&l), (m, m, 0, false, false));
++        let mut l = s34_limiter((m - 1, 1, m, false, false));
++        assert_eq!(l.finish_line(), Err(()));
++        assert_eq!(s34_state(&l), (m - 1, m, 0, false, false));
++        // T02 on a comment line: retained unchanged; on an empty line: reset to 0.
++        let mut l = s34_limiter((m - 1, m, m, true, false));
++        assert_eq!(l.finish_line(), Err(()));
++        assert_eq!(s34_state(&l), (m - 1, m, 0, false, false));
++        let mut l = s34_limiter((m - 1, m, 0, false, true));
++        assert_eq!(l.finish_line(), Ok(()));
++        assert_eq!(s34_state(&l), (m - 1, 0, 0, false, true));
++
++        // T03: an ordinary byte on a line of usize::MAX bytes keeps line_size at usize::MAX.
++        let mut l = s34_limiter((m, 0, m, false, false));
++        assert_eq!(l.observe(b"a"), Ok(()));
++        assert_eq!(s34_state(&l), (m, 0, m, false, false));
++    }
++
++    // plan §22 T03/C01/C02 (CR not followed by LF); Theorems.client_side_sse.
++    // SseEventSizeLimiter.observe = `Defs.Sse.observe`; `Sse` checks on "ab\r", "ab\r\r",
++    // "a\rb\n" with bound 9.
++    #[test]
++    fn s34_t03_cr_line_ends() {
++        let mut l = s34_limiter((9, 0, 0, false, false));
++        assert_eq!(l.observe(b"ab\r"), Ok(()));
++        assert_eq!(s34_state(&l), (9, 3, 0, false, true));
++
++        let mut l = s34_limiter((9, 0, 0, false, false));
++        assert_eq!(l.observe(b"ab\r\r"), Ok(()));
++        assert_eq!(s34_state(&l), (9, 0, 0, false, true));
++
++        let mut l = s34_limiter((9, 0, 0, false, false));
++        assert_eq!(l.observe(b"a\rb\n"), Ok(()));
++        assert_eq!(s34_state(&l), (9, 4, 0, false, false));
++    }
++
++    // plan §22 T03/C01/C02 (CRLF split across chunks, state afterwards); Theorems.
++    // client_side_sse.SseEventSizeLimiter.observe and observe_append (C01); `Sse`:
++    // `observeChunks (init 64) ["data: hello\r", "\n"]` = ok, (64, 12, 0, false, false), the
++    // same state as for the unsplit chunk.
++    #[test]
++    fn s34_c01_crlf_split_across_chunks_state() {
++        let mut l = s34_limiter((64, 0, 0, false, false));
++        assert_eq!(l.observe(b"data: hello\r"), Ok(()));
++        assert_eq!(l.observe(b"\n"), Ok(()));
++        assert_eq!(s34_state(&l), (64, 12, 0, false, false));
++
++        let mut whole = s34_limiter((64, 0, 0, false, false));
++        assert_eq!(whole.observe(b"data: hello\r\n"), Ok(()));
++        assert_eq!(s34_state(&whole), (64, 12, 0, false, false));
++    }
++
++    // plan §22 T03/C01/C02 (empty chunk); Theorems.client_side_sse.SseEventSizeLimiter.observe:
++    // `Defs.Sse.observe cap st [] = ⟨true, st⟩` for every state, including one over the bound
++    // left by a failed call.
++    #[test]
++    fn s34_t03_empty_chunk() {
++        for st in [
++            (64, 0, 0, false, false),
++            (9, 3, 0, false, true),
++            (9, 2, 4, true, false),
++            (2, 3, 0, false, false),
++        ] {
++            let mut l = s34_limiter(st);
++            assert_eq!(l.observe(b""), Ok(()), "empty chunk from {st:?}");
++            assert_eq!(s34_state(&l), st, "empty chunk from {st:?}");
++        }
++    }
++
++    // plan §22 T03/C01/C02 (error at a CR byte, state afterwards); Theorems.client_side_sse.
++    // SseEventSizeLimiter.observe; `Sse`: `observe usizeMax64 (init 2) "ab\r"` = ⟨false,
++    // (2, 3, 0, false, false)⟩ (`previous_was_cr` stays false), and an error stops the fold:
++    // `observe usizeMax64 (init 1) "ab\n\n"` = ⟨false, (1, 0, 2, false, false)⟩.
++    #[test]
++    fn s34_t03_error_at_cr_state() {
++        let mut l = s34_limiter((2, 0, 0, false, false));
++        assert_eq!(l.observe(b"ab\r"), Err(()));
++        assert_eq!(s34_state(&l), (2, 3, 0, false, false));
++
++        let mut l = s34_limiter((1, 0, 0, false, false));
++        assert_eq!(l.observe(b"ab\n\n"), Err(()));
++        assert_eq!(s34_state(&l), (1, 0, 2, false, false));
++    }
+ }
+diff --git a/crates/rmcp/src/transport/streamable_http_server/tower.rs b/crates/rmcp/src/transport/streamable_http_server/tower.rs
+index 35f0ecf..ced4e23 100644
+--- a/crates/rmcp/src/transport/streamable_http_server/tower.rs
++++ b/crates/rmcp/src/transport/streamable_http_server/tower.rs
+@@ -2611,3 +2611,76 @@ impl<S: Stream> Stream for CancelOnDisconnect<S> {
+         polled
+     }
+ }
++
++#[cfg(test)]
++mod phase2_boundary_tests {
++    // Patch 02 (plan step S34, human decision H3): plan Section 22 boundary cases of T07/T08.
++    // Expected values from the signed-off statements in
++    // `formal/proofs/Proofs/Internal/Transport/StreamableHttpServer/Tower.lean` and
++    // `Defs.Tower.defaultPort` (`formal/proofs/Proofs/Defs/Tower.lean`); not from running the
++    // code. Direct calls, so they need no `transport-streamable-http-client-reqwest` feature.
++
++    use super::*;
++
++    // plan §22 T07/T08 (`"http"`, `"https"`, `"HTTP"`, `"ftp"`); Theorems.tower.default_port:
++    // `Defs.Tower.defaultPort`, exact case-sensitive bytes: `some 80`, `some 443`, else `none`.
++    #[test]
++    fn s34_t07_default_port_schemes() {
++        assert_eq!(default_port("http"), Some(80));
++        assert_eq!(default_port("https"), Some(443));
++        assert_eq!(default_port("HTTP"), None);
++        assert_eq!(default_port("ftp"), None);
++        assert_eq!(default_port("HTTPS"), None);
++        assert_eq!(default_port(""), None);
++        assert_eq!(default_port("ws"), None);
++    }
++
++    // plan §22 T07/T08 (`Any`/`Unspecified`); Theorems.tower.AllowedPort.matches: `true` for
++    // every scheme and port.
++    #[test]
++    fn s34_t08_any_and_unspecified_match_everything() {
++        for allowed in [AllowedPort::Any, AllowedPort::Unspecified] {
++            for scheme in ["http", "https", "HTTP", "ftp", ""] {
++                for port in [
++                    None,
++                    Some(0),
++                    Some(80),
++                    Some(443),
++                    Some(8443),
++                    Some(u16::MAX),
++                ] {
++                    assert!(
++                        allowed.matches(scheme, port),
++                        "{allowed:?}.matches({scheme:?}, {port:?})"
++                    );
++                }
++            }
++        }
++    }
++
++    // plan §22 T07/T08 (`Exact 443` with `None` and `https`); Theorems.tower.AllowedPort.matches:
++    // `(none <|> defaultPort "https") = some 443`, so `true`; with another scheme the default
++    // is `none` or 80, so `false`.
++    #[test]
++    fn s34_t08_exact_443_none_https() {
++        assert!(AllowedPort::Exact(443).matches("https", None));
++        assert!(!AllowedPort::Exact(443).matches("http", None));
++        assert!(!AllowedPort::Exact(443).matches("HTTPS", None));
++        assert!(!AllowedPort::Exact(443).matches("ftp", None));
++    }
++
++    // plan §22 T07/T08 (`Exact 80` with `Some 8080`); Theorems.tower.AllowedPort.matches:
++    // `(some 8080 <|> _) = some 8080 ≠ some 80`, so `false` whatever the scheme; the explicit
++    // port wins over the default.
++    #[test]
++    fn s34_t08_exact_80_some_8080() {
++        for scheme in ["http", "https", "HTTP", "ftp"] {
++            assert!(
++                !AllowedPort::Exact(80).matches(scheme, Some(8080)),
++                "Exact(80).matches({scheme:?}, Some(8080))"
++            );
++        }
++        assert!(AllowedPort::Exact(80).matches("https", Some(80)));
++        assert!(AllowedPort::Exact(80).matches("http", None));
++    }
++}

@@ -3,40 +3,74 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Defs
-import Proofs.Model.RequestStateWire.Common
-import Proofs.Model.RequestStateWire.B64Len
-import Proofs.Model.RequestStateWire.KeyLengthOk
-import Proofs.Model.RequestStateWire.CheckKidLen
-import Proofs.Model.RequestStateWire.BytesEq
-import Proofs.Model.RequestStateWire.NextDot
-import Proofs.Model.RequestStateWire.ComponentCount
-import Proofs.Model.RequestStateWire.VersionOf
-import Proofs.Model.RequestStateWire.ParseRs1
-import Proofs.Model.RequestStateWire.ParseRs2
-import Proofs.Model.RequestStateWire.TranscriptV1
-import Proofs.Model.RequestStateWire.TranscriptV2
-import Proofs.Model.RequestStateWire.DecodeExpiry
-import Proofs.Model.RequestStateWire.IsExpired
-import Proofs.Model.RequestStateWire.OpenFrame
-import Proofs.Model.RequestStateWire.Frame
-import Proofs.External.Base64
-import Proofs.External.String
-import Proofs.External.Prim
-import Proofs.External.Std
-import Proofs.External.Iter
-import Proofs.Model.RequestState.Common
-import Proofs.Model.RequestState.OpenAuthenticatedBody
-import Proofs.Model.RequestState.ValidateKeyLength
-import Proofs.Model.RequestState.ValidateConfigKid
-import Proofs.Model.RequestState.B64Len
-import Proofs.Model.RequestState.OpenAt
-import Proofs.Model.RequestState.SealRs1
-import Proofs.Model.RequestState.SealRs2
-import Proofs.Model.RequestState.OpenRs1At
-import Proofs.Model.RequestState.Rs1FallbacksVerify
-import Proofs.Model.RequestState.OpenRs2At
-import Proofs.Model.RequestState.Roundtrip
+module
+public import Defs
+public import Proofs.Model.RequestStateWire.Common
+public import Proofs.Model.RequestStateWire.B64Len
+public import Proofs.Model.RequestStateWire.KeyLengthOk
+public import Proofs.Model.RequestStateWire.CheckKidLen
+public import Proofs.Model.RequestStateWire.BytesEq
+public import Proofs.Model.RequestStateWire.NextDot
+public import Proofs.Model.RequestStateWire.ComponentCount
+public import Proofs.Model.RequestStateWire.VersionOf
+public import Proofs.Model.RequestStateWire.ParseRs1
+public import Proofs.Model.RequestStateWire.ParseRs2
+public import Proofs.Model.RequestStateWire.TranscriptV1
+public import Proofs.Model.RequestStateWire.TranscriptV2
+public import Proofs.Model.RequestStateWire.DecodeExpiry
+public import Proofs.Model.RequestStateWire.IsExpired
+public import Proofs.Model.RequestStateWire.OpenFrame
+public import Proofs.Model.RequestStateWire.Frame
+public import Proofs.External.Base64
+public import Proofs.External.String
+public import Proofs.External.Option
+public import Proofs.External.Net
+public import Proofs.External.IntParse
+public import Proofs.External.Prim
+public import Proofs.External.Std
+public import Proofs.External.Iter
+public import Proofs.External.Byte
+public import Proofs.External.WP
+public import Proofs.Model.RequestState.Common
+public import Proofs.Model.RequestState.OpenAuthenticatedBody
+public import Proofs.Model.RequestState.ValidateKeyLength
+public import Proofs.Model.RequestState.ValidateConfigKid
+public import Proofs.Model.RequestState.B64Len
+public import Proofs.Model.RequestState.OpenAt
+public import Proofs.Model.RequestState.SealRs1
+public import Proofs.Model.RequestState.SealRs2
+public import Proofs.Model.RequestState.OpenRs1At
+public import Proofs.Model.RequestState.Rs1FallbacksVerify
+public import Proofs.Model.RequestState.OpenRs2At
+public import Proofs.Model.RequestState.Roundtrip
+public import Proofs.Model.RequestState.Public
+public import Proofs.Model.RequestState.Keyring
+public import Proofs.Model.RequestState.Seal
+public import Proofs.Model.RequestState.OpenJson
+public import Proofs.Model.RequestState.NewWithKeyring
+public import Proofs.Model.JsonRpcMessage
+public import Proofs.Model.NumberOrString
+public import Proofs.Model.Task
+public import Proofs.Model.SamplingContent
+public import Proofs.Model.Reference
+public import Proofs.Transport.ClientSideSse
+public import Proofs.Transport.AsyncRw
+public import Proofs.Transport.Tower
+public import Proofs.Transport.Auth
+public import Proofs.Defs.Sse
+public import Proofs.Defs.Net
+public import Proofs.Defs.Methods
+public import Proofs.Defs.Tower
+public import Proofs.Internal.External
+public import Proofs.Internal.Model
+public import Proofs.Internal.Model.RequestState
+public import Proofs.Internal.Model.RequestStateWire
+public import Proofs.Internal.Transport.Common.ClientSideSse
+public import Proofs.Internal.Transport.AsyncRw
+public import Proofs.Internal.Transport.StreamableHttpServer.Tower
+public import Proofs.Internal.Transport.Auth
+
+@[expose] public section
 
 /-!
 # Proofs
@@ -48,4 +82,13 @@ proofs (S06, S10): `Common` and the 15 target modules; the laws of the
 external models (S08, S09: `Proofs.External.*`); and the `request_state` proofs of E01–E04
 (S07), E07/E08 (S11), E09a/E09/E10 (S13), E11 (S14) and the round trips (S15, `Roundtrip`), with the
 slice-iterator helper `Proofs.External.Iter`.
+
+Phase 2 (2026-11-24, S28–S32): `Proofs.Model.{JsonRpcMessage, NumberOrString, Task,
+SamplingContent, Reference}` (M01–M14, the joint lemmas, C03), `Proofs.Transport.{ClientSideSse,
+AsyncRw, Tower, Auth}` (T01–T08, A01–A03, C01, C02, C04, C05); the S27 law relating the integer
+parser model to `Defs.parseI64` is in `Proofs.External.IntParse`.
+
+Since 2026-11-24 it also imports the definitions used only by internal statements
+(`Proofs.Defs.*`) and the internal spec files (`Proofs.Internal.*`: statements about private,
+crate-internal and patch-only functions and the model laws, in the format of `formal/specs/Specs/`).
 -/

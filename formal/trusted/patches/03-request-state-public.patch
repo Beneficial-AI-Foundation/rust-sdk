@@ -1,0 +1,89 @@
+Translation patch: seal_at and open_json_with of the request-state codec, so that the public
+functions seal, seal_with, open_json and open_json_with translate (plan Section 2.3, R09, R10,
+R13, R14; human decisions 2026-11-24: targets R09-R15, variant A "minimal Rust change")
+
+Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
+01-request-state-wire.patch and 02-phase2-tests.patch (scripts/apply-patches.sh applies
+formal/trusted/patches/*.patch in file-name order, patch -p1 -F 0, only to the copy in
+.llbc/work/; the real source is never patched). File: crates/rmcp/src/model/request_state.rs.
+Generated with git diff from the patch-01+02 copy. The patch body below is the authoritative
+content. Toolchain measured: Aeneas nightly-2026.11.24-fb44cb4, Charon 0.1.324, Rust
+nightly-2026-09-17.
+
+Not part of this patch (they stay in the repository): the Charon settings in
+crates/rmcp/Cargo.toml (the exclude entries of seal, seal_with, seal_at, new_with_keyring,
+with_rs1_signing, with_rs1_fallback, open_json and open_json_with removed; serde_core moved
+from exclude to opaque) and the external models of formal/trusted/Rmcp/. with_rs1_signing,
+with_rs1_fallback and new_with_keyring need no source change on this toolchain (measured: they
+translate with only their exclude entries removed). seal_json and seal_json_with stay excluded
+(blocked upstream: Aeneas does not support the mutually recursive serde_core::ser traits).
+
+Change (non-test lines only; no test is added or changed):
+1. seal_at: `let expiry = match options.ttl { .. }` becomes `let ttl = options.ttl;` followed
+   by `let expiry = match ttl { .. }`; the match arms are unchanged.
+2. open_json_with: `serde_json::from_slice(&payload).map_err(RequestStateError::Deserialization)`
+   becomes `match serde_json::from_slice(&payload) { Ok(value) => Ok(value), Err(error) =>
+   Err(RequestStateError::Deserialization(error)) }`.
+
+Why each hunk is needed (each measured alone on the patch-01+02 copy, with only the exclude
+entries removed):
+1. Without hunk 1, Aeneas stops on seal_at with "[Error] Unreachable" at request_state.rs
+   lines 531:21-533:21 (the `match options.ttl` expression; interp/Interp.ml line 686), and
+   seal and seal_with call seal_at. With hunk 1 alone, seal_at, seal_with and seal translate.
+   (Matching on a field read through the shared reference `options` fails; matching on a local
+   copy works.)
+2. Without hunk 2, Aeneas fails on the FnOnce impl that rustc generates for the enum variant
+   constructor RequestStateError::Deserialization used as a function: "[Error] Arrow types are
+   not supported yet" and "[Error] Internal error: please file an issue" at request_state.rs
+   lines 137:4-137:48. With hunk 2 and serde_core opaque, open_json and open_json_with
+   translate; with hunk 2 alone (serde_core excluded) the trait serde_core::de::DeserializeOwned
+   of their signatures is missing ("Could not find: trait_decl_id"). A closure
+   `|e| RequestStateError::Deserialization(e)` is not used because clippy's redundant_closure
+   lint rejects it.
+No upstream Aeneas issue has been filed (as of 2026-11-24); minimal reproducers are kept outside
+the repository.
+With this patch the eight functions seal, seal_with, seal_at, with_rs1_signing,
+with_rs1_fallback, open_json, open_json_with and new_with_keyring translate with real bodies,
+no sorry is generated, and every earlier block of Funs.lean and Types.lean is unchanged up to
+its Source line numbers.
+
+Behaviour:
+1. options.ttl is an Option<Duration>, which is Copy: `let ttl = options.ttl;` copies the
+   value that the match scrutinee read before, and the match computes the same expression on
+   it (0 without a TTL, otherwise now_ms.saturating_add(ttl.as_millis().min(i64::MAX as u128)
+   as i64)). No other statement changes.
+2. Result::map_err(op) is `match self { Ok(t) => Ok(t), Err(e) => Err(op(e)) }`
+   (core/src/result.rs lines 961-969), and op is the variant constructor, so the match returns the same value
+   on both paths; the value type T and the error variant are unchanged.
+The public API is unchanged. Existing tests that cover the changed lines (all pass on the copy
+before and after this patch, with the crate's other library tests in the translated feature
+configuration plus macros, 835 in total): for hunk 1 rs1_known_answer_is_unchanged and
+rs2_known_answer_matches_wire_specification (byte-exact tokens sealed by seal_at with a 90 s
+TTL at a fixed time), within_ttl_opens, past_ttl_is_expired, ttl_and_associated_data_combine,
+rs2_roundtrips_with_associated_data_and_ttl, and every seal/seal_with round trip without TTL;
+for hunk 2 seal_open_roundtrips_json (Ok path) and
+serde_is_reached_only_after_integrity_verification (Err path: invalid JSON gives
+RequestStateError::Deserialization).
+
+diff --git a/crates/rmcp/src/model/request_state.rs b/crates/rmcp/src/model/request_state.rs
+index 6ccb755..4e93408 100644
+--- a/crates/rmcp/src/model/request_state.rs
++++ b/crates/rmcp/src/model/request_state.rs
+@@ -524,11 +524,15 @@ impl RequestStateCodec {
+         associated_data: &[u8],
+     ) -> Result<T, RequestStateError> {
+         let payload = self.open_with(sealed, associated_data)?;
+-        serde_json::from_slice(&payload).map_err(RequestStateError::Deserialization)
++        match serde_json::from_slice(&payload) {
++            Ok(value) => Ok(value),
++            Err(error) => Err(RequestStateError::Deserialization(error)),
++        }
+     }
+ 
+     fn seal_at(&self, payload: &[u8], options: &SealOptions<'_>, now_ms: i64) -> String {
+-        let expiry = match options.ttl {
++        let ttl = options.ttl;
++        let expiry = match ttl {
+             Some(ttl) => now_ms.saturating_add(ttl.as_millis().min(i64::MAX as u128) as i64),
+             None => 0,
+         };

@@ -87,12 +87,21 @@ declaration with `set_option ... in`. Use multiples of **200000** as the standar
 
 ### Formatting
 
-- Limit all lines to 100 characters.
+- Limit all lines to 100 characters. Exempt: header lines copied verbatim from the Aeneas templates
+  (`/-- [<rust name>]:`, `Name pattern: [...]`) and Markdown table rows, which cannot be wrapped.
 - In multi-line comments, wrap only when necessary: use as much of the 100-character limit as
   possible before breaking.
 - List imports immediately after the file header, without empty lines.
 - Name definitions and theorems (except function spec theorems) following the
-  [Mathlib naming guidelines][mathlib-naming].
+  [Mathlib naming guidelines][mathlib-naming]: theorems snake_case named after their statement,
+  definitions lowerCamelCase (also when `Bool`-valued), types, structures and `Prop`-valued
+  definitions UpperCamelCase; constructors and `≠` are written in lower case inside theorem names
+  (`map_err_ok`, `ne_dot_of_mem_b64`).
+- Acronyms are written as words, as in the Rust names (`ipv4Value`, `embeddedIpv4`, `utf8Bytes`,
+  `parseI64`, `previousWasCr`; human decision 2026-11-24).
+- Project conventions kept beside Mathlib's (human decision 2026-11-24): a function spec theorem
+  is `<generated name>_spec` and its failure-case companion `<generated name>_fail`; round-trip
+  theorems may be named `<function>_roundtrip`. Generated Aeneas names are never renamed.
 
 ## Library layering
 
@@ -105,13 +114,15 @@ directions are fixed:
 | --- | --- | --- | --- |
 | `Rmcp` | `translation` | Generated `Rmcp.Types`, `Rmcp.Funs` | Aeneas, `RmcpExternal` |
 | `RmcpExternal` | `trusted` | Hand-written `Rmcp.TypesExternal`, `Rmcp.FunsExternal`: external models (definitions, structures, `opaque` constants; no axiom since S08–S09) | Aeneas, `Rmcp.Types` (the generated `FunsExternal` template imports it) |
-| `Defs` | `specs` | Pure definitions used by statements: byte-level models, transcripts, codec-state invariant | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
-| `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, laws of the external models (`Proofs/External/`; consistency models only if a trusted axiom is added again) | `Rmcp`, `RmcpExternal`, `Defs` |
-| `Specs` | `specs` | One spec file per Rust source file: each accepted statement restated as a `theorem` in `Theorems`, and its axioms | `Defs`, `Proofs` |
+| `Defs` | `specs` | Pure definitions used by public statements (`Defs.Bytes`, `Defs.IntParse`, `Defs.JsonRpc`, `Defs.Wire`, `Defs.CodecState`, `Defs.RequestState`); definitions used only by internal statements are in `Proofs/Defs/` (module `Proofs.Defs.X`, Lean namespace `Defs.X` unchanged) | Aeneas, Mathlib, `Rmcp`, `RmcpExternal` |
+| `Proofs` | `proofs` | Spec theorems about the translated functions, their support lemmas, laws of the external models (`Proofs/External/`; consistency models only if a trusted axiom is added again); internal spec files (`Proofs/Internal/`, private API and model laws) and their definitions (`Proofs/Defs/`) | `Rmcp`, `RmcpExternal`, `Defs` |
+| `Specs` | `specs` | One spec file per Rust source file with public API: each accepted public statement restated as a `theorem` in `Theorems`, and its axioms | `Defs`, `Proofs` |
 
 - `Proofs` never imports `Specs`, and nothing imports `Specs`.
 - A statement is phrased only with `Defs` definitions (and the translated function), so that its
-  meaning never depends on a proof-private definition.
+  meaning never depends on a proof-private definition. Signed-off definitions used only by internal
+  statements live in `formal/proofs/Proofs/Defs/` (modules `Proofs.Defs.*`, Lean names `Defs.*`);
+  they count as `Defs` for this rule, and a change to them is a specification change.
 - Proof-only helpers stay in `Proofs`. Promote a helper to `Defs` only if a statement needs it.
 - `formal/specs/Drafts/` belongs to no library. Draft statements live there until their proofs are
   complete.
@@ -120,14 +131,17 @@ directions are fixed:
 
 `formal/trusted/Rmcp/FunsExternal.lean` and `TypesExternal.lean` declare everything Aeneas does not
 translate (plan Section 4). Organise `FunsExternal.lean` in sections: HMAC, Base64, standard
-library, clock.
+library, clock, and the Phase 2 sections (strings and `Arc`; `Option`, `Result`, slices and ranges;
+integer parsing; IP addresses).
 
 - No `axiom` in `trusted/` (human decision 2026-11-23). Each external function is a `def` with
-  the generated name and signature, and each external type a `structure`, keeping the
+  the generated name and signature, and each external type a `structure` (or an `inductive` where
+  Rust has a union or enum, e.g. `MaybeUninit`, `IntErrorKind`), keeping the
   template's `@[rust_fun]` or `@[rust_type]` attribute where it has one (the template gives none
   to the opaque `rmcp` functions, `prim` and `now_ms`); never a bare `Result` axiom. What a
   model cannot compute is an `opaque` constant in the namespace `ExtModel` (`hmacSha256`,
-  `sipHash13`, `nowMs`, `SerdeJsonErrorImpl`), and the external returns `ok` of it. Laws about
+  `sipHash13`, `nowMs`, `SerdeJsonErrorImpl`); a function external returns `ok` of it, and an
+  external type may be defined as one (`SerdeJsonValue`, since S26/S27). Laws about
   the models (for example the Base64 round trip) are theorems in
   `formal/proofs/Proofs/External/`.
 - Each model describes its primitive on its own terms, never by referring to a target function.
@@ -148,7 +162,10 @@ library, clock.
 
 ## Specification Definition Guidelines
 
-`formal/specs/Defs/` holds the definitions that statements are written in.
+`formal/specs/Defs/` holds the definitions that public statements are written in (`Bytes`,
+`IntParse`, `JsonRpc`, `Wire`, `CodecState`); those used only by internal statements are in
+`formal/proofs/Proofs/Defs/` (human decision 2026-11-24; `Wire` and `CodecState` moved back for the
+public `request_state.rs` statements). The files below are named by their Lean module names `Defs.*`.
 
 - `Defs/Wire.lean`: `splitOn` components, `be64`, transcripts, framing and expiry.
 - `Defs/RequestState.lean`: codec outputs and error predicates.
@@ -171,16 +188,20 @@ Rules for definitions in `Defs`:
 
 There is one proof file per Rust item (`VERIFICATION.md` §8), under
 `formal/proofs/Proofs/Model/RequestStateWire/` for `Wxx` and
-`formal/proofs/Proofs/Model/RequestState/` for `Exx`.
+`formal/proofs/Proofs/Model/RequestState/` for `Exx`. Phase 2 (plan Part II) instead uses one file per
+Rust type or module, holding several targets (a deviation from `VERIFICATION.md` §8, recorded in
+`formal/docs/STATUS.md`, "Documents"): `Proofs/Model/{JsonRpcMessage,NumberOrString,Task,SamplingContent,Reference}.lean`
+for `Mxx` and `Proofs/Transport/{ClientSideSse,AsyncRw,Tower,Auth}.lean` for `Txx`/`Axx` (plan Section 20).
 
 - The file holds the function's spec theorem together with any lemmas needed only for its proof.
   Lemmas usable elsewhere go in a shared file (e.g. `Proofs/Model/RequestState/Common.lean`).
-- The file is named after the function in UpperCamelCase. E.g., for `open_rs1_at` the file is
-  `OpenRs1At.lean`. File names are fixed by the table in plan Section 5.
+- The file is named after the function (Phase 2: the type or module) in UpperCamelCase. E.g., for `open_rs1_at` the file is
+  `OpenRs1At.lean`. File names are fixed by the table in plan Section 5 (Phase 1) and the tree in plan
+  Section 20 (Phase 2).
 - The file contains a module docstring immediately after the imports. It explains the function
   concisely, and gives the plan ID, the Rust source path, and the line at the pinned commit
   (since the D2 fallback of 2026-11-23: the line in the patched copy, patch 01 on origin/main
-  `7caec76`):
+  `7caec76`; Phase 2 files cite the line at upstream `7caec76`, which differs by two in `model.rs`):
 
   ```lean
   /-!
@@ -201,7 +222,8 @@ There is one proof file per Rust item (`VERIFICATION.md` §8), under
   about the external models are theorems in `Proofs/External/<Group>.lean`.
 - Other translated code, if it later moves into `formal/`, mirrors the Rust module path below
   `Proofs/Model/`, for example
-  `Proofs/Model/Transport/StreamableHttpServer/Tower/HostIsAllowed.lean`.
+  `Proofs/Model/Transport/StreamableHttpServer/Tower/HostIsAllowed.lean`. Phase 2 uses the paths of
+  plan Section 20 instead (`Proofs/Model/<Type>.lean`, `Proofs/Transport/<Module>.lean`).
 
 ### Spec Theorem Style
 
@@ -269,11 +291,15 @@ never built.
 Round-trip and dispatch theorems that span several functions are proved in
 `formal/proofs/Proofs/Model/RequestState/Roundtrip.lean` (`frame_roundtrip` in
 `Proofs/Model/RequestStateWire/Frame.lean`), and restated at the end of the spec file of the
-corresponding Rust file.
+corresponding Rust file. Phase 2's C01–C05 are proved in the proof file of the targets they combine
+(plan Section 20, e.g. C03 in `Proofs/Model/JsonRpcMessage.lean`) and restated at the end of that
+Rust file's spec file.
 
 - Theorem names say what the result is, following the [Mathlib naming guidelines][mathlib-naming]
-  and the names of plan Section 5 (`rs1_roundtrip`, `open_at_roundtrip_rs2`, ...), rather than
-  `<function>_spec`. They are not tagged `@[step]`.
+  and the names of plan Section 5 (`rs1_roundtrip`, `open_at_roundtrip_rs2`, ...) or plan Section 16.4
+  for Phase 2 (`SseEventSizeLimiter.observe_append`,
+  `AuthorizationManager.is_disallowed_metadata_ipv6_eq_of_embedded_ipv4_eq_ok_some`, ...),
+  rather than `<function>_spec`. They are not tagged `@[step]`.
 - The docstring lists every premise of the round trip in words (body length, expiry, same
   associated data, key or kid conditions), and says which translated functions the theorem is
   about.
@@ -282,12 +308,29 @@ corresponding Rust file.
 
 ## Spec Files
 
+**Public and internal (human decision 2026-11-24).** `formal/specs/Specs/` holds only statements about
+the public rmcp API (functions `pub` in upstream rmcp) and compositions of them; statements about
+private, crate-internal (`pub(crate)`) and patch-only functions, and the laws of the external
+models, are restated in the same format in `formal/proofs/Proofs/Internal/<Rust path>.lean`. Each
+file's module docstring starts with a summary table (ID, function, guarantee, assumptions), and
+`formal/specs/README.md` indexes every guarantee in plain English. The paths below are those of
+the first layout; the current locations are in `formal/docs/functions/*.yaml` (`spec_file`), and
+the model laws are in `formal/proofs/Proofs/Internal/External.lean`.
+
 `formal/specs/Specs/Model/RequestStateWire.lean` and `Specs/Model/RequestState.lean` are the spec
-files, one per Rust source file (`VERIFICATION.md` §7). They are what a reader needs to trust the
+files, one per Rust source file (`VERIFICATION.md` §7). Phase 2 adds one spec file per Rust source
+file, mirroring its module path: `Specs/Model.lean`, `Specs/Model/Task.lean`,
+`Specs/Transport/Common/ClientSideSse.lean`, `Specs/Transport/AsyncRw.lean`,
+`Specs/Transport/StreamableHttpServer/Tower.lean` and `Specs/Transport/Auth.lean` (plan Section 20).
+Restated theorems are named `Theorems.<last module segment>.<Type>.<function>` (`<Type>.` only for
+methods; free functions are `Theorems.<last module segment>.<function>`, e.g. Phase 2's
+`Theorems.async_rw.is_standard_method`). Examples: Phase 1 `Theorems.request_state.RequestStateCodec.open_at`;
+Phase 2 `Theorems.model.JsonRpcMessage.into_request`. They are what a reader needs to trust the
 result.
 
 - The module docstring states the translated configuration
-  (`x86_64-unknown-linux-gnu`, `--no-default-features --features request-state`), names the `Defs`
+  (`x86_64-unknown-linux-gnu`, `--no-default-features --features request-state`; from S21 the widened
+  feature list of plan Section 15, human decision H1), names the `Defs`
   the statements use, and lists the items of that Rust file that were not translated (plan
   Section 2.3).
 - Statements appear in Rust source order, composition theorems last.

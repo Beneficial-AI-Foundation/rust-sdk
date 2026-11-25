@@ -3,9 +3,12 @@ Copyright (c) 2026 The Beneficial AI Foundation. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hoang Le Truong
 -/
-import Rmcp.Funs
-import Defs.Wire
-import Proofs.Model.RequestStateWire.Common
+module
+public import Rmcp.Funs
+public import Defs.Wire
+public import Proofs.Model.RequestStateWire.Common
+
+@[expose] public section
 
 /-!
 # Spec theorem for `transcript_v2` (W11)
@@ -47,13 +50,13 @@ theorem transcript_v2_spec (kid : Slice U8) (associated_data : Slice U8) (body :
   unfold transcript_v2
   have hk : (Array.to_slice (core.num.U64.to_be_bytes
       (UScalar.cast .U64 kid.len))).val = be64 kid.length := by
-    rw [val_to_slice_to_be_bytes, val_cast_U64, Slice.len_val]
+    rw [val_to_slice_to_be_bytes, val_cast_u64, Slice.len_val]
   have hs : (Array.to_slice (core.num.U64.to_be_bytes
       (UScalar.cast .U64 associated_data.len))).val = be64 associated_data.length := by
-    rw [val_to_slice_to_be_bytes, val_cast_U64, Slice.len_val]
+    rw [val_to_slice_to_be_bytes, val_cast_u64, Slice.len_val]
   step as ⟨t, ht⟩
-  rw [List.nil_append, val_DOMAIN_V2] at ht
-  simp only [lift, bind_tc_ok]
+  rw [alloc.vec.Vec.from_val, List.nil_append, val_DOMAIN_V2] at ht
+  simp only [lift]
   have h1 : t.length + (Array.to_slice (core.num.U64.to_be_bytes
       (UScalar.cast .U64 kid.len))).length ≤ Usize.max := by
     simp only [alloc.vec.Vec.length, Slice.length, hd, length_be64, ht, hk]; omega
