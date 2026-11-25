@@ -889,3 +889,197 @@ Phase 2: 43 statements, drafted by an AI agent (Claude Code `mcp-spec`, `claude-
 separate `mcp-lean` agents and restated in `formal/specs/Specs/External.lean`; the draft file
 (uncommitted) was removed at incorporation. Each law depends on at most `propext`,
 `Classical.choice` and `Quot.sound`.
+
+## Skills externals (translation patch 04, targets K01–K20)
+
+Translation patch 04 (`formal/trusted/patches/04-skill-public.patch`; human decisions
+2026-11-25) lets the twenty public functions of `crates/rmcp/src/model/skill.rs` translate. It
+adds the private module `skill::prim` (twelve one-line wrappers, opaque in the translation)
+and makes the remaining code call only the standard-library and crate functions below. Every
+model is a definition or a `structure` in `formal/trusted/Rmcp/{Types,Funs}External.lean`
+(section "Public `skill.rs` API"), with its source cited in its docstring; `axioms.lock` stays
+empty. Three values are `opaque` constants, which add no axiom; their laws are not stated and
+are taken as hypotheses by the statements that need them (human decision 2026-11-25):
+
+| Opaque constant | Stands for | Why it is not computed |
+|---|---|---|
+| `ExtModel.sha256 : List U8 → Array U8 32` | SHA-256 (FIPS 180-4) of `sha2 0.11.1` | correctness of the `sha2` crate is out of scope (plan Section 4), as for `hmacSha256` |
+| `ExtModel.nfkc : List Char → List Char` | NFKC of `unicode-normalization 0.1.26` | the normalization tables are not modelled |
+| `ExtModel.generalCategory : Char → GeneralCategory` | the General_Category tables of `unicode-general-category 1.1.0` | the tables are not modelled |
+
+Every other model is exact, computable and structurally recursive, so it can be evaluated:
+`formal/proofs/Proofs/External/Skill.lean` checks the percent decoder, `u8::from_str_radix`,
+the `/` and `%` splitting, the last-segment index, the control percent-encoding and the char
+boundary test on small inputs by kernel evaluation (`decide`/`rfl`). Each external has a proved
+spec theorem `<generated name>_spec` there (no `sorry`; each depends on at most `propext`,
+`Classical.choice`, `Quot.sound`).
+
+New trusted helper definitions (namespace `ExtModel`): `usize`, `collectVec` (a `Vec` or the
+deterministic capacity-overflow panic), `stringsOfBytes`, `splitBytes`, `lastSegmentStart`,
+`digitValue?`, `hexDigitValue?`, `u8DigitLoop`, `u8FromAscii`, `isControlOrNonAscii`,
+`upperHexDigit`, `percentEncodeByte`, `percentEncodeControls`, `percentDecodeFrom`,
+`percentDecode`, `asciiUppercase`, `sliceIterAll`, `listContainsEq` (membership in the element
+list of the `HashSet` model), `bytesLt` (Rust's `Ord` of byte slices, hence of `String`s),
+`mapInsert` (`BTreeMap::insert` into the entries sorted by key), `isCharBoundary`, and the length
+lemmas `length_take_le_max`, `length_drop_le_max`.
+
+`serde_json::Map` is modelled exactly as the `BTreeMap` it is in this configuration
+(`Cargo.lock`: `serde_json 1.0.154` depends on `itoa`, `memchr`, `serde`, `serde_core`, `zmij`
+only, so the `preserve_order` feature and `indexmap` are off; lead decision 2026-11-25): its
+entries are listed ascending by key in Rust's `String` order (`bytesLt` on the UTF-8 bytes), and
+`insert` replaces the value of an existing key in place or inserts the new key at its sorted
+position, so each Rust map has exactly one model value. Sources (pinned versions):
+`serde_json-1.0.154/src/map.rs` lines 28–29 and 38–39 (`#[cfg(not(feature = "preserve_order"))]
+type MapImpl<K, V> = BTreeMap<K, V>;`), 137–139 (`Map::insert` is `self.map.insert(k, v)`) and
+329–333 (`Map::keys` is `self.map.keys()`); the standard library of `nightly-2026-09-17`,
+`alloc/src/collections/btree/map.rs` line 2691 (`BTreeMap::iter`: "Gets an iterator over the
+entries of the map, sorted by key"; `keys` at line 2767 iterates the same order),
+`alloc/src/string.rs` lines 350–355 (`#[derive(PartialEq, PartialOrd, Eq, Ord)] pub struct String
+{ vec: Vec<u8> }`, so `String` compares its bytes), `core/src/str/traits.rs` lines 18–23 (`impl
+Ord for str`: `self.as_bytes().cmp(other.as_bytes())`) and `core/src/slice/cmp.rs` lines 35–40
+(`Ord for [T]` compares lexicographically). Rust vector (2026-11-25, a scratch crate outside the
+repository, `serde_json = "=1.0.154"` resolved to 1.0.154 from crates.io without
+`preserve_order`, `CARGO_TARGET_DIR=<scratch>/target cargo run -q`, cargo 1.92.0): inserting
+`"a"`, `"B"`, `"é"`, `"z"` into `serde_json::Map::new()`, in that order and in the reverse order
+`"z"`, `"é"`, `"B"`, `"a"`, gives `keys()` = `["B", "a", "z", "é"]` both times, bytes `[42]`,
+`[61]`, `[7a]`, `[c3, a9]`, ascending byte-lexicographically (an uppercase letter before a
+lowercase one, a non-ASCII char after ASCII), the order of `bytesLt` (evaluated in
+`Proofs.External.Skill`: `"B" < "a"`, `"z" < "é"`). `Proofs.External.Skill` proves that the
+model keeps the entries sorted (`sortedByKey_mapInsert`) and returns the old value
+(`mapInsert_fst_of_sortedByKey`), and evaluates three insertions. `HashSet` stays an element
+list whose order carries no meaning (Rust's `HashSet` order is unspecified); review rule: no
+statement may depend on that order.
+
+`<ParseIntError as Debug>::fmt` is a total, not exact, model (lead decision 2026-11-25): it
+returns `Ok(())` and leaves the formatter unchanged, because `core::fmt::Formatter` is opaque in
+the Aeneas library (the written text has no representation) and the only caller is the
+`expect` of `push_normalized_part`, whose panic path two checked hexadecimal digits never take.
+It is a stated exception of the trusted base.
+
+**Patch-induced premises for K13 and K16** (translation patch 04; the patch header lists
+both). Each is a premise a statement may need although the original function would not, and the
+statement's docstring says so.
+
+1. NFKC length (hunks H2 and H4; K13). The patched copy
+collects each NFKC form into a `Vec<char>` (`prim::nfkc`, modelled with `ExtModel.collectVec 4`),
+where the original streams it (`Iterator::eq`, `enumerate`). It therefore adds a
+"capacity overflow" panic when a form would exceed `isize::MAX` bytes, which the original never
+allocates; NFKC expands a char to at most 18 chars (UAX #15, U+FDFA of 3 UTF-8 bytes), so the
+panic needs a name or decoded segment of more than of the order of `isize::MAX / 24` bytes and is
+unreachable in practice. A statement of K13 (`Skill::validate`) may take, as an explicit
+premise for the strings `t` passed to `prim::nfkc`, the bound `4 * (ExtModel.nfkc t.toList).length
+≤ maxStringBytes` of `nfkc_spec` (or a premise about that `t` that implies it); the original
+function would not need it, and the statement's docstring says so (review rule of the `nfkc`
+constant, `formal/docs/STATUS.md`, "Trusted base").
+
+2. Split vector length (the `prim` wrappers `split_slash` and `split_percent`, hunks H5 and H6;
+K13 through `manifest_resource_key` and `normalize_percent_encoding`, K16 through
+`normalize_percent_encoding`). The patched copy collects the parts of `s.split(c)` into a
+`Vec<String>` (24 bytes per element on the translated 64-bit target; modelled with
+`ExtModel.collectVec 24`), where the original iterates the split lazily: H6's `for part in
+escaped.split('%')` allocates nothing, and H5 collects only the resolved segments, into a
+`Vec<&str>` of 16 bytes per element. The patched copy therefore panics with "capacity overflow"
+when 24 times the number of parts exceeds `isize::MAX`, where the original does not, and
+`split_slash_spec`/`split_percent_spec` take the premise `hlen : 24 * (splitBytes sep
+s.val).length ≤ maxStringBytes` (`sep` = `/` or `%`); statements of K13 and K16 will need it for
+the strings they split. It is unreachable on the translated target `x86_64-unknown-linux-gnu`:
+`isize::MAX` is 2^63 − 1, a virtual address has at most 57 bits (5-level paging; 48 with
+4-level), so every `&str` has fewer than 2^57 bytes and at most 2^57 parts (one more than its
+separator bytes), and 24 · 2^57 = 3 · 2^60 < 2^63 − 1. (`maxStringBytes` is `isize::MAX` of the
+Lean platform, so the premise is stated, not derived.) Running out of memory while copying the
+parts aborts the process in both versions and is not modelled.
+
+Tests (all in `crates/rmcp/src/model/skill.rs`, `mod tests`, unchanged by patch 04; they pass on
+the patched copy, 847 library tests in the translated feature configuration plus `macros`,
+`cargo test --locked -p rmcp --no-default-features --features
+request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth,macros
+--lib` in `.llbc/work/` after `scripts/apply-patches.sh`, 2026-11-25):
+
+| Models | Exercised by |
+|---|---|
+| `prim::sha256`, array `IntoIter` (`into_iter`, `next`), `char::from(u8)` | `sha256_digest::matches_the_digest_in_the_spec_example`, `skill_resource_verify::*` |
+| `prim::{find_query_or_fragment, strip_suffix, last_slash_segment}`, `str::is_empty`, `bool::then_some`, `Option` `?` (`branch`, `from_residual`) | `skill_name_from_uri::*` (4 tests), `skill_validate::*` |
+| `prim::strip_prefix`, `str::bytes`, `Bytes::all` | `is_sha256_digest::*` (4 tests), `rejects_resources_with_a_different_root` |
+| `prim::{split_slash, join_slash}`, `Vec::pop`, `str::split_at`, `String::as_str` | `manifest_paths_must_resolve_to_files_within_the_skill_directory`, `skill_validate::rejects_two_spellings_of_the_same_manifest_file` |
+| `prim::{percent_encode_controls, split_once_percent, split_percent}`, `str::split_at_checked`, `u8::{is_ascii_hexdigit, is_ascii_alphanumeric, from_str_radix}`, `str::to_ascii_uppercase`, `Cow::{deref, into_owned}` | `validate_skills::rejects_equivalent_percent_encodings_of_a_skill_uri`, `validate_skills::compatibility_equivalent_names_can_identify_distinct_resources`, `skill_validate::rejects_two_spellings_of_the_same_manifest_file` |
+| `prim::{percent_decode_utf8, nfkc}` | `skill_validate::{accepts_a_percent_encoded_unicode_name, compares_unicode_names_in_normalized_form, rejects_invalid_encoded_name_matches, rejects_a_name_that_differs_from_the_uri}` |
+| `get_general_category`, `char` equality | `skill_validate::enforces_the_agent_skills_name_rules` |
+| `HashSet::{with_capacity, insert}` | `skill_validate::rejects_a_duplicate_file`, `validate_skills::rejects_the_same_skill_listed_twice` |
+| `Option::as_deref` | `resource_is_directory::*` (2 tests) |
+| `serde_json::Map::new` | every test that builds a `SkillFrontmatter` |
+
+Not exercised by a library test: `serde_json::Map::insert` (`SkillFrontmatter::with_field`),
+`<ParseIntError as Debug>::fmt` (total model; reached only on the `expect` panic path, which two
+hexadecimal digits never take) and the default `Iterator::all` (declared by the template, called
+by no generated definition).
+
+**Linkage of the skills targets** (plan Section 19, amendment 2026-11-25). For the linkage run,
+`scripts/check-original-linkage.sh` drops from the copy's Charon settings the seven skills start
+points whose targets need patch 04 (`rmcp::model::skill::_::from_bytes`, `…::_::verify`,
+`…::sha256_digest`, `…::_::validate`, `…::skill_name_from_uri`, `…::is_sha256_digest`,
+`…::validate_skills`: K05–K07, K13–K16) and the opaque entry `rmcp::model::skill::prim`, which
+exists only in the patched copy; in that run (`RMCP_TARGET_SET=phase2`)
+`scripts/aeneas-translate.sh` checks only the ORIGINAL targets and fails if any of the ten
+`PATCH04_TARGETS` (the seven targets and the private helpers `is_valid_skill_name`,
+`manifest_resource_key`, `normalize_percent_encoding` of K13) has a definition in the unpatched
+`Funs.lean` (then the patch-04 list and the call graph disagree, and an ORIGINAL claim would skip
+checking that block). Runs (2026-11-25, Aeneas `nightly-2026.11.24-fb44cb4`, Charon `0.1.324`,
+Rust `nightly-2026-09-17`), in a scratch clone of the repository at `b363a8a` with the working
+tree of this change committed on top (scratch commit `b3e26c4ac350b509cef91370a4df01f58ff142a0`;
+`.aeneas` symlinked, the git-ignored `formal/translation/Rmcp/*_Template.lean` copied; the later
+edits of this round touch no file the check reads), each into a fresh scratch directory outside
+the repository:
+
+- `scripts/check-original-linkage.sh <scratch>/run1` on `b3e26c4`: **exit 0**. Source is upstream
+  `7caec76` (src tree `4efe696…` and both digests); 33 Phase 2 `start_from` entries, `exclude`
+  `['serde']`, 33 opaque entries; 29 `_` globs match their expected items; all 38 ORIGINAL targets
+  defined, no `sorry`; blocks identical up to `Source:`: `Funs.lean` 60/60, `Types.lean` 40/40,
+  `FunsExternal_Template.lean` 34/34, `TypesExternal_Template.lean` 10/10.
+- Negative test, scratch commit `a847d99786afda9aab93bcca66cf4c8ac0fa5415` (on `b3e26c4`, only
+  `model.skill.Skill.name`, the ORIGINAL target K12, added to `PATCH04_TARGETS` in
+  `scripts/aeneas-translate.sh`), `scripts/check-original-linkage.sh <scratch>/run2`: **exit 1**
+  with `[aeneas-translate] error: patch-04 target model.skill.Skill.name is translated from the
+  unmodified source; update PATCH04_TARGETS and check-original-linkage.sh` and `[linkage] error:
+  translation of the unmodified source failed`.
+
+### NFKC expansion bound (premise `hexp` of `Defs.Skill.NfkcFits.of_utf8ByteSize_le`, K13/K16; restated in `formal/specs/Specs/Model/Skill.lean`)
+
+The bridge lemma takes the law `∀ cs, (ExtModel.nfkc cs).length ≤ 18 * cs.length` as an explicit
+premise (implication-form law, STATUS "Trusted base" rule U3). It is not a Unicode stability
+guarantee, so it was checked on the pinned crate `unicode-normalization 0.1.26` (Unicode 18.0.0),
+2026-11-25 (lead decision: universal form kept): over every Unicode scalar value the largest
+per-character NFKC and NFKD lengths are both 18 (at U+FDFA), and over 2,000,000 random strings drawn
+from 14,670 characters that decompose, compose or combine (Hangul included) there were 0 violations
+of `nfkc ≤ nfkd = sum of per-character nfkd ≤ 18·len`. Command: `cargo run --release --offline`
+(scratch crate, `unicode-normalization = "=0.1.26"`, exit 0). Program:
+
+```rust
+use unicode_normalization::UnicodeNormalization;
+fn main() {
+    // exhaustive: largest per-character NFKC / NFKD length over all scalar values
+    let (mut mk, mut md, mut at) = (0usize, 0usize, 0u32);
+    for c in (0u32..=0x10FFFF).filter_map(char::from_u32) {
+        let s = c.to_string(); let k = s.nfkc().count(); let d = s.nfkd().count();
+        if k > mk { mk = k; at = c as u32; } if d > md { md = d; }
+    }
+    println!("max per-char nfkc {} nfkd {} at U+{:04X}", mk, md, at);
+    // per-string: nfkc count <= nfkd count = sum of per-char nfkd counts
+    let mut x: u64 = 0x9E3779B97F4A7C15;
+    let mut worst = 0f64; let mut viol = 0u64;
+    let pool: Vec<char> = (0u32..=0x10FFFF).filter_map(char::from_u32)
+        .filter(|c| { let s=c.to_string(); s.nfkd().count()>1 || s.nfkc().count()!=1 || unicode_normalization::char::canonical_combining_class(*c)!=0 || (0x1100..0x11FF).contains(&(*c as u32)) || (0xAC00..0xD7A4).contains(&(*c as u32)) }).collect();
+    println!("pool {}", pool.len());
+    for _ in 0..2_000_000u64 {
+        x ^= x << 13; x ^= x >> 7; x ^= x << 17;
+        let len = 1 + (x % 12) as usize;
+        let mut s = String::new();
+        for i in 0..len { let y = x.rotate_left(5*i as u32 + 1).wrapping_mul(0x2545F4914F6CDD1D); s.push(pool[(y as usize) % pool.len()]); }
+        let n = s.chars().count(); let k = s.nfkc().count(); let d = s.nfkd().count();
+        let per: usize = s.chars().map(|c| c.to_string().nfkd().count()).sum();
+        if k > 18*n || k > d || d != per { viol += 1; }
+        let r = k as f64 / n as f64; if r > worst { worst = r; }
+    }
+    println!("violations {} worst ratio {}", viol, worst);
+}
+```
+Output: `max per-char nfkc 18 nfkd 18 at U+FDFA`, `pool 14670`, `violations 0 worst ratio 18` (lead re-run 2026-11-25).

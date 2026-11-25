@@ -35,6 +35,10 @@ section, for `seal`/`seal_with`, `with_rs1_signing`/`with_rs1_fallback`, `open_j
 `open_json_with` and `new_with_keyring`, with two more `opaque` constants (no axiom):
 `ExtModel.randomState` (the hash keys of a new map) and `ExtModel.serdeJsonFromSlice` (the
 outcome of a caller's `Deserialize` impl).
+Translation patch 04 (human decisions 2026-11-25, targets K01–K20 of `skill.rs`) added the models
+of the section "Public `skill.rs` API": the twelve `skill::prim` wrappers and 28 functions of
+`core`, `alloc`, `std`, `serde_json` and `unicode-general-category`, with three more `opaque`
+constants (no axiom): `ExtModel.sha256`, `ExtModel.nfkc` and `ExtModel.generalCategory`.
 The conventions below apply to all models.
 
 Ordering note (S21): the generated external `core.result.Result.ok` shadows Aeneas' `ok` for
@@ -77,7 +81,9 @@ change of behaviour: `RawVec::finish_grow` uses `map_err` instead of a `match`,
 is now `from_ascii_bytes_radix_impl` (same body, renamed panic helper), and comments);
 `/cargo/registry/…` is the crate at the version in the path. `scripts/aeneas-translate.sh`
 pins every crate cited here (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`,
-`digest 0.11.3`, `zeroize 1.9.2`, `chrono 0.4.45` and `serde_json 1.0.154` (plan Section 4). The
+`digest 0.11.3`, `zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154` (plan Section 4) and, since
+translation patch 04, `percent-encoding 2.3.2`, `unicode-normalization 0.1.26` and
+`unicode-general-category 1.1.0`. The
 Rust tests that check the models are listed in `formal/trusted/evidence/README.md`.
 -/
 @[expose] public section
@@ -1527,3 +1533,936 @@ def core.iter.traits.iterator.Iterator.any.default {Self : Type} {F : Type} {Cla
         let (b, f) ← opsfunctionFnMutFTupleClause0_ItemBoolInst.call_mut st.2 x
         if b then ok (ControlFlow.done (true, it)) else ok (ControlFlow.cont (it, f)))
     (self, f)
+
+/-! ## Public `skill.rs` API (K01–K20, translation patch 04)
+
+External functions reached by the twenty public functions of `crates/rmcp/src/model/skill.rs`
+(human decisions 2026-11-25). Translation patch 04 adds the private module `skill::prim`, whose
+twelve one-line wrappers (`Source:` lines refer to the patched copy, patch 04 on top of patches
+01–03) are opaque in the translation and modelled here, and makes the remaining code use only
+standard-library functions whose models follow. Every model is a definition; the three values a
+model cannot compute are the `opaque` constants `ExtModel.sha256` (SHA-256, FIPS 180-4),
+`ExtModel.nfkc` (Unicode normalization form NFKC) and `ExtModel.generalCategory` (the Unicode
+General_Category property), which add no axiom. Their laws are not stated here: a statement that
+needs one takes it as a hypothesis (human decision 2026-11-25). Every other model is exact and
+computable by structural recursion, so it can be evaluated on small inputs (examples in
+`Proofs.External.Skill`).
+
+Crates cited (pinned in `scripts/aeneas-translate.sh`, `PINNED_DEPS`): `sha2 0.11.1`,
+`percent-encoding 2.3.2`, `unicode-normalization 0.1.26`, `unicode-general-category 1.1.0`,
+`serde_json 1.0.154`; std's `hashbrown 0.17.1` as for `HashMap`. -/
+
+namespace ExtModel
+
+/-- **SHA-256 reference function** (opaque): `sha256 msg` is the 32-byte SHA-256 digest of
+`msg` (FIPS 180-4). Opaque because its value is not modelled (plan Section 4; the correctness of
+the `sha2` crate is not established), as for `ExtModel.hmacSha256`. The value given here only
+shows that the type is inhabited; an `opaque` constant does not unfold to it. Compiled
+evaluation (the compiled code of any definition that reaches it, run by Lean's evaluation
+command or an executable) returns this placeholder, 32 zero bytes, not the SHA-256 digest, so
+evaluating anything that reaches `sha256`, or comparing it differentially with Rust, is
+meaningless (lead decision 2026-11-25: no compiled replacement is attached). -/
+opaque sha256 : List Std.U8 → Std.Array Std.U8 32#usize :=
+  fun _ => Std.Array.from (List.replicate 32 (byte 0)) (by simp)
+
+/-- **NFKC normalization** (opaque): `nfkc cs` is the Unicode Normalization Form KC (UAX #15:
+compatibility decomposition, canonical ordering, canonical composition) of the character
+sequence `cs`, as `unicode-normalization 0.1.26` computes it with its Unicode tables
+(`src/lib.rs`, `UnicodeNormalization::nfkc`; `src/recompose.rs`, `src/decompose.rs`). Opaque
+because the normalization tables are not modelled. The value given here only shows that the
+type is inhabited; an `opaque` constant does not unfold to it. Compiled evaluation (the compiled
+code of any definition that reaches it, run by Lean's evaluation command or an executable)
+returns this placeholder, the identity, not the NFKC form, so evaluating anything that reaches
+`nfkc`, or comparing it differentially with Rust, is meaningless (lead decision 2026-11-25: no
+compiled replacement is attached). -/
+opaque nfkc : List Char → List Char :=
+  fun cs => cs
+
+/-- **General category** (opaque): `generalCategory c` is the Unicode General_Category of `c`
+as the tables of `unicode-general-category 1.1.0` give it (`src/category.rs` lines 15–23:
+`PrivateUse` above `LAST_CODEPOINT`, otherwise a two-level table lookup generated by the crate's
+build script). Opaque because the tables are not modelled. The value given here only shows that
+the type is inhabited; an `opaque` constant does not unfold to it. Compiled evaluation (the
+compiled code of any definition that reaches it, run by Lean's evaluation command or an
+executable) returns this placeholder, `Unassigned` for every character, not the Unicode
+category, so evaluating anything that reaches `generalCategory`, or comparing it
+differentially with Rust, is meaningless (lead decision 2026-11-25: no compiled replacement is
+attached). -/
+opaque generalCategory : Char → unicode_general_category.tables.GeneralCategory :=
+  fun _ => unicode_general_category.tables.GeneralCategory.Unassigned
+
+/-- A prefix of a slice's elements fits in a slice. -/
+theorem length_take_le_max {α : Type} (s : Slice α) (n : Nat) :
+    (s.val.take n).length ≤ Usize.max := by
+  have := s.property
+  rw [List.length_take]
+  omega
+
+/-- A suffix of a slice's elements fits in a slice. -/
+theorem length_drop_le_max {α : Type} (s : Slice α) (n : Nat) :
+    (s.val.drop n).length ≤ Usize.max := by
+  have := s.property
+  rw [List.length_drop]
+  omega
+
+/-- The `usize` with value `n % 2^64` (on the 64-bit target; exact for `n ≤ Usize.max`). -/
+def usize (n : Nat) : Std.Usize := ⟨BitVec.ofNat _ n⟩
+
+/-- A `Vec` of the elements `l`, or the "capacity overflow" panic when `l.length` elements of
+`elemSize` bytes exceed `isize::MAX` bytes (`alloc/src/raw_vec/mod.rs` lines 929–935,
+`layout_array`, through `handle_error`, lines 920–925). Collecting into a `Vec` grows its
+buffer, so this is the deterministic panic of the final size; a panic caused by the capacity
+history is not modelled (memory convention, module docstring). The condition `l.length ≤
+Usize.max` follows from the first one for `elemSize ≥ 1` and is stated for the `Vec`
+constructor. -/
+def collectVec {α : Type} (elemSize : Nat) (l : List α) : Result (alloc.vec.Vec α) :=
+  if h : elemSize * l.length ≤ maxStringBytes ∧ l.length ≤ Usize.max then
+    ok (alloc.vec.Vec.from l h.2)
+  else fail panic
+
+/-- The `String`s with the UTF-8 encodings `parts`, in order; `fail undef` if one of them is
+not UTF-8 (the `str::to_owned` model, `Str.Insts.AllocBorrowToOwnedString.to_owned`). -/
+def stringsOfBytes : List (List Std.U8) → Result (List String)
+  | [] => ok []
+  | p :: ps =>
+    match strOfBytes? p with
+    | some s => do
+      let rest ← stringsOfBytes ps
+      ok (s :: rest)
+    | none => fail undef
+
+/-- The parts of `l` between the occurrences of the byte `sep`, in order: `str::split` with a
+one-byte ASCII pattern (`core/src/str/iter.rs`, `Split`; `CharSearcher` matches the UTF-8
+encoding of the char, which for an ASCII char is the byte). Always at least one part; `k`
+occurrences give `k + 1` parts, empty parts included. -/
+def splitBytes (sep : Std.U8) : List Std.U8 → List (List Std.U8)
+  | [] => [[]]
+  | b :: rest =>
+    if b = sep then [] :: splitBytes sep rest
+    else
+      match splitBytes sep rest with
+      | p :: ps => (b :: p) :: ps
+      | [] => [[b]]
+
+/-- The index just after the last occurrence of the byte `sep` in `l`, `0` if there is none:
+the start of the part that `str::rsplit(sep).next()` yields. -/
+def lastSegmentStart (sep : Std.U8) (l : List Std.U8) : Nat :=
+  match l.reverse.findIdx? (fun b => decide (b = sep)) with
+  | none => 0
+  | some j => l.length - j
+
+/-- The value of a byte as a digit in base `radix` (`2 ≤ radix ≤ 36`), `none` if it is not one:
+`(c as char).to_digit(radix)` (`core/src/char/methods.rs` lines 409–431) for a byte `c`. The
+decimal digits `'0'`–`'9'` have their value; for `radix > 10` the ASCII letters of either case
+have the values 10–35 (`'A'`/`'a'` = 10); a value at or above `radix` is `none`, and so is
+every other byte. (Rust computes the letter value with a wrapping subtraction and the mask
+`!0x20`; the result is below 36 exactly for the ASCII letters.) -/
+def digitValue? (radix : Nat) (c : Std.U8) : Option Nat :=
+  if 48 ≤ c.val ∧ c.val ≤ 57 then
+    if c.val - 48 < radix then some (c.val - 48) else none
+  else if 10 < radix ∧ 65 ≤ c.val ∧ c.val ≤ 90 then
+    if c.val - 55 < radix then some (c.val - 55) else none
+  else if 10 < radix ∧ 97 ≤ c.val ∧ c.val ≤ 122 then
+    if c.val - 87 < radix then some (c.val - 87) else none
+  else none
+
+/-- The digit loop of `u8::from_ascii_bytes_radix_impl` (`core/src/num/mod.rs` lines
+1811–1857): from the accumulated value `acc`, read the digits left to right; a byte that is not
+a digit is `InvalidDigit`; otherwise the next value is `acc * radix + d`, and a value above 255
+is `PosOverflow`. This is the checked loop (lines 1834–1853): `checked_mul` is computed, then the
+digit is checked, then the overflow of the multiplication and of `checked_add` is reported, both
+as `PosOverflow` (for `acc ≤ 255` one of them overflows exactly when `acc * radix + d > 255`).
+For `radix ≤ 16` and at most two digits Rust runs an unchecked loop instead (lines 1811–1825;
+`can_not_overflow`, lines 1575–1577), whose values stay below `radix^2 ≤ 256`, so the overflow
+check never fires there. -/
+def u8DigitLoop (radix : Nat) (acc : Nat) : List Std.U8 → Except ExtModel.IntErrorKind Nat
+  | [] => .ok acc
+  | c :: rest =>
+    match digitValue? radix c with
+    | none => .error .InvalidDigit
+    | some d =>
+      if acc * radix + d ≤ 255 then u8DigitLoop radix (acc * radix + d) rest
+      else .error .PosOverflow
+
+/-- `u8::from_ascii_bytes_radix_impl(src, radix)` for `2 ≤ radix ≤ 36` (`core/src/num/mod.rs`
+lines 1775–1863), as a number or an error kind: empty input is `Empty`; a single `+` or `-` is
+`InvalidDigit`; a leading `+` is removed (`u8` is unsigned, so a leading `-` stays and is an
+`InvalidDigit` of the loop); then `ExtModel.u8DigitLoop` from `0`. -/
+def u8FromAscii (radix : Nat) (src : List Std.U8) : Except ExtModel.IntErrorKind Nat :=
+  match src with
+  | [] => .error .Empty
+  | [c] =>
+    if c.val = 43 ∨ c.val = 45 then .error .InvalidDigit
+    else u8DigitLoop radix 0 [c]
+  | c :: rest =>
+    if c.val = 43 then u8DigitLoop radix 0 rest
+    else u8DigitLoop radix 0 (c :: rest)
+
+/-- `true` for the bytes that `percent_encoding::CONTROLS` percent-encodes in
+`utf8_percent_encode`: every non-ASCII byte and the controls `0x00`–`0x1F` and `0x7F`
+(`should_percent_encode`, `percent-encoding-2.3.2/src/ascii_set.rs` lines 52–54: `!byte.is_ascii()
+|| self.contains(byte)`; `CONTROLS`, lines 103–114). -/
+def isControlOrNonAscii (b : Std.U8) : Bool :=
+  decide (128 ≤ b.val ∨ b.val < 32 ∨ b.val = 127)
+
+/-- The uppercase hexadecimal digit of `n < 16` (`0`–`9`, `A`–`F`), as in the table of
+`percent_encode_byte` (`percent-encoding-2.3.2/src/lib.rs` lines 73–100). -/
+def upperHexDigit (n : Nat) : Std.U8 :=
+  if n < 10 then byte (48 + n) else byte (55 + n)
+
+/-- `%XX` with the two uppercase hexadecimal digits of the byte (`percent_encode_byte`,
+`percent-encoding-2.3.2/src/lib.rs` lines 73–100). -/
+def percentEncodeByte (b : Std.U8) : List Std.U8 :=
+  [byte 37, upperHexDigit (b.val / 16), upperHexDigit (b.val % 16)]
+
+/-- The bytes of `utf8_percent_encode(input, CONTROLS)`, the concatenation of the chunks its
+iterator yields (`percent-encoding-2.3.2/src/lib.rs` lines 147–176): every byte for which
+`isControlOrNonAscii` holds becomes `%XX`, every other byte is kept. -/
+def percentEncodeControls : List Std.U8 → List Std.U8
+  | [] => []
+  | b :: rest =>
+    if isControlOrNonAscii b then percentEncodeByte b ++ percentEncodeControls rest
+    else b :: percentEncodeControls rest
+
+/-- The value of a hexadecimal digit of either case (`char::from(b).to_digit(16)`), `none` for
+every other byte. -/
+def hexDigitValue? (b : Std.U8) : Option Nat := digitValue? 16 b
+
+/-- The percent-decoding of `l` after the bytes already read, `state`: `none` if no `%` is
+pending, `some none` after a `%`, `some (some h)` after a `%` and a hexadecimal digit `h`. A
+pending `%` and digit are decoded with the next byte if that is a hexadecimal digit too;
+otherwise they are kept as they are and the next byte is read again with no `%` pending. This
+is `PercentDecode::next` (`percent-encoding-2.3.2/src/lib.rs` lines 252–277) written one byte
+at a time: `after_percent_sign` looks at the two bytes after a `%` and consumes them only if
+both are hexadecimal digits, otherwise the `%` is yielded and the following bytes are read
+normally. -/
+def percentDecodeFrom : Option (Option Std.U8) → List Std.U8 → List Std.U8
+  | none, [] => []
+  | some none, [] => [byte 37]
+  | some (some h), [] => [byte 37, h]
+  | none, c :: rest =>
+    if c.val = 37 then percentDecodeFrom (some none) rest
+    else c :: percentDecodeFrom none rest
+  | some none, c :: rest =>
+    match hexDigitValue? c with
+    | some _ => percentDecodeFrom (some (some c)) rest
+    | none =>
+      if c.val = 37 then byte 37 :: percentDecodeFrom (some none) rest
+      else byte 37 :: c :: percentDecodeFrom none rest
+  | some (some h), c :: rest =>
+    match hexDigitValue? h, hexDigitValue? c with
+    | some a, some b => byte (16 * a + b) :: percentDecodeFrom none rest
+    | _, _ =>
+      if c.val = 37 then byte 37 :: h :: percentDecodeFrom (some none) rest
+      else byte 37 :: h :: c :: percentDecodeFrom none rest
+
+/-- The bytes of `percent_decode(input)` (`percent-encoding-2.3.2/src/lib.rs` lines 252–277):
+`%` followed by two hexadecimal digits (either case) becomes the byte they denote; every other
+byte, including a `%` not followed by two hexadecimal digits, is kept
+(`ExtModel.percentDecodeFrom` with no `%` pending). -/
+def percentDecode (l : List Std.U8) : List Std.U8 := percentDecodeFrom none l
+
+/-- The byte with ASCII lowercase letters mapped to uppercase (`u8::to_ascii_uppercase`,
+`core/src/num/mod.rs`: `*self & !(self.is_ascii_lowercase() as u8 * 0x20)`), other bytes
+unchanged. -/
+def asciiUppercase (b : Std.U8) : Std.U8 :=
+  if 97 ≤ b.val ∧ b.val ≤ 122 then byte (b.val - 32) else b
+
+/-- The model of `Iterator::all` on a list of remaining elements: call the closure on each in
+order and stop at the first `false`. Returns the result and the number of elements consumed
+(as `ExtModel.sliceIterAny` for `any`). -/
+def sliceIterAll {T F : Type} (inst : core.ops.function.FnMut F T Bool) :
+    List T → F → Result (Bool × Nat)
+  | [], _ => ok (true, 0)
+  | x :: rest, f => do
+    let (b, f) ← inst.call_mut f x
+    if b then do
+      let (r, n) ← sliceIterAll inst rest f
+      ok (r, n + 1)
+    else ok (false, 1)
+
+/-- Whether `value` is equal to some element of the list, compared as hashbrown's
+`HashMap::insert` compares (`value == element` through the `Eq` instance of `T`, which
+`equivalent_key` calls; its failures propagate). Used for the element list of the `HashSet`
+model. -/
+def listContainsEq {T : Type} (corecmpEqInst : core.cmp.Eq T) (value : T) :
+    List T → Result Bool
+  | [] => ok false
+  | x :: rest => do
+    let b ← corecmpEqInst.partialEqInst.eq value x
+    if b then ok true else listContainsEq corecmpEqInst value rest
+
+/-- `true` if the bytes `a` are less than the bytes `b` in Rust's order of byte slices
+(`Ord for [u8]`, `core/src/slice/cmp.rs`: lexicographic, compared byte by byte as unsigned
+numbers, a proper prefix before the longer slice). Rust's `Ord for str` and `Ord for String`
+compare the UTF-8 bytes this way (`core/src/str/traits.rs`:
+`self.as_bytes().cmp(other.as_bytes())`; `String` derives `Ord` from its `Vec<u8>`). -/
+def bytesLt : List Std.U8 → List Std.U8 → Bool
+  | [], [] => false
+  | [], _ :: _ => true
+  | _ :: _, [] => false
+  | a :: xs, b :: ys =>
+    if a.val < b.val then true else if a.val = b.val then bytesLt xs ys else false
+
+/-- `BTreeMap::insert` on the entries of a map with `String` keys, kept sorted by key in Rust's
+`String` order (`ExtModel.bytesLt` on the UTF-8 bytes) with pairwise distinct keys: walking the
+entries in order, at the first entry whose key is not less than `k`, replace its value by `v` and
+return the old value if its key is `k` (the stored key is kept, as Rust's "the key is not
+updated"; equal `String`s are identical), otherwise insert `(k, v)` before it and return `none`;
+after the last entry, append `(k, v)` and return `none`. On sorted entries this is the `BTreeMap`
+result; every list built from `[]` by `mapInsert` is sorted (`Proofs.External.Skill`). -/
+def mapInsert {V : Type} (k : String) (v : V) :
+    List (String × V) → Option V × List (String × V)
+  | [] => (none, [(k, v)])
+  | (k', v') :: rest =>
+    if k' = k then (some v', (k', v) :: rest)
+    else if bytesLt (utf8 k) (utf8 k') then (none, (k, v) :: (k', v') :: rest)
+    else
+      let r := mapInsert k v rest
+      (r.1, (k', v') :: r.2)
+
+end ExtModel
+
+/-- [rmcp::model::skill::prim::sha256]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 588:4-590:5
+    Visibility: public
+
+**Model:** `ok (sha256 bytes)`, an opaque value (`Sha256::digest(bytes).into()`:
+`sha2-0.11.1`, `Digest::digest`, `digest-0.11.3/src/digest.rs`; the `Array<u8, U32>` converts to
+`[u8; 32]`). Never panics within the size convention (module docstring): SHA-256 finalisation
+overflows its `u64` bit length, and panics under `overflow-checks`, only for an input of at
+least `2^61` bytes (`sha2-0.11.1/src/block_api.rs` line 66), as stated for `hmac_sha256`. -/
+def model.skill.prim.sha256 (bytes : Slice Std.U8) : Result (Std.Array Std.U8 32#usize) :=
+  ok (ExtModel.sha256 bytes.val)
+
+/-- [rmcp::model::skill::prim::find_query_or_fragment]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 592:4-594:5
+    Visibility: public
+
+**Model:** the index of the first byte `?` (63) or `#` (35), `None` if there is none
+(`s.find(['?', '#'])`: `str::find` with a `[char; 2]` pattern returns the byte index of the first
+char in the set, `core/src/str/mod.rs`, `find`, and `core/src/str/pattern.rs`,
+`MultiCharEqSearcher`;
+in UTF-8 the bytes 63 and 35 occur only as these chars). Defined on every `Str`. -/
+def model.skill.prim.find_query_or_fragment (s : Str) : Result (Option Std.Usize) :=
+  ok ((s.val.findIdx? (fun b => decide (b.val = 63 ∨ b.val = 35))).map ExtModel.usize)
+
+/-- [rmcp::model::skill::prim::strip_suffix]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 596:4-598:5
+    Visibility: public
+
+**Model:** `Some` of all but the last `suffix.len()` bytes if `s` ends with the bytes of
+`suffix`, otherwise `None` (`s.strip_suffix(suffix)` with a `&str` pattern:
+`core/src/str/pattern.rs`, `impl Pattern for &str`, `strip_suffix_of`: `is_suffix_of`, i.e.
+`haystack.as_bytes().ends_with(self.as_bytes())`, then `haystack[..len - self.len()]`). The test
+`s.drop (len - n) = suffix` holds exactly when `suffix` is a suffix of `s` (for `n > len` it would
+say `s = suffix`, which has the wrong length). Defined on every `Str`. -/
+def model.skill.prim.strip_suffix (s : Str) (suffix : Str) : Result (Option Str) :=
+  if s.val.drop (s.val.length - suffix.val.length) = suffix.val then
+    ok (some (Slice.from (s.val.take (s.val.length - suffix.val.length))
+      (ExtModel.length_take_le_max s _)))
+  else ok none
+
+/-- [rmcp::model::skill::prim::strip_prefix]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 600:4-602:5
+    Visibility: public
+
+**Model:** `Some` of the bytes after the first `prefix.len()` if `s` starts with the bytes of
+`prefix`, otherwise `None` (`s.strip_prefix(prefix)` with a `&str` pattern:
+`core/src/str/pattern.rs`, `impl Pattern for &str`, `strip_prefix_of`: `is_prefix_of`, i.e.
+`haystack.as_bytes().starts_with(self.as_bytes())`, then `haystack[self.len()..]`). Defined on
+every `Str`. -/
+def model.skill.prim.strip_prefix (s : Str) («prefix» : Str) : Result (Option Str) :=
+  if s.val.take «prefix».val.length = «prefix».val then
+    ok (some (Slice.from (s.val.drop «prefix».val.length)
+      (ExtModel.length_drop_le_max s _)))
+  else ok none
+
+/-- [rmcp::model::skill::prim::last_slash_segment]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 604:4-606:5
+    Visibility: public
+
+**Model:** the bytes after the last `/` (47), all of `s` if there is none
+(`s.rsplit('/').next().unwrap_or(s)`: `rsplit` always yields at least one item, the last part of
+the split, `core/src/str/iter.rs`, `RSplit`; the `unwrap_or` is never taken). Defined on every
+`Str`. -/
+def model.skill.prim.last_slash_segment (s : Str) : Result Str :=
+  ok (Slice.from (s.val.drop (ExtModel.lastSegmentStart (ExtModel.byte 47) s.val))
+    (ExtModel.length_drop_le_max s _))
+
+/-- [rmcp::model::skill::prim::split_slash]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 608:4-610:5
+    Visibility: public
+
+**Model:** the parts of `s` between the `/` bytes (`ExtModel.splitBytes`), each as a `String`,
+collected into a `Vec` (`s.split('/').map(str::to_owned).collect()`). `fail undef` if a part is
+not UTF-8, which no part of a Rust `&str` split at an ASCII byte is (the `Str` convention,
+module docstring); `fail panic` if the `Vec` of 24-byte `String`s would exceed `isize::MAX`
+bytes (`ExtModel.collectVec`). The panic is patch-induced (the original call sites stream the
+split or collect 16-byte `&str`s; patch 04 header, patch-induced premise 2) and unreachable on
+the translated x86_64 target, where a `&str` has fewer than 2^57 bytes. -/
+def model.skill.prim.split_slash (s : Str) : Result (alloc.vec.Vec String) := do
+  let parts ← ExtModel.stringsOfBytes (ExtModel.splitBytes (ExtModel.byte 47) s.val)
+  ExtModel.collectVec 24 parts
+
+/-- [rmcp::model::skill::prim::join_slash]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 612:4-614:5
+    Visibility: public
+
+**Model:** the segments joined with `/` (`segments.join("/")`: `alloc/src/str.rs`,
+`join_generic_copy`, which reserves the exact total length and copies the separator between
+consecutive segments; `""` for no segment), subject to the `String` length limit
+(`ExtModel.growString`: the total length is computed with `checked_add` and the reservation
+panics above `isize::MAX` bytes). -/
+def model.skill.prim.join_slash (segments : alloc.vec.Vec String) : Result String :=
+  ExtModel.growString (String.intercalate "/" segments.val)
+
+/-- [rmcp::model::skill::prim::split_once_percent]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 616:4-618:5
+    Visibility: public
+
+**Model:** `Some` of the bytes before and after the first `%` (37), `None` if there is none
+(`s.split_once('%')`: `core/src/str/mod.rs`, `split_once`, finds the first match and returns
+`(&self[..start], &self[end..])`). Defined on every `Str`. -/
+def model.skill.prim.split_once_percent (s : Str) : Result (Option (Str × Str)) :=
+  match s.val.findIdx? (fun b => decide (b.val = 37)) with
+  | none => ok none
+  | some i =>
+    ok (some (Slice.from (s.val.take i) (ExtModel.length_take_le_max s _),
+      Slice.from (s.val.drop (i + 1)) (ExtModel.length_drop_le_max s _)))
+
+/-- [rmcp::model::skill::prim::split_percent]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 620:4-622:5
+    Visibility: public
+
+**Model:** as `split_slash`, at the `%` bytes (37) (`s.split('%').map(str::to_owned).collect()`),
+with the same `fail undef` and `fail panic` cases (the panic patch-induced and unreachable, as
+for `split_slash`). -/
+def model.skill.prim.split_percent (s : Str) : Result (alloc.vec.Vec String) := do
+  let parts ← ExtModel.stringsOfBytes (ExtModel.splitBytes (ExtModel.byte 37) s.val)
+  ExtModel.collectVec 24 parts
+
+/-- [rmcp::model::skill::prim::percent_encode_controls]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 624:4-626:5
+    Visibility: public
+
+**Model:** `Cow::Borrowed(s)` if no byte needs encoding (in particular for the empty string);
+`Cow::Borrowed` of `%XX` if `s` is a single byte that needs encoding; otherwise `Cow::Owned` of the
+`String` of `ExtModel.percentEncodeControls`, which is ASCII. This is
+`utf8_percent_encode(value, CONTROLS).into()` (`percent-encoding-2.3.2/src/lib.rs` lines
+136–138 and 194–209): the conversion takes the first two chunks of the iterator (lines
+147–176: a chunk is either `%XX` for one byte that needs encoding or a maximal run of bytes that
+do not) and returns `Borrowed("")` for none, `Borrowed(first)` for exactly one, and otherwise
+the owned concatenation of all chunks. There is at most one chunk exactly when no byte needs
+encoding (one run, or none for the empty input) or the input is one byte that needs encoding; a
+byte that needs encoding next to any other byte gives two chunks. The owned string is subject to
+the `String` length limit (`ExtModel.growString`). Defined on every `Str`. -/
+def model.skill.prim.percent_encode_controls (value : Str) :
+    Result (alloc.borrow.Cow Str String) :=
+  if value.val.all (fun b => !ExtModel.isControlOrNonAscii b) then
+    ok (alloc.borrow.Cow.Borrowed value)
+  else
+    match value.val with
+    | [b] =>
+      ok (alloc.borrow.Cow.Borrowed (Slice.from (ExtModel.percentEncodeByte b) (by
+        simp only [ExtModel.percentEncodeByte, List.length_cons, List.length_nil]
+        scalar_tac)))
+    | _ => do
+      let s ← ExtModel.growString (String.ofList ((ExtModel.percentEncodeControls value.val).map
+        (fun b => Char.ofNat b.val)))
+      ok (alloc.borrow.Cow.Owned s)
+
+/-- [rmcp::model::skill::prim::percent_decode_utf8]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 628:4-633:5
+    Visibility: public
+
+**Model:** `Some s` if the percent-decoded bytes (`ExtModel.percentDecode`) are the UTF-8
+encoding of `s`, otherwise `None` (`percent_decode_str(s).decode_utf8().ok().map(Cow::into_owned)`:
+`percent-encoding-2.3.2/src/lib.rs` lines 217–219 and 312–323; `decode_utf8` checks the decoded
+bytes with `str::from_utf8` or `String::from_utf8`, whichever the `Cow` holds, and both decide
+UTF-8 validity, see `ExtModel.strOfBytes?`). The decoded bytes are at most as many as the input
+bytes, so no capacity panic is possible. Defined on every `Str`. -/
+def model.skill.prim.percent_decode_utf8 (s : Str) : Result (Option String) :=
+  ok (ExtModel.strOfBytes? (ExtModel.percentDecode s.val))
+
+/-- [rmcp::model::skill::prim::nfkc]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 635:4-637:5
+    Visibility: public
+
+**Model:** the characters `nfkc cs` of the NFKC form of the characters `cs` of `s`, an opaque
+value, collected into a `Vec` (`s.nfkc().collect()`: `unicode-normalization-0.1.26`,
+`UnicodeNormalization for str`, `src/lib.rs`, an iterator over the `chars()` of `s`).
+`fail undef` if `s` is not UTF-8, which no Rust `&str` is (the `Str` convention); `fail panic` if
+the `Vec` of 4-byte `char`s would exceed `isize::MAX` bytes (`ExtModel.collectVec`). -/
+def model.skill.prim.nfkc (s : Str) : Result (alloc.vec.Vec Char) :=
+  match ExtModel.strOfBytes? s.val with
+  | some str => ExtModel.collectVec 4 (ExtModel.nfkc str.toList)
+  | none => fail undef
+
+/-- [unicode_general_category::category::get_general_category]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-general-category-1.1.0/src/category.rs', lines 15:0-15:57
+    Name pattern: [unicode_general_category::category::get_general_category]
+    Visibility: public
+
+**Model:** `ok (generalCategory c)`, an opaque value (lines 15–23: a table lookup that never
+panics, the indices being bounded by the generated tables). -/
+@[rust_fun "unicode_general_category::category::get_general_category"]
+def unicode_general_category.category.get_general_category (c : Char) :
+    Result unicode_general_category.tables.GeneralCategory :=
+  ok (ExtModel.generalCategory c)
+
+/-- [core::array::iter::{impl core::iter::traits::collect::IntoIterator<T, core::array::iter::IntoIter<T, N>> for [T; N]}::into_iter]:
+    Source: '/rustc/library/core/src/array/iter.rs', lines 59:4-59:40
+    Name pattern: [core::array::iter::{core::iter::traits::collect::IntoIterator<[@T; @N], @T, core::array::iter::IntoIter<@T, @N>>}::into_iter]
+    Visibility: public
+
+**Model:** the iterator over the whole array, `alive = 0..N` (lines 59–78:
+`InnerSized::new_unchecked(IndexRange::zero_to(N), data)` on the array reinterpreted as
+`[MaybeUninit<T>; N]`). -/
+@[rust_fun
+  "core::array::iter::{core::iter::traits::collect::IntoIterator<[@T; @N], @T, core::array::iter::IntoIter<@T, @N>>}::into_iter"]
+def Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter {T : Type} {N : Std.Usize}
+    (self : Array T N) : Result (core.array.iter.IntoIter T N) :=
+  ok { data := self, aliveStart := 0, aliveEnd := N.val, aliveStart_le := Nat.zero_le _,
+       aliveEnd_le := Nat.le_refl _ }
+
+/-- [core::array::iter::{impl core::iter::traits::iterator::Iterator<T> for core::array::iter::IntoIter<T, N>}::next]:
+    Source: '/rustc/library/core/src/array/iter.rs', lines 245:4-245:44
+    Name pattern: [core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, @N>, @T>}::next]
+    Visibility: public
+
+**Model:** if the alive range is not empty, the element at its start, and the iterator with the
+start moved one on; otherwise `None` and the iterator unchanged (lines 245–247,
+`self.unsize_mut().next()`; `PolymorphicIter::next`, `array/iter/iter_inner.rs` lines 206–222:
+`self.alive.next().map(|idx| data[idx].assume_init_read())`; `IndexRange::next`,
+`core/src/ops/index_range.rs` lines 130–137). The index is in bounds by the invariants of the
+model type. -/
+@[rust_fun
+  "core::array::iter::{core::iter::traits::iterator::Iterator<core::array::iter::IntoIter<@T, @N>, @T>}::next"]
+def core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next {T : Type} {N : Std.Usize}
+    (self : core.array.iter.IntoIter T N) :
+    Result (Option T × core.array.iter.IntoIter T N) :=
+  if h : self.aliveStart < self.aliveEnd then
+    ok (some (self.data.val[self.aliveStart]'(by
+          have h1 := self.data.property
+          have h2 := self.aliveEnd_le
+          omega)),
+      { self with aliveStart := self.aliveStart + 1, aliveStart_le := h })
+  else ok (none, self)
+
+/-- [core::bool::{bool}::then_some]:
+    Source: '/rustc/library/core/src/bool.rs', lines 36:4-36:72
+    Name pattern: [core::bool::{bool}::then_some]
+    Visibility: public
+
+**Model:** `Some t` if `self`, otherwise `None` (lines 36–38). -/
+@[rust_fun "core::bool::{bool}::then_some"]
+def core.bool.Bool.then_some {T : Type} (self : Bool) (t : T) : Result (Option T) :=
+  if self then ok (some t) else ok none
+
+/-- [core::char::convert::{impl core::convert::From<u8> for char}::from]:
+    Source: '/rustc/library/core/src/char/convert.rs', lines 229:4-229:26
+    Name pattern: [core::char::convert::{core::convert::From<char, u8>}::from]
+    Visibility: public
+
+**Model:** the character with the byte's value as code point, `U+0000`–`U+00FF` (`i as char`,
+lines 229–231; every such value is a Unicode scalar value). -/
+@[rust_fun "core::char::convert::{core::convert::From<char, u8>}::from"]
+def Char.Insts.CoreConvertFromU8.from (i : Std.U8) : Result Char :=
+  ok (Char.ofNat i.val)
+
+/-- [core::cmp::impls::{impl core::cmp::PartialEq<char> for char}::eq]:
+    Source: '/rustc/library/core/src/cmp.rs', lines 2185:16-2185:50
+    Name pattern: [core::cmp::impls::{core::cmp::PartialEq<char, char>}::eq]
+    Visibility: public
+
+**Model:** equality of the characters (`*self == *other`, line 2185, for the primitive `char`:
+equality of the code points). -/
+@[rust_fun "core::cmp::impls::{core::cmp::PartialEq<char, char>}::eq"]
+def Char.Insts.CoreCmpPartialEqChar.eq (self : Char) (other : Char) : Result Bool :=
+  ok (decide (self = other))
+
+/-- [core::iter::traits::iterator::Iterator::all]:
+    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 2840:4-2843:64
+    Name pattern: [core::iter::traits::iterator::Iterator::all]
+    Visibility: public
+
+**Model:** calls `next` and the closure alternately until the closure returns `false` (result
+`false`) or `next` returns `None` (result `true`), through the `loop` combinator of the Aeneas
+library, which is `div` if this never happens. The Rust default method is
+`self.try_fold((), check(f)) == ControlFlow::Continue(())` (lines 2840–2855), and the default
+`try_fold` is that `next` loop. Stated exception: an iterator that overrides `try_fold` is
+modelled by the loop. Declared by the Aeneas template; no generated definition calls it (the
+translated code calls the `Bytes` override below). -/
+@[rust_fun "core::iter::traits::iterator::Iterator::all"]
+def core.iter.traits.iterator.Iterator.all.default {Self : Type} {F : Type} {Clause0_Item : Type}
+    (IteratorInst : core.iter.traits.iterator.Iterator Self Clause0_Item)
+    (opsfunctionFnMutFTupleClause0_ItemBoolInst :
+      core.ops.function.FnMut F Clause0_Item Bool)
+    (self : Self) (f : F) : Result (Bool × Self) :=
+  loop (fun (st : Self × F) => do
+      let (o, it) ← IteratorInst.next st.1
+      match o with
+      | none => ok (ControlFlow.done (true, it))
+      | some x => do
+        let (b, f) ← opsfunctionFnMutFTupleClause0_ItemBoolInst.call_mut st.2 x
+        if b then ok (ControlFlow.cont (it, f)) else ok (ControlFlow.done (false, it)))
+    (self, f)
+
+/-- [core::num::error::{impl core::fmt::Debug for core::num::error::ParseIntError}::fmt]:
+    Source: '/rustc/library/core/src/num/error.rs', lines 67:9-67:14
+    Name pattern: [core::num::error::{core::fmt::Debug<core::num::error::ParseIntError>}::fmt]
+    Visibility: public
+
+**Model (total, lead decision 2026-11-25; a stated exception of the trusted base):** `Ok(())`
+and the formatter unchanged; the text
+written (the derived `Debug` output `ParseIntError { kind: .. }`, line 67) is not modelled, as
+for the `Debug` models of the Aeneas library (`core.fmt.DebugBool.fmt`). It is reached only
+through `Result::expect` in `push_normalized_part`, whose `Err` path is `fail panic` whatever the
+formatter holds (`core.result.Result.expect` of the Aeneas library), and that path is never taken
+(`from_str_radix` is called on two hexadecimal digits, checked before the call). An exact model
+is not possible: `core::fmt::Formatter` is opaque in the Aeneas library, so the written text has
+no representation. -/
+@[rust_fun
+  "core::num::error::{core::fmt::Debug<core::num::error::ParseIntError>}::fmt"]
+def core.num.error.ParseIntError.Insts.CoreFmtDebug.fmt (_self : core.num.error.ParseIntError)
+    (f : core.fmt.Formatter) :
+    Result ((core.result.Result Unit core.fmt.Error) × core.fmt.Formatter) :=
+  ok (core.result.Result.Ok (), f)
+
+/-- [core::num::{u8}::is_ascii_alphanumeric]:
+    Source: '/rustc/library/core/src/num/mod.rs', lines 930:4-930:53
+    Name pattern: [core::num::{u8}::is_ascii_alphanumeric]
+    Visibility: public
+
+**Model:** `true` exactly for `0`–`9`, `A`–`Z` and `a`–`z` (lines 930–932). -/
+@[rust_fun "core::num::{u8}::is_ascii_alphanumeric"]
+def core.num.U8.is_ascii_alphanumeric (self : Std.U8) : Result Bool :=
+  ok (decide ((48 ≤ self.val ∧ self.val ≤ 57) ∨ (65 ≤ self.val ∧ self.val ≤ 90) ∨
+    (97 ≤ self.val ∧ self.val ≤ 122)))
+
+/-- [core::num::{u8}::is_ascii_hexdigit]:
+    Source: '/rustc/library/core/src/num/mod.rs', lines 1032:4-1032:49
+    Name pattern: [core::num::{u8}::is_ascii_hexdigit]
+    Visibility: public
+
+**Model:** `true` exactly for `0`–`9`, `A`–`F` and `a`–`f` (lines 1032–1034). -/
+@[rust_fun "core::num::{u8}::is_ascii_hexdigit"]
+def core.num.U8.is_ascii_hexdigit (self : Std.U8) : Result Bool :=
+  ok (decide ((48 ≤ self.val ∧ self.val ≤ 57) ∨ (65 ≤ self.val ∧ self.val ≤ 70) ∨
+    (97 ≤ self.val ∧ self.val ≤ 102)))
+
+/-- [core::num::{u8}::from_str_radix]:
+    Source: '/rustc/library/core/src/num/mod.rs', lines 1683:12-1683:96
+    Name pattern: [core::num::{u8}::from_str_radix]
+    Visibility: public
+
+**Model:** `fail panic` if `radix` is not in `2..=36` (`from_ascii_bytes_radix_panic`, lines
+1779–1781, before any other check); otherwise `Ok v` where `ExtModel.u8FromAscii` gives the
+number `v` and `Err { kind }` where it gives the error kind. Rust: `from_str_radix(src, radix) =
+u8::from_ascii_bytes_radix_impl(src.as_bytes(), radix)` (lines 1683–1685). Grammar: an optional
+single `+`, then at least one digit of the radix and nothing else (no `-`: the type is unsigned);
+error kinds `Empty`, `InvalidDigit`, `PosOverflow` (the first met from the left; a non-digit
+before an overflow at the same position). The model reads only the bytes, as Rust does, so it is
+defined on every `Str`. The number `v` is at most 255 (checked by the loop), so it is the value
+of the `U8` built from it. -/
+@[rust_fun "core::num::{u8}::from_str_radix"]
+def core.num.U8.from_str_radix (src : Str) (radix : Std.U32) :
+    Result (core.result.Result Std.U8 core.num.error.ParseIntError) :=
+  if radix.val < 2 ∨ 36 < radix.val then fail panic
+  else
+    match ExtModel.u8FromAscii radix.val src.val with
+    | .ok v => ok (core.result.Result.Ok (ExtModel.byte v))
+    | .error kind => ok (core.result.Result.Err { kind })
+
+/-- [core::option::{core::option::Option<T>}::as_deref]:
+    Source: '/rustc/library/core/src/option.rs', lines 1388:4-1390:25
+    Name pattern: [core::option::{core::option::Option<@T>}::as_deref]
+    Visibility: public
+
+**Model:** `Some t ↦ Some (t.deref())` through the `Deref` instance (its failure propagates),
+`None ↦ None` (`self.as_ref().map(Deref::deref)`, lines 1388–1393). -/
+@[rust_fun "core::option::{core::option::Option<@T>}::as_deref"]
+def core.option.Option.as_deref {T : Type} {Clause0_Target : Type}
+    (opsderefDerefInst : core.ops.deref.Deref T Clause0_Target) (self : Option T) :
+    Result (Option Clause0_Target) :=
+  match self with
+  | some t => do
+    let x ← opsderefDerefInst.deref t
+    ok (some x)
+  | none => ok none
+
+/-- [core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch]:
+    Source: '/rustc/library/core/src/option.rs', lines 2875:4-2875:64
+    Name pattern: [core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch]
+    Visibility: public
+
+**Model:** `Some v ↦ Continue v`, `None ↦ Break None` (lines 2875–2880; the `?` operator). -/
+@[rust_fun
+  "core::option::{core::ops::try_trait::Try<core::option::Option<@T>>}::branch"]
+def core.option.Option.Insts.CoreOpsTry_traitTry.branch {T : Type} (self : Option T) :
+    Result (core.ops.control_flow.ControlFlow (Option Never) T) :=
+  match self with
+  | some v => ok (core.ops.control_flow.ControlFlow.Continue v)
+  | none => ok (core.ops.control_flow.ControlFlow.Break none)
+
+/-- [core::option::{impl core::ops::try_trait::FromResidual<core::option::Option<!>> for core::option::Option<T>}::from_residual]:
+    Source: '/rustc/library/core/src/option.rs', lines 2889:4-2889:49
+    Name pattern: [core::option::{core::ops::try_trait::FromResidual<core::option::Option<@T>, core::option::Option<!>>}::from_residual]
+    Visibility: public
+
+**Model:** `None ↦ None` (lines 2889–2893; `Option<!>` has no other value, `Never` being
+empty). -/
+@[rust_fun
+  "core::option::{core::ops::try_trait::FromResidual<core::option::Option<@T>, core::option::Option<!>>}::from_residual"]
+def core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual (T : Type)
+    (residual : Option Never) : Result (Option T) :=
+  match residual with
+  | none => ok none
+  | some n => nomatch n
+
+/-- [core::str::iter::{impl core::iter::traits::iterator::Iterator<u8> for core::str::iter::Bytes<'_0>}::all]:
+    Source: '/rustc/library/core/src/str/iter.rs', lines 316:4-318:37
+    Name pattern: [core::str::iter::{core::iter::traits::iterator::Iterator<core::str::iter::Bytes<'0>, u8>}::all]
+    Visibility: public
+
+**Model:** calls the closure (through its `FnMut` instance, whose failures propagate) on the
+remaining bytes in order, stops at the first `false`, and returns whether none was found and
+the iterator advanced past every byte it consumed (`ExtModel.sliceIterAll`). The Rust function
+is `self.0.all(f)` (lines 316–321) on `Copied<slice::Iter<u8>>`, the default `Iterator::all`
+(`try_fold` of `Copied` forwards to the slice iterator's `try_fold` with the copied items), which
+consumes the items up to and including the first one for which the closure returns `false`. -/
+@[rust_fun
+  "core::str::iter::{core::iter::traits::iterator::Iterator<core::str::iter::Bytes<'0>, u8>}::all"]
+def core.str.iter.Bytes.Insts.CoreIterTraitsIteratorIteratorU8.all {F : Type}
+    (opsfunctionFnMutFTupleU8BoolInst : core.ops.function.FnMut F Std.U8 Bool)
+    (self : core.str.iter.Bytes) (f : F) : Result (Bool × core.str.iter.Bytes) := do
+  let (b, n) ← ExtModel.sliceIterAll opsfunctionFnMutFTupleU8BoolInst
+    (self.inner.slice.val.drop self.inner.i) f
+  ok (b, { inner := { self.inner with i := self.inner.i + n } })
+
+/-- [core::str::{str}::is_empty]:
+    Source: '/rustc/library/core/src/str/mod.rs', lines 175:4-175:40
+    Name pattern: [core::str::{str}::is_empty]
+    Visibility: public
+
+**Model:** `true` exactly for no bytes (`self.len() == 0`, lines 175–177), for every `Str`. -/
+@[rust_fun "core::str::{str}::is_empty"]
+def core.str.Str.is_empty (self : Str) : Result Bool :=
+  ok self.val.isEmpty
+
+/-- Whether byte index `i` is a char boundary of the bytes `l` (`str::is_char_boundary`,
+`core/src/str/mod.rs` lines 375–398): `0` always; at or beyond the end exactly the length; inside,
+when the byte at `i` is not a UTF-8 continuation byte (`(b as i8) >= -0x40`, i.e. `b < 128` or
+`b ≥ 192`, `core/src/num/mod.rs` lines 1229–1232). -/
+def ExtModel.isCharBoundary (l : List Std.U8) (i : Nat) : Bool :=
+  if i = 0 then true
+  else if l.length ≤ i then decide (i = l.length)
+  else decide ((l.getD i (ExtModel.byte 0)).val < 128 ∨ 192 ≤ (l.getD i (ExtModel.byte 0)).val)
+
+/-- [core::str::{str}::split_at_checked]:
+    Source: '/rustc/library/core/src/str/mod.rs', lines 941:4-941:76
+    Name pattern: [core::str::{str}::split_at_checked]
+    Visibility: public
+
+**Model:** `Some` of the bytes before and from `mid` if `mid` is a char boundary
+(`ExtModel.isCharBoundary`), otherwise `None` (lines 941–949). Defined on every `Str`. -/
+@[rust_fun "core::str::{str}::split_at_checked"]
+def core.str.Str.split_at_checked (self : Str) (mid : Std.Usize) : Result (Option (Str × Str)) :=
+  if ExtModel.isCharBoundary self.val mid.val then
+    ok (some (Slice.from (self.val.take mid.val) (ExtModel.length_take_le_max self _),
+      Slice.from (self.val.drop mid.val) (ExtModel.length_drop_le_max self _)))
+  else ok none
+
+/-- [core::str::{str}::split_at]:
+    Source: '/rustc/library/core/src/str/mod.rs', lines 860:4-860:60
+    Name pattern: [core::str::{str}::split_at]
+    Visibility: public
+
+**Model:** the bytes before and from `mid` if `mid` is a char boundary, otherwise `fail panic`
+(lines 860–865: `split_at_checked`, and `slice_error_fail` panics on `None`). Defined on every
+`Str`. -/
+@[rust_fun "core::str::{str}::split_at"]
+def core.str.Str.split_at (self : Str) (mid : Std.Usize) : Result (Str × Str) :=
+  if ExtModel.isCharBoundary self.val mid.val then
+    ok (Slice.from (self.val.take mid.val) (ExtModel.length_take_le_max self _),
+      Slice.from (self.val.drop mid.val) (ExtModel.length_drop_le_max self _))
+  else fail panic
+
+/-- [core::str::{str}::bytes]:
+    Source: '/rustc/library/core/src/str/mod.rs', lines 1159:4-1159:36
+    Name pattern: [core::str::{str}::bytes]
+    Visibility: public
+
+**Model:** the byte iterator at the first byte (`Bytes(self.as_bytes().iter().copied())`, lines
+1159–1161; `slice::iter` of the Aeneas library starts at index 0). -/
+@[rust_fun "core::str::{str}::bytes"]
+def core.str.Str.bytes (self : Str) : Result core.str.iter.Bytes :=
+  ok { inner := { slice := self, i := 0 } }
+
+/-- [std::collections::hash::set::{std::collections::hash::set::HashSet<T, std::hash::random::RandomState, alloc::alloc::Global>}::with_capacity]:
+    Source: '/rustc/library/std/src/collections/hash/set.rs', lines 169:4-169:68
+    Name pattern: [std::collections::hash::set::{std::collections::hash::set::HashSet<@T, std::hash::random::RandomState, alloc::alloc::Global>}::with_capacity]
+    Visibility: public
+
+**Model:** the empty set with hash builder `ExtModel.randomState` and the `Global` allocator
+(`HashSet::with_capacity_and_hasher(capacity, Default::default())`, lines 169–171; hashbrown
+0.17.1 `HashSet::with_capacity_and_hasher`, `src/set.rs` lines 502–506). Capacity is not part of
+the value model. Stated exceptions, as for `HashMap::new`: the `RandomState` keys are random in
+Rust and an unknown constant here (`ExtModel.randomState`), and the panic of the operating
+system's random source is not modelled. The review rule of `ExtModel.randomState` applies to
+the `hash_builder` of a set built here and to the equality of two such sets. Not modelled
+either: hashbrown's "Hash table capacity overflow" panic, which needs `capacity * 8 / 7` to
+overflow `usize` or a table of more than `isize::MAX` bytes. It depends on `size_of::<T>()`,
+which the model does not have (a merged type), and it cannot occur in the translation within
+the size convention (module docstring): `capacity` is the length of a slice of `SkillResource`
+or `Skill` values (each at least 24 bytes) held in an address space of at most `2^57` bytes, so
+`capacity < 2^53`, and the table of `String`s then has at most `2^54` buckets of 25 bytes (the
+element and one control byte), far below `isize::MAX`. Allocation
+failure is not modelled (memory convention). -/
+@[rust_fun
+  "std::collections::hash::set::{std::collections::hash::set::HashSet<@T, std::hash::random::RandomState, alloc::alloc::Global>}::with_capacity"]
+def std.collections.hash.set.HashSetTRandomStateGlobal.with_capacity (T : Type)
+    (_capacity : Std.Usize) :
+    Result (std.collections.hash.set.HashSet T std.hash.random.RandomState alloc.alloc.Global) :=
+  ok { hash_builder := ExtModel.randomState, alloc := alloc.alloc.Global.mk, elements := [] }
+
+/-- [std::collections::hash::set::{std::collections::hash::set::HashSet<T, S, A>}::insert]:
+    Source: '/rustc/library/std/src/collections/hash/set.rs', lines 1034:4-1034:46
+    Name pattern: [std::collections::hash::set::{std::collections::hash::set::HashSet<@T, @S, @A>}::insert]
+    Visibility: public
+
+**Model:** if an element equal to `value` is present (`ExtModel.listContainsEq`), `false`
+and the set unchanged; otherwise `true` and the set with `value` added. The Rust function is
+`self.base.insert(value)` (lines 1034–1036), i.e. hashbrown 0.17.1 `HashSet::insert`
+(`src/set.rs` lines 1074–1076: `self.map.insert(value, ()).is_none()`), and `HashMap::insert`
+(`src/map.rs` lines 1806–1823) replaces the unit value of an equal key, keeping the stored key,
+or inserts the new one. Hashing is not modelled, for the reason given at
+`std.collections.hash.map.HashMap.get` (faithful for `Hash`/`Eq` instances that agree and do not
+fail; the only instance in the translation is `T = String`). Not modelled: the growth of the
+table (memory convention). -/
+@[rust_fun
+  "std::collections::hash::set::{std::collections::hash::set::HashSet<@T, @S, @A>}::insert"]
+def std.collections.hash.set.HashSet.insert {T : Type} {S : Type} {A : Type}
+    {Clause2_Hasher : Type} (corecmpEqInst : core.cmp.Eq T)
+    (_corehashHashInst : core.hash.Hash T)
+    (_corehashBuildHasherInst : core.hash.BuildHasher S Clause2_Hasher)
+    (self : std.collections.hash.set.HashSet T S A) (value : T) :
+    Result (Bool × (std.collections.hash.set.HashSet T S A)) := do
+  let found ← ExtModel.listContainsEq corecmpEqInst value self.elements
+  if found then ok (false, self)
+  else ok (true, { self with elements := self.elements ++ [value] })
+
+/-- [alloc::borrow::{alloc::borrow::Cow<'_0, B, Clause0_Owned>}::into_owned]:
+    Source: '/rustc/library/alloc/src/borrow.rs', lines 331:4-331:52
+    Name pattern: [alloc::borrow::{alloc::borrow::Cow<'0, @B, @Clause0_Owned>}::into_owned]
+    Visibility: public
+
+**Model:** `Borrowed b ↦ b.to_owned()` through the `ToOwned` instance (its failure propagates),
+`Owned o ↦ o` (lines 331–336). -/
+@[rust_fun
+  "alloc::borrow::{alloc::borrow::Cow<'0, @B, @Clause0_Owned>}::into_owned"]
+def alloc.borrow.Cow.into_owned {B : Type} {Clause0_Owned : Type}
+    (ToOwnedInst : alloc.borrow.ToOwned B Clause0_Owned)
+    (self : alloc.borrow.Cow B Clause0_Owned) : Result Clause0_Owned :=
+  match self with
+  | alloc.borrow.Cow.Borrowed b => ToOwnedInst.to_owned b
+  | alloc.borrow.Cow.Owned o => ok o
+
+/-- [alloc::borrow::{impl core::ops::deref::Deref<B> for alloc::borrow::Cow<'_0, B, Clause0_Owned>}::deref]:
+    Source: '/rustc/library/alloc/src/borrow.rs', lines 349:4-349:25
+    Name pattern: [alloc::borrow::{core::ops::deref::Deref<alloc::borrow::Cow<'0, @B, @Clause0_Owned>, @B>}::deref]
+    Visibility: public
+
+**Model:** `Borrowed b ↦ b`, `Owned o ↦ o.borrow()` through the `Borrow` instance of the
+`ToOwned` instance (its failure propagates) (lines 349–354). -/
+@[rust_fun
+  "alloc::borrow::{core::ops::deref::Deref<alloc::borrow::Cow<'0, @B, @Clause0_Owned>, @B>}::deref"]
+def alloc.borrow.Cow.Insts.CoreOpsDerefDeref.deref {B : Type} {Clause0_Owned : Type}
+    (ToOwnedInst : alloc.borrow.ToOwned B Clause0_Owned)
+    (self : alloc.borrow.Cow B Clause0_Owned) : Result B :=
+  match self with
+  | alloc.borrow.Cow.Borrowed b => ok b
+  | alloc.borrow.Cow.Owned o => ToOwnedInst.coreborrowBorrowInst.borrow o
+
+/-- [alloc::str::{str}::to_ascii_uppercase]:
+    Source: '/rustc/library/alloc/src/str.rs', lines 856:4-856:46
+    Name pattern: [alloc::str::{str}::to_ascii_uppercase]
+    Visibility: public
+
+**Model:** the `String` of the bytes with `a`–`z` mapped to `A`–`Z` (`ExtModel.asciiUppercase`;
+lines 856–861: `self.as_bytes().to_ascii_uppercase()`, then `String::from_utf8_unchecked`).
+`fail undef` if the bytes are not UTF-8, which no Rust `&str` is (the `Str` convention; the
+mapping keeps UTF-8 validity in both directions). The copy has the length of an existing slice,
+so it never hits the capacity-overflow panic. -/
+@[rust_fun "alloc::str::{str}::to_ascii_uppercase"]
+def alloc.str.Str.to_ascii_uppercase (self : Str) : Result String :=
+  match ExtModel.strOfBytes? (self.val.map ExtModel.asciiUppercase) with
+  | some s => ok s
+  | none => fail undef
+
+/-- [alloc::string::{alloc::string::String}::as_str]:
+    Source: '/rustc/library/alloc/src/string.rs', lines 1073:4-1073:38
+    Name pattern: [alloc::string::{alloc::string::String}::as_str]
+    Visibility: public
+
+**Model:** the UTF-8 bytes of the string (`str::from_utf8_unchecked(self.vec.as_slice())`, lines
+1073–1077), defined as the model of `String::as_bytes`, which returns the same bytes:
+`fail maximumSizeExceeded` only for a Lean `String` longer than `Usize.max` bytes, which no Rust
+`String` is. -/
+@[rust_fun "alloc::string::{alloc::string::String}::as_str"]
+def alloc.string.String.as_str (self : String) : Result Str :=
+  alloc.string.String.as_bytes self
+
+/-- [alloc::vec::{alloc::vec::Vec<T>}::pop]:
+    Source: '/rustc/library/alloc/src/vec/mod.rs', lines 2901:4-2901:38
+    Name pattern: [alloc::vec::{alloc::vec::Vec<@T>}::pop]
+    Visibility: public
+
+**Model:** `None` and the vector unchanged if it is empty; otherwise its last element and the
+vector without it (lines 2901–2913). The allocator parameter `A` is not used. -/
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::pop"]
+def alloc.vec.Vec.pop {T : Type} (_A : Type) (self : alloc.vec.Vec T) :
+    Result ((Option T) × (alloc.vec.Vec T)) :=
+  if h : self.val = [] then ok (none, self)
+  else
+    ok (some (self.val.getLast h), alloc.vec.Vec.from self.val.dropLast (by
+      have := alloc.vec.Vec.property self
+      rw [List.length_dropLast]
+      omega))
+
+/-- [serde_json::map::{serde_json::map::Map<alloc::string::String, serde_json::value::Value>}::new]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/map.rs', lines 51:4-51:24
+    Name pattern: [serde_json::map::{serde_json::map::Map<alloc::string::String, serde_json::value::Value>}::new]
+    Visibility: public
+
+**Model:** the empty map (`Map { map: MapImpl::default() }`, lines 51–55: an empty
+`BTreeMap`, which does not allocate). -/
+@[rust_fun
+  "serde_json::map::{serde_json::map::Map<alloc::string::String, serde_json::value::Value>}::new"]
+def serde_json.map.MapStringValue.new :
+    Result (serde_json.map.Map String serde_json.value.Value) :=
+  ok { entries := [] }
+
+/-- [serde_json::map::{serde_json::map::Map<alloc::string::String, serde_json::value::Value>}::insert]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/map.rs', lines 137:4-137:66
+    Name pattern: [serde_json::map::{serde_json::map::Map<alloc::string::String, serde_json::value::Value>}::insert]
+    Visibility: public
+
+**Model:** the `BTreeMap` insertion into the entries sorted by key (`ExtModel.mapInsert`): if
+an entry has key `k`, its value is replaced by `v` in place and the old value returned;
+otherwise `(k, v)` is inserted at its position in the key order and `None` returned
+(`self.map.insert(k, v)`, lines 137–139, `BTreeMap::insert`, `alloc/src/collections/btree/map.rs`:
+"If the map did have this key present, the value is updated, and the old value is returned. The
+key is not updated"). Keys are compared as Rust compares `String`s (`Ord for String`, the
+lexicographic order of the UTF-8 bytes, `ExtModel.bytesLt`, whose equality is equality of the
+strings). Not modelled: the node structure of the B-tree and allocation failure. -/
+@[rust_fun
+  "serde_json::map::{serde_json::map::Map<alloc::string::String, serde_json::value::Value>}::insert"]
+def serde_json.map.MapStringValue.insert
+    (self : serde_json.map.Map String serde_json.value.Value) (k : String)
+    (v : serde_json.value.Value) :
+    Result ((Option serde_json.value.Value) ×
+      (serde_json.map.Map String serde_json.value.Value)) :=
+  let r := ExtModel.mapInsert k v self.entries
+  ok (r.1, { entries := r.2 })

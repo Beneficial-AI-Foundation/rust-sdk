@@ -26,8 +26,9 @@ section, plan Section 18): `MaybeUninit` is an inductive type of its two union f
 `Ipv4Addr` a structure of its four octets, `Ipv6Addr` a structure of its eight segments (a
 stated change of representation), `ParseIntError` a structure of its error kind, and `Arc` a
 structure holding its value; `serde_json::Value`, whose values the translated code only moves,
-is a definition over the `opaque` carrier `ExtModel.SerdeJsonValue`. This module declares no
-axiom.
+is a definition over the `opaque` carrier `ExtModel.SerdeJsonValue`. Translation patch 04
+(targets K01–K20 of `skill.rs`) added four structures (last section): `array::IntoIter`,
+`str::Bytes`, `HashSet` and `serde_json::Map`. This module declares no axiom.
 
 The `@[rust_type]` names and the source lines in the docstrings are those Aeneas generated.
 Source paths: `/rustc/library/…` is the `rust-src` of the pinned toolchain `nightly-2026-09-17`
@@ -325,3 +326,91 @@ structure std.collections.hash.map.VacantEntry (K : Type) (V : Type) (A : Type) 
   key : K
   /-- The value written into the new slot, if any. -/
   inserted : Option V
+
+/-! ## Types of the public `skill.rs` API (K01–K20, translation patch 04)
+
+The four external types that the skills targets reach (human decisions 2026-11-25). Each is a
+structure of the fields of the Rust type, with the collapses stated in its docstring; none is
+abstract. -/
+
+/-- [core::array::iter::IntoIter]
+    Source: '/rustc/library/core/src/array/iter.rs', lines 20:0-20:38
+
+**Model: the array and the alive range.** The Rust struct is `IntoIter<T, N> { inner:
+ManuallyDrop<InnerSized<T, N>> }` (`array/iter.rs` lines 20–22), i.e.
+`PolymorphicIter<[MaybeUninit<T>; N]> { alive: IndexRange, data }`
+(`array/iter/iter_inner.rs` lines 35–59) with the invariants `alive.start <= alive.end <= N`;
+the elements `data[alive]` are initialised, the others have been moved out. The model keeps the
+whole array (`MaybeUninit` and `ManuallyDrop` are transparent wrappers; the moved-out elements
+are never read again, `alive` excludes them) and the two bounds of `alive` with both invariants.
+Dropping the iterator (which drops `data[alive]`) has no counterpart in the value model. -/
+@[rust_type "core::array::iter::IntoIter"]
+structure core.array.iter.IntoIter (T : Type) (N : Std.Usize) : Type where
+  /-- The array iterated over (`data`). -/
+  data : Std.Array T N
+  /-- `alive.start`: the index of the next element to yield. -/
+  aliveStart : Nat
+  /-- `alive.end`: one past the index of the last element not yet yielded. -/
+  aliveEnd : Nat
+  /-- `alive.start <= alive.end` (an invariant of `IndexRange`). -/
+  aliveStart_le : aliveStart ≤ aliveEnd
+  /-- `alive.end <= N`. -/
+  aliveEnd_le : aliveEnd ≤ N.val
+
+/-- [core::str::iter::Bytes]
+    Source: '/rustc/library/core/src/str/iter.rs', lines 284:0-284:20
+
+**Model: the byte-slice iterator inside.** The Rust struct is the tuple struct `pub struct
+Bytes<'a>(pub(super) Copied<slice::Iter<'a, u8>>)` (`str/iter.rs` line 284), created by
+`str::bytes` as `Bytes(self.as_bytes().iter().copied())` (`str/mod.rs` lines 1159–1161).
+`Copied` is a transparent adapter (it holds the inner iterator only and copies each item), so
+the model keeps the inner `slice::Iter<u8>` as the Aeneas library models it (the slice and the
+index of the next element, `Aeneas/Std/SliceIter.lean`). -/
+@[rust_type "core::str::iter::Bytes"]
+structure core.str.iter.Bytes : Type where
+  /-- The inner slice iterator (the field `.0` without the `Copied` wrapper). -/
+  inner : core.slice.iter.Iter Std.U8
+
+/-- [std::collections::hash::set::HashSet]
+    Source: '/rustc/library/std/src/collections/hash/set.rs', lines 126:0-130:1
+
+**Model: element list.** `elements` lists the elements of the set; `hash_builder` is the `S`
+value and `alloc` the allocator. The Rust set is `HashSet { base: hashbrown::HashSet<T, S, A> }`
+(lines 126–130), i.e. hashbrown 0.17.1 `HashSet { map: HashMap<T, (), S, A> }` (`src/set.rs`):
+the model is the `HashMap` model (`std.collections.hash.map.HashMap`) with unit values left out.
+The order of `elements` carries no meaning: the iteration order of a Rust `HashSet` is
+unspecified (it depends on the random `RandomState` keys), and the translated code only calls
+`HashSet::with_capacity` and `HashSet::insert`, whose result does not reveal the table order.
+Review rule (lead decision 2026-11-25): no statement may depend on the order of `elements`;
+statements about a set speak only of membership (`x ∈ s.elements`), of the `bool` that `insert`
+returns, and of quantities that do not depend on the order (such as the length). The Rust
+invariant "no two elements are equal" is not part of the type (as for `HashMap`);
+`HashSet::insert` adds an element only if no equal element is present, so every set built from
+`with_capacity` by `insert` satisfies it. -/
+@[rust_type "std::collections::hash::set::HashSet"]
+structure std.collections.hash.set.HashSet (T : Type) (S : Type) (A : Type) : Type where
+  /-- The `BuildHasher` value of the set (`hash_builder` in hashbrown). -/
+  hash_builder : S
+  /-- The allocator of the table. -/
+  alloc : A
+  /-- The elements (listed in insertion order in the model; the order carries no meaning). -/
+  elements : List T
+
+/-- [serde_json::map::Map]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/map.rs', lines 34:0-34:20
+
+**Model: the entries of the `BTreeMap` in key order.** The Rust struct is `pub struct Map<K, V>
+{ map: MapImpl<K, V> }` (`map.rs` lines 34–36) with `MapImpl = BTreeMap<K, V>` (line 39; the
+`preserve_order` feature, which would select `IndexMap`, is not enabled in the translated
+configuration: `serde_json` 1.0.154 resolves without `indexmap`). `entries` lists the key-value
+pairs in the order in which the `BTreeMap` iterates them, ascending by key in Rust's `String`
+order (the byte order of the UTF-8 encodings, `ExtModel.bytesLt`), with pairwise distinct keys,
+so that each Rust map has exactly one model value (lead decision 2026-11-25). The node structure
+of the B-tree is not modelled. The invariant is not part of the type (as for `HashMap`): the
+models of `Map::new` (`[]`) and `Map::insert` (`ExtModel.mapInsert`, insertion at the sorted
+position) keep it, so every map built by them satisfies it (proved in
+`Proofs.External.Skill`). -/
+@[rust_type "serde_json::map::Map"]
+structure serde_json.map.Map (K : Type) (V : Type) : Type where
+  /-- The key-value pairs, ascending by key. -/
+  entries : List (K × V)

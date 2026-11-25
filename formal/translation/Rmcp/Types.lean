@@ -214,6 +214,44 @@ structure serde_core.de.Deserialize (Self : Type _) where
 structure serde_core.de.DeserializeOwned (Self : Type _) where
   DeserializeInst : serde_core.de.Deserialize Self
 
+/-- [unicode_general_category::tables::GeneralCategory]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-general-category-1.1.0/src/tables.rs', lines 11:0-11:24
+    Name pattern: [unicode_general_category::tables::GeneralCategory]
+    Visibility: public -/
+@[discriminant isize, rust_type
+  "unicode_general_category::tables::GeneralCategory"]
+inductive unicode_general_category.tables.GeneralCategory where
+| ClosePunctuation : unicode_general_category.tables.GeneralCategory
+| ConnectorPunctuation : unicode_general_category.tables.GeneralCategory
+| Control : unicode_general_category.tables.GeneralCategory
+| CurrencySymbol : unicode_general_category.tables.GeneralCategory
+| DashPunctuation : unicode_general_category.tables.GeneralCategory
+| DecimalNumber : unicode_general_category.tables.GeneralCategory
+| EnclosingMark : unicode_general_category.tables.GeneralCategory
+| FinalPunctuation : unicode_general_category.tables.GeneralCategory
+| Format : unicode_general_category.tables.GeneralCategory
+| InitialPunctuation : unicode_general_category.tables.GeneralCategory
+| LetterNumber : unicode_general_category.tables.GeneralCategory
+| LineSeparator : unicode_general_category.tables.GeneralCategory
+| LowercaseLetter : unicode_general_category.tables.GeneralCategory
+| MathSymbol : unicode_general_category.tables.GeneralCategory
+| ModifierLetter : unicode_general_category.tables.GeneralCategory
+| ModifierSymbol : unicode_general_category.tables.GeneralCategory
+| NonspacingMark : unicode_general_category.tables.GeneralCategory
+| OpenPunctuation : unicode_general_category.tables.GeneralCategory
+| OtherLetter : unicode_general_category.tables.GeneralCategory
+| OtherNumber : unicode_general_category.tables.GeneralCategory
+| OtherPunctuation : unicode_general_category.tables.GeneralCategory
+| OtherSymbol : unicode_general_category.tables.GeneralCategory
+| ParagraphSeparator : unicode_general_category.tables.GeneralCategory
+| PrivateUse : unicode_general_category.tables.GeneralCategory
+| SpaceSeparator : unicode_general_category.tables.GeneralCategory
+| SpacingMark : unicode_general_category.tables.GeneralCategory
+| Surrogate : unicode_general_category.tables.GeneralCategory
+| TitlecaseLetter : unicode_general_category.tables.GeneralCategory
+| Unassigned : unicode_general_category.tables.GeneralCategory
+| UppercaseLetter : unicode_general_category.tables.GeneralCategory
+
 /-- Trait declaration: [zeroize::Zeroize]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.2/src/lib.rs', lines 253:0-253:17
     Name pattern: [zeroize::Zeroize]
@@ -231,6 +269,28 @@ structure zeroize.Zeroize (Self : Type _) where
 structure zeroize.DefaultIsZeroes (Self : Type _) where
   coremarkerCopyInst : core.marker.Copy Self
   coredefaultDefaultInst : core.default.Default Self
+
+/-- [rmcp::model::Role]
+    Source: 'crates/rmcp/src/model.rs', lines 2860:0-2865:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.Role where
+| User : model.Role
+| Assistant : model.Role
+
+/-- [rmcp::model::annotated::Annotations]
+    Source: 'crates/rmcp/src/model/annotated.rs', lines 17:0-28:1
+    Visibility: public -/
+structure model.annotated.Annotations where
+  audience : Option (alloc.vec.Vec model.Role)
+  priority : Option F32
+  last_modified : Option String
+
+/-- [rmcp::model::meta::MetaObject]
+    Source: 'crates/rmcp/src/model/meta.rs', lines 247:0-247:38
+    Visibility: public -/
+@[reducible]
+def model.meta.MetaObject := serde_json.map.Map String serde_json.value.Value
 
 /-- [rmcp::model::request_state::RequestStateError]
     Source: 'crates/rmcp/src/model/request_state.rs', lines 94:0-138:1
@@ -346,6 +406,134 @@ def model.request_state.RequestStateCodec.open_rs2_at.closure := Unit
 structure model.request_state_wire.Rs1Parts where
   body : Slice Std.U8
   tag : Slice Std.U8
+
+/-- [rmcp::model::IconTheme]
+    Source: 'crates/rmcp/src/model.rs', lines 1622:0-1627:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.IconTheme where
+| Light : model.IconTheme
+| Dark : model.IconTheme
+
+/-- [rmcp::model::Icon]
+    Source: 'crates/rmcp/src/model.rs', lines 1642:0-1655:1
+    Visibility: public -/
+structure model.Icon where
+  src : String
+  mime_type : Option String
+  sizes : Option (alloc.vec.Vec String)
+  theme : Option model.IconTheme
+
+/-- [rmcp::model::resource::Resource]
+    Source: 'crates/rmcp/src/model/resource.rs', lines 12:0-38:1
+    Visibility: public -/
+structure model.resource.Resource where
+  uri : String
+  «name» : String
+  title : Option String
+  description : Option String
+  mime_type : Option String
+  size : Option Std.U64
+  icons : Option (alloc.vec.Vec model.Icon)
+  «meta» : Option model.meta.MetaObject
+  annotations : Option model.annotated.Annotations
+
+/-- [rmcp::model::skill::SkillsCapability]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 38:0-42:1
+    Visibility: public -/
+structure model.skill.SkillsCapability where
+  directory_read : Bool
+
+/-- [rmcp::model::skill::SkillResource]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 66:0-73:1
+    Visibility: public -/
+structure model.skill.SkillResource where
+  uri : String
+  digest : String
+  size : Std.U64
+
+/-- [rmcp::model::skill::SkillIntegrityError]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 135:0-148:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.skill.SkillIntegrityError where
+| Size : String → Std.U64 → Std.U64 → model.skill.SkillIntegrityError
+| Digest : String → String → String → model.skill.SkillIntegrityError
+
+/-- [rmcp::model::skill::SkillFrontmatter]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 154:0-160:1
+    Visibility: public -/
+structure model.skill.SkillFrontmatter where
+  «name» : String
+  description : String
+  extra : serde_json.map.Map String serde_json.value.Value
+
+/-- [rmcp::model::skill::SkillResources]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 186:0-189:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.skill.SkillResources where
+| Files :
+  alloc.vec.Vec model.skill.SkillResource →
+  model.skill.SkillResources
+| Dynamic : model.skill.SkillResources
+
+/-- [rmcp::model::skill::Skill]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 239:0-246:1
+    Visibility: public -/
+structure model.skill.Skill where
+  uri : String
+  frontmatter : model.skill.SkillFrontmatter
+  resources : model.skill.SkillResources
+  «meta» : Option model.meta.MetaObject
+
+/-- [rmcp::model::skill::SkillValidationError]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 502:0-521:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.skill.SkillValidationError where
+| UriNotSkillMd : String → model.skill.SkillValidationError
+| InvalidName : String → model.skill.SkillValidationError
+| NameMismatch : String → String → model.skill.SkillValidationError
+| MissingSkillMd : String → model.skill.SkillValidationError
+| DuplicateResource : String → model.skill.SkillValidationError
+| ResourceOutsideSkill : String → String → model.skill.SkillValidationError
+| MalformedDigest : String → String → model.skill.SkillValidationError
+| DuplicateSkill : String → model.skill.SkillValidationError
+
+/-- [rmcp::model::skill::is_sha256_digest::{closure}::{closure}]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 483:43-483:85 -/
+@[reducible]
+def model.skill.is_sha256_digest.closure.closure := Unit
+
+/-- [rmcp::model::skill::is_sha256_digest::{closure}]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 482:54-484:5 -/
+@[reducible]
+def model.skill.is_sha256_digest.closure := Unit
+
+/-- [rmcp::model::CacheScope]
+    Source: 'crates/rmcp/src/model.rs', lines 1854:0-1860:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.CacheScope where
+| Public : model.CacheScope
+| Private : model.CacheScope
+
+/-- [rmcp::model::ResultType]
+    Source: 'crates/rmcp/src/model.rs', lines 1032:0-1032:41
+    Visibility: public -/
+@[reducible]
+def model.ResultType := alloc.borrow.Cow Str String
+
+/-- [rmcp::model::skill::GetSkillResult]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 528:0-549:1
+    Visibility: public -/
+structure model.skill.GetSkillResult where
+  result_type : Option model.ResultType
+  ttl_ms : Option Std.U64
+  cache_scope : Option model.CacheScope
+  skill : model.skill.Skill
+  «meta» : Option model.meta.MetaObject
 
 /-- [rmcp::model::task::TaskStatus]
     Source: 'crates/rmcp/src/model/task.rs', lines 21:0-34:1

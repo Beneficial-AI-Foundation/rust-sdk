@@ -97,8 +97,11 @@ change the build, so the script also refuses to run when:
   `.git` exists (it does not in `.llbc/work/`) and prints no `cargo:` directive, so it adds no
   cfg, flag or environment variable to the build;
 - after Aeneas, a target has no `def` in `Funs.lean`, a `_` glob of `start_from` does not match
-  exactly one Rust item in `translation.json` (plan Section 15, rule 3), or a generated file
-  contains `sorry`.
+  exactly one Rust item in `translation.json` (plan Section 15, rule 3; stated exception since
+  translation patch 04: the globs `rmcp::model::skill::_::new` and
+  `rmcp::model::skill::_::with_meta` must match exactly the `rust_name`s listed for them in
+  `MULTI` of the script, five `new` and two `with_meta` methods), or a generated file contains
+  `sorry`.
 
 Proofs hold only for this configuration and for the pinned commit (plan Section 1). The Charon
 settings (`start_from`, `exclude`, `opaque`) are in `[package.metadata.charon]` of
@@ -144,8 +147,10 @@ The release assets are checked against the sha256 values committed in
 
 The dependency versions the external models rely on are pinned in `scripts/aeneas-translate.sh`
 (`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, and since S08–S09 `digest 0.11.3`,
-`zeroize 1.9.2`, `chrono 0.4.45` and `serde_json 1.0.154`, which the models also cite, and since
-translation patch 03 `serde_core 1.0.229`, whose traits are translated opaque); the
+`zeroize 1.9.2`, `chrono 0.4.45` and `serde_json 1.0.154`, which the models also cite, since
+translation patch 03 `serde_core 1.0.229`, whose traits are translated opaque, and since
+translation patch 04 `percent-encoding 2.3.2`, `unicode-normalization 0.1.26` and
+`unicode-general-category 1.1.0`, which the skills models cite); the
 script fails on a source other than crates.io or on another version of a pinned crate. Since S21 (human decision 2026-11-23) the version that counts is the one `rmcp` itself uses: a
 version reached, in the normal-edge tree of `rmcp` for the translated configuration (`cargo tree`),
 through edges whose intermediate packages are all pinned crates
@@ -167,9 +172,16 @@ scripts/check-original-linkage.sh <scratch-dir>   # Phase 2 linkage (plan Sectio
 ```
 
 `scripts/check-original-linkage.sh` (S22) copies the tracked files into `<scratch-dir>` (outside
-the repository), rewrites the copy's Charon settings to the Phase 2 start points, translates it
+the repository), rewrites the copy's Charon settings to the Phase 2 start points (it drops the
+Phase 1 start points `rmcp::model::request_state{,_wire}`, the seven skills start points whose
+targets need translation patch 04, K05–K07 and K13–K16, and the opaque entries that exist only
+in the patched copy, `…::request_state_wire::prim`, `…::request_state::_::now_ms` and
+`rmcp::model::skill::prim`), translates it
 with `aeneas-translate.sh` under `RMCP_NO_PATCHES=1` and `RMCP_TARGET_SET=phase2` (no translation
-patch; only the Phase 2 targets checked), and fails unless every block of that translation equals
+patch; only the targets of ORIGINAL linkage checked, and in that mode the translate script also
+fails if one of the patch-04 targets `PATCH04_TARGETS`, the seven and the three private helpers
+of K13, is translated from the unmodified source, which would mean the patch-04 list disagrees
+with the call graph), and fails unless every block of that translation equals
 the committed one up to the `Source:` field (file and lines); it also checks (part (a)) that the committed
 source is upstream `7caec76`: the `crates/rmcp/src` tree id, a digest of every other tracked file
 under `crates/` plus the root `Cargo.toml`, and a digest of `crates/rmcp/Cargo.toml` without its
@@ -510,7 +522,27 @@ settings it relies on (the eight `exclude` entries of `seal`, `seal_with`, `seal
 removed; the crate `serde_core` moved from `exclude` to `opaque`, so that `DeserializeOwned` in
 the signatures of `open_json*` translates), those eight functions translate with real bodies;
 `with_rs1_signing`, `with_rs1_fallback` and `new_with_keyring` need no source change on this
-toolchain. `seal_json` and `seal_json_with` stay excluded (R16–R17, blocked upstream). S04a part 2 started `trusted/Rmcp/` from the Aeneas templates
+toolchain. `seal_json` and `seal_json_with` stay excluded (R16–R17, blocked upstream).
+A fourth patch, `trusted/patches/04-skill-public.patch` (human decisions 2026-11-25: targets
+K01–K20 of `skill.rs`, hunks H1–H9; **reviewed and signed off by the spec owner
+2026-11-25**), adds to
+`crates/rmcp/src/model/skill.rs` the private module `prim`, twelve one-line wrappers of the
+original expressions (SHA-256, the `str` pattern APIs, percent-encoding, NFKC; opaque in the
+Charon settings and modelled in `trusted/Rmcp/`), and rewrites nine functions (H1–H9) to use
+them or loops without an early return, keeping the computed values; it adds and changes no
+test. Linkage: 13 targets translate unmodified (ORIGINAL: K01–K04, K08–K12, K17–K20) and 7
+need the patch (K05–K07, K13–K16); the linkage check passed on 2026-11-25 and its negative test
+(an ORIGINAL target listed as patch-04) fails as intended (`trusted/evidence/README.md`,
+"Linkage of the skills targets"). Two behavioural differences are recorded, each a premise a
+statement may need although the original would not (`trusted/evidence/README.md`, "Skills
+externals", patch-induced premises): H2 and H4 collect the NFKC form into a `Vec<char>` where the
+original streams it, which adds a capacity-overflow panic for names of the order of
+`isize::MAX / 24` bytes (K13: the NFKC length bound of `nfkc_spec`); and `prim::split_slash` and
+`prim::split_percent` (H5, H6) collect the parts into a `Vec<String>` (24 bytes per element)
+where the original streams the split or collects `&str`s, which adds a capacity-overflow panic
+at `24 * parts > isize::MAX` (K13, K16: the premise `hlen` of `split_slash_spec` and
+`split_percent_spec`). Both are unreachable in practice; the second cannot occur on x86_64 at
+all (a `&str` has fewer than 2^57 bytes there, and 24 · 2^57 < `isize::MAX`). S04a part 2 started `trusted/Rmcp/` from the Aeneas templates
 with placeholder axioms; since S08–S09 (accepted 2026-11-23; human decision: convert every axiom
 into a definition) it declares **no axiom**: each external type is a
 `structure`, each external function a definition with the generated name and signature
@@ -525,7 +557,16 @@ constants, `ExtModel.randomState` (the hash keys a new `HashMap` stores), `ExtMo
 (the outcome of `serde_json::from_slice` for the caller's `Deserialize` impl) and
 `ExtModel.SerdeJsonErrorImplCarrier : NonemptyType`, over which `ExtModel.SerdeJsonErrorImpl` is
 now an abstract `def` known to be inhabited (so that the opaque outcome can be an `Err`); still
-no axiom. What an auditor trusts is that each definition
+no axiom. Translation patch 04 (signed off 2026-11-25) adds 40 function models (the 12 `skill::prim`
+wrappers and 28 `core`/`alloc`/`std`/`serde_json`/`unicode-general-category` functions), 4
+type models (`array::IntoIter`, `str::Bytes`, `HashSet`, `serde_json::Map`, the last exactly
+the `BTreeMap` entries ascending by key) and three `opaque` constants, `ExtModel.sha256`,
+`ExtModel.nfkc` and `ExtModel.generalCategory`, whose laws are premises of the statements that
+need them (human decision 2026-11-25); still no axiom. Their placeholder values are what
+compiled evaluation returns, so evaluating anything that reaches them is meaningless. Stated
+exception: `<ParseIntError as Debug>::fmt` is a total, not exact, model (lead decision
+2026-11-25; `core::fmt::Formatter` is opaque in the Aeneas library and the only call is on an
+unreachable `expect` panic path). What an auditor trusts is that each definition
 describes its Rust function, with the exceptions stated in its docstring
 (`trusted/evidence/README.md` cites the source and tests of each). These models do not appear in
 `#print axioms`, the `#guard_msgs` lists or `axioms.lock`, so a change to one is caught only by
@@ -582,6 +623,20 @@ identifiers, so a quoted name containing `--`, `/-` or `"` can blank what follow
 declaration from it; layer (2) is authoritative; the only exception is a line that is
 exactly `open rmcp`, which `FunsExternal.lean` keeps from the Aeneas template because its
 signatures name trait structures of `Rmcp.Types` (`core.hash.BuildHasher`, `zeroize.Zeroize`,
+Review rules of the patch 04 opaque constants and types (`docs/STATUS.md`, "Trusted base", is
+authoritative): `ExtModel.sha256`, `ExtModel.nfkc` and `ExtModel.generalCategory` appear in
+conclusions only unopened; a fact about them enters a statement only as an explicit premise
+that is true of the real function on every input it quantifies over (source cited), never as
+an axiom; `sha256` gets no universal law and never injectivity; `nfkc` premises are limited to
+the NFKC-length domain (`4 * (ExtModel.nfkc cs).length ≤ maxStringBytes` for the statement's
+`cs`) and UAX #15 facts about the specific input (ASCII input is its own NFKC form,
+idempotence); `generalCategory` premises are facts about specific or ASCII characters matching
+`UnicodeData.txt`. Each such premise is either a law in implication form (e.g. "ASCII-only `cs`
+→ `nfkc cs = cs`") or a domain restriction (an unconditional fact about the statement's own
+input), declared as such in the docstring and the "Assumptions" column of `specs/README.md`; a
+fact taken from UAX #15, FIPS 180-4 or `UnicodeData.txt` also cites evidence that the pinned
+crate conforms on those inputs (NormalizationTest conformance or a Rust vector). No statement may depend on the order of the `elements` of a `HashSet`
+(unspecified in Rust); `serde_json::Map` entries are sorted by key, as in the `BTreeMap`.
 …; the file does not build without it) and which declares nothing. (2) `lean-guard.sh axioms`,
 on the build output: a constant of a root of `RmcpExternal` whose name (private prefix removed)
 starts with `rmcp`, including auxiliary ones such as `rmcp.x_def`, or any alias added by such a
@@ -602,7 +657,8 @@ Section 9 (S04a part 2 adds the derived `Debug` impls to `exclude`, human decisi
 trusted axioms, 0 native-code axioms (35 locked until the Aeneas upgrade of 2026-11-24: 5 Phase 1,
 30 Phase 2, H2), 5 `opaque` constants since S26/S27; 7 with translation patch 03, which adds
 `randomState`, `serdeJsonFromSlice` and `SerdeJsonErrorImplCarrier` and turns
-`SerdeJsonErrorImpl` into a `def` over the carrier, signed off 2026-11-24).
+`SerdeJsonErrorImpl` into a `def` over the carrier, signed off 2026-11-24; 10 with translation
+patch 04, which adds `sha256`, `nfkc` and `generalCategory`, signed off 2026-11-25).
 
 ### Tools
 

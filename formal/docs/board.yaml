@@ -726,3 +726,46 @@ steps:
       Every restated theorem keeps its name and its type is definitionally equal to the 8debe97
       text with the same binder kinds; lake build --wfail and all lean-guard.sh checks pass; the
       spec owner signs off the text; commit approved by the human.
+
+  - id: PATCH04-SKILL  # not a plan step; translation patch 04, public skill.rs API K01-K20, plan Sections 2.3, 15 and 19 (amendments 2026-11-25)
+    day: 2026-11-25
+    state: IN_PROGRESS  # translated on Aeneas nightly-2026.11.24-fb44cb4 (base b363a8a); records and
+    # docs updated; reviewed (3 rounds of 2, 2 and 1 fresh mcp-review reviewers);
+    # patch 04 (hunks H1-H9), Charon settings, script changes, 40 exact models (12 skill::prim
+    # wrappers, 28 core/alloc/std/serde_json/unicode-general-category functions) with 4 type models,
+    # 3 opaque constants (sha256, nfkc, generalCategory; 0 axioms) and the spec lemmas of the models
+    # signed off by the spec owner 2026-11-25. Linkage: 13 ORIGINAL (K01-K04, K08-K12, K17-K20),
+    # 7 patch-04 (K05-K07, K13-K16); scripts/check-original-linkage.sh passes locally, CI pending.
+    # Pending: the commit (human approval). The K01-K20 specs, proofs and records are SPEC-K01-K20.
+    # Human decisions 2026-11-25: patch 04 with H9; opaque functions with laws as premises (no
+    # axiom); script change (canon + MULTI for the `_::new` and `_::with_meta` globs); 13 targets
+    # ORIGINAL. Lead decisions 2026-11-25: serde_json::Map modelled as BTreeMap; no implemented_by;
+    # <ParseIntError as Debug>::fmt a total model (stated exception).
+    depends_on: [PATCH03-V2]  # patch 04 applies after patches 01-03
+    owner: Lead + human owner
+    files:
+      - formal/trusted/patches/04-skill-public.patch  # new
+      - crates/rmcp/Cargo.toml  # Charon table only: fifteen start_from entries; rmcp::model::skill::prim in opaque
+      - scripts/aeneas-translate.sh  # PINNED_DEPS: percent-encoding 2.3.2, unicode-normalization 0.1.26, unicode-general-category 1.1.0; MULTI; PATCH04_TARGETS
+      - scripts/check-original-linkage.sh  # drops the patch-04 start points and skill::prim
+      - formal/translation/Rmcp/Funs.lean
+      - formal/translation/Rmcp/Types.lean
+      - formal/translation/translation.json
+      - formal/trusted/translation-pins.txt
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/evidence/README.md
+      - formal/proofs/Proofs/External/Skill.lean  # new; spec lemmas of the patch-04 models
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 15 and 19 (amendments)
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+    acceptance: >-
+      The twenty public functions of skill.rs (K01-K20) translate with real bodies and no sorry;
+      every earlier generated block is unchanged up to its Source line numbers; the 13 ORIGINAL
+      targets pass scripts/check-original-linkage.sh and the 7 patch-04 targets are absent from the
+      unpatched translation; lake build --wfail and all lean-guard.sh checks pass; the patch, the
+      Charon and script changes and the new models reviewed by independent agents and signed off by
+      the human. Specifying K01-K20 is a separate step.
+

@@ -252,15 +252,20 @@ human decision H1; the Phase 1 output is byte-identical under it):
 ```
 
 Charon settings: `[package.metadata.charon]` in `crates/rmcp/Cargo.toml` (`start_from`, `exclude`,
-`opaque`), committed (they name `request_state_wire`, which exists only in the patched copy).
+`opaque`), committed (they name `request_state_wire` and `rmcp::model::skill::prim`, which exist
+only in the patched copy).
 Dependency pins (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`,
-`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`, and since translation patch 03 (2026-11-24,
-signed off) `serde_core 1.0.229`, checked since S21 on rmcp's own edges in the
+`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`, since translation patch 03 (2026-11-24,
+signed off) `serde_core 1.0.229`, and since translation patch 04 (2026-11-25, signed off 2026-11-25)
+`percent-encoding 2.3.2`, `unicode-normalization 0.1.26` and `unicode-general-category 1.1.0`,
+checked since S21 on rmcp's own edges in the
 translated configuration (human decision 2026-11-23; other versions used only by other crates,
-e.g. `oauth2`'s `sha2 0.10.9`, are allowed). **One translation patch**,
-`formal/trusted/patches/01-request-state-wire.patch` (D2 fallback, 2026-11-23) (plus the
-test-only patch 02 and, since 2026-11-24 (signed off), translation patch 03
-`03-request-state-public.patch`, see "Trusted base"), and **no hand edit**
+e.g. `oauth2`'s `sha2 0.10.9`, are allowed). **Patches** (`formal/trusted/patches/`, applied in
+file-name order to the copy in `.llbc/work/` only): translation patch
+`01-request-state-wire.patch` (D2 fallback, 2026-11-23), the test-only patch
+`02-phase2-tests.patch`, translation patch `03-request-state-public.patch` (signed off
+2026-11-24) and translation patch `04-skill-public.patch` (2026-11-25, signed off by the spec owner
+2026-11-25); see "Trusted base". **No hand edit**
 of the generated files (`formal/translation/` is reproduced byte for byte by the translate script,
 S18). The proofs hold only for this configuration.
 
@@ -482,9 +487,50 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
     `def … := Carrier.type` (abstract, no longer itself `opaque`), with `Nonempty` instances for
     it and for `serde_json::Error`, so that the opaque outcome can be an `Err` (human decision
     2026-11-24). Still never inspected.
-  The total is 7 `opaque` constants (`hmacSha256`, `sipHash13`, `nowMs`, `SerdeJsonValue`,
-  `randomState`, `serdeJsonFromSlice`, `SerdeJsonErrorImplCarrier`). Sources and tests per model:
-  `formal/trusted/evidence/README.md`, "Public `request_state.rs` API externals".
+  With patch 03 the total was 7 `opaque` constants (`hmacSha256`, `sipHash13`, `nowMs`,
+  `SerdeJsonValue`, `randomState`, `serdeJsonFromSlice`, `SerdeJsonErrorImplCarrier`); sources
+  and tests per model: `formal/trusted/evidence/README.md`, "Public `request_state.rs` API
+  externals".
+- **Translation patch 04 models** (2026-11-25, human decisions: targets K01–K20 of `skill.rs`,
+  patch 04 with hunks H1–H9; reviewed in 3 rounds and **signed off by the spec owner 2026-11-25**): in
+  `formal/trusted/Rmcp/FunsExternal.lean` and `TypesExternal.lean`, sections "Public `skill.rs`
+  API", all definitions or structures, no axiom:
+  - **12 `prim` models**, one per one-line wrapper of the private module `skill::prim` that the
+    patch adds (opaque in the translation): `sha256`, `find_query_or_fragment`, `strip_suffix`,
+    `strip_prefix`, `last_slash_segment`, `split_slash`, `join_slash`, `split_once_percent`,
+    `split_percent`, `percent_encode_controls`, `percent_decode_utf8`, `nfkc`;
+  - **28 `core`/`alloc`/`std`/crate models**: `get_general_category`
+    (`unicode-general-category 1.1.0`), array `IntoIterator::into_iter` and `IntoIter::next`,
+    `bool::then_some`, `char: From<u8>`, `char` `PartialEq::eq`, `Iterator::all` (default),
+    `<ParseIntError as Debug>::fmt`, `u8::{is_ascii_alphanumeric, is_ascii_hexdigit,
+    from_str_radix}`, `Option::as_deref`, `Option` `Try::branch` and
+    `FromResidual::from_residual`, `Bytes::all`, `str::{is_empty, split_at_checked, split_at,
+    bytes}`, `HashSet::{with_capacity, insert}`, `Cow::into_owned`, `Cow` `Deref::deref`,
+    `str::to_ascii_uppercase`, `String::as_str`, `Vec::pop`, `serde_json::Map::{new, insert}`;
+  - **4 structures**: `array::IntoIter` (array and alive range), `str::Bytes` (the inner slice
+    iterator), `HashSet` (element list), `serde_json::Map` (the `BTreeMap` entries ascending by
+    key in Rust's `String` order, lead decision 2026-11-25);
+  - helpers in `ExtModel` (listed in the evidence README) and **three `opaque` constants** (no
+    axiom): `ExtModel.sha256` (SHA-256 of `sha2 0.11.1`), `ExtModel.nfkc` (NFKC of
+    `unicode-normalization 0.1.26`), `ExtModel.generalCategory` (the General_Category tables of
+    `unicode-general-category 1.1.0`). Their laws are not stated in `trusted/`; a statement that
+    needs one takes it as a premise (human decision 2026-11-25), under the review rule below.
+    Their placeholder values (32 zero bytes, the identity, `Unassigned`) are what compiled
+    evaluation returns, so evaluating or differentially testing anything that reaches them is
+    meaningless (lead decision 2026-11-25: no compiled replacement).
+  Stated exceptions: `<ParseIntError as Debug>::fmt` is a **total, not exact,** model (lead
+  decision 2026-11-25): `Ok(())` and the formatter unchanged, because `core::fmt::Formatter` is
+  opaque in the Aeneas library, and its only caller is the `expect` of `push_normalized_part`,
+  whose panic path two checked hexadecimal digits never take; the default `Iterator::all` is the
+  `next` loop (an iterator that overrides `try_fold` is not modelled; no generated definition
+  calls it); `HashSet::with_capacity` stores `ExtModel.randomState` (its review rule applies)
+  and does not model hashbrown's capacity-overflow panic (unreachable within the size
+  convention); the patch-induced premises for K13 and K16 (below). Proved spec theorems:
+  `formal/proofs/Proofs/External/Skill.lean`. Sources and tests per model:
+  `formal/trusted/evidence/README.md`, "Skills externals".
+  The total is now **10 `opaque` constants** (`hmacSha256`, `sipHash13`, `nowMs`,
+  `SerdeJsonValue`, `randomState`, `serdeJsonFromSlice`, `SerdeJsonErrorImplCarrier`, `sha256`,
+  `nfkc`, `generalCategory`).
 - **Codec-state hypothesis** (accepted at S12): `Defs/CodecState.lean` defines `CodecValid`
   (keyring clauses; single-key codecs unconstrained; pairwise distinct key ids),
   `CodecFallbacksKnown` (every rs1 fallback id is a key id) and `FallbacksKnown`. It is a
@@ -534,6 +580,45 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
 
 External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
 `TypesExternal.lean`; sources and tests per model in `formal/trusted/evidence/README.md`:
+  And (since 2026-11-25, human decisions: targets K01–K20, hunks H1–H9; **reviewed in 3 rounds
+  and signed off by the spec owner 2026-11-25**) translation patch
+  [`formal/trusted/patches/04-skill-public.patch`](../trusted/patches/04-skill-public.patch) on
+  `crates/rmcp/src/model/skill.rs` (no test added or changed): the private module `prim` of
+  twelve one-line wrappers (each the original expression) and hunks H1 `sha256_digest`, H2
+  `Skill::validate`, H3 `skill_name_from_uri`, H4 `is_valid_skill_name`, H5
+  `manifest_resource_key`, H6 `normalize_percent_encoding`, H7 `is_sha256_digest`, H8
+  `validate_skills`, H9 `SkillResource::verify` (the header gives the error each hunk avoids and
+  why the values are unchanged; H4 and H9 are not needed for the translation and are kept by
+  human decision). **Linkage:** 13 targets are ORIGINAL (K01–K04, K08–K12, K17–K20 translate
+  unmodified) and 7 need patch 04 (K05–K07, K13–K16); `scripts/check-original-linkage.sh`
+  checks that the patch-04 targets are absent from the unpatched translation (it drops the seven
+  patch-04 skills start points and the opaque entry `rmcp::model::skill::prim` from the copy's
+  Charon settings, and in its run `scripts/aeneas-translate.sh` fails if one of the ten
+  `PATCH04_TARGETS` is translated from the unmodified source). Recorded runs (2026-11-25, scratch
+  clone of `b363a8a` with this change committed as scratch commit `b3e26c4`): exit 0, all 38
+  ORIGINAL targets defined, blocks identical up to `Source:` (`Funs.lean` 60/60, `Types.lean`
+  40/40, the two External templates 34/34 and 10/10); negative test (scratch commit `a847d99`,
+  `model.skill.Skill.name` added to `PATCH04_TARGETS`): exit 1, "patch-04 target
+  model.skill.Skill.name is translated from the unmodified source" (evidence README, "Linkage of
+  the skills targets"; plan Section 19, amendment 2026-11-25). **Patch-induced premises** (the
+  original would not need them; evidence README): (1) H2 and H4 collect the NFKC form into a
+  `Vec<char>` where the original streams it, adding a capacity-overflow panic for a form above
+  `isize::MAX` bytes (a name above of the order of `isize::MAX / 24` bytes; unreachable in practice), so a
+  K13 statement may take the NFKC length bound of `nfkc_spec` as a premise; (2) `prim::split_slash`
+  and `prim::split_percent` (H5, H6) collect the parts into a `Vec<String>` (24 bytes per
+  element) where the original streams the split (H6) or collects `&str`s (16 bytes, H5), adding a
+  capacity-overflow panic at `24 * parts > isize::MAX`, so K13 and K16 statements may take the
+  premise `hlen : 24 * (splitBytes sep s.val).length ≤ maxStringBytes` of `split_slash_spec` and
+  `split_percent_spec`; unreachable on x86_64, where a `&str` has fewer than 2^57 bytes (57-bit
+  virtual addresses) and 24 · 2^57 < 2^63 − 1 = `isize::MAX`.
+  **Charon and script changes with patch 04** (human decisions 2026-11-25): fifteen `start_from` entries for K01–K20
+  and `rmcp::model::skill::prim` in `opaque` (`crates/rmcp/Cargo.toml`); `PINNED_DEPS` adds
+  `percent-encoding 2.3.2`, `unicode-normalization 0.1.26`, `unicode-general-category 1.1.0`;
+  the two `_` globs `rmcp::model::skill::_::new` (K02, K04, K08, K10, K17) and
+  `rmcp::model::skill::_::with_meta` (K11, K20) are a stated exception to "a `_` glob matches
+  exactly one Rust item": each must match exactly its listed `rust_name`s (`MULTI` in
+  `scripts/aeneas-translate.sh`; plan Section 15, rule 3); `formal/trusted/translation-pins.txt`
+  is updated to the new `Funs.lean`.
 
 | Contract | Model (no axiom) | Status |
 |---|---|---|
@@ -555,6 +640,7 @@ Details:
   or a key of at least `2^61` bytes; not modelled (the `x86_64` address space is at most `2^57`
   bytes).
 - Base64url: strict decoding; round trip, canonicity, URL-safe alphabet (no `.`) and length laws
+| Translation patch 04: the 12 `skill::prim` wrappers; 28 `core`/`alloc`/`std`/`serde_json`/`unicode-general-category` functions; types `array::IntoIter`, `str::Bytes`, `HashSet`, `serde_json::Map` | 40 definitions, 4 structures; `opaque ExtModel.sha256`, `opaque ExtModel.nfkc`, `opaque ExtModel.generalCategory`; `<ParseIntError as Debug>::fmt` total (lead decision) | reviewed (3 rounds), signed off by the spec owner (2026-11-25) |
   proved (`Proofs/External/Base64.lean`); differential check against `base64 0.23.1`: 25,682,976
   comparisons, 0 mismatches (S18 re-run with the differential toolchain pinned to Rust 1.96).
 - Standard library: `Option` `Default`,
@@ -619,9 +705,65 @@ Opaque items (Charon `opaque` setting in `crates/rmcp/Cargo.toml`, committed):
 targets `seal_with` and hence `seal`, under the extended clock rule, and by non-target wrappers), and
 the external crates `zeroize`, `base64`, `hmac`, `sha2`, `thiserror`, `chrono`, `serde_json`
 (signatures only), since translation patch 03 also `serde_core` (moved from `exclude`; signatures
+- **`ExtModel.sha256`, `ExtModel.nfkc`, `ExtModel.generalCategory`** (translation patch 04,
+  human decision 2026-11-25 that their laws are premises; rule signed off by the spec owner
+  2026-11-25): no axiom and no
+  `trusted/` definition states a law about them. A statement may mention them in its
+  conclusion only unopened, as the value the Rust code computes (`ExtModel.sha256 bytes`,
+  `ExtModel.nfkc t.toList`, `ExtModel.generalCategory c`). A fact about them may enter a
+  statement only as an explicit premise, and only if it is true of the real function on every
+  input it quantifies over, with the source cited in the statement's docstring; a premise that
+  is false of the real function (which would make the statement vacuous) is a review defect.
+  In particular:
+  - `sha256`: no premise about its values except equalities or inequalities of digests of the
+    specific inputs of the statement, as conditions on those inputs (e.g. "the digest of these
+    bytes is the recorded one"); no universal law, and never injectivity or collision freedom
+    (false: the function maps every byte list to 32 bytes).
+  - `nfkc`: the NFKC-length domain: a premise `4 * (ExtModel.nfkc cs).length ≤ maxStringBytes`
+    (the `Vec` bound of `prim::nfkc`, the patch-induced premise of K13) for the specific `cs`
+    of the statement; facts of UAX #15 for the specific input, such as "an ASCII-only `cs` is
+    its own NFKC form" or idempotence `nfkc (nfkc cs) = nfkc cs`, each as a premise with the
+    clause of UAX #15 cited. No premise that equates the NFKC forms of two inputs unless that
+    is the condition the Rust code tests.
+  - `generalCategory`: facts about specific characters or about the ASCII range, each as a
+    premise matching `UnicodeData.txt` of the Unicode version of `unicode-general-category
+    1.1.0` (e.g. `'a'`–`'z'` are `LowercaseLetter`, `'0'`–`'9'` `DecimalNumber`, `'-'`
+    `DashPunctuation`); a universal premise over non-ASCII characters only if it is a stability
+    guarantee of the Unicode standard (cited).
+  Review checks for each such premise that it is satisfiable by the real function on the
+  inputs the statement is meant for. Form of the premises (lead decision 2026-11-25, finding
+  U3): each premise about an opaque constant is either
+  - a **law**, stated in implication form over the inputs it covers (e.g. "for an ASCII-only
+    `cs`, `ExtModel.nfkc cs = cs`", i.e. `(∀ c ∈ cs, c.toNat < 128) → ExtModel.nfkc cs = cs`;
+    "`'a' ≤ c ≤ 'z'` → `ExtModel.generalCategory c = LowercaseLetter`"), which is true of the
+    real function for every input satisfying its hypothesis and does not narrow the statement;
+    or
+  - a **domain restriction**: an unconditional fact about the statement's own input (e.g.
+    `4 * (ExtModel.nfkc t.toList).length ≤ maxStringBytes`, or "the digest of these bytes is the
+    recorded one"), which narrows the inputs the statement covers; it must be declared as a
+    domain restriction in the statement's docstring and in the "Assumptions" column of the
+    summary table of `formal/specs/README.md`, with the inputs it excludes.
+  A premise taken from UAX #15, FIPS 180-4 or `UnicodeData.txt` must also cite evidence that the
+  pinned crate conforms on those inputs: for `nfkc`, the conformance of `unicode-normalization
+  0.1.26` (Unicode 18.0.0, `src/tables.rs` line 18) to the Unicode `NormalizationTest.txt` on
+  those inputs (the upstream `tests/normalization_tests.rs`, generated by the crate's
+  `scripts/unicode.py` and not shipped in the crates.io package, run at the 0.1.26 release) or a
+  Rust vector run against the pinned crate; for `sha256`, a Rust vector of `sha2 0.11.1` (e.g. the spec
+  example of `sha256_digest::matches_the_digest_in_the_spec_example`); for `generalCategory`,
+  a Rust vector of `unicode-general-category 1.1.0` on the characters concerned. A premise
+  without that evidence, or in neither form, is a review defect.
+- **`HashSet` element order** (translation patch 04, lead decision 2026-11-25): Rust's
+  `HashSet` iteration order is unspecified, so no statement may depend on the order of the
+  `elements` list of the model; statements speak of membership, of the `bool` of `insert` and
+  of order-independent quantities only.
+- **`serde_json::Map`** (translation patch 04, lead decision 2026-11-25): modelled exactly as
+  the `BTreeMap` it is (no `preserve_order`): entries ascending by key in Rust's `String` order,
+  so each Rust map has one model value; statements may rely on that order.
 and trait declarations, for `DeserializeOwned` in the `open_json*` signatures); since S21 (Phase 2, plan Section 15) also the crates of the widened features
 (`http`, `tokio`, `tokio_util`, `tracing`, `tracing_core`, `futures`, `futures_util`, `futures_core`,
 `bytes`, `sse_stream`, `hyper`, `tower_service`, `uuid`, `schemars`, `pin_project_lite`,
+`rmcp::model::skill::prim` (translation patch 04: the `str` pattern APIs, SHA-256, NFKC and
+percent-encoding, B1, B2),
 `tokio_stream`, `http_body`, `http_body_util`, `rand`, `async_trait`, `pastey`, `oauth2`, `reqwest`,
 `url`; signatures only) and the type `rmcp::transport::auth::AuthorizationManager` (H4; it appears
 in no generated file). Marking an item opaque only keeps its signature; its contract is the model

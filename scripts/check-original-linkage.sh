@@ -28,8 +28,9 @@
 #
 # How: copy the tracked files into <scratch-dir>/src, rewrite only the copy's
 # [package.metadata.charon] (drop the Phase 1 start points rmcp::model::request_state{,_wire},
-# which exist only with patch 01; drop the opaque function entries ...::request_state_wire::prim
-# and ...::request_state::_::now_ms; keep the other exclude entries outside
+# which exist only with patch 01, and the skills start points of K05-K07, K13-K16, which need
+# patch 04; drop the opaque function entries ...::request_state_wire::prim,
+# ...::request_state::_::now_ms and ...::skill::prim (patch 04); keep the other exclude entries outside
 # rmcp::model::request_state*; keep hide_marker_traits), then run scripts/aeneas-translate.sh on
 # that copy with RMCP_NO_PATCHES=1 and RMCP_TARGET_SET=phase2 into <scratch-dir>/out, so every
 # toolchain, environment, dependency, glob and target check of the real translation applies.
@@ -132,11 +133,20 @@ if unknown:
 phase1 = {"rmcp::model::request_state", "rmcp::model::request_state_wire"}
 if not phase1 <= set(meta["start_from"]):
     sys.exit("start_from lacks the Phase 1 modules rmcp::model::request_state{,_wire}")
-start = [s for s in meta["start_from"] if s not in phase1]
+# Skills start points whose targets need translation patch 04 (K05-K07, K13-K16); the other
+# skills start points (K01-K04, K08-K12, K17-K20) are ORIGINAL (human decision 2026-11-25).
+patch04 = {"rmcp::model::skill::_::from_bytes", "rmcp::model::skill::_::verify",
+           "rmcp::model::skill::sha256_digest", "rmcp::model::skill::_::validate",
+           "rmcp::model::skill::skill_name_from_uri", "rmcp::model::skill::is_sha256_digest",
+           "rmcp::model::skill::validate_skills"}
+if not patch04 <= set(meta["start_from"]):
+    sys.exit(f"start_from lacks the patch-04 skills start points {sorted(patch04 - set(meta['start_from']))}")
+start = [s for s in meta["start_from"] if s not in phase1 and s not in patch04]
 if not start:
     sys.exit("start_from has no Phase 2 entries")
 opaque = [o for o in meta["opaque"] if o not in (
-    "rmcp::model::request_state_wire::prim", "rmcp::model::request_state::_::now_ms")]
+    "rmcp::model::request_state_wire::prim", "rmcp::model::request_state::_::now_ms",
+    "rmcp::model::skill::prim")]
 exclude = [e for e in meta["exclude"] if not e.startswith("rmcp::model::request_state")]
 hide = meta.get("hide_marker_traits", False)
 def arr(xs):

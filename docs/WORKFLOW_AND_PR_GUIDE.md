@@ -216,7 +216,9 @@ not emitted into an `*External_Template.lean` file or a local one emitted there 
 pattern names, a `start_from` pattern that matches
 no translated item (this replaces the comparison with the options recorded in the LLBC, which
 Charon `0.1.324` no longer records; Aeneas upgrade of 2026-11-24, lead decision N1), a missing target, a `_` glob of `start_from` that does
-not match exactly one Rust item, any `sorry` in the generated files, or a dependency version mismatch. The exact lists are in `formal/README.md` ("Translated
+not match exactly one Rust item (stated exception since translation patch 04: the globs
+`rmcp::model::skill::_::new` and `rmcp::model::skill::_::with_meta` must match exactly the
+`rust_name`s listed for them in `MULTI` of `scripts/aeneas-translate.sh`), any `sorry` in the generated files, or a dependency version mismatch. The exact lists are in `formal/README.md` ("Translated
 configuration") and the header of `scripts/aeneas-translate.sh`.
 
 Aeneas writes into the scratch directory `$RMCP_LLBC_DIR/out` (default `.llbc/out`); only after
