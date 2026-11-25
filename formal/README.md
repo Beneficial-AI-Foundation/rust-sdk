@@ -43,6 +43,18 @@ explicit time), R10b (`seal_at` then `open_at`) and a model round trip in
 The test-only patch 02 gained 12 boundary tests of R09–R12 and R15 (46 tests; 847 library tests
 pass on the patched copy). Records: `docs/functions/R09.yaml`–`R15.yaml`.
 
+Public `skill.rs` API (2026-11-25; translation patch 04 and the K01–K20 specifications **signed
+off by the spec owner 2026-11-25; proved; not committed, not accepted**): the twenty public
+functions of `crates/rmcp/src/model/skill.rs` (K01–K20) translate, 13 from the unmodified source
+(linkage `ORIGINAL`: K01–K04, K08–K12, K17–K20) and 7 with `trusted/patches/04-skill-public.patch`
+(K05–K07, K13–K16). 51 statements (20 spec theorems, 3 corollaries, 10 compositions, 18
+consequences of the model; definitions `specs/Defs/Skill.lean`) passed 3 review rounds and are
+proved in `proofs/Proofs/Model/Skill/`; their public restatement is
+`specs/Specs/Model/Skill.lean` (`Theorems.skill.*`). Premises: string, URI and skill size bounds
+(met by every value held in memory) and the patch-induced NFKC length bound of `Skill::validate`
+and `validate_skills`. No bug found. Records: `docs/functions/K01.yaml`–`K20.yaml`; see "Public
+skill.rs API (K01–K20)" in `docs/STATUS.md`.
+
 ## Translated configuration
 
 `scripts/aeneas-translate.sh` fixes it:
@@ -611,18 +623,6 @@ maps it, and no statement relates two calls of `open_json`/`open_json_with` (or 
 `Deserialize` impl that panics or does not terminate, and one that is non-deterministic or has
 side effects such as global or thread-local state or a random number generator, are not
 modelled).
-Names in the namespace `rmcp` are banned in `trusted/`: the generated code
-works inside `namespace rmcp` and names the root-level externals and the Aeneas library functions
-unqualified, so a name `rmcp.<x>` from `trusted/` would silently take precedence over the one it
-means. Enforced in two layers. (1) `lean-guard.sh sources`, on every
-file under `trusted/`: after comments (`--`, nested `/- -/`, docstrings), string literals and
-character literals are blanked, any identifier token whose first component is `rmcp` (also after
-`_root_.`, and quoted, `«rmcp»`) fails (declaration name, `namespace`, `alias`, a reference),
-and so does the keyword `export`. This layer is a best-effort lexer: it does not skip `«…»`
-identifiers, so a quoted name containing `--`, `/-` or `"` can blank what follows and hide a
-declaration from it; layer (2) is authoritative; the only exception is a line that is
-exactly `open rmcp`, which `FunsExternal.lean` keeps from the Aeneas template because its
-signatures name trait structures of `Rmcp.Types` (`core.hash.BuildHasher`, `zeroize.Zeroize`,
 Review rules of the patch 04 opaque constants and types (`docs/STATUS.md`, "Trusted base", is
 authoritative): `ExtModel.sha256`, `ExtModel.nfkc` and `ExtModel.generalCategory` appear in
 conclusions only unopened; a fact about them enters a statement only as an explicit premise
@@ -637,6 +637,18 @@ input), declared as such in the docstring and the "Assumptions" column of `specs
 fact taken from UAX #15, FIPS 180-4 or `UnicodeData.txt` also cites evidence that the pinned
 crate conforms on those inputs (NormalizationTest conformance or a Rust vector). No statement may depend on the order of the `elements` of a `HashSet`
 (unspecified in Rust); `serde_json::Map` entries are sorted by key, as in the `BTreeMap`.
+Names in the namespace `rmcp` are banned in `trusted/`: the generated code
+works inside `namespace rmcp` and names the root-level externals and the Aeneas library functions
+unqualified, so a name `rmcp.<x>` from `trusted/` would silently take precedence over the one it
+means. Enforced in two layers. (1) `lean-guard.sh sources`, on every
+file under `trusted/`: after comments (`--`, nested `/- -/`, docstrings), string literals and
+character literals are blanked, any identifier token whose first component is `rmcp` (also after
+`_root_.`, and quoted, `«rmcp»`) fails (declaration name, `namespace`, `alias`, a reference),
+and so does the keyword `export`. This layer is a best-effort lexer: it does not skip `«…»`
+identifiers, so a quoted name containing `--`, `/-` or `"` can blank what follows and hide a
+declaration from it; layer (2) is authoritative; the only exception is a line that is
+exactly `open rmcp`, which `FunsExternal.lean` keeps from the Aeneas template because its
+signatures name trait structures of `Rmcp.Types` (`core.hash.BuildHasher`, `zeroize.Zeroize`,
 …; the file does not build without it) and which declares nothing. (2) `lean-guard.sh axioms`,
 on the build output: a constant of a root of `RmcpExternal` whose name (private prefix removed)
 starts with `rmcp`, including auxiliary ones such as `rmcp.x_def`, or any alias added by such a

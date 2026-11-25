@@ -14,6 +14,13 @@ signed off by the spec owner after 4 review rounds; Lean statements, proofs and
 records incorporated; proofs checked 2026-11-25 (build, guards, independent incorporation review);
 committed `0cbd67f`; accepted by the human owner 2026-11-25 (board SPEC-R09-R15).
 
+**Translation patch 04 and K01–K20 specifications (2026-11-25; signed off by the spec owner
+2026-11-25; not committed, not accepted):** the twenty public functions of
+`crates/rmcp/src/model/skill.rs` (K01–K20) translate, 13 from the unmodified source (linkage
+`ORIGINAL`) and 7 with translation patch 04 (linkage `patch-04`); 51 statements signed off after 3
+review rounds and proved (51/51); records `functions/K01.yaml`–`K20.yaml`. See "Public skill.rs API
+(K01–K20)" and "Trusted base" (board PATCH04-SKILL, SPEC-K01-K20).
+
 **Aeneas upgrade (2026-11-24), reviewed and re-signed by the spec owner 2026-11-24:** see "Aeneas upgrade
 (2026-11-24)" below. The results sections below record the state before it (Aeneas
 `nightly-2026.08.20-5d08da4`, 35 native-code axioms); "Trusted base" is updated to the current state.
@@ -573,13 +580,6 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   `scripts/aeneas-translate.sh` adds `serde_core 1.0.229` to `PINNED_DEPS`;
   `formal/trusted/translation-pins.txt` is updated to the new `Funs.lean` hash and line of the
   pinned `initialize` word.
-  **Exclusions:** the list above (plan Section 2.3).
-- **Statements:** `formal/specs/Defs/` and `formal/specs/Specs/` (public API; index
-  `formal/specs/README.md`), and `formal/proofs/Proofs/Internal/` with `formal/proofs/Proofs/Defs/`
-  (private, crate-internal and patch-only functions and the model laws; human decision 2026-11-24).
-
-External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
-`TypesExternal.lean`; sources and tests per model in `formal/trusted/evidence/README.md`:
   And (since 2026-11-25, human decisions: targets K01–K20, hunks H1–H9; **reviewed in 3 rounds
   and signed off by the spec owner 2026-11-25**) translation patch
   [`formal/trusted/patches/04-skill-public.patch`](../trusted/patches/04-skill-public.patch) on
@@ -619,6 +619,13 @@ External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
   exactly one Rust item": each must match exactly its listed `rust_name`s (`MULTI` in
   `scripts/aeneas-translate.sh`; plan Section 15, rule 3); `formal/trusted/translation-pins.txt`
   is updated to the new `Funs.lean`.
+  **Exclusions:** the list above (plan Section 2.3).
+- **Statements:** `formal/specs/Defs/` and `formal/specs/Specs/` (public API; index
+  `formal/specs/README.md`), and `formal/proofs/Proofs/Internal/` with `formal/proofs/Proofs/Defs/`
+  (private, crate-internal and patch-only functions and the model laws; human decision 2026-11-24).
+
+External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
+`TypesExternal.lean`; sources and tests per model in `formal/trusted/evidence/README.md`:
 
 | Contract | Model (no axiom) | Status |
 |---|---|---|
@@ -633,6 +640,7 @@ External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
 | Phase 2: `i64::from_str`, `Ipv4Addr`/`Ipv6Addr` | definitions, structures (S27) | signed off 2026-11-23; 21 laws proved |
 | `serde_json::Value` (type) | `opaque ExtModel.SerdeJsonValue` (S27) | signed off 2026-11-23 (no law: only moved) |
 | Translation patch 03: `Duration::as_millis`, `str::to_owned`, `HashMap::{contains_key, is_empty, new, entry}`, `VacantEntry::insert`, `Hash for str`, `Borrow<str>`/`PartialEq<str>` for `String`, `slice::Iter::any`, `Iterator::any`, `serde_json::from_slice`, `Error::source`; types `OccupiedEntry`, `VacantEntry` | 14 definitions, 2 structures; `opaque ExtModel.randomState`, `opaque ExtModel.serdeJsonFromSlice` | reviewed, signed off by the spec owner (2026-11-24) |
+| Translation patch 04: the 12 `skill::prim` wrappers; 28 `core`/`alloc`/`std`/`serde_json`/`unicode-general-category` functions; types `array::IntoIter`, `str::Bytes`, `HashSet`, `serde_json::Map` | 40 definitions, 4 structures; `opaque ExtModel.sha256`, `opaque ExtModel.nfkc`, `opaque ExtModel.generalCategory`; `<ParseIntError as Debug>::fmt` total (lead decision) | reviewed (3 rounds), signed off by the spec owner (2026-11-25) |
 
 Details:
 - HMAC: both functions always succeed. Stated exception: the SHA-256 bit-length `u64` counter
@@ -640,7 +648,6 @@ Details:
   or a key of at least `2^61` bytes; not modelled (the `x86_64` address space is at most `2^57`
   bytes).
 - Base64url: strict decoding; round trip, canonicity, URL-safe alphabet (no `.`) and length laws
-| Translation patch 04: the 12 `skill::prim` wrappers; 28 `core`/`alloc`/`std`/`serde_json`/`unicode-general-category` functions; types `array::IntoIter`, `str::Bytes`, `HashSet`, `serde_json::Map` | 40 definitions, 4 structures; `opaque ExtModel.sha256`, `opaque ExtModel.nfkc`, `opaque ExtModel.generalCategory`; `<ParseIntError as Debug>::fmt` total (lead decision) | reviewed (3 rounds), signed off by the spec owner (2026-11-25) |
   proved (`Proofs/External/Base64.lean`); differential check against `base64 0.23.1`: 25,682,976
   comparisons, 0 mismatches (S18 re-run with the differential toolchain pinned to Rust 1.96).
 - Standard library: `Option` `Default`,
@@ -698,13 +705,6 @@ Review rules that stay in force:
   `Deserialize` impl that panics, aborts or does not terminate, and one that is
   non-deterministic or has side effects (global or thread-local state, a random number
   generator).
-
-Opaque items (Charon `opaque` setting in `crates/rmcp/Cargo.toml`, committed):
-`rmcp::model::request_state_wire::prim` (wraps the HMAC and base64 `Engine` types, B1, B3),
-`rmcp::model::request_state::_::now_ms` (system clock; since translation patch 03 called by the
-targets `seal_with` and hence `seal`, under the extended clock rule, and by non-target wrappers), and
-the external crates `zeroize`, `base64`, `hmac`, `sha2`, `thiserror`, `chrono`, `serde_json`
-(signatures only), since translation patch 03 also `serde_core` (moved from `exclude`; signatures
 - **`ExtModel.sha256`, `ExtModel.nfkc`, `ExtModel.generalCategory`** (translation patch 04,
   human decision 2026-11-25 that their laws are premises; rule signed off by the spec owner
   2026-11-25): no axiom and no
@@ -759,11 +759,18 @@ the external crates `zeroize`, `base64`, `hmac`, `sha2`, `thiserror`, `chrono`, 
 - **`serde_json::Map`** (translation patch 04, lead decision 2026-11-25): modelled exactly as
   the `BTreeMap` it is (no `preserve_order`): entries ascending by key in Rust's `String` order,
   so each Rust map has one model value; statements may rely on that order.
+
+Opaque items (Charon `opaque` setting in `crates/rmcp/Cargo.toml`, committed):
+`rmcp::model::request_state_wire::prim` (wraps the HMAC and base64 `Engine` types, B1, B3),
+`rmcp::model::skill::prim` (translation patch 04: the `str` pattern APIs, SHA-256, NFKC and
+percent-encoding, B1, B2),
+`rmcp::model::request_state::_::now_ms` (system clock; since translation patch 03 called by the
+targets `seal_with` and hence `seal`, under the extended clock rule, and by non-target wrappers), and
+the external crates `zeroize`, `base64`, `hmac`, `sha2`, `thiserror`, `chrono`, `serde_json`
+(signatures only), since translation patch 03 also `serde_core` (moved from `exclude`; signatures
 and trait declarations, for `DeserializeOwned` in the `open_json*` signatures); since S21 (Phase 2, plan Section 15) also the crates of the widened features
 (`http`, `tokio`, `tokio_util`, `tracing`, `tracing_core`, `futures`, `futures_util`, `futures_core`,
 `bytes`, `sse_stream`, `hyper`, `tower_service`, `uuid`, `schemars`, `pin_project_lite`,
-`rmcp::model::skill::prim` (translation patch 04: the `str` pattern APIs, SHA-256, NFKC and
-percent-encoding, B1, B2),
 `tokio_stream`, `http_body`, `http_body_util`, `rand`, `async_trait`, `pastey`, `oauth2`, `reqwest`,
 `url`; signatures only) and the type `rmcp::transport::auth::AuthorizationManager` (H4; it appears
 in no generated file). Marking an item opaque only keeps its signature; its contract is the model
@@ -808,6 +815,14 @@ forms, A03), and a resolved address in it is classed `Public` by the DNS-resolve
 `is_disallowed_metadata_ipv4` at line 52), although the module doc (lines 8–9) says reserved
 addresses are never allowed. The A02 statement describes the code (the plan's list of eleven
 ranges). Not yet reported upstream (see "Open items").
+
+**Public `skill.rs` API (K01–K20, 2026-11-25): no bug found.** The 51 signed-off statements
+describe the code as it is; no disagreement was found between them and `skill.rs` (spec cycle of 3
+review rounds, differential tests with 0 mismatches, 51/51 proved). Behaviours recorded as
+premises or exceptions, not bugs: the patch-induced premise `NfkcFits` of K13/K16 (translation
+patch 04 collects the NFKC form into a `Vec<char>`, the original streams it); SHA-256's bit counter
+for inputs of at least 2^61 bytes, the `HashSet` random source and the `serde_json` feature
+`preserve_order` are not covered (see "Public skill.rs API (K01–K20)").
 
 Defects found in the plan, documents and tooling, with their state:
 
@@ -1117,6 +1132,69 @@ and AI-reviewed (mcp-review), Claude Code, claude-opus-5-5. R16–R17 (`seal_jso
 `seal_json_with`) stay untranslated; issue record
 `formal/trusted/issues/aeneas-serde-ser-mutual-traits.md`.
 
+**Public skill.rs API (K01–K20, 2026-11-25; translation and specifications signed off by the spec
+owner 2026-11-25; not committed, not accepted):** verify the twenty public functions of
+`crates/rmcp/src/model/skill.rs` (upstream `7caec76`, unmodified in the repository): K01
+`Resource::is_directory`, K02 `SkillsCapability::new`, K03 `SkillsCapability::with_directory_read`,
+K04 `SkillResource::new`, K05 `SkillResource::from_bytes`, K06 `SkillResource::verify`, K07
+`sha256_digest`, K08 `SkillFrontmatter::new`, K09 `SkillFrontmatter::with_field`, K10
+`Skill::new`, K11 `Skill::with_meta`, K12 `Skill::name`, K13 `Skill::validate`, K14
+`skill_name_from_uri`, K15 `is_sha256_digest`, K16 `validate_skills`, K17 `GetSkillResult::new`,
+K18 `GetSkillResult::with_ttl_ms`, K19 `GetSkillResult::with_cache_scope`, K20
+`GetSkillResult::with_meta`.
+- **Translation stage** (board PATCH04-SKILL): translation patch 04 (hunks H1–H9), the Charon
+  settings and script changes, 40 exact function models, 4 type models and 3 `opaque` constants
+  (`sha256`, `nfkc`, `generalCategory`; 0 axioms), with the spec lemmas of the models in
+  `formal/proofs/Proofs/External/Skill.lean` ("Trusted base"). Review: 3 rounds (2, 2 and 1 fresh
+  `mcp-review` reviewers); signed off by the spec owner (Hoang Le Truong) 2026-11-25. Human
+  decisions 2026-11-25: patch 04 with H9; opaque functions whose laws enter statements as premises
+  (no axiom); the script change (canonical names and `MULTI` for the `_::new` and `_::with_meta`
+  globs); 13 targets ORIGINAL. Lead decisions 2026-11-25: `serde_json::Map` modelled as the
+  `BTreeMap`; no `implemented_by`; `<ParseIntError as Debug>::fmt` a total model (stated
+  exception).
+- **Linkage:** K01–K04, K08–K12, K17–K20 `ORIGINAL` (`scripts/check-original-linkage.sh` passes
+  locally; CI pending, as for every ORIGINAL record, since nothing is pushed); K05–K07, K13–K16
+  `patch-04` (`formal/trusted/patches/04-skill-public.patch`). Source lines in the records are
+  upstream; for K05–K07 and K13–K16 also those of the patched copy
+  `.llbc/work/crates/rmcp/src/model/skill.rs`.
+- **Specifications** (board SPEC-K01-K20): definitions `formal/specs/Defs/Skill.lean`; 51
+  statements: 20 spec theorems (K01–K20), 3 corollaries (of K09, K13, K16), 10 compositions
+  (`from_bytes` then `verify`, twice; `from_bytes` as a computation with `sha256Digest`; the
+  digest of `from_bytes` is well-formed; `verify` is `Ok` iff length and digest match;
+  `sha256_digest` then `is_sha256_digest`; `with_meta` then `validate`; `skill_name_from_uri`
+  with `validate`, twice; `validate_skills` on one skill)
+  and 18 consequences of the model (statements about `Defs.Skill` only). Drafted by AI (Claude
+  Code, claude-opus-5-5, `mcp-spec`; draft `formal/specs/Drafts/Skill.lean`, removed at incorporation); spec cycle of 3
+  rounds with 2 fresh `mcp-review` reviewers each (round 1 no blocking finding; rounds 2 and 3
+  both reviewers ready for sign-off), then one cosmetic fix; differential tests 0 mismatches;
+  signed off by the spec owner 2026-11-25. Premises: `UsizeFits` (a string within `usize::MAX`
+  bytes), `UriFits` (a URI with `24 * (n + 1) ≤ isize::MAX` for its `n` bytes), `SkillFits` (the
+  skill's strings and manifest URIs fit), and `NfkcFits` (the NFKC forms of the name and the
+  decoded URI segment within `isize::MAX / 4` characters), a **patch-induced domain restriction**
+  (patch 04 collects the NFKC form into a `Vec<char>`, the original streams it); the bridge lemma
+  `Defs.Skill.NfkcFits.of_utf8ByteSize_le` derives it from `72 * n ≤ isize::MAX` for the name's
+  and the URI's bytes and the law that NFKC expands a character sequence at most 18-fold, taken as
+  a premise (Rust evidence: `formal/trusted/evidence/README.md`, "NFKC expansion bound"). Not
+  covered (Rust may panic or behave otherwise while a statement promises a result): caller
+  conversions with side effects (K04, K05, K08–K10 and the statements built on them); SHA-256 for inputs of at least 2^61 bytes
+  (K05–K07 and the compositions that hash); the `HashSet` random source (K13, K16); the
+  `serde_json` feature `preserve_order` (K09 and its corollary: the order clauses).
+- **Proofs:** `formal/proofs/Proofs/Model/Skill/{Common,Basic,Verify,Model,ValidateHelpers,Validate}.lean`,
+  by 4 parallel `mcp-lean` agents (not the drafter): 51/51 proved; each proved statement checked
+  `rfl`-equal to the signed-off text; `#print axioms`: 49 statements `[propext, Classical.choice,
+  Quot.sound]`, `Defs.Skill.nameCharsValid_iff_words` `[propext, Quot.sound]`,
+  `Defs.Skill.firstFileFault_ne_malformedDigest` `[propext]`; phase-C refinement (0 flexible
+  tactics; per-file check 2.0–3.65 s); 2 independent proof reviews (sound; ready). Records
+  `formal/docs/functions/K01.yaml`–`K20.yaml` (spec `REVIEWED`, proof `CHECKED`).
+- **Incorporated** 2026-11-25 (human approval): restated as `Theorems.skill.*` in
+  `formal/specs/Specs/Model/Skill.lean` (51 theorems, each `rfl`-equal to the signed-off text;
+  the `#guard_msgs` checks confirm the axiom lists of the records); proof modules and spec file
+  added to the `Proofs` and `Specs` roots; draft removed. `lake build --wfail` (3793 jobs) and
+  `lean-guard.sh` build-log, sources and axioms pass; `scripts/check-original-linkage.sh` passes on
+  a scratch commit of the tree (Funs 60/60, Types 40/40, templates 34/34 and 10/10 identical).
+- **Pending:** the commit (human approval); the human acceptance of PATCH04-SKILL and
+  SPEC-K01-K20; CI (nothing pushed).
+
 **Public and internal specifications (2026-11-24, human decision):** `formal/specs/` now holds only
 the public rmcp API (functions `pub` in upstream rmcp): `Specs/Model.lean` (M01–M05, M09–M14, the
 `_fail` companions, the Section 16.1 joint lemmas, C03) and `Specs/Model/Task.lean` (M08), with the
@@ -1259,6 +1337,10 @@ then S23 and S34); S35 and S36 `NOT_STARTED`; S37 `ACCEPTED` (results written an
 ## Open items
 
 Human decisions and actions:
+- **Skills API (K01–K20, 2026-11-25):** commit and acceptance of PATCH04-SKILL and SPEC-K01-K20
+  (board); CI (nothing pushed). The 13
+  ORIGINAL skills records wait for the first CI run of the linkage check, as the Phase 2 records
+  do.
 - **Phase 2 owner and budget (H5)**: not named; blocks S20 acceptance and gate G1 (plan Section 21).
 - **S31 candidate lemma (open, not a signed-off statement):** prove
   `∀ cap ≥ 1, Defs.Sse.observe cap (init m) h = historyOutcome cap m h` (checked only on finite

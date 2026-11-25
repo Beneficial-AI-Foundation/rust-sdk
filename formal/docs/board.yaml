@@ -769,3 +769,41 @@ steps:
       Charon and script changes and the new models reviewed by independent agents and signed off by
       the human. Specifying K01-K20 is a separate step.
 
+  - id: SPEC-K01-K20  # not a plan step; specification and proof of K01-K20, public skill.rs API (plan Section 2.3 amendment 2026-11-25)
+    day: 2026-11-25
+    state: IN_PROGRESS  # spec cycle of 3 review rounds (2 fresh mcp-review reviewers each; round 1
+    # no blocking finding, rounds 2 and 3 both reviewers ready for sign-off; one cosmetic fix);
+    # differential tests 0 mismatches; 51 statements (20 spec theorems, 3 corollaries of K09, K13,
+    # K16, 10 compositions, 18 consequences of the model) and the definitions Defs.Skill signed off
+    # by the spec owner 2026-11-25. Proved 2026-11-25 by mcp-lean agents (not the drafter), 51/51,
+    # each checked rfl-equal to the signed-off text; phase-C refined; two independent proof
+    # reviews (sound; ready). Incorporated 2026-11-25 (human approval): restated as Theorems.skill.*
+    # in formal/specs/Specs/Model/Skill.lean (51, each rfl-equal to the signed-off text, axioms
+    # pinned by #guard_msgs), modules added to the Proofs and Specs roots, draft removed; lake build
+    # --wfail (3793 jobs), lean-guard build-log/sources/axioms pass; check-original-linkage.sh passes
+    # on a scratch commit of the tree (60/40/34/10 blocks identical). Pending: the commit (human).
+    # Premises: UsizeFits, UriFits, SkillFits and the patch-induced domain restriction NfkcFits
+    # (bridge lemma Defs.Skill.NfkcFits.of_utf8ByteSize_le from the 18x NFKC expansion law, Rust
+    # evidence in formal/trusted/evidence/README.md). Not covered: caller code with side effects,
+    # SHA-256 for inputs of at least 2^61 bytes, the HashSet random source, the serde_json feature
+    # preserve_order. No disagreement found between the statements and skill.rs.
+    depends_on: [PATCH04-SKILL]
+    owner: Lead + human owner
+    files:
+      - formal/specs/Specs.lean  # root: public import Specs.Model.Skill
+      - formal/specs/Defs.lean
+      - formal/specs/Defs/Skill.lean  # new
+      - formal/specs/Specs/Model/Skill.lean  # new; restated public statements
+      - formal/proofs/Proofs.lean
+      - formal/proofs/Proofs/Model/Skill/*.lean  # Common, Basic, Verify, Model, ValidateHelpers, Validate (new)
+      - formal/docs/functions/K01.yaml  # to K20.yaml, new
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - formal/specs/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Section 2.3 (amendment)
+    acceptance: >-
+      The 51 signed-off statements are in the spec file verbatim (rfl-equal) and proved, with
+      #print axioms within [propext, Classical.choice, Quot.sound]; lake build --wfail and all
+      lean-guard.sh checks pass; the premise and Not-covered keys restated in words in
+      formal/specs/README.md; independent proof review; commit approved by the human.

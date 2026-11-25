@@ -54,6 +54,12 @@ public import Proofs.Model.NumberOrString
 public import Proofs.Model.Task
 public import Proofs.Model.SamplingContent
 public import Proofs.Model.Reference
+public import Proofs.Model.Skill.Common
+public import Proofs.Model.Skill.Basic
+public import Proofs.Model.Skill.Verify
+public import Proofs.Model.Skill.Model
+public import Proofs.Model.Skill.ValidateHelpers
+public import Proofs.Model.Skill.Validate
 public import Proofs.Transport.ClientSideSse
 public import Proofs.Transport.AsyncRw
 public import Proofs.Transport.Tower
@@ -88,6 +94,11 @@ Phase 2 (2026-11-24, S28–S32): `Proofs.Model.{JsonRpcMessage, NumberOrString, 
 SamplingContent, Reference}` (M01–M14, the joint lemmas, C03), `Proofs.Transport.{ClientSideSse,
 AsyncRw, Tower, Auth}` (T01–T08, A01–A03, C01, C02, C04, C05); the S27 law relating the integer
 parser model to `Defs.parseI64` is in `Proofs.External.IntParse`.
+
+Skills (2026-11-25): `Proofs.Model.Skill.{Common, Basic, Verify, Model, ValidateHelpers,
+Validate}` (K01–K20 of `skill.rs`, their corollaries, compositions and model consequences; specs
+and proofs signed off / reviewed 2026-11-25), with the external-model laws in
+`Proofs.External.Skill`.
 
 Since 2026-11-24 it also imports the definitions used only by internal statements
 (`Proofs.Defs.*`) and the internal spec files (`Proofs.Internal.*`: statements about private,

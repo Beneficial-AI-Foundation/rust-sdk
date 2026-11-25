@@ -9,6 +9,7 @@ public import Proofs
 public import Specs.Model
 public import Specs.Model.Task
 public import Specs.Model.RequestState
+public import Specs.Model.Skill
 
 @[expose] public section
 
@@ -21,6 +22,8 @@ namespace and checked with `#guard_msgs` on `#print axioms` (plan Section 5; hum
 2026-11-24). Maintained by hand; nothing imports this library. Start at `formal/specs/README.md`.
 Spec files: `Specs.Model` (M01–M05, M09–M14, the Section 16.1 joint lemmas, C03) and
 `Specs.Model.Task` (M08), and `Specs.Model.RequestState` (R01–R15, the public `request_state.rs`
-functions). Statements about private, crate-internal and patch-only functions and the
-laws of the external models are in `formal/proofs/Proofs/Internal/`, imported from `Proofs`.
+functions), and `Specs.Model.Skill` (K01–K20, the public `skill.rs` functions, with their
+corollaries, compositions and model consequences; signed off 2026-11-25). Statements about
+private, crate-internal and patch-only functions and the laws of the external models are in
+`formal/proofs/Proofs/Internal/`, imported from `Proofs`.
 -/
