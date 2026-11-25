@@ -34,7 +34,7 @@ functions translate (R09–R15: `seal`, `seal_with`, `with_rs1_signing`, `with_r
 and "Public request_state.rs API" in `docs/STATUS.md`.
 
 R09–R15 specifications (2026-11-25; **signed off by the spec owner after 4 review rounds;
-proved and incorporated; proofs checked 2026-11-25**): 12 statements, the public R09–R15 (with corollaries
+proved and incorporated; proofs checked; accepted by the human owner 2026-11-25**): 12 statements, the public R09–R15 (with corollaries
 of R09 and R10) in `specs/Specs/Model/RequestState.lean` and the internal R10a (`seal_at` at an
 explicit time), R10b (`seal_at` then `open_at`) and a model round trip in
 `proofs/Proofs/Internal/Model/RequestState.lean`; R15 proves that every codec

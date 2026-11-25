@@ -669,11 +669,11 @@ steps:
 
   - id: SPEC-R09-R15  # not a plan step; specification and proof of R09-R15, public request_state.rs API (plan Section 2.3 amendment 2026-11-25)
     day: 2026-11-25
-    state: IN_PROGRESS  # spec cycle of 4 review rounds (2, 2, 2, 1 reviewers), every round's
-    # statements proved verbatim in scratch; 12 statements, the new Defs and the 12 patch-02
-    # boundary tests signed off by the spec owner 2026-11-25. Pending: incorporation (Lean
-    # statements and proofs, records, docs, clock rule text: finding sR-a-1), lake build --wfail
-    # and the guards, one review, the commit (human approval).
+    state: ACCEPTED  # accepted by the human owner 2026-11-25; committed 0cbd67f. Spec cycle of
+    # 4 review rounds (2, 2, 2, 1 reviewers), every round's statements proved verbatim in scratch;
+    # 12 statements, the new Defs and the 12 patch-02 boundary tests signed off by the spec owner
+    # 2026-11-25; incorporated with lake build --wfail, the guards, 847 patched tests and one
+    # independent incorporation review (no blocking finding).
     # Spec-owner decisions 2026-11-25: seal/seal_with stated through the Defs model sealAt at
     # ExtModel.nowMs; clock rule extended to open_json/open_json_with; Defs.RequestState moved
     # unchanged to formal/specs/Defs/, new definitions in Defs.CodecState; CodecValid unchanged;

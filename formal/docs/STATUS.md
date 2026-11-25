@@ -11,7 +11,8 @@ Phase 2 results: see "Phase 2" → "Phase 2 results (S37, 2026-11-24)".
 `request_state.rs` API translate on the upgraded toolchain; see "Public
 request_state.rs API" and "Trusted base". **R09–R15 specifications (2026-11-25):** 12 statements
 signed off by the spec owner after 4 review rounds; Lean statements, proofs and
-records incorporated; proofs checked 2026-11-25 (build, guards, independent incorporation review).
+records incorporated; proofs checked 2026-11-25 (build, guards, independent incorporation review);
+committed `0cbd67f`; accepted by the human owner 2026-11-25 (board SPEC-R09-R15).
 
 **Aeneas upgrade (2026-11-24), reviewed and re-signed by the spec owner 2026-11-24:** see "Aeneas upgrade
 (2026-11-24)" below. The results sections below record the state before it (Aeneas
