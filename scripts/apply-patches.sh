@@ -2,7 +2,7 @@
 # Copy the workspace into .llbc/work/ and apply the translation patches of
 # formal/trusted/patches/*.patch to the copy, in file-name order.
 #
-# The real source is never patched (docs/WORKFLOW_AND_PR_GUIDE.md,
+# The real source is never patched (formal/CONTRIBUTING.md,
 # "Translation patches"). With no patches, .llbc/work/ is a plain copy.
 #
 # Cargo.lock is not copied, and any Cargo.lock left in .llbc/work/ by an earlier run is

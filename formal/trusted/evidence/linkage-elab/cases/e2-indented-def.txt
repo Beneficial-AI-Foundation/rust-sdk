@@ -1,3 +1,0 @@
-EXPECT: differs
-ANCHOR: /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]
- def transport.auth.core.net.ip_addr.Ipv4Addr.is_private (a : core.net.ip_addr.Ipv4Addr) : Result Bool := ok false

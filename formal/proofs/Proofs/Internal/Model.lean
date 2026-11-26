@@ -30,7 +30,7 @@ Restated from `formal/specs/Specs/Model.lean` on 2026-11-24, when `formal/specs/
 to the public API; the statements and their `#print axioms` checks are unchanged. Each is a
 theorem `Theorems.model.NumberOrString.<function>` proved by the spec theorem in
 `Proofs/Model/NumberOrString.lean`. Signed off by the spec owner on 2026-11-24 (S24/S25 spec
-cycle, `formal/docs/STATUS.md`).
+cycle, `STATUS.md` at 9047c72).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,

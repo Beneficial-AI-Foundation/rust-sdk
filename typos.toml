@@ -10,7 +10,7 @@ extend-ignore-re = [
   "b\"(fo|abd)\"",
 ]
 
-# The crate name `flate2` (docs/VERIFICATION.md).
+# The crate name `flate2` (formal/CONTRIBUTING.md).
 [default.extend-identifiers]
 flate2 = "flate2"
 

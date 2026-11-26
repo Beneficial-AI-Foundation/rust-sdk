@@ -38,7 +38,7 @@ The section "Abbreviations used by the public statements" at the end of this fil
 the readability rewrite of 2026-11-25 of `Specs/Model/RequestState.lean`. That rewrite changes
 the text of signed-off statements and was **signed off by the spec owner on 2026-11-25**; each
 rewritten statement's type is definitionally equal to its text at commit `8debe97` (checked by
-`rfl`; evidence in `formal/docs/STATUS.md`, "Readability rewrite of R01–R15"). No definition above that section changes.
+`rfl`; evidence in `STATUS.md` at 9047c72, "Readability rewrite of R01–R15"). No definition above that section changes.
 -/
 
 namespace Defs.CodecState

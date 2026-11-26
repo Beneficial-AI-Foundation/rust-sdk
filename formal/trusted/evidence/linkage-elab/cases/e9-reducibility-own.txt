@@ -1,3 +1,0 @@
-EXPECT: reducibility
-ANCHOR: END
-attribute [irreducible] transport.auth.AuthorizationManager.embedded_ipv4

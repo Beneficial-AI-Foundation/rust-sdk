@@ -24,7 +24,7 @@ takes the behaviour of the instance as a hypothesis (as `Option`'s `eq_spec` doe
 translation, and `as_deref_string_spec` the `Option<String>` instance of K01. The three
 opaque values (`ExtModel.sha256`, `ExtModel.nfkc`, `ExtModel.generalCategory`) appear in the
 postconditions unopened: their laws are hypotheses of the statements that need them (human
-decision 2026-11-25), under the review rule of `formal/docs/STATUS.md`, "Trusted base".
+decision 2026-11-25), under the review rule of `formal/README.md`, "Trusted base".
 
 Section "UTF-8 facts" (with the character-level facts of `Proofs.External.String`, such as
 `utf8_ofList` and `le_val_of_mem_utf8_ofList_singleton`) proves the facts that every Rust `&str`

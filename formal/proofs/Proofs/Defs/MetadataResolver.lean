@@ -48,7 +48,7 @@ lists `Defs.Net.ipv4DisallowedPrefixes` and `Defs.Net.ipv6DisallowedPrefixes`, i
 - IPv4-mapped, NAT64, IPv4-compatible and 6to4 embeddings of a public IPv4 address (A01: the
   embedded address decides, upstream line 45);
 - H8: `240.0.0.0/4` except `255.255.255.255` (reserved, RFC 1112 §4; not in the A02 list), also
-  embedded in IPv6 (a recorded bug, `formal/docs/STATUS.md`, "Bugs found"; human decision
+  embedded in IPv6 (a recorded bug, `formal/README.md`, "Bugs found"; human decision
   2026-11-24: the statements describe the code).
 Kernel-checked examples of each are at the end of the file. This is the only copy of the list:
 the docstrings of `AllPublic` and of the statements point here.

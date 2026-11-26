@@ -170,14 +170,14 @@ targets (plan Section 2.3, "Consequences"), with one corollary of R08; R09–R15
 patch 03) add seven, with corollaries of R09 and R10. Not translated, so not specified here
 (`exclude` list of `crates/rmcp/Cargo.toml`, lines 93–103): `seal_json` and `seal_json_with`
 (R16, R17; Aeneas does not support the mutually recursive `serde_core::ser` traits, issue record
-`formal/trusted/issues/aeneas-serde-ser-mutual-traits.md`), the `Error`, `Debug` and `Display`
+`formal/trusted/issues/aeneas-serde-ser-mutual-traits.md`, git history at 9047c72), the `Error`, `Debug` and `Display`
 impls of `RequestStateError`, and the `Debug` impls of `RequestStateCodec`, `SealOptions` and
 `SealMode`. The private functions (E01–E11, E09a, `seal_at` R10a) and the round trips
 (R10b and the model round trip of `sealAt` and `openAt`) are in
 `formal/proofs/Proofs/Internal/Model/RequestState.lean`.
 
 *Order.* The statements are in ID order (R01–R15, each corollary after its statement). This is a
-recorded exception (spec owner, 2026-11-25) to the Rust-source-order rule (`docs/STYLE_GUIDE.md`;
+recorded exception (spec owner, 2026-11-25) to the Rust-source-order rule (`formal/CONTRIBUTING.md`;
 plan Section 5); source order: R01–R06, R15, R11, R12, R09, R10, R07, R08, R13, R14 (patched
 lines 153, 163, 170, 278, 286, 298, 319, 373, 410, 436, 441, 476, 495, 509, 521).
 
@@ -207,7 +207,7 @@ of that day). **Readability rewrite of 2026-11-25: signed off by the spec owner 
 after a spec cycle of 5 review rounds. It changes the text (binder and hypothesis names,
 docstrings, abbreviations of `Defs.CodecState`), not the meaning: each type is definitionally
 equal to its text at commit `8debe97` (checked by `rfl`, binder kinds unchanged; evidence in
-`formal/docs/STATUS.md`, "Readability rewrite of R01–R15").
+`STATUS.md` at 9047c72, "Readability rewrite of R01–R15").
 
 *Translated configuration* (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,

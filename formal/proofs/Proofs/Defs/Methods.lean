@@ -73,7 +73,7 @@ end of the file (re-run 2026-11-24 in an empty directory with this exact command
 (`crates/rmcp/src/transport/async_rw.rs` lines 396–433) contain only names of the union, but
 lack six of its core names. By H7 the T05/T06 statements take the code form "in the core list
 and not in `codeOmits`", with the six names listed one by one in `codeOmits`, and the gap is
-recorded as a bug in `formal/docs/STATUS.md`, "Bugs found" (plan Section 22, "Bugs found").
+recorded as a bug in `formal/README.md`, "Bugs found" (plan Section 22, "Bugs found").
 
 **Out of scope by H6** (plan Section 21, H6 and its amendment of 2026-11-24, human decisions).
 rmcp also defines method names that are in no core schema: the Tasks-extension names
@@ -147,7 +147,7 @@ def standardNotifications : List String :=
    "notifications/subscriptions/acknowledged"]  -- 2026-07-28
 
 /-- **Names of the union that the Rust lists lack** (recorded bug: plan Section 21, H7, human
-decision 2026-11-24; `formal/docs/STATUS.md`, "Bugs found"). The lists of `is_standard_method`
+decision 2026-11-24; `formal/README.md`, "Bugs found"). The lists of `is_standard_method`
 (`async_rw.rs` lines 396–417, 18 request names) and `is_standard_notification` (lines 420–433,
 10 names) contain no name outside the union, but lack these six, all from the `2025-11-25`
 schema:

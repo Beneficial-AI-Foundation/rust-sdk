@@ -112,7 +112,7 @@ opaque constants `ExtModel.sha256`, `ExtModel.nfkc` and `ExtModel.generalCategor
 unopened, inside `sha256Digest`, `isSkillName`, `nameMatchesSegment`, `NfkcFits` and directly in
 `verify_from_bytes`, as the values the Rust code computes. No statement assumes a law about them,
 except `NfkcFits.of_utf8ByteSize_le`, which takes the NFKC expansion bound as an explicit
-premise in law (implication) form (review rule of `formal/docs/STATUS.md`, "Trusted base").
+premise in law (implication) form (review rule of `formal/README.md`, "Trusted base").
 
 Translated functions are written in full (`rmcp.model.skill.…`), as a bare name would resolve to
 a restated theorem. The model consequences (`model` rows) are about the definitions of
@@ -162,7 +162,7 @@ a restated theorem. The model consequences (`model` rows) are about the definiti
   hashes.
 * **(P)** `serde_json` feature `preserve_order` (K09, K09 cor.): the model is the `BTreeMap`
   that `serde_json::Map` is in the translated configuration (`Cargo.lock`: `serde_json 1.0.154`
-  without `indexmap`; `formal/docs/STATUS.md`, "`serde_json::Map`"). Cargo feature unification
+  without `indexmap`; `STATUS.md` at 9047c72, "`serde_json::Map`"). Cargo feature unification
   turns `preserve_order` on when any crate of a downstream build enables it; `serde_json::Map` is
   then an `IndexMap` in insertion order (`serde_json-1.0.154/src/map.rs` lines 3–4 and 28–31).
   The lookup clause of K09 still holds then; the order clauses (`KeysSorted` in K09, the

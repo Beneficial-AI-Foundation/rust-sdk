@@ -80,7 +80,7 @@ REQUIRED_DEFAULTS = {"Defs", "Proofs", "Specs"}
 
 # formal/lake-manifest.json: the commit of every package Lake fetches. The Aeneas entry must
 # match the lakefile (url = git, inputRev = rev) and the commit of the pinned tag
-# (nightly-2026.11.24-fb44cb4, docs/WORKFLOW_AND_PR_GUIDE.md "Pinned toolchain"); the other
+# (nightly-2026.11.24-fb44cb4, formal/CONTRIBUTING.md "Pinned toolchain"); the other
 # packages (Mathlib and its dependencies, inherited from the Aeneas package) must have the
 # commits recorded at S03. Changing the Aeneas rev means updating this table in the same PR.
 AENEAS_COMMIT = "fb44cb400eb6bfe7dce97422ebe8fa748b7e4f9b"

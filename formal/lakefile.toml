@@ -3,7 +3,7 @@
 # The Aeneas `rev` below is the single source of truth for the toolchain:
 # scripts/aeneas-install.sh reads it and installs the matching Charon, Aeneas,
 # Rust nightly and Lean toolchain (copied to lean-toolchain). Changing it is its
-# own PR (docs/WORKFLOW_AND_PR_GUIDE.md, "Pinned toolchain").
+# own PR (formal/CONTRIBUTING.md, "Pinned toolchain").
 
 name = "rmcp_formal"
 # Build gate (human decision at S03): every library below sets `warningAsError`, and

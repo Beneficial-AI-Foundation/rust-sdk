@@ -29,7 +29,7 @@ the guarantee; the C04 row is an equation between computations of the translated
 functions are methods of `AuthorizationManager`. (a) `10/8`, `172.16/12`, `192.168/16`,
 `127/8`, `169.254/16`, `255.255.255.255`, `0.0.0.0`, `224/4`, `0/8`, `100.64/10`, `198.18/15`
 (`Defs.Net.ipv4Disallowed`); `240.0.0.0/4` is not blocked (recorded bug, human decision H8;
-`formal/docs/STATUS.md`, "Bugs found"). (b) IPv4-mapped `::ffff:0:0/96`, NAT64 `64:ff9b::/96`,
+`formal/README.md`, "Bugs found"). (b) IPv4-mapped `::ffff:0:0/96`, NAT64 `64:ff9b::/96`,
 IPv4-compatible `::/96` except `::` and `::1`, or 6to4 `2002::/16` (`Defs.Net.embeddedIpv4`).
 (c) `true` iff `::1`, `::`, `ff00::/8`, `fe80::/10`, `fc00::/7`, `2001::/32` or `64:ff9b:1::/48`
 (`Defs.Net.ipv6Disallowed`). (d) the call of `embedded_ipv4` returned `Some(v)`. (e) the address
@@ -43,7 +43,7 @@ source order, each restated as a theorem `Theorems.auth.AuthorizationManager.<fu
 by the spec theorem in `Proofs/Transport/Auth.lean` and followed by the assumptions its proof
 depends on, checked by `#print axioms` under `#guard_msgs`; then the composition theorem C04
 (plan Section 16.4) and its corollary. Signed off by the spec owner on 2026-11-24 (S24/S25 spec
-cycle, `formal/docs/STATUS.md`); the signed-off text was in `specs/Drafts/Auth.lean`, removed at
+cycle, `STATUS.md` at 9047c72); the signed-off text was in `specs/Drafts/Auth.lean`, removed at
 incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
@@ -78,7 +78,7 @@ Statements here, in Rust source order: A02 `is_disallowed_metadata_ipv4` (line 1
 `embedded_ipv4` (line 1359), A03 `is_disallowed_metadata_ipv6` (line 1370); then C04
 `is_disallowed_metadata_ipv6_eq_of_embedded_ipv4_eq_ok_some` and its corollary
 `is_disallowed_metadata_ipv6_of_ipv4Disallowed`. A02 states the code's behaviour on
-`240.0.0.0/4`, a recorded bug (human decision H8; `formal/docs/STATUS.md`, "Bugs found"). The
+`240.0.0.0/4`, a recorded bug (human decision H8; `formal/README.md`, "Bugs found"). The
 other items of `auth.rs` are not Phase 2 targets; the callers `AddressClass::of`,
 `MetadataAddressResolver::is_allowed` and `is_allowed_metadata_url` are not translated (plan
 Section 16.5, blockers B16, B7, B2).

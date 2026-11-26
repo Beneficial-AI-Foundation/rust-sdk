@@ -1,5 +1,5 @@
-# Patched copy passes the crate's tests (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 5,
-# "CI"; docs/VERIFICATION.md, Section 9).
+# Patched copy passes the crate's tests (master plan (git history at 9047c72), Section 5,
+# "CI"; formal/CONTRIBUTING.md, "CI").
 #
 # Installs the pinned nightly, then runs `scripts/aeneas-translate.sh --check-deps`: it copies the
 # workspace into .llbc/work/, applies formal/trusted/patches/*.patch with scripts/apply-patches.sh
@@ -28,7 +28,7 @@
 # and aeneas-translation.yml each resolve and check their own Cargo.lock: the pinned crates and
 # all sources are identical by check, but unpinned transitive crates could differ between the two
 # jobs (e.g. a crates.io release between the runs). A committed verification lockfile shared by
-# both jobs would close this; that is a human decision (formal/docs/STATUS.md, "Open items").
+# both jobs would close this; that is a human decision (formal/README.md, "Open items").
 #
 # Residual risk: the job runs the PR's own scripts and the build scripts / proc macros of the
 # crates.io dependencies in the same job as the check, so a PR that changes scripts/ is checked by

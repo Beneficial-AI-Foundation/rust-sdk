@@ -27,7 +27,7 @@ The statement of `TaskStatus::is_terminal` (M08, plan Section 16.1), restated as
 `Theorems.task.TaskStatus.is_terminal`, proved by the spec theorem in `Proofs/Model/Task.lean`
 and followed by the assumptions its proof depends on, checked by `#print axioms` under
 `#guard_msgs`. Signed off by the spec owner on 2026-11-24 (S24/S25 spec cycle,
-`formal/docs/STATUS.md`); the signed-off text was in `specs/Drafts/Model.lean`, removed at
+`STATUS.md` at 9047c72); the signed-off text was in `specs/Drafts/Model.lean`, removed at
 incorporation.
 
 Translated configuration (the proof holds only for it): target `x86_64-unknown-linux-gnu`,

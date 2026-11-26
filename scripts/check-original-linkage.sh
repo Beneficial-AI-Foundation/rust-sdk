@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Linkage check for the Phase 2 targets (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 19).
+# Linkage check for the Phase 2 targets (master plan (git history at 9047c72), Section 19).
 #
 # What it shows, in two parts:
 #  (a) The SDK source is upstream (origin/main 7caec76), checked on the committed tree (HEAD):
@@ -49,8 +49,8 @@
 # bracket depth 0 before the type colon, only when a depth-0 `:=` follows, and only after its
 # group closes: not in earlier binders, its own type or its default value) are no lookups (human
 # decisions 2026-11-25 and 2026-11-26, patch 05; reviews a1-2, a2-1, b2-1, a3-1, b3-1, a4-1, b4-1,
-# b4-2; negative controls formal/trusted/evidence/linkage-scan/). Not read by this pre-check, and
-# covered by step 5 (formal/trusted/evidence/linkage-elab/): names
+# b4-2; negative controls formal/trusted/evidence/linkage-scan/, git history at 9047c72). Not read by this pre-check, and
+# covered by step 5 (formal/trusted/evidence/linkage-elab/, git history at 9047c72): names
 # resolved through the type of a term (generalized field notation `t.a`, `(e).a`, `e |>.a`, and
 # leading-dot `.a` resolved against the expected type; linkage-scan/limits/), generated names
 # beyond those listed in auto_names (e.g. anonymous instance names), and the forms of reviews

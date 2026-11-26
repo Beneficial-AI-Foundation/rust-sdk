@@ -129,10 +129,11 @@ string of length ≤ 2 and every 3-byte string with a lead byte ≥ `0x80` throu
 copies `rdiff/` into the scratch directory and builds it there with `cargo build --locked` from
 the committed `rdiff/Cargo.lock` (`base64 0.23.1`, crates.io checksum), so it writes nothing in
 the source tree, and records the `cargo`, `rustc` and `python3` versions in
-`<scratch>/toolchain.txt`. Command, from the repository root, after `cd formal && lake build
-RmcpExternal`:
+`<scratch>/toolchain.txt`. The script is archived in git history at 9047c72; to re-run it,
+restore it and then, from the repository root, after `cd formal && lake build RmcpExternal`:
 
 ```
+git checkout 9047c72 -- formal/trusted/evidence/differential
 formal/trusted/evidence/differential/run.sh formal <new scratch directory>
 ```
 
@@ -250,7 +251,7 @@ Tests: every keyring test of `codec` goes through `Zeroizing::deref` (`two_key_r
   `…RequestStateCodec.seal_with` (a variable named `now_ms`, such as the time parameter of E01
   `open_authenticated_body`, is not covered); statements about
   opening use `open_at`, and about sealing `seal_at` (or its `Defs` model `sealAt`), with an
-  explicit `now` (also in `formal/docs/STATUS.md`). Exceptions (human decisions 2026-11-24,
+  explicit `now` (also in `STATUS.md` at 9047c72). Exceptions (human decisions 2026-11-24,
   extended by the spec owner 2026-11-25), as worded in `formal/README.md`, "Trusted base": the
   spec theorems of the public `open`, `open_with`, `open_json`, `open_json_with`, `seal` and
   `seal_with`, their restatements and the corollaries `open_with_spec_of_length_le`,
@@ -568,8 +569,8 @@ first version of the patch broke). The limiter tests build every start state fie
 covers. `scripts/apply-patches.sh` applies it after patch 01 to the copy in `.llbc/work/` only
 (file-name order, `patch -p1 -F 0`), so `patched-tests.yml` runs these tests; the SDK sources
 stay byte-identical to upstream. Every hunk is at the end of its file, so no translated item
-moves. As a test-only patch it is a process exception to VERIFICATION.md Section 4 (plan
-Section 21, H3), to be recorded in `formal/docs/STATUS.md`, "Documents". No expected value
+moves. As a test-only patch it is a process exception to CONTRIBUTING.md "Translation patches" (plan
+Section 21, H3), to be recorded in `STATUS.md` at 9047c72, "Documents". No expected value
 disagreed with the code.
 
 Runs of patch 02 (2026-11-24; same toolchain and host as above; scratch directories, a separate
@@ -985,7 +986,7 @@ unreachable in practice. A statement of K13 (`Skill::validate`) may take, as an 
 premise for the strings `t` passed to `prim::nfkc`, the bound `4 * (ExtModel.nfkc t.toList).length
 ≤ maxStringBytes` of `nfkc_spec` (or a premise about that `t` that implies it); the original
 function would not need it, and the statement's docstring says so (review rule of the `nfkc`
-constant, `formal/docs/STATUS.md`, "Trusted base").
+constant, `formal/README.md`, "Trusted base").
 
 2. Split vector length (the `prim` wrappers `split_slash` and `split_percent`, hunks H5 and H6;
 K13 through `manifest_resource_key` and `normalize_percent_encoding`, K16 through
@@ -1129,7 +1130,7 @@ decision 2026-11-25):
 `ExtModel.nowMs` extended to the environment). `proxyEnvValues` is one constant, so a model of
 `MetadataAddressResolver::new` (N03), the only caller of `prim::proxy_env_values`, is pure,
 whereas in Rust two calls may read different environments. Review rule (also at
-`ExtModel.proxyEnvValues` and in `formal/README.md` and `formal/docs/STATUS.md`, "Trusted base"):
+`ExtModel.proxyEnvValues` and in `formal/README.md` and `formal/README.md`, "Trusted base"):
 no statement has a premise or conclusion about the value of `proxyEnvValues` or relates two
 readings; a statement may name `proxyEnvValues`, `…prim.proxy_env_values` or
 `…MetadataAddressResolver.new` only to say that `new` passes the values read to
@@ -1197,7 +1198,7 @@ UTF-8 premise.
 
 **UTF-8 premise** (review rule, translation patch 05, human decisions 2026-11-25/2026-11-26: rule
 (ii) 2026-11-26, nested `&str` 2026-11-26; the same statement is in the docstring of
-`ExtModel.IsUtf8`, in `formal/README.md` and in `formal/docs/STATUS.md`, "Trusted base").
+`ExtModel.IsUtf8`, in `formal/README.md` and in `formal/README.md`, "Trusted base").
 `Url::host` returns a `Host<&str>` and `Url::host_str` an `Option<&str>`, and every Rust `&str` is
 valid UTF-8, but the Aeneas `Str` is not constrained: a statement may assume that a `Str` is valid
 UTF-8 (the Rust `&str` invariant) (i) only as the premise `ExtModel.IsUtf8 s.val`
@@ -1212,7 +1213,7 @@ hosts that the opaque `url` functions return: `ExtModel.IsUtf8 d.val` for
 assumed (`isUtf8_dropTrailingDots`, `isUtf8_map_asciiLowercase` in
 `Proofs.External.MetadataResolver`; `to_ascii_lowercase_spec_of_isUtf8` takes the premise).
 
-**Differential tests of patch 05.** `formal/trusted/evidence/differential/metadata-resolver/`
+**Differential tests of patch 05.** `formal/trusted/evidence/differential/metadata-resolver/` (git history at 9047c72)
 (`README.md` there; `run.sh <scratch>` applies the patches with `scripts/apply-patches.sh` into
 the scratch directory, appends the original code of `7caec76` as a module `old` and the
 reviewers' seven tests, and runs them): the patched `normalize_host`, `is_loopback_metadata_host`
@@ -1343,7 +1344,7 @@ bump in "`sha2 0.11.2`" below):
   it, so it cannot create a difference, but a poisoned cache could make the comparison
   meaningless) stated as a residual risk in `aeneas-translation.yml`, with the cache-free `check`
   job of `lean-build.yml` as the clean build. Round-7 findings (review a7, one reviewer, 2026-11-26; human decision 2026-11-26: "enforce in script, then sign off (no further review round)"), fixed by the lead: a7-1 (judgment, blocking: step 5 runs Lean on committed code, so code acting at build time, an `initialize` forging the dump or a `run_cmd` spoofing an instance entry, could beat it; such code was already stopped by `scripts/lean-guard.sh sources` and the CI stale-translation check, but this was not stated) fixed: step 5 first runs `scripts/lean-guard.sh sources` and stops if it fails, and its comment names the two gates it relies on, lean-guard sources (`initialize`, `run_cmd`, `#eval`, `IO`, `macro_rules` and `implemented_by` banned, attributes outside `ATTR_ALLOWED` refused in generated modules beyond the pinned lines) and the CI stale-translation check (the committed translation is exactly Aeneas output); the reviewer's build-time attacks x1 (`initialize`) and x3 (`run_cmd`) are refused by that gate and are not suite cases, because `linkage-elab/run.sh` bypasses lean-guard; a7-2 (a committed-only constant outside `rmcp.`, such as `_root_.Theorems.…`, could capture names in downstream specs) fixed: the dump also lists auxiliary constants, and every constant that only env1's translation modules declare, auxiliary ones included, must be under `rmcp.` (after Lean's private prefix `_private.Rmcp.{Types,Funs}.0.`) or be a generated root `instDiscriminant…` instance that passed the instance rule; a7-3 (`GROW_OK` was one list for both modules) fixed: it is per module, the growth measured for `Rmcp.Types` and for `Rmcp.Funs` (e.g. the instance extension may grow only in `Rmcp.Types`); a7-4 (the script header did not match the step-5 comment) aligned; a7-5 (`linkage-elab/run.sh` classified by loose patterns) fixed: exact `compare_env.py` message prefixes; a7-6 (`make_env.py` checks only that the oleans exist, not that they are current) recorded as a note, not changed; a7-7 (efficiency, about 20 s; the canonical form printed as trees, fine today) recorded. Negative controls:
-  `formal/trusted/evidence/linkage-elab/` (20 cases: e1–e6, e8, e9, a6-x1, a6-x2, a6-x2b,
+  `formal/trusted/evidence/linkage-elab/` (git history at 9047c72; 20 cases: e1–e6, e8, e9, a6-x1, a6-x2, a6-x2b,
   a6-x2c, a6-x3, a6-x4, a6-x5, a6-x7, a7-x4-root-name-capture and a7-root-theorem attacks
   refused, e0 and e7 controls pass; table in its README). Runs (2026-11-26, same toolchain): scratch commit `2172dd3`, exit 0, text comparison
   65/65, 42/42, 37/37, 10/10, elaborated 520 constants and 41 externals identical, 40 generated
@@ -1411,7 +1412,7 @@ bump in "`sha2 0.11.2`" below):
   checked like free ones. Not read by the pre-check, and covered by step 5: names resolved
   through the type of a term (generalized field notation `t.a`, `(e).a`, `e |>.a`, the
   leading-dot `.a`), generated names beyond those listed (e.g. anonymous instance names), the a5
-  forms. Negative controls: `formal/trusted/evidence/linkage-scan/`
+  forms. Negative controls (git history at 9047c72): `formal/trusted/evidence/linkage-scan/`
   (`run.sh <scratch-dir>`; 57 synthetic cases that must be rejected, as shadowing or as "cannot
   be scanned", and `limits/l1`, `limits/l2`, not read by the pre-check and covered by step 5,
   reported as accepted without affecting the exit status). Reviews a2-1 and b2-1 (2026-11-25) found 8 false negatives of a

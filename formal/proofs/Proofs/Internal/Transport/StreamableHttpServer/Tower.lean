@@ -32,7 +32,7 @@ T08), in Rust source order, each restated as a theorem `Theorems.tower.<function
 `AllowedPort.` for the method) proved by the spec theorem in `Proofs/Transport/Tower.lean` and
 followed by the assumptions its proof depends on, checked by `#print axioms` under
 `#guard_msgs`. The statements were signed off by the spec owner on 2026-11-24 (S24/S25 spec
-cycle, `formal/docs/STATUS.md`); their signed-off text was in `specs/Drafts/Transport.lean`,
+cycle, `STATUS.md` at 9047c72); their signed-off text was in `specs/Drafts/Transport.lean`,
 removed at incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,

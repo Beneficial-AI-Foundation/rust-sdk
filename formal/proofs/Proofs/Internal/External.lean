@@ -62,7 +62,7 @@ this file as `Theorems.External.<original name>` and proved at stage 6 in
 2026-11-23; the draft text was in `formal/specs/Drafts/External.lean`, removed at
 incorporation. Each depends on at most `propext`, `Classical.choice` and `Quot.sound`. The S27
 deferred law `I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64` was signed off
-separately, on 2026-11-24 (S24 sign-off, S24/S25 spec cycle in `formal/docs/STATUS.md`); its
+separately, on 2026-11-24 (S24 sign-off, S24/S25 spec cycle in `STATUS.md` at 9047c72); its
 signed-off text was in `formal/specs/Drafts/Model.lean`, removed at incorporation. Moved here
 from `formal/specs/Specs/External.lean` on 2026-11-24 (statements unchanged). Definitions from
 the moved `Defs` modules keep their Lean names (`Defs.Wire.dot`, `Defs.Wire.b64Len` are in module

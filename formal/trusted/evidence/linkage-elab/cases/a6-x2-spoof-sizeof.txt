@@ -1,7 +1,0 @@
-EXPECT: instance+exports
-ANCHOR: END
-set_option genSizeOf false in
-structure Evil where
-  x : Nat
-
-instance (priority := high) Evil._sizeOf_inst : HAdd U32 U32 (Result U32) := ⟨fun _ _ => ok 0#u32⟩

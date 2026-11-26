@@ -48,8 +48,7 @@ compositions are named after their statement (e.g. `Theorems.model.into_result_e
 the lemma of the same name. Under each theorem, `#guard_msgs in #print axioms` pins the logical
 assumptions it uses: Lean's standard `propext`, `Classical.choice`, `Quot.sound` and nothing
 else (until the Aeneas upgrade of 2026-11-24 some statements also listed native-code assumptions,
-see "What you must trust"). Status and history:
-[`../docs/STATUS.md`](../docs/STATUS.md).
+see "What you must trust"). Status and results: [`../README.md`](../README.md), "Results".
 
 This directory holds only the **public API** (functions `pub` in upstream rmcp); guarantees about
 private, crate-internal and patch-only functions are in
@@ -433,7 +432,7 @@ Rust documentation. Used by: the proofs of all statements above.
 >   The models also state representation choices that change no result of the targets (`Arc`
 >   equality checks pointer equality first; `Ipv6Addr` as eight segments; `MaybeUninit` partial
 >   initialisation; non-UTF-8 `Str` bytes; `HashMap::get` assumes `Hash`/`Eq` agree; the clock is
->   opaque): complete list in [`../docs/STATUS.md`](../docs/STATUS.md), "Stated exceptions of the
+>   opaque): complete list in [`../README.md`](../README.md), "Stated exceptions of the
 >   external models".
 > - **The clock** (human decisions 2026-11-24, extended 2026-11-25; [`../README.md`](../README.md),
 >   "Trusted base"): the clock is one opaque reading `ExtModel.nowMs`, which makes `open`,
@@ -460,8 +459,7 @@ Rust documentation. Used by: the proofs of all statements above.
 >   definitions they use (`Defs/`, `../proofs/Proofs/Defs/`). `Specs` imports `Proofs`, so a
 >   reviewer also checks `proofs/` for instances or notation that change a statement's meaning.
 >
-> Details: [`../docs/STATUS.md`](../docs/STATUS.md), "Trusted base", and
-> [`../README.md`](../README.md), "Trusted base".
+> Details: [`../README.md`](../README.md), "Trusted base".
 
 ## Not covered
 
@@ -471,7 +469,7 @@ Rust documentation. Used by: the proofs of all statements above.
   `MetadataAddressResolver::is_allowed`.
 - URL and HTTP parsing (`Origin` and `Host` headers, `url::Url`), `async` code, DNS resolution.
 - 2 of the 17 public functions of `request_state.rs` (status in
-  [`../docs/STATUS.md`](../docs/STATUS.md), "Public request_state.rs API"):
+  [`../README.md`](../README.md), "Results"):
   `seal_json`, `seal_json_with` (R16–R17, excluded, blocked upstream: Aeneas does not support the
   mutually recursive `serde_core::ser` traits; once that is fixed they would additionally need the
   variant-constructor workaround of patch 03 hunk 2, since
@@ -496,7 +494,7 @@ Rust documentation. Used by: the proofs of all statements above.
   and the other functions of the touched files, including those measured and not taken (plan
   Section 16.5).
 
-**Bugs found** (recorded in [`../docs/STATUS.md`, "Bugs found"](../docs/STATUS.md#bugs-found);
+**Bugs found** (recorded in [`../README.md`, "Bugs found"](../README.md#bugs-found);
 the statements describe the code as it is):
 
 - **H7:** `is_standard_method` / `is_standard_notification` (`async_rw.rs`) miss six core MCP

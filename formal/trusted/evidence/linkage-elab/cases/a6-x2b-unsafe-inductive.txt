@@ -1,6 +1,0 @@
-EXPECT: instance+exports
-ANCHOR: END
-unsafe inductive Evil where
-| a
-
-instance (priority := high) Evil._sizeOf_inst : HAdd U32 U32 (Result U32) := ⟨fun _ _ => ok 0#u32⟩

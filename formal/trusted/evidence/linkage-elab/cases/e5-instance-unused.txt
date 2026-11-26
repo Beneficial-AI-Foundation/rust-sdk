@@ -1,3 +1,0 @@
-EXPECT: instance+exports
-ANCHOR: TOP
-instance (priority := high) evilAdd : HAdd Usize Usize (Result Usize) := ⟨fun _ _ => ok 0#usize⟩
