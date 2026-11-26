@@ -21,6 +21,15 @@ set_option maxRecDepth 2048
 
 namespace rmcp
 
+/-- Trait declaration: [core::alloc::AllocatorClone]
+    Source: '/rustc/library/core/src/alloc/mod.rs', lines 541:0-541:50
+    Name pattern: [core::alloc::AllocatorClone]
+    Visibility: public -/
+@[rust_trait "core::alloc::AllocatorClone"
+  (parentClauses := ["cloneCloneInst"])]
+structure core.alloc.AllocatorClone (Self : Type _) where
+  cloneCloneInst : core.clone.Clone Self
+
 /-- Trait declaration: [core::hash::BuildHasher]
     Source: '/rustc/library/core/src/hash/mod.rs', lines 637:0-637:21
     Name pattern: [core::hash::BuildHasher]
@@ -29,6 +38,24 @@ namespace rmcp
 structure core.hash.BuildHasher (Self : Type _) (Self_Hasher : Type _) where
   HasherInst : core.hash.Hasher Self_Hasher
   build_hasher : Self → Result Self_Hasher
+
+/-- [core::net::ip_addr::IpAddr]
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 30:0-30:15
+    Name pattern: [core::net::ip_addr::IpAddr]
+    Visibility: public -/
+@[discriminant isize, rust_type "core::net::ip_addr::IpAddr"]
+inductive core.net.ip_addr.IpAddr where
+| V4 : core.net.ip_addr.Ipv4Addr → core.net.ip_addr.IpAddr
+| V6 : core.net.ip_addr.Ipv6Addr → core.net.ip_addr.IpAddr
+
+/-- [core::net::socket_addr::SocketAddr]
+    Source: '/rustc/library/core/src/net/socket_addr.rs', lines 33:0-33:19
+    Name pattern: [core::net::socket_addr::SocketAddr]
+    Visibility: public -/
+@[discriminant isize, rust_type "core::net::socket_addr::SocketAddr"]
+inductive core.net.socket_addr.SocketAddr where
+| V4 : core.net.socket_addr.SocketAddrV4 → core.net.socket_addr.SocketAddr
+| V6 : core.net.socket_addr.SocketAddrV6 → core.net.socket_addr.SocketAddr
 
 /-- Trait declaration: [core::str::traits::FromStr]
     Source: '/rustc/library/core/src/str/traits.rs', lines 868:0-868:30
@@ -214,6 +241,71 @@ structure serde_core.de.Deserialize (Self : Type _) where
 structure serde_core.de.DeserializeOwned (Self : Type _) where
   DeserializeInst : serde_core.de.Deserialize Self
 
+/-- [unicode_general_category::tables::GeneralCategory]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-general-category-1.1.0/src/tables.rs', lines 11:0-11:24
+    Name pattern: [unicode_general_category::tables::GeneralCategory]
+    Visibility: public -/
+@[discriminant isize, rust_type
+  "unicode_general_category::tables::GeneralCategory"]
+inductive unicode_general_category.tables.GeneralCategory where
+| ClosePunctuation : unicode_general_category.tables.GeneralCategory
+| ConnectorPunctuation : unicode_general_category.tables.GeneralCategory
+| Control : unicode_general_category.tables.GeneralCategory
+| CurrencySymbol : unicode_general_category.tables.GeneralCategory
+| DashPunctuation : unicode_general_category.tables.GeneralCategory
+| DecimalNumber : unicode_general_category.tables.GeneralCategory
+| EnclosingMark : unicode_general_category.tables.GeneralCategory
+| FinalPunctuation : unicode_general_category.tables.GeneralCategory
+| Format : unicode_general_category.tables.GeneralCategory
+| InitialPunctuation : unicode_general_category.tables.GeneralCategory
+| LetterNumber : unicode_general_category.tables.GeneralCategory
+| LineSeparator : unicode_general_category.tables.GeneralCategory
+| LowercaseLetter : unicode_general_category.tables.GeneralCategory
+| MathSymbol : unicode_general_category.tables.GeneralCategory
+| ModifierLetter : unicode_general_category.tables.GeneralCategory
+| ModifierSymbol : unicode_general_category.tables.GeneralCategory
+| NonspacingMark : unicode_general_category.tables.GeneralCategory
+| OpenPunctuation : unicode_general_category.tables.GeneralCategory
+| OtherLetter : unicode_general_category.tables.GeneralCategory
+| OtherNumber : unicode_general_category.tables.GeneralCategory
+| OtherPunctuation : unicode_general_category.tables.GeneralCategory
+| OtherSymbol : unicode_general_category.tables.GeneralCategory
+| ParagraphSeparator : unicode_general_category.tables.GeneralCategory
+| PrivateUse : unicode_general_category.tables.GeneralCategory
+| SpaceSeparator : unicode_general_category.tables.GeneralCategory
+| SpacingMark : unicode_general_category.tables.GeneralCategory
+| Surrogate : unicode_general_category.tables.GeneralCategory
+| TitlecaseLetter : unicode_general_category.tables.GeneralCategory
+| Unassigned : unicode_general_category.tables.GeneralCategory
+| UppercaseLetter : unicode_general_category.tables.GeneralCategory
+
+/-- [url::host::Host]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/host.rs', lines 46:0-46:25
+    Name pattern: [url::host::Host]
+    Visibility: public -/
+@[discriminant isize, rust_type "url::host::Host"]
+inductive url.host.Host (S : Type _) where
+| Domain : S → url.host.Host S
+| Ipv4 : core.net.ip_addr.Ipv4Addr → url.host.Host S
+| Ipv6 : core.net.ip_addr.Ipv6Addr → url.host.Host S
+
+/-- [url::parser::ParseError]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/parser.rs', lines 57:8-57:27; this code is generated from a macro invocation at: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/parser.rs', lines 87:0-98:1
+    Name pattern: [url::parser::ParseError]
+    Visibility: public -/
+@[discriminant isize, rust_type "url::parser::ParseError"]
+inductive url.parser.ParseError where
+| EmptyHost : url.parser.ParseError
+| IdnaError : url.parser.ParseError
+| InvalidPort : url.parser.ParseError
+| InvalidIpv4Address : url.parser.ParseError
+| InvalidIpv6Address : url.parser.ParseError
+| InvalidDomainCharacter : url.parser.ParseError
+| RelativeUrlWithoutBase : url.parser.ParseError
+| RelativeUrlWithCannotBeABaseBase : url.parser.ParseError
+| SetHostOnCannotBeABaseUrl : url.parser.ParseError
+| Overflow : url.parser.ParseError
+
 /-- Trait declaration: [zeroize::Zeroize]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.2/src/lib.rs', lines 253:0-253:17
     Name pattern: [zeroize::Zeroize]
@@ -231,6 +323,28 @@ structure zeroize.Zeroize (Self : Type _) where
 structure zeroize.DefaultIsZeroes (Self : Type _) where
   coremarkerCopyInst : core.marker.Copy Self
   coredefaultDefaultInst : core.default.Default Self
+
+/-- [rmcp::model::Role]
+    Source: 'crates/rmcp/src/model.rs', lines 2860:0-2865:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.Role where
+| User : model.Role
+| Assistant : model.Role
+
+/-- [rmcp::model::annotated::Annotations]
+    Source: 'crates/rmcp/src/model/annotated.rs', lines 17:0-28:1
+    Visibility: public -/
+structure model.annotated.Annotations where
+  audience : Option (alloc.vec.Vec model.Role)
+  priority : Option F32
+  last_modified : Option String
+
+/-- [rmcp::model::meta::MetaObject]
+    Source: 'crates/rmcp/src/model/meta.rs', lines 247:0-247:38
+    Visibility: public -/
+@[reducible]
+def model.meta.MetaObject := serde_json.map.Map String serde_json.value.Value
 
 /-- [rmcp::model::request_state::RequestStateError]
     Source: 'crates/rmcp/src/model/request_state.rs', lines 94:0-138:1
@@ -347,6 +461,134 @@ structure model.request_state_wire.Rs1Parts where
   body : Slice Std.U8
   tag : Slice Std.U8
 
+/-- [rmcp::model::IconTheme]
+    Source: 'crates/rmcp/src/model.rs', lines 1622:0-1627:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.IconTheme where
+| Light : model.IconTheme
+| Dark : model.IconTheme
+
+/-- [rmcp::model::Icon]
+    Source: 'crates/rmcp/src/model.rs', lines 1642:0-1655:1
+    Visibility: public -/
+structure model.Icon where
+  src : String
+  mime_type : Option String
+  sizes : Option (alloc.vec.Vec String)
+  theme : Option model.IconTheme
+
+/-- [rmcp::model::resource::Resource]
+    Source: 'crates/rmcp/src/model/resource.rs', lines 12:0-38:1
+    Visibility: public -/
+structure model.resource.Resource where
+  uri : String
+  «name» : String
+  title : Option String
+  description : Option String
+  mime_type : Option String
+  size : Option Std.U64
+  icons : Option (alloc.vec.Vec model.Icon)
+  «meta» : Option model.meta.MetaObject
+  annotations : Option model.annotated.Annotations
+
+/-- [rmcp::model::skill::SkillsCapability]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 38:0-42:1
+    Visibility: public -/
+structure model.skill.SkillsCapability where
+  directory_read : Bool
+
+/-- [rmcp::model::skill::SkillResource]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 66:0-73:1
+    Visibility: public -/
+structure model.skill.SkillResource where
+  uri : String
+  digest : String
+  size : Std.U64
+
+/-- [rmcp::model::skill::SkillIntegrityError]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 135:0-148:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.skill.SkillIntegrityError where
+| Size : String → Std.U64 → Std.U64 → model.skill.SkillIntegrityError
+| Digest : String → String → String → model.skill.SkillIntegrityError
+
+/-- [rmcp::model::skill::SkillFrontmatter]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 154:0-160:1
+    Visibility: public -/
+structure model.skill.SkillFrontmatter where
+  «name» : String
+  description : String
+  extra : serde_json.map.Map String serde_json.value.Value
+
+/-- [rmcp::model::skill::SkillResources]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 186:0-189:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.skill.SkillResources where
+| Files :
+  alloc.vec.Vec model.skill.SkillResource →
+  model.skill.SkillResources
+| Dynamic : model.skill.SkillResources
+
+/-- [rmcp::model::skill::Skill]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 239:0-246:1
+    Visibility: public -/
+structure model.skill.Skill where
+  uri : String
+  frontmatter : model.skill.SkillFrontmatter
+  resources : model.skill.SkillResources
+  «meta» : Option model.meta.MetaObject
+
+/-- [rmcp::model::skill::SkillValidationError]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 502:0-521:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.skill.SkillValidationError where
+| UriNotSkillMd : String → model.skill.SkillValidationError
+| InvalidName : String → model.skill.SkillValidationError
+| NameMismatch : String → String → model.skill.SkillValidationError
+| MissingSkillMd : String → model.skill.SkillValidationError
+| DuplicateResource : String → model.skill.SkillValidationError
+| ResourceOutsideSkill : String → String → model.skill.SkillValidationError
+| MalformedDigest : String → String → model.skill.SkillValidationError
+| DuplicateSkill : String → model.skill.SkillValidationError
+
+/-- [rmcp::model::skill::is_sha256_digest::{closure}::{closure}]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 483:43-483:85 -/
+@[reducible]
+def model.skill.is_sha256_digest.closure.closure := Unit
+
+/-- [rmcp::model::skill::is_sha256_digest::{closure}]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 482:54-484:5 -/
+@[reducible]
+def model.skill.is_sha256_digest.closure := Unit
+
+/-- [rmcp::model::CacheScope]
+    Source: 'crates/rmcp/src/model.rs', lines 1854:0-1860:1
+    Visibility: public -/
+@[discriminant isize]
+inductive model.CacheScope where
+| Public : model.CacheScope
+| Private : model.CacheScope
+
+/-- [rmcp::model::ResultType]
+    Source: 'crates/rmcp/src/model.rs', lines 1032:0-1032:41
+    Visibility: public -/
+@[reducible]
+def model.ResultType := alloc.borrow.Cow Str String
+
+/-- [rmcp::model::skill::GetSkillResult]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 528:0-549:1
+    Visibility: public -/
+structure model.skill.GetSkillResult where
+  result_type : Option model.ResultType
+  ttl_ms : Option Std.U64
+  cache_scope : Option model.CacheScope
+  skill : model.skill.Skill
+  «meta» : Option model.meta.MetaObject
+
 /-- [rmcp::model::task::TaskStatus]
     Source: 'crates/rmcp/src/model/task.rs', lines 21:0-34:1
     Visibility: public -/
@@ -458,6 +700,29 @@ structure model.ResourceTemplateReference where
 inductive model.Reference where
 | Resource : model.ResourceTemplateReference → model.Reference
 | Prompt : model.PromptReference → model.Reference
+
+/-- [rmcp::transport::auth::metadata_resolver::AddressClass]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 34:0-39:1 -/
+@[discriminant isize]
+inductive transport.auth.metadata_resolver.AddressClass where
+| Public : transport.auth.metadata_resolver.AddressClass
+| Loopback : transport.auth.metadata_resolver.AddressClass
+| Private : transport.auth.metadata_resolver.AddressClass
+| Blocked : transport.auth.metadata_resolver.AddressClass
+
+/-- [rmcp::transport::auth::metadata_resolver::MetadataAddressResolver]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 93:0-98:1 -/
+structure transport.auth.metadata_resolver.MetadataAddressResolver where
+  base_ip : Option core.net.ip_addr.IpAddr
+  unfiltered_hosts : alloc.sync.Arc (Slice String)
+  base_classes : alloc.sync.Arc (Slice
+    transport.auth.metadata_resolver.AddressClass)
+  lookup : transport.auth.metadata_resolver.Lookup
+
+/-- [rmcp::transport::auth::metadata_resolver::proxy_host::{closure}]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 244:13-244:40 -/
+@[reducible]
+def transport.auth.metadata_resolver.proxy_host.closure := Unit
 
 /-- [rmcp::transport::common::client_side_sse::SseEventSizeLimiter]
     Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 29:0-35:1 -/

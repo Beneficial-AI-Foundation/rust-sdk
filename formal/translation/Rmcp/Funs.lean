@@ -25,6 +25,14 @@ noncomputable section
 
 namespace rmcp
 
+/-- Trait implementation: [core::cmp::impls::{impl core::cmp::PartialEq<char> for char}]
+    Source: '/rustc/library/core/src/cmp.rs', lines 2183:12-2183:39; this code is generated from a macro invocation at: '/rustc/library/core/src/cmp.rs', lines 2193:4-2195:5
+    Name pattern: [core::cmp::PartialEq<char, char>] -/
+@[reducible, rust_trait_impl "core::cmp::PartialEq<char, char>"]
+def Char.Insts.CoreCmpPartialEqChar : core.cmp.PartialEq Char Char := {
+  eq := Char.Insts.CoreCmpPartialEqChar.eq
+}
+
 /-- Trait implementation: [core::hash::impls::{impl core::hash::Hash for str}]
     Source: '/rustc/library/core/src/hash/mod.rs', lines 863:4-863:21
     Name pattern: [core::hash::Hash<str>] -/
@@ -32,6 +40,37 @@ namespace rmcp
 def Str.Insts.CoreHashHash : core.hash.Hash Str := {
   hash := fun {H : Type} (HasherInst : core.hash.Hasher H) =>
     Str.Insts.CoreHashHash.hash HasherInst
+}
+
+/-- Trait implementation: [core::net::ip_addr::{impl core::cmp::PartialEq<core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr}]
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 29:26-29:35
+    Name pattern: [core::cmp::PartialEq<core::net::ip_addr::IpAddr, core::net::ip_addr::IpAddr>] -/
+@[reducible, rust_trait_impl
+  "core::cmp::PartialEq<core::net::ip_addr::IpAddr, core::net::ip_addr::IpAddr>"]
+def core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr : core.cmp.PartialEq
+  core.net.ip_addr.IpAddr core.net.ip_addr.IpAddr := {
+  eq := core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr.eq
+}
+
+/-- Trait implementation: [core::net::ip_addr::IpAddr::{impl core::ops::function::FnOnce<(core::net::ip_addr::Ipv4Addr,), core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr::V4}]
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 33:4-33:6
+    Name pattern: [core::ops::function::FnOnce<@, (core::net::ip_addr::Ipv4Addr), core::net::ip_addr::IpAddr>] -/
+@[reducible, rust_trait_impl
+  "core::ops::function::FnOnce<@, (core::net::ip_addr::Ipv4Addr), core::net::ip_addr::IpAddr>"]
+def P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr : core.ops.function.FnOnce
+  (core.net.ip_addr.Ipv4Addr → Result core.net.ip_addr.IpAddr)
+  core.net.ip_addr.Ipv4Addr core.net.ip_addr.IpAddr := {
+  call_once := P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr.call_once
+}
+
+/-- Trait implementation: [core::num::error::{impl core::fmt::Debug for core::num::error::ParseIntError}]
+    Source: '/rustc/library/core/src/num/error.rs', lines 67:9-67:14
+    Name pattern: [core::fmt::Debug<core::num::error::ParseIntError>] -/
+@[reducible, rust_trait_impl
+  "core::fmt::Debug<core::num::error::ParseIntError>"]
+def core.num.error.ParseIntError.Insts.CoreFmtDebug : core.fmt.Debug
+  core.num.error.ParseIntError := {
+  fmt := core.num.error.ParseIntError.Insts.CoreFmtDebug.fmt
 }
 
 /-- Trait implementation: [core::num::{impl core::str::traits::FromStr<core::num::error::ParseIntError> for i64}]
@@ -115,6 +154,16 @@ def std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher :
     std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher
 }
 
+/-- Trait implementation: [alloc::alloc::{impl core::alloc::AllocatorClone for alloc::alloc::Global}]
+    Source: '/rustc/library/alloc/src/alloc.rs', lines 62:0-62:50
+    Name pattern: [core::alloc::AllocatorClone<alloc::alloc::Global>] -/
+@[reducible, rust_trait_impl
+  "core::alloc::AllocatorClone<alloc::alloc::Global>"]
+def alloc.alloc.Global.Insts.CoreAllocAllocatorClone :
+  core.alloc.AllocatorClone alloc.alloc.Global := {
+  cloneCloneInst := core.clone.CloneGlobal
+}
+
 /-- Trait implementation: [alloc::str::{impl core::borrow::Borrow<str> for alloc::string::String}]
     Source: '/rustc/library/alloc/src/str.rs', lines 231:0-231:27
     Name pattern: [core::borrow::Borrow<alloc::string::String, str>] -/
@@ -123,6 +172,16 @@ def std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher :
 def alloc.string.String.Insts.CoreBorrowBorrowStr : core.borrow.Borrow String
   Str := {
   borrow := alloc.string.String.Insts.CoreBorrowBorrowStr.borrow
+}
+
+/-- Trait implementation: [alloc::str::{impl alloc::borrow::ToOwned<alloc::string::String> for str}]
+    Source: '/rustc/library/alloc/src/str.rs', lines 248:0-248:20
+    Name pattern: [alloc::borrow::ToOwned<str, alloc::string::String>] -/
+@[reducible, rust_trait_impl
+  "alloc::borrow::ToOwned<str, alloc::string::String>"]
+def Str.Insts.AllocBorrowToOwnedString : alloc.borrow.ToOwned Str String := {
+  coreborrowBorrowInst := alloc.string.String.Insts.CoreBorrowBorrowStr
+  to_owned := Str.Insts.AllocBorrowToOwnedString.to_owned
 }
 
 /-- Trait implementation: [alloc::string::{impl core::cmp::PartialEq<alloc::string::String> for alloc::string::String}]
@@ -172,6 +231,16 @@ def alloc.string.String.Insts.CoreHashHash : core.hash.Hash String := {
     alloc.string.String.Insts.CoreHashHash.hash corehashHasherInst
 }
 
+/-- Trait implementation: [alloc::string::{impl core::ops::deref::Deref<str> for alloc::string::String}]
+    Source: '/rustc/library/alloc/src/string.rs', lines 2892:0-2892:26
+    Name pattern: [core::ops::deref::Deref<alloc::string::String, str>] -/
+@[reducible, rust_trait_impl
+  "core::ops::deref::Deref<alloc::string::String, str>"]
+def alloc.string.String.Insts.CoreOpsDerefDerefStr : core.ops.deref.Deref
+  String Str := {
+  deref := alloc.string.String.Insts.CoreOpsDerefDerefStr.deref
+}
+
 /-- Trait implementation: [alloc::sync::{impl core::cmp::PartialEq<alloc::sync::Arc<T>> for alloc::sync::Arc<T>}]
     Source: '/rustc/library/alloc/src/sync.rs', lines 3726:0-3726:65
     Name pattern: [core::cmp::PartialEq<alloc::sync::Arc<@T>, alloc::sync::Arc<@T>>] -/
@@ -181,6 +250,18 @@ def alloc.sync.Arc.Insts.CoreCmpPartialEqArc {T : Type _} (A : Type _)
   (corecmpPartialEqInst : core.cmp.PartialEq T T) : core.cmp.PartialEq
   (alloc.sync.Arc T) (alloc.sync.Arc T) := {
   eq := alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq A corecmpPartialEqInst
+}
+
+/-- Trait implementation: [alloc::sync::{impl core::convert::From<alloc::vec::Vec<T>> for alloc::sync::Arc<[T]>}]
+    Source: '/rustc/library/alloc/src/sync.rs', lines 4200:0-4200:58
+    Name pattern: [core::convert::From<alloc::sync::Arc<[@T]>, alloc::vec::Vec<@T>>] -/
+@[reducible, rust_trait_impl
+  "core::convert::From<alloc::sync::Arc<[@T]>, alloc::vec::Vec<@T>>"]
+def alloc.sync.ArcSlice.Insts.CoreConvertFromVec (T : Type _) {A : Type _}
+  (coreallocAllocatorCloneInst : core.alloc.AllocatorClone A) :
+  core.convert.From (alloc.sync.Arc (Slice T)) (alloc.vec.Vec T) := {
+  «from» := alloc.sync.ArcSlice.Insts.CoreConvertFromVec.from
+    coreallocAllocatorCloneInst
 }
 
 /-- Trait implementation: [zeroize::{impl zeroize::Zeroize for Z}]
@@ -2265,6 +2346,1144 @@ impl_def model.request_state_wire.FrameError.Insts.CoreCmpEq : core.cmp.Eq
     model.request_state_wire.FrameError.Insts.CoreCmpEq
 }
 
+/-- [rmcp::model::skill::DIRECTORY_MIME_TYPE]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 24:0-24:56
+    Visibility: public -/
+@[global_simps, irreducible]
+def model.skill.DIRECTORY_MIME_TYPE : Str := toStr "inode/directory"
+
+/-- [rmcp::model::skill::{rmcp::model::resource::Resource}::is_directory]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 28:4-30:5
+    Visibility: public -/
+def model.skill.Resource.is_directory
+  (self : model.resource.Resource) : Result Bool := do
+  let o ←
+    core.option.Option.as_deref alloc.string.String.Insts.CoreOpsDerefDerefStr
+      self.mime_type
+  core.option.Option.Insts.CoreCmpPartialEqOption.eq (core.cmp.PartialEqShared
+    Str.Insts.CoreCmpPartialEqStr) o (some model.skill.DIRECTORY_MIME_TYPE)
+
+/-- [rmcp::model::skill::{impl core::default::Default for rmcp::model::skill::SkillsCapability}::default]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 34:44-34:51
+    Visibility: public -/
+def model.skill.SkillsCapability.Insts.CoreDefaultDefault.default
+  : Result model.skill.SkillsCapability := do
+  let b ← core.default.DefaultBool.default
+  ok { directory_read := b }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::SkillsCapability}::new]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 46:4-48:5
+    Visibility: public -/
+def model.skill.SkillsCapability.new
+  : Result model.skill.SkillsCapability := do
+  model.skill.SkillsCapability.Insts.CoreDefaultDefault.default
+
+/-- [rmcp::model::skill::{rmcp::model::skill::SkillsCapability}::with_directory_read]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 51:4-54:5
+    Visibility: public -/
+def model.skill.SkillsCapability.with_directory_read
+  (self : model.skill.SkillsCapability) :
+  Result model.skill.SkillsCapability
+  := do
+  ok { directory_read := true }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::SkillResource}::new]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 76:4-82:5
+    Visibility: public -/
+def model.skill.SkillResource.new
+  {T0 : Type _} {T1 : Type _} (coreconvertIntoT0StringInst : core.convert.Into
+  T0 String) (coreconvertIntoT1StringInst : core.convert.Into T1 String)
+  (uri : T0) (digest : T1) (size : Std.U64) :
+  Result model.skill.SkillResource
+  := do
+  let s ← coreconvertIntoT0StringInst.into uri
+  let s1 ← coreconvertIntoT1StringInst.into digest
+  ok { uri := s, digest := s1, size }
+
+/-- [rmcp::model::skill::lower_hex_digit]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 128:0-130:1 -/
+def model.skill.lower_hex_digit (nibble : Std.U8) : Result Char := do
+  let i ← lift (nibble &&& 15#u8)
+  let i1 ← lift (core.convert.num.FromUsizeU8.from i)
+  let i2 ←
+    Array.index_usize
+      (Array.make 16#usize [
+        48#u8, 49#u8, 50#u8, 51#u8, 52#u8, 53#u8, 54#u8, 55#u8, 56#u8, 57#u8,
+        97#u8, 98#u8, 99#u8, 100#u8, 101#u8, 102#u8
+        ]) i1
+  Char.Insts.CoreConvertFromU8.from i2
+
+/-- [rmcp::model::skill::sha256_digest]: loop body 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 120:4-123:5
+    Visibility: public -/
+@[rust_loop_body]
+def model.skill.sha256_digest_loop.body
+  (iter : core.array.iter.IntoIter Std.U8 32#usize) (digest : String) :
+  Result (ControlFlow ((core.array.iter.IntoIter Std.U8 32#usize) × String)
+    String)
+  := do
+  let (o, iter1) ←
+    core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next iter
+  match o with
+  | none => ok (done digest)
+  | some byte =>
+    let i ← byte >>> 4#i32
+    let c ← model.skill.lower_hex_digit i
+    let digest1 ← alloc.string.String.push digest c
+    let i1 ← lift (byte &&& 15#u8)
+    let c1 ← model.skill.lower_hex_digit i1
+    let digest2 ← alloc.string.String.push digest1 c1
+    ok (cont (iter1, digest2))
+
+/-- [rmcp::model::skill::sha256_digest]: loop 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 120:4-123:5
+    Visibility: public -/
+@[rust_loop]
+def model.skill.sha256_digest_loop
+  (iter : core.array.iter.IntoIter Std.U8 32#usize) (digest : String) :
+  Result String
+  := do
+  loop
+    (fun (iter1, digest1) => model.skill.sha256_digest_loop.body iter1 digest1)
+    (iter, digest)
+
+/-- [rmcp::model::skill::sha256_digest]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 116:0-125:1
+    Visibility: public -/
+def model.skill.sha256_digest (bytes : Slice Std.U8) : Result String := do
+  let hash ← model.skill.prim.sha256 bytes
+  let i ← 7#usize + 64#usize
+  let digest ← alloc.string.String.with_capacity i
+  let digest1 ← alloc.string.String.push_str digest (toStr "sha256:")
+  let iter ←
+    Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter hash
+  model.skill.sha256_digest_loop iter digest1
+
+/-- [rmcp::model::skill::{rmcp::model::skill::SkillResource}::from_bytes]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 85:4-87:5
+    Visibility: public -/
+def model.skill.SkillResource.from_bytes
+  {T0 : Type _} (coreconvertIntoT0StringInst : core.convert.Into T0 String)
+  (uri : T0) (bytes : Slice Std.U8) :
+  Result model.skill.SkillResource
+  := do
+  let s ← model.skill.sha256_digest bytes
+  let i := Slice.len bytes
+  let i1 ← lift (UScalar.cast .U64 i)
+  model.skill.SkillResource.new coreconvertIntoT0StringInst
+    (core.convert.IntoFrom (core.convert.FromSame String)) uri s i1
+
+/-- [rmcp::model::skill::{rmcp::model::skill::SkillResource}::verify]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 94:4-112:5
+    Visibility: public -/
+def model.skill.SkillResource.verify
+  (self : model.skill.SkillResource) (bytes : Slice Std.U8) :
+  Result (core.result.Result Unit model.skill.SkillIntegrityError)
+  := do
+  let i := Slice.len bytes
+  let size ← lift (UScalar.cast .U64 i)
+  if size != self.size
+  then
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone self.uri
+    ok (core.result.Result.Err (model.skill.SkillIntegrityError.Size s
+      self.size size))
+  else
+    let digest ← model.skill.sha256_digest bytes
+    let b ←
+      alloc.string.String.Insts.CoreCmpPartialEqString.eq digest self.digest
+    if b
+    then ok (core.result.Result.Ok ())
+    else
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone self.uri
+      let s1 ← alloc.string.String.Insts.CoreCloneClone.clone self.digest
+      ok (core.result.Result.Err (model.skill.SkillIntegrityError.Digest s s1
+        digest))
+
+/-- [rmcp::model::skill::{rmcp::model::skill::SkillFrontmatter}::new]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 163:4-169:5
+    Visibility: public -/
+def model.skill.SkillFrontmatter.new
+  {T0 : Type _} {T1 : Type _} (coreconvertIntoT0StringInst : core.convert.Into
+  T0 String) (coreconvertIntoT1StringInst : core.convert.Into T1 String)
+  («name» : T0) (description : T1) :
+  Result model.skill.SkillFrontmatter
+  := do
+  let s ← coreconvertIntoT0StringInst.into «name»
+  let s1 ← coreconvertIntoT1StringInst.into description
+  let m ← serde_json.map.MapStringValue.new
+  ok { «name» := s, description := s1, extra := m }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::SkillFrontmatter}::with_field]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 172:4-179:5
+    Visibility: public -/
+def model.skill.SkillFrontmatter.with_field
+  {T0 : Type _} {T1 : Type _} (coreconvertIntoT0StringInst : core.convert.Into
+  T0 String) (coreconvertIntoT1ValueInst : core.convert.Into T1
+  serde_json.value.Value) (self : model.skill.SkillFrontmatter) (key : T0)
+  (value : T1) :
+  Result model.skill.SkillFrontmatter
+  := do
+  let s ← coreconvertIntoT0StringInst.into key
+  let v ← coreconvertIntoT1ValueInst.into value
+  let (_, m) ← serde_json.map.MapStringValue.insert self.extra s v
+  ok { self with extra := m }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::Skill}::new]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 249:4-260:5
+    Visibility: public -/
+def model.skill.Skill.new
+  {T0 : Type _} (coreconvertIntoT0StringInst : core.convert.Into T0 String)
+  (uri : T0) (frontmatter : model.skill.SkillFrontmatter)
+  (resources : model.skill.SkillResources) :
+  Result model.skill.Skill
+  := do
+  let s ← coreconvertIntoT0StringInst.into uri
+  ok { uri := s, frontmatter, resources, «meta» := none }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::Skill}::with_meta]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 262:4-265:5
+    Visibility: public -/
+def model.skill.Skill.with_meta
+  (self : model.skill.Skill) («meta» : model.meta.MetaObject) :
+  Result model.skill.Skill
+  := do
+  ok { self with «meta» := (some «meta») }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::Skill}::name]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 268:4-270:5
+    Visibility: public -/
+def model.skill.Skill.name (self : model.skill.Skill) : Result Str := do
+  alloc.string.String.Insts.CoreOpsDerefDerefStr.deref self.frontmatter.name
+
+/-- [rmcp::model::skill::is_sha256_digest::{closure}::{impl core::ops::function::FnMut<(u8,), bool> for rmcp::model::skill::is_sha256_digest::{closure}::{closure}<'_0>}::call_mut]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 483:43-483:85 -/
+def
+  model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnMutTupleU8Bool.call_mut
+  (c : model.skill.is_sha256_digest.closure.closure) (tupled_args : Std.U8) :
+  Result (Bool × model.skill.is_sha256_digest.closure.closure)
+  := do
+  if 48#u8 <= tupled_args
+  then
+    if tupled_args <= 57#u8
+    then ok (true, ())
+    else
+      if 97#u8 <= tupled_args
+      then if tupled_args <= 102#u8
+           then ok (true, ())
+           else ok (false, ())
+      else ok (false, ())
+  else
+    if 97#u8 <= tupled_args
+    then if tupled_args <= 102#u8
+         then ok (true, ())
+         else ok (false, ())
+    else ok (false, ())
+
+/-- [rmcp::model::skill::is_sha256_digest::{closure}::{impl core::ops::function::FnOnce<(u8,), bool> for rmcp::model::skill::is_sha256_digest::{closure}::{closure}<'_0>}::call_once]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 483:43-483:85 -/
+def
+  model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnOnceTupleU8Bool.call_once
+  (c : model.skill.is_sha256_digest.closure.closure) (i : Std.U8) :
+  Result Bool
+  := do
+  let (b, _) ←
+    model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnMutTupleU8Bool.call_mut
+      () i
+  ok b
+
+/-- Trait implementation: [rmcp::model::skill::is_sha256_digest::{closure}::{impl core::ops::function::FnOnce<(u8,), bool> for rmcp::model::skill::is_sha256_digest::{closure}::{closure}<'_0>}]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 483:43-483:85 -/
+@[reducible]
+def
+  model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnOnceTupleU8Bool
+  : core.ops.function.FnOnce model.skill.is_sha256_digest.closure.closure
+  Std.U8 Bool := {
+  call_once :=
+    model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnOnceTupleU8Bool.call_once
+}
+
+/-- Trait implementation: [rmcp::model::skill::is_sha256_digest::{closure}::{impl core::ops::function::FnMut<(u8,), bool> for rmcp::model::skill::is_sha256_digest::{closure}::{closure}<'_0>}]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 483:43-483:85 -/
+@[reducible]
+def
+  model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnMutTupleU8Bool
+  : core.ops.function.FnMut model.skill.is_sha256_digest.closure.closure Std.U8
+  Bool := {
+  FnOnceInst :=
+    model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnOnceTupleU8Bool
+  call_mut :=
+    model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnMutTupleU8Bool.call_mut
+}
+
+/-- [rmcp::model::skill::is_sha256_digest::{impl core::ops::function::FnOnce<(&'_0 str,), bool> for rmcp::model::skill::is_sha256_digest::{closure}<'_0>}::call_once]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 482:54-484:5 -/
+def
+  model.skill.is_sha256_digest.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrBool.call_once
+  (c : model.skill.is_sha256_digest.closure) (tupled_args : Str) :
+  Result Bool
+  := do
+  let i ← core.str.Str.len tupled_args
+  if i = 64#usize
+  then
+    let b ← core.str.Str.bytes tupled_args
+    let (b1, _) ←
+      core.str.iter.Bytes.Insts.CoreIterTraitsIteratorIteratorU8.all
+        model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnMutTupleU8Bool
+        b ()
+    ok b1
+  else ok false
+
+/-- Trait implementation: [rmcp::model::skill::is_sha256_digest::{impl core::ops::function::FnOnce<(&'_0 str,), bool> for rmcp::model::skill::is_sha256_digest::{closure}<'_0>}]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 482:54-484:5 -/
+@[reducible]
+def
+  model.skill.is_sha256_digest.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrBool
+  : core.ops.function.FnOnce model.skill.is_sha256_digest.closure Str Bool := {
+  call_once :=
+    model.skill.is_sha256_digest.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrBool.call_once
+}
+
+/-- [rmcp::model::skill::is_sha256_digest]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 481:0-485:1
+    Visibility: public -/
+def model.skill.is_sha256_digest (digest : Str) : Result Bool := do
+  let o ← model.skill.prim.strip_prefix digest (toStr "sha256:")
+  core.option.Option.is_some_and
+    model.skill.is_sha256_digest.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrBool
+    o ()
+
+/-- [rmcp::model::skill::is_unreserved]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 476:0-478:1 -/
+def model.skill.is_unreserved (byte : Std.U8) : Result Bool := do
+  let b ← core.num.U8.is_ascii_alphanumeric byte
+  if b
+  then ok true
+  else
+    match byte with
+    | 45#uscalar => ok true
+    | 46#uscalar => ok true
+    | 95#uscalar => ok true
+    | 126#uscalar => ok true
+    | _ => ok false
+
+/-- [rmcp::model::skill::is_ascii_hex]: loop body 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 467:4-474:1 -/
+@[rust_loop_body]
+def model.skill.is_ascii_hex_loop.body
+  (bytes : Slice Std.U8) (i : Std.Usize) :
+  Result (ControlFlow Std.Usize Bool)
+  := do
+  let i1 := Slice.len bytes
+  if i < i1
+  then
+    let i2 ← Slice.index_usize bytes i
+    let b ← core.num.U8.is_ascii_hexdigit i2
+    if b
+    then let i3 ← i + 1#usize
+         ok (cont i3)
+    else ok (done false)
+  else ok (done true)
+
+/-- [rmcp::model::skill::is_ascii_hex]: loop 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 467:4-474:1 -/
+@[rust_loop]
+def model.skill.is_ascii_hex_loop
+  (bytes : Slice Std.U8) (i : Std.Usize) : Result Bool := do
+  loop
+    (fun i1 => model.skill.is_ascii_hex_loop.body bytes i1)
+    i
+
+/-- [rmcp::model::skill::is_ascii_hex]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 464:0-474:1 -/
+def model.skill.is_ascii_hex (s : Str) : Result Bool := do
+  let bytes ← core.str.Str.as_bytes s
+  model.skill.is_ascii_hex_loop bytes 0#usize
+
+/-- [rmcp::model::skill::push_normalized_part]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 445:0-462:1 -/
+def model.skill.push_normalized_part
+  (normalized : String) (part : Str) : Result String := do
+  let o ← core.str.Str.split_at_checked part 2#usize
+  match o with
+  | none =>
+    let normalized1 ← alloc.string.String.push normalized '%'
+    alloc.string.String.push_str normalized1 part
+  | some p =>
+    let (hex, rest) := p
+    let b ← model.skill.is_ascii_hex hex
+    if b
+    then
+      let r ← core.num.U8.from_str_radix hex 16#u32
+      let byte ←
+        core.result.Result.expect
+          core.num.error.ParseIntError.Insts.CoreFmtDebug r (toStr
+          "two hex digits")
+      let b1 ← model.skill.is_unreserved byte
+      let normalized1 ←
+        if b1
+        then
+          do
+          let c ← Char.Insts.CoreConvertFromU8.from byte
+          alloc.string.String.push normalized c
+        else
+          do
+          let normalized2 ← alloc.string.String.push normalized '%'
+          let s ← alloc.str.Str.to_ascii_uppercase hex
+          let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref s
+          alloc.string.String.push_str normalized2 s1
+      alloc.string.String.push_str normalized1 rest
+    else
+      let normalized1 ← alloc.string.String.push normalized '%'
+      alloc.string.String.push_str normalized1 part
+
+/-- [rmcp::model::skill::normalize_percent_encoding]: loop body 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 436:4-439:5 -/
+@[rust_loop_body]
+def model.skill.normalize_percent_encoding_loop.body
+  (parts : alloc.vec.Vec String) (normalized : String) (i : Std.Usize) :
+  Result (ControlFlow (String × Std.Usize) String)
+  := do
+  let i1 := alloc.vec.Vec.len parts
+  if i < i1
+  then
+    let s ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice String) parts
+        i
+    let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref s
+    let normalized1 ← model.skill.push_normalized_part normalized s1
+    let i2 ← i + 1#usize
+    ok (cont (normalized1, i2))
+  else ok (done normalized)
+
+/-- [rmcp::model::skill::normalize_percent_encoding]: loop 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 436:4-439:5 -/
+@[rust_loop]
+def model.skill.normalize_percent_encoding_loop
+  (normalized : String) (parts : alloc.vec.Vec String) (i : Std.Usize) :
+  Result String
+  := do
+  loop
+    (fun (normalized1, i1) => model.skill.normalize_percent_encoding_loop.body
+      parts normalized1 i1)
+    (normalized, i)
+
+/-- [rmcp::model::skill::normalize_percent_encoding]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 428:0-441:1 -/
+def model.skill.normalize_percent_encoding
+  (value : Str) : Result (alloc.borrow.Cow Str String) := do
+  let encoded ← model.skill.prim.percent_encode_controls value
+  let s ←
+    alloc.borrow.Cow.Insts.CoreOpsDerefDeref.deref
+      Str.Insts.AllocBorrowToOwnedString encoded
+  let o ← model.skill.prim.split_once_percent s
+  match o with
+  | none => ok encoded
+  | some p =>
+    let («prefix», escaped) := p
+    let normalized ← Str.Insts.AllocBorrowToOwnedString.to_owned «prefix»
+    let parts ← model.skill.prim.split_percent escaped
+    let normalized1 ←
+      model.skill.normalize_percent_encoding_loop normalized parts 0#usize
+    ok (alloc.borrow.Cow.Owned normalized1)
+
+/-- [rmcp::model::skill::resolve_segment]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 413:0-423:1 -/
+def model.skill.resolve_segment
+  (resolved : Option (alloc.vec.Vec String)) (segment : Str) :
+  Result (Option (alloc.vec.Vec String))
+  := do
+  let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch resolved
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let b ← Str.Insts.CoreCmpPartialEqStr.eq segment (toStr ".")
+    if b
+    then ok (some val)
+    else
+      let b1 ← Str.Insts.CoreCmpPartialEqStr.eq segment (toStr "..")
+      if b1
+      then
+        let (o, val1) ← alloc.vec.Vec.pop alloc.alloc.Global val
+        let cf1 ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+        match cf1 with
+        | core.ops.control_flow.ControlFlow.Continue _ => ok (some val1)
+        | core.ops.control_flow.ControlFlow.Break residual =>
+          core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+            (alloc.vec.Vec String) residual
+      else
+        let s ← Str.Insts.AllocBorrowToOwnedString.to_owned segment
+        let val1 ← alloc.vec.Vec.push val s
+        ok (some val1)
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+      (alloc.vec.Vec String) residual
+
+/-- [rmcp::model::skill::resolve_segments]: loop body 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 405:4-408:5 -/
+@[rust_loop_body]
+def model.skill.resolve_segments_loop.body
+  (segments : Slice String) (resolved : Option (alloc.vec.Vec String))
+  (i : Std.Usize) :
+  Result (ControlFlow ((Option (alloc.vec.Vec String)) × Std.Usize) (Option
+    (alloc.vec.Vec String)))
+  := do
+  let i1 := Slice.len segments
+  if i < i1
+  then
+    let s ← Slice.index_usize segments i
+    let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref s
+    let resolved1 ← model.skill.resolve_segment resolved s1
+    let i2 ← i + 1#usize
+    ok (cont (resolved1, i2))
+  else ok (done resolved)
+
+/-- [rmcp::model::skill::resolve_segments]: loop 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 405:4-408:5 -/
+@[rust_loop]
+def model.skill.resolve_segments_loop
+  (segments : Slice String) (resolved : Option (alloc.vec.Vec String))
+  (i : Std.Usize) :
+  Result (Option (alloc.vec.Vec String))
+  := do
+  loop
+    (fun (resolved1, i1) => model.skill.resolve_segments_loop.body segments
+      resolved1 i1)
+    (resolved, i)
+
+/-- [rmcp::model::skill::resolve_segments]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 402:0-410:1 -/
+@[reducible]
+def model.skill.resolve_segments
+  (segments : Slice String) : Result (Option (alloc.vec.Vec String)) := do
+  model.skill.resolve_segments_loop segments (some (alloc.vec.Vec.new String))
+    0#usize
+
+/-- [rmcp::model::skill::SKILL_MD]
+    Source: 'crates/rmcp/src/model/skill.rs', lines 342:0-342:38
+    Visibility: public -/
+@[global_simps, irreducible] def model.skill.SKILL_MD : Str := toStr "SKILL.md"
+
+/-- [rmcp::model::skill::manifest_resource_key]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 381:0-399:1 -/
+def model.skill.manifest_resource_key
+  (skill_uri : Str) (resource_uri : Str) : Result (Option String) := do
+  let o ← model.skill.prim.strip_suffix skill_uri model.skill.SKILL_MD
+  let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let o1 ← model.skill.prim.strip_prefix resource_uri val
+    let cf1 ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o1
+    match cf1 with
+    | core.ops.control_flow.ControlFlow.Continue val1 =>
+      let o2 ← model.skill.prim.find_query_or_fragment val1
+      let i ← core.str.Str.len val1
+      let i1 ← lift (core.option.Option.unwrap_or o2 i)
+      let (path, suffix) ← core.str.Str.split_at val1 i1
+      let c ← model.skill.normalize_percent_encoding path
+      let s ←
+        alloc.borrow.Cow.Insts.CoreOpsDerefDeref.deref
+          Str.Insts.AllocBorrowToOwnedString c
+      let segments ← model.skill.prim.split_slash s
+      let (o3, segments1) ← alloc.vec.Vec.pop alloc.alloc.Global segments
+      let cf2 ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o3
+      match cf2 with
+      | core.ops.control_flow.ControlFlow.Continue val2 =>
+        let s1 ← alloc.string.String.as_str val2
+        let b ← Str.Insts.CoreCmpPartialEqStr.eq s1 (toStr "")
+        if b
+        then ok none
+        else
+          let b1 ← Str.Insts.CoreCmpPartialEqStr.eq s1 (toStr ".")
+          if b1
+          then ok none
+          else
+            let b2 ← Str.Insts.CoreCmpPartialEqStr.eq s1 (toStr "..")
+            if b2
+            then ok none
+            else
+              let s2 := alloc.vec.Vec.deref segments1
+              let o4 ← model.skill.resolve_segments s2
+              let cf3 ←
+                core.option.Option.Insts.CoreOpsTry_traitTry.branch o4
+              match cf3 with
+              | core.ops.control_flow.ControlFlow.Continue val3 =>
+                let val4 ← alloc.vec.Vec.push val3 val2
+                let key ← model.skill.prim.join_slash val4
+                let key1 ← alloc.string.String.push_str key suffix
+                ok (some key1)
+              | core.ops.control_flow.ControlFlow.Break residual =>
+                core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+                  String residual
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+          String residual
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+        String residual
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+      String residual
+
+/-- [rmcp::model::skill::is_valid_skill_name]: loop body 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 360:4-378:1 -/
+@[rust_loop_body]
+def model.skill.is_valid_skill_name_loop.body
+  (chars : alloc.vec.Vec Char) (needs_alphanumeric : Bool) (index : Std.Usize)
+  :
+  Result (ControlFlow (Bool × Std.Usize) Bool)
+  := do
+  let i := alloc.vec.Vec.len chars
+  if index < i
+  then
+    let ch ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice Char) chars
+        index
+    if index >= 64#usize
+    then ok (done false)
+    else
+      let gc ← unicode_general_category.category.get_general_category ch
+      match gc with
+      | unicode_general_category.tables.GeneralCategory.ClosePunctuation =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.ConnectorPunctuation =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.Control =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.CurrencySymbol =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.DashPunctuation =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.DecimalNumber =>
+        let index1 ← index + 1#usize
+        ok (cont (false, index1))
+      | unicode_general_category.tables.GeneralCategory.EnclosingMark =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.FinalPunctuation =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.Format =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.InitialPunctuation =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.LetterNumber =>
+        let index1 ← index + 1#usize
+        ok (cont (false, index1))
+      | unicode_general_category.tables.GeneralCategory.LineSeparator =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.LowercaseLetter =>
+        let index1 ← index + 1#usize
+        ok (cont (false, index1))
+      | unicode_general_category.tables.GeneralCategory.MathSymbol =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.ModifierLetter =>
+        let index1 ← index + 1#usize
+        ok (cont (false, index1))
+      | unicode_general_category.tables.GeneralCategory.ModifierSymbol =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.NonspacingMark =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.OpenPunctuation =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.OtherLetter =>
+        let index1 ← index + 1#usize
+        ok (cont (false, index1))
+      | unicode_general_category.tables.GeneralCategory.OtherNumber =>
+        let index1 ← index + 1#usize
+        ok (cont (false, index1))
+      | unicode_general_category.tables.GeneralCategory.OtherPunctuation =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.OtherSymbol =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.ParagraphSeparator =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.PrivateUse =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.SpaceSeparator =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.SpacingMark =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.Surrogate =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.TitlecaseLetter =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.Unassigned =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+      | unicode_general_category.tables.GeneralCategory.UppercaseLetter =>
+        if ch = '-'
+        then
+          if needs_alphanumeric
+          then ok (done false)
+          else let index1 ← index + 1#usize
+               ok (cont (true, index1))
+        else ok (done false)
+  else ok (done (¬ needs_alphanumeric))
+
+/-- [rmcp::model::skill::is_valid_skill_name]: loop 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 360:4-378:1 -/
+@[rust_loop]
+def model.skill.is_valid_skill_name_loop
+  (needs_alphanumeric : Bool) (chars : alloc.vec.Vec Char) (index : Std.Usize)
+  :
+  Result Bool
+  := do
+  loop
+    (fun (needs_alphanumeric1, index1) =>
+      model.skill.is_valid_skill_name_loop.body chars needs_alphanumeric1
+      index1)
+    (needs_alphanumeric, index)
+
+/-- [rmcp::model::skill::is_valid_skill_name]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 356:0-378:1 -/
+def model.skill.is_valid_skill_name («name» : Str) : Result Bool := do
+  let chars ← model.skill.prim.nfkc «name»
+  model.skill.is_valid_skill_name_loop true chars 0#usize
+
+/-- [rmcp::model::skill::skill_name_from_uri]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 345:0-352:1
+    Visibility: public -/
+def model.skill.skill_name_from_uri (uri : Str) : Result (Option Str) := do
+  let o ← model.skill.prim.find_query_or_fragment uri
+  let b := core.option.Option.is_some o
+  if b
+  then ok none
+  else
+    let o1 ← model.skill.prim.strip_suffix uri model.skill.SKILL_MD
+    let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o1
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue val =>
+      let o2 ← model.skill.prim.strip_suffix val (toStr "/")
+      let cf1 ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o2
+      match cf1 with
+      | core.ops.control_flow.ControlFlow.Continue val1 =>
+        let «name» ← model.skill.prim.last_slash_segment val1
+        let b1 ← core.str.Str.is_empty «name»
+        core.bool.Bool.then_some (¬ b1) «name»
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+          Str residual
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+        Str residual
+
+/-- [rmcp::model::skill::{rmcp::model::skill::Skill}::validate]: loop body 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 302:8-308:9
+    Visibility: public -/
+@[rust_loop_body]
+def model.skill.Skill.validate_loop0.body
+  (s : String) (files : alloc.vec.Vec model.skill.SkillResource)
+  (i : Std.Usize) :
+  Result (ControlFlow Std.Usize Bool)
+  := do
+  let i1 := alloc.vec.Vec.len files
+  if i < i1
+  then
+    let sr ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice
+        model.skill.SkillResource) files i
+    let b ← alloc.string.String.Insts.CoreCmpPartialEqString.eq sr.uri s
+    if b
+    then ok (done true)
+    else let i2 ← i + 1#usize
+         ok (cont i2)
+  else ok (done false)
+
+/-- [rmcp::model::skill::{rmcp::model::skill::Skill}::validate]: loop 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 302:8-308:9
+    Visibility: public -/
+@[rust_loop]
+def model.skill.Skill.validate_loop0
+  (s : String) (files : alloc.vec.Vec model.skill.SkillResource)
+  (i : Std.Usize) :
+  Result Bool
+  := do
+  loop
+    (fun i1 => model.skill.Skill.validate_loop0.body s files i1)
+    i
+
+/-- [rmcp::model::skill::{rmcp::model::skill::Skill}::validate]: loop body 1:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 315:8-336:9
+    Visibility: public -/
+@[rust_loop_body]
+def model.skill.Skill.validate_loop1.body
+  (s : String) (files : alloc.vec.Vec model.skill.SkillResource)
+  (seen : std.collections.hash.set.HashSet String std.hash.random.RandomState
+  alloc.alloc.Global) (i : Std.Usize) :
+  Result (ControlFlow ((std.collections.hash.set.HashSet String
+    std.hash.random.RandomState alloc.alloc.Global) × Std.Usize)
+    (core.result.Result Unit model.skill.SkillValidationError))
+  := do
+  let i1 := alloc.vec.Vec.len files
+  if i < i1
+  then
+    let file ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice
+        model.skill.SkillResource) files i
+    let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref s
+    let s2 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref file.uri
+    let o ← model.skill.manifest_resource_key s1 s2
+    match o with
+    | none =>
+      let s3 ← alloc.string.String.Insts.CoreCloneClone.clone file.uri
+      let s4 ← alloc.string.String.Insts.CoreCloneClone.clone s
+      ok (done (core.result.Result.Err
+        (model.skill.SkillValidationError.ResourceOutsideSkill s3 s4)))
+    | some key =>
+      let (b, seen1) ←
+        std.collections.hash.set.HashSet.insert
+          alloc.string.String.Insts.CoreCmpEq
+          alloc.string.String.Insts.CoreHashHash
+          std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+          seen key
+      if b
+      then
+        let s3 ←
+          alloc.string.String.Insts.CoreOpsDerefDerefStr.deref file.digest
+        let b1 ← model.skill.is_sha256_digest s3
+        if b1
+        then let i2 ← i + 1#usize
+             ok (cont (seen1, i2))
+        else
+          let s4 ← alloc.string.String.Insts.CoreCloneClone.clone file.uri
+          let s5 ← alloc.string.String.Insts.CoreCloneClone.clone file.digest
+          ok (done (core.result.Result.Err
+            (model.skill.SkillValidationError.MalformedDigest s4 s5)))
+      else
+        let s3 ← alloc.string.String.Insts.CoreCloneClone.clone file.uri
+        ok (done (core.result.Result.Err
+          (model.skill.SkillValidationError.DuplicateResource s3)))
+  else ok (done (core.result.Result.Ok ()))
+
+/-- [rmcp::model::skill::{rmcp::model::skill::Skill}::validate]: loop 1:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 315:8-336:9
+    Visibility: public -/
+@[rust_loop]
+def model.skill.Skill.validate_loop1
+  (s : String) (files : alloc.vec.Vec model.skill.SkillResource)
+  (seen : std.collections.hash.set.HashSet String std.hash.random.RandomState
+  alloc.alloc.Global) (i : Std.Usize) :
+  Result (core.result.Result Unit model.skill.SkillValidationError)
+  := do
+  loop
+    (fun (seen1, i1) => model.skill.Skill.validate_loop1.body s files seen1 i1)
+    (seen, i)
+
+/-- [rmcp::model::skill::{rmcp::model::skill::Skill}::validate]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 279:4-338:5
+    Visibility: public -/
+def model.skill.Skill.validate
+  (self : model.skill.Skill) :
+  Result (core.result.Result Unit model.skill.SkillValidationError)
+  := do
+  let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref self.uri
+  let o ← model.skill.skill_name_from_uri s
+  match o with
+  | none =>
+    let s1 ← alloc.string.String.Insts.CoreCloneClone.clone self.uri
+    ok (core.result.Result.Err (model.skill.SkillValidationError.UriNotSkillMd
+      s1))
+  | some encoded_name =>
+    let «name» ← model.skill.Skill.name self
+    let b ← model.skill.is_valid_skill_name «name»
+    if b
+    then
+      let o1 ← model.skill.prim.percent_decode_utf8 encoded_name
+      let names_match ←
+        match o1 with
+        | none => ok false
+        | some segment =>
+          do
+          let s1 ←
+            alloc.string.String.Insts.CoreOpsDerefDerefStr.deref segment
+          let v ← model.skill.prim.nfkc s1
+          let v1 ← model.skill.prim.nfkc «name»
+          alloc.vec.partial_eq.PartialEqVec.eq Char.Insts.CoreCmpPartialEqChar
+            v v1
+      if names_match
+      then
+        match self.resources with
+        | model.skill.SkillResources.Files files =>
+          let listed ←
+            model.skill.Skill.validate_loop0 self.uri files 0#usize
+          if listed
+          then
+            let i := alloc.vec.Vec.len files
+            let seen ←
+              std.collections.hash.set.HashSetTRandomStateGlobal.with_capacity
+                String i
+            model.skill.Skill.validate_loop1 self.uri files seen 0#usize
+          else
+            let s1 ← alloc.string.String.Insts.CoreCloneClone.clone self.uri
+            ok (core.result.Result.Err
+              (model.skill.SkillValidationError.MissingSkillMd s1))
+        | model.skill.SkillResources.Dynamic => ok (core.result.Result.Ok ())
+      else
+        let s1 ← alloc.string.String.Insts.CoreCloneClone.clone self.uri
+        let s2 ←
+          alloc.string.String.Insts.CoreCloneClone.clone self.frontmatter.name
+        ok (core.result.Result.Err
+          (model.skill.SkillValidationError.NameMismatch s1 s2))
+    else
+      let s1 ← Str.Insts.AllocBorrowToOwnedString.to_owned «name»
+      ok (core.result.Result.Err (model.skill.SkillValidationError.InvalidName
+        s1))
+
+/-- [rmcp::model::skill::validate_skills]: loop body 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 490:4-497:1
+    Visibility: public -/
+@[rust_loop_body]
+def model.skill.validate_skills_loop.body
+  (iter : core.slice.iter.Iter model.skill.Skill)
+  (seen : std.collections.hash.set.HashSet String std.hash.random.RandomState
+  alloc.alloc.Global) :
+  Result (ControlFlow ((core.slice.iter.Iter model.skill.Skill) ×
+    (std.collections.hash.set.HashSet String std.hash.random.RandomState
+    alloc.alloc.Global)) (core.result.Result Unit
+    model.skill.SkillValidationError))
+  := do
+  let (o, iter1) ← core.slice.iter.IteratorSliceIter.next iter
+  match o with
+  | none => ok (done (core.result.Result.Ok ()))
+  | some skill =>
+    let r ← model.skill.Skill.validate skill
+    let cf ← core.result.Result.Insts.CoreOpsTry.branch r
+    match cf with
+    | core.ops.control_flow.ControlFlow.Continue _ =>
+      let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref skill.uri
+      let c ← model.skill.normalize_percent_encoding s
+      let s1 ←
+        alloc.borrow.Cow.into_owned Str.Insts.AllocBorrowToOwnedString c
+      let (b, seen1) ←
+        std.collections.hash.set.HashSet.insert
+          alloc.string.String.Insts.CoreCmpEq
+          alloc.string.String.Insts.CoreHashHash
+          std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher
+          seen s1
+      if b
+      then ok (cont (iter1, seen1))
+      else
+        let s2 ← alloc.string.String.Insts.CoreCloneClone.clone skill.uri
+        ok (done (core.result.Result.Err
+          (model.skill.SkillValidationError.DuplicateSkill s2)))
+    | core.ops.control_flow.ControlFlow.Break residual =>
+      let r1 ←
+        core.result.Result.Insts.CoreOpsTry_traitFromResidualResult.from_residual
+          Unit (core.convert.FromSame model.skill.SkillValidationError)
+          residual
+      ok (done r1)
+
+/-- [rmcp::model::skill::validate_skills]: loop 0:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 490:4-497:1
+    Visibility: public -/
+@[rust_loop]
+def model.skill.validate_skills_loop
+  (iter : core.slice.iter.Iter model.skill.Skill)
+  (seen : std.collections.hash.set.HashSet String std.hash.random.RandomState
+  alloc.alloc.Global) :
+  Result (core.result.Result Unit model.skill.SkillValidationError)
+  := do
+  loop
+    (fun (iter1, seen1) => model.skill.validate_skills_loop.body iter1 seen1)
+    (iter, seen)
+
+/-- [rmcp::model::skill::validate_skills]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 488:0-497:1
+    Visibility: public -/
+def model.skill.validate_skills
+  (skills : Slice model.skill.Skill) :
+  Result (core.result.Result Unit model.skill.SkillValidationError)
+  := do
+  let i := Slice.len skills
+  let seen ←
+    std.collections.hash.set.HashSetTRandomStateGlobal.with_capacity String i
+  let iter ←
+    SharedSlice.Insts.CoreIterTraitsCollectIntoIteratorSharedIter.into_iter
+      skills
+  model.skill.validate_skills_loop iter seen
+
+/-- [rmcp::model::{rmcp::model::ResultType}::COMPLETE]
+    Source: 'crates/rmcp/src/model.rs', lines 1035:4-1035:63
+    Visibility: public -/
+@[global_simps, irreducible]
+def model.ResultType.COMPLETE : model.ResultType :=
+  alloc.borrow.Cow.Borrowed (toStr "complete")
+
+/-- [rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::new]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 552:4-560:5
+    Visibility: public -/
+def model.skill.GetSkillResult.new
+  (skill : model.skill.Skill) : Result model.skill.GetSkillResult := do
+  ok
+    {
+      result_type := (some model.ResultType.COMPLETE),
+      ttl_ms := none,
+      cache_scope := none,
+      skill,
+      «meta» := none
+    }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::with_ttl_ms]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 562:4-565:5
+    Visibility: public -/
+def model.skill.GetSkillResult.with_ttl_ms
+  (self : model.skill.GetSkillResult) (ttl_ms : Std.U64) :
+  Result model.skill.GetSkillResult
+  := do
+  ok { self with ttl_ms := (some ttl_ms) }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::with_cache_scope]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 567:4-570:5
+    Visibility: public -/
+def model.skill.GetSkillResult.with_cache_scope
+  (self : model.skill.GetSkillResult) (cache_scope : model.CacheScope) :
+  Result model.skill.GetSkillResult
+  := do
+  ok { self with cache_scope := (some cache_scope) }
+
+/-- [rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::with_meta]:
+    Source: 'crates/rmcp/src/model/skill.rs', lines 572:4-575:5
+    Visibility: public -/
+def model.skill.GetSkillResult.with_meta
+  (self : model.skill.GetSkillResult) («meta» : model.meta.MetaObject) :
+  Result model.skill.GetSkillResult
+  := do
+  ok { self with «meta» := (some «meta») }
+
 /-- [rmcp::model::task::{rmcp::model::task::TaskStatus}::is_terminal]:
     Source: 'crates/rmcp/src/model/task.rs', lines 38:4-40:5
     Visibility: public -/
@@ -2667,66 +3886,47 @@ def transport.async_rw.is_standard_method (method : Str) : Result Bool := do
   then ok true
   else transport.async_rw.is_standard_notification method
 
-/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]:
-    Source: 'crates/rmcp/src/transport/auth.rs', lines 1343:4-1354:5 -/
-def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4
-  (addr : core.net.ip_addr.Ipv4Addr) : Result Bool := do
-  let octets ← core.net.ip_addr.Ipv4Addr.octets addr
-  let b ← core.net.ip_addr.Ipv4Addr.is_private addr
-  if b
-  then ok true
-  else
-    let b1 ← core.net.ip_addr.Ipv4Addr.is_loopback addr
-    if b1
-    then ok true
-    else
-      let b2 ← core.net.ip_addr.Ipv4Addr.is_link_local addr
-      if b2
-      then ok true
-      else
-        let b3 ← core.net.ip_addr.Ipv4Addr.is_broadcast addr
-        if b3
-        then ok true
-        else
-          let b4 ← core.net.ip_addr.Ipv4Addr.is_unspecified addr
-          if b4
-          then ok true
-          else
-            let b5 ← core.net.ip_addr.Ipv4Addr.is_multicast addr
-            if b5
-            then ok true
-            else
-              let i ← Array.index_usize octets 0#usize
-              if i = 0#u8
-              then ok true
-              else
-                if i = 100#u8
-                then
-                  let ri ← core.ops.range.RangeInclusive.new 64#u8 127#u8
-                  let i1 ← Array.index_usize octets 1#usize
-                  let b6 ←
-                    core.ops.range.RangeInclusive.contains
-                      core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
-                      core.cmp.PartialOrdU8 ri i1
-                  if b6
-                  then ok true
-                  else
-                    if i = 198#u8
-                    then
-                      match i1 with
-                      | 18#uscalar => ok true
-                      | 19#uscalar => ok true
-                      | _ => ok false
-                    else ok false
-                else
-                  if i = 198#u8
-                  then
-                    let i1 ← Array.index_usize octets 1#usize
-                    match i1 with
-                    | 18#uscalar => ok true
-                    | 19#uscalar => ok true
-                    | _ => ok false
-                  else ok false
+/-- [rmcp::transport::auth::metadata_resolver::{impl core::clone::Clone for rmcp::transport::auth::metadata_resolver::AddressClass}::clone]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 33:16-33:21
+    Visibility: public -/
+def transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone.clone
+  (self : transport.auth.metadata_resolver.AddressClass) :
+  Result transport.auth.metadata_resolver.AddressClass
+  := do
+  ok self
+
+/-- Trait implementation: [rmcp::transport::auth::metadata_resolver::{impl core::clone::Clone for rmcp::transport::auth::metadata_resolver::AddressClass}]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 33:16-33:21 -/
+@[reducible]
+def transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone :
+  core.clone.Clone transport.auth.metadata_resolver.AddressClass := {
+  clone :=
+    transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone.clone
+}
+
+/-- [rmcp::transport::auth::metadata_resolver::{impl core::cmp::PartialEq<rmcp::transport::auth::metadata_resolver::AddressClass> for rmcp::transport::auth::metadata_resolver::AddressClass}::eq]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 33:29-33:38
+    Visibility: public -/
+def
+  transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass.eq
+  (self : transport.auth.metadata_resolver.AddressClass)
+  (other : transport.auth.metadata_resolver.AddressClass) :
+  Result Bool
+  := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  ok (self1 = other1)
+
+/-- Trait implementation: [rmcp::transport::auth::metadata_resolver::{impl core::cmp::PartialEq<rmcp::transport::auth::metadata_resolver::AddressClass> for rmcp::transport::auth::metadata_resolver::AddressClass}]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 33:29-33:38 -/
+@[reducible]
+def
+  transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+  : core.cmp.PartialEq transport.auth.metadata_resolver.AddressClass
+  transport.auth.metadata_resolver.AddressClass := {
+  eq :=
+    transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass.eq
+}
 
 /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::embedded_ipv4]:
     Source: 'crates/rmcp/src/transport/auth.rs', lines 1359:4-1368:5 -/
@@ -2825,6 +4025,67 @@ def transport.auth.AuthorizationManager.embedded_ipv4
     ok (some ia)
   | _ => ok none
 
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1343:4-1354:5 -/
+def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4
+  (addr : core.net.ip_addr.Ipv4Addr) : Result Bool := do
+  let octets ← core.net.ip_addr.Ipv4Addr.octets addr
+  let b ← core.net.ip_addr.Ipv4Addr.is_private addr
+  if b
+  then ok true
+  else
+    let b1 ← core.net.ip_addr.Ipv4Addr.is_loopback addr
+    if b1
+    then ok true
+    else
+      let b2 ← core.net.ip_addr.Ipv4Addr.is_link_local addr
+      if b2
+      then ok true
+      else
+        let b3 ← core.net.ip_addr.Ipv4Addr.is_broadcast addr
+        if b3
+        then ok true
+        else
+          let b4 ← core.net.ip_addr.Ipv4Addr.is_unspecified addr
+          if b4
+          then ok true
+          else
+            let b5 ← core.net.ip_addr.Ipv4Addr.is_multicast addr
+            if b5
+            then ok true
+            else
+              let i ← Array.index_usize octets 0#usize
+              if i = 0#u8
+              then ok true
+              else
+                if i = 100#u8
+                then
+                  let ri ← core.ops.range.RangeInclusive.new 64#u8 127#u8
+                  let i1 ← Array.index_usize octets 1#usize
+                  let b6 ←
+                    core.ops.range.RangeInclusive.contains
+                      core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
+                      core.cmp.PartialOrdU8 ri i1
+                  if b6
+                  then ok true
+                  else
+                    if i = 198#u8
+                    then
+                      match i1 with
+                      | 18#uscalar => ok true
+                      | 19#uscalar => ok true
+                      | _ => ok false
+                    else ok false
+                else
+                  if i = 198#u8
+                  then
+                    let i1 ← Array.index_usize octets 1#usize
+                    match i1 with
+                    | 18#uscalar => ok true
+                    | 19#uscalar => ok true
+                    | _ => ok false
+                  else ok false
+
 /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv6]:
     Source: 'crates/rmcp/src/transport/auth.rs', lines 1370:4-1383:5 -/
 def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6
@@ -2872,6 +4133,440 @@ def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6
                   (Array.make 3#usize [ 100#u16, 65435#u16, 1#u16 ])
   | some embedded =>
     transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4 embedded
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::AddressClass}::of]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 42:4-74:5 -/
+def transport.auth.metadata_resolver.AddressClass.of
+  (addr : core.net.ip_addr.IpAddr) :
+  Result transport.auth.metadata_resolver.AddressClass
+  := do
+  let addr1 ←
+    match addr with
+    | core.net.ip_addr.IpAddr.V4 _ => ok addr
+    | core.net.ip_addr.IpAddr.V6 v6 =>
+      do
+      let o ← transport.auth.AuthorizationManager.embedded_ipv4 v6
+      core.option.Option.map_or
+        P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr o addr
+        (core.net.ip_addr.IpAddr.V4.constructor)
+  match addr1 with
+  | core.net.ip_addr.IpAddr.V4 v4 =>
+    let octets ← core.net.ip_addr.Ipv4Addr.octets v4
+    let b ←
+      transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4 v4
+    if b
+    then
+      let b1 ← core.net.ip_addr.Ipv4Addr.is_loopback v4
+      if b1
+      then ok transport.auth.metadata_resolver.AddressClass.Loopback
+      else
+        let b2 ← core.net.ip_addr.Ipv4Addr.is_private v4
+        if b2
+        then ok transport.auth.metadata_resolver.AddressClass.Private
+        else
+          let i ← Array.index_usize octets 0#usize
+          if i = 100#u8
+          then
+            let ri ← core.ops.range.RangeInclusive.new 64#u8 127#u8
+            let i1 ← Array.index_usize octets 1#usize
+            let b3 ←
+              core.ops.range.RangeInclusive.contains core.cmp.PartialOrdU8
+                core.cmp.PartialOrdU8 core.cmp.PartialOrdU8 ri i1
+            if b3
+            then ok transport.auth.metadata_resolver.AddressClass.Private
+            else ok transport.auth.metadata_resolver.AddressClass.Blocked
+          else ok transport.auth.metadata_resolver.AddressClass.Blocked
+    else ok transport.auth.metadata_resolver.AddressClass.Public
+  | core.net.ip_addr.IpAddr.V6 v6 =>
+    let b ←
+      transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6 v6
+    if b
+    then
+      let b1 ← core.net.ip_addr.Ipv6Addr.is_loopback v6
+      if b1
+      then ok transport.auth.metadata_resolver.AddressClass.Loopback
+      else
+        let a ← core.net.ip_addr.Ipv6Addr.segments v6
+        let i ← Array.index_usize a 0#usize
+        let i1 ← lift (i &&& 65024#u16)
+        if i1 = 64512#u16
+        then ok transport.auth.metadata_resolver.AddressClass.Private
+        else ok transport.auth.metadata_resolver.AddressClass.Blocked
+    else ok transport.auth.metadata_resolver.AddressClass.Public
+
+/-- [rmcp::transport::auth::metadata_resolver::normalize_host]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 255:0-257:1 -/
+def transport.auth.metadata_resolver.normalize_host
+  (host : Str) : Result String := do
+  let s ← transport.auth.metadata_resolver.prim.trim_end_dots host
+  alloc.str.Str.to_ascii_lowercase s
+
+/-- [rmcp::transport::auth::metadata_resolver::proxy_host::{impl core::ops::function::FnOnce<(&'_0 str,), alloc::string::String> for rmcp::transport::auth::metadata_resolver::proxy_host::{closure}<'_0>}::call_once]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 244:13-244:40 -/
+def
+  transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString.call_once
+  (c : transport.auth.metadata_resolver.proxy_host.closure) (tupled_args : Str)
+  :
+  Result String
+  := do
+  transport.auth.metadata_resolver.normalize_host tupled_args
+
+/-- Trait implementation: [rmcp::transport::auth::metadata_resolver::proxy_host::{impl core::ops::function::FnOnce<(&'_0 str,), alloc::string::String> for rmcp::transport::auth::metadata_resolver::proxy_host::{closure}<'_0>}]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 244:13-244:40 -/
+@[reducible]
+def
+  transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString
+  : core.ops.function.FnOnce
+  transport.auth.metadata_resolver.proxy_host.closure Str String := {
+  call_once :=
+    transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString.call_once
+}
+
+/-- [rmcp::transport::auth::metadata_resolver::proxy_host]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 233:0-245:1 -/
+def transport.auth.metadata_resolver.proxy_host
+  (proxy : String) : Result (Option String) := do
+  let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref proxy
+  let b ← transport.auth.metadata_resolver.prim.contains s (toStr "://")
+  let proxy1 ←
+    if b
+    then ok proxy
+    else
+      do
+      let with_scheme ←
+        Str.Insts.AllocBorrowToOwnedString.to_owned (toStr "http://")
+      alloc.string.String.push_str with_scheme s
+  let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref proxy1
+  let r ← url.Url.parse s1
+  let o ← core.result.Result.ok r
+  let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let o1 ← url.Url.host_str val
+    core.option.Option.map
+      transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString
+      o1 ()
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+      String residual
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts]: loop body 0:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 142:8-146:9 -/
+@[rust_loop_body]
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop.body
+  {T0 : Type _} {Clause0_IntoIter : Type _}
+  (coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T0 String Clause0_IntoIter)
+  (iter : Clause0_IntoIter) (unfiltered_hosts : alloc.vec.Vec String) :
+  Result (ControlFlow (Clause0_IntoIter × (alloc.vec.Vec String))
+    (alloc.vec.Vec String))
+  := do
+  let (o, iter1) ←
+    coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst.iteratorInst.next
+      iter
+  match o with
+  | none => ok (done unfiltered_hosts)
+  | some proxy =>
+    let o1 ← transport.auth.metadata_resolver.proxy_host proxy
+    match o1 with
+    | none => ok (cont (iter1, unfiltered_hosts))
+    | some host =>
+      let unfiltered_hosts1 ← alloc.vec.Vec.push unfiltered_hosts host
+      ok (cont (iter1, unfiltered_hosts1))
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts]: loop 0:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 142:8-146:9 -/
+@[rust_loop]
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop
+  {T0 : Type _} {Clause0_IntoIter : Type _}
+  (coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T0 String Clause0_IntoIter)
+  (iter : Clause0_IntoIter) (unfiltered_hosts : alloc.vec.Vec String) :
+  Result (alloc.vec.Vec String)
+  := do
+  loop
+    (fun (iter1, unfiltered_hosts1) =>
+      transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop.body
+      coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst iter1
+      unfiltered_hosts1)
+    (iter, unfiltered_hosts)
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 140:4-149:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts
+  {T0 : Type _} {Clause0_IntoIter : Type _}
+  (coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T0 String Clause0_IntoIter)
+  (self : transport.auth.metadata_resolver.MetadataAddressResolver)
+  (proxies : T0) :
+  Result transport.auth.metadata_resolver.MetadataAddressResolver
+  := do
+  let s ←
+    alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global
+      self.unfiltered_hosts
+  let unfiltered_hosts ←
+    alloc.slice.Slice.to_vec alloc.string.String.Insts.CoreCloneClone s
+  let iter ←
+    coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst.into_iter
+      proxies
+  let unfiltered_hosts1 ←
+    transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop
+      coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst iter
+      unfiltered_hosts
+  let a ←
+    core.convert.IntoFrom.into (alloc.sync.ArcSlice.Insts.CoreConvertFromVec
+      String alloc.alloc.Global.Insts.CoreAllocAllocatorClone)
+      unfiltered_hosts1
+  ok { self with unfiltered_hosts := a }
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_loopback_metadata_host]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1401:4-1410:5 -/
+def transport.auth.AuthorizationManager.is_loopback_metadata_host
+  (host : url.host.Host Str) : Result Bool := do
+  match host with
+  | url.host.Host.Domain domain =>
+    let s ← transport.auth.metadata_resolver.prim.trim_end_dots domain
+    let domain1 ← alloc.str.Str.to_ascii_lowercase s
+    let b ←
+      alloc.string.String.Insts.CoreCmpPartialEqShared0Str.eq domain1 (toStr
+        "localhost")
+    if b
+    then ok true
+    else
+      let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref domain1
+      transport.auth.metadata_resolver.prim.ends_with s1 (toStr ".localhost")
+  | url.host.Host.Ipv4 addr => core.net.ip_addr.Ipv4Addr.is_loopback addr
+  | url.host.Host.Ipv6 addr => core.net.ip_addr.Ipv6Addr.is_loopback addr
+
+/-- [rmcp::transport::auth::metadata_resolver::literal_ip]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 247:0-253:1 -/
+def transport.auth.metadata_resolver.literal_ip
+  (target : url.Url) : Result (Option core.net.ip_addr.IpAddr) := do
+  let o ← url.Url.host target
+  let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    match val with
+    | url.host.Host.Domain _ => ok none
+    | url.host.Host.Ipv4 v4 => ok (some (core.net.ip_addr.IpAddr.V4 v4))
+    | url.host.Host.Ipv6 v6 => ok (some (core.net.ip_addr.IpAddr.V6 v6))
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+      core.net.ip_addr.IpAddr residual
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_base_url]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 114:4-136:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.with_base_url
+  (base_url : url.Url) (lookup : transport.auth.metadata_resolver.Lookup) :
+  Result transport.auth.metadata_resolver.MetadataAddressResolver
+  := do
+  let base_ip ← transport.auth.metadata_resolver.literal_ip base_url
+  let o ← url.Url.host base_url
+  let base_classes ←
+    match o with
+    | none =>
+      ok (alloc.vec.Vec.new transport.auth.metadata_resolver.AddressClass)
+    | some host =>
+      match host with
+      | url.host.Host.Domain _ =>
+        do
+        let b ←
+          transport.auth.AuthorizationManager.is_loopback_metadata_host host
+        if b
+        then
+          let y ←
+            lift (Std.Array.to_slice
+              (Array.make 1#usize [
+                 transport.auth.metadata_resolver.AddressClass.Loopback
+                 ] : Array transport.auth.metadata_resolver.AddressClass
+              1#usize))
+          ok (alloc.slice.Slice.into_vec y)
+        else
+          ok (alloc.vec.Vec.new transport.auth.metadata_resolver.AddressClass)
+      | url.host.Host.Ipv4 v4 =>
+        do
+        let ac ←
+          transport.auth.metadata_resolver.AddressClass.of
+            (core.net.ip_addr.IpAddr.V4 v4)
+        let y ←
+          lift (Std.Array.to_slice (Array.make 1#usize [ ac ] : Array
+            transport.auth.metadata_resolver.AddressClass 1#usize))
+        ok (alloc.slice.Slice.into_vec y)
+      | url.host.Host.Ipv6 v6 =>
+        do
+        let ac ←
+          transport.auth.metadata_resolver.AddressClass.of
+            (core.net.ip_addr.IpAddr.V6 v6)
+        let y ←
+          lift (Std.Array.to_slice (Array.make 1#usize [ ac ] : Array
+            transport.auth.metadata_resolver.AddressClass 1#usize))
+        ok (alloc.slice.Slice.into_vec y)
+  let a ←
+    core.convert.IntoFrom.into (alloc.sync.ArcSlice.Insts.CoreConvertFromVec
+      String alloc.alloc.Global.Insts.CoreAllocAllocatorClone)
+      (alloc.vec.Vec.new String)
+  let a1 ←
+    core.convert.IntoFrom.into (alloc.sync.ArcSlice.Insts.CoreConvertFromVec
+      transport.auth.metadata_resolver.AddressClass
+      alloc.alloc.Global.Insts.CoreAllocAllocatorClone) base_classes
+  ok { base_ip, unfiltered_hosts := a, base_classes := a1, lookup }
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::new]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 105:4-108:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.new
+  (base_url : url.Url) :
+  Result transport.auth.metadata_resolver.MetadataAddressResolver
+  := do
+  let l ← transport.auth.metadata_resolver.prim.system_lookup
+  let mar ←
+    transport.auth.metadata_resolver.MetadataAddressResolver.with_base_url
+      base_url l
+  let v ← transport.auth.metadata_resolver.prim.proxy_env_values
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts
+    (core.iter.traits.collect.IntoIteratorVec String) mar v
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowing_private_addresses]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 152:4-159:5 -/
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowing_private_addresses
+  (self : transport.auth.metadata_resolver.MetadataAddressResolver) :
+  Result transport.auth.metadata_resolver.MetadataAddressResolver
+  := do
+  let s ←
+    alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global
+      self.base_classes
+  let b ←
+    core.slice.Slice.contains
+      transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+      s transport.auth.metadata_resolver.AddressClass.Private
+  if b
+  then ok self
+  else
+    let base_classes ←
+      alloc.slice.Slice.to_vec
+        transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone s
+    let base_classes1 ←
+      alloc.vec.Vec.push base_classes
+        transport.auth.metadata_resolver.AddressClass.Private
+    let a ←
+      core.convert.IntoFrom.into (alloc.sync.ArcSlice.Insts.CoreConvertFromVec
+        transport.auth.metadata_resolver.AddressClass
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone) base_classes1
+    ok { self with base_classes := a }
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::is_allowed]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 179:4-185:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.is_allowed
+  («class» : transport.auth.metadata_resolver.AddressClass)
+  (base_classes : Slice transport.auth.metadata_resolver.AddressClass) :
+  Result Bool
+  := do
+  match «class» with
+  | transport.auth.metadata_resolver.AddressClass.Public => ok true
+  | transport.auth.metadata_resolver.AddressClass.Loopback =>
+    core.slice.Slice.contains
+      transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+      base_classes transport.auth.metadata_resolver.AddressClass.Loopback
+  | transport.auth.metadata_resolver.AddressClass.Private =>
+    core.slice.Slice.contains
+      transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+      base_classes transport.auth.metadata_resolver.AddressClass.Private
+  | transport.auth.metadata_resolver.AddressClass.Blocked => ok false
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allows_url]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 163:4-171:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.allows_url
+  (self : transport.auth.metadata_resolver.MetadataAddressResolver)
+  (target : url.Url) :
+  Result Bool
+  := do
+  let o ← transport.auth.metadata_resolver.literal_ip target
+  match o with
+  | none => ok true
+  | some ip =>
+    let b ←
+      core.option.Option.Insts.CoreCmpPartialEqOption.eq
+        core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr self.base_ip o
+    if b
+    then ok true
+    else
+      let ac ← transport.auth.metadata_resolver.AddressClass.of ip
+      let s ←
+        alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global
+          self.base_classes
+      transport.auth.metadata_resolver.MetadataAddressResolver.is_allowed ac s
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses]: loop body 0:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 220:8-224:9 -/
+@[rust_loop_body]
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop.body
+  (a : alloc.sync.Arc (Slice transport.auth.metadata_resolver.AddressClass))
+  (iter : alloc.vec.into_iter.IntoIter core.net.socket_addr.SocketAddr)
+  (allowed : alloc.vec.Vec core.net.socket_addr.SocketAddr) :
+  Result (ControlFlow ((alloc.vec.into_iter.IntoIter
+    core.net.socket_addr.SocketAddr) × (alloc.vec.Vec
+    core.net.socket_addr.SocketAddr)) (alloc.vec.Vec
+    core.net.socket_addr.SocketAddr))
+  := do
+  let (o, iter1) ← alloc.vec.into_iter.IteratorIntoIter.next iter
+  match o with
+  | none => ok (done allowed)
+  | some addr =>
+    let ia ← core.net.socket_addr.SocketAddr.ip addr
+    let ac ← transport.auth.metadata_resolver.AddressClass.of ia
+    let s ← alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global a
+    let b ←
+      transport.auth.metadata_resolver.MetadataAddressResolver.is_allowed ac s
+    if b
+    then
+      let allowed1 ← alloc.vec.Vec.push allowed addr
+      ok (cont (iter1, allowed1))
+    else ok (cont (iter1, allowed))
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses]: loop 0:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 220:8-224:9 -/
+@[rust_loop]
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop
+  (iter : alloc.vec.into_iter.IntoIter core.net.socket_addr.SocketAddr)
+  (a : alloc.sync.Arc (Slice transport.auth.metadata_resolver.AddressClass))
+  (allowed : alloc.vec.Vec core.net.socket_addr.SocketAddr) :
+  Result (alloc.vec.Vec core.net.socket_addr.SocketAddr)
+  := do
+  loop
+    (fun (iter1, allowed1) =>
+      transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop.body
+      a iter1 allowed1)
+    (iter, allowed)
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 210:4-229:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses
+  (self : transport.auth.metadata_resolver.MetadataAddressResolver)
+  (host : String) (resolved : alloc.vec.Vec core.net.socket_addr.SocketAddr) :
+  Result (Option (alloc.vec.Vec core.net.socket_addr.SocketAddr))
+  := do
+  let s ←
+    alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global
+      self.unfiltered_hosts
+  let b ←
+    core.slice.Slice.contains alloc.string.String.Insts.CoreCmpPartialEqString
+      s host
+  if b
+  then ok (some resolved)
+  else
+    let iter ← alloc.vec.IntoIteratorVec.into_iter resolved
+    let allowed ←
+      transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop
+        iter self.base_classes (alloc.vec.Vec.new
+        core.net.socket_addr.SocketAddr)
+    let b1 ← alloc.vec.Vec.is_empty allowed
+    if b1
+    then ok none
+    else ok (some allowed)
 
 /-- [rmcp::transport::common::client_side_sse::{rmcp::transport::common::client_side_sse::SseEventSizeLimiter}::check_limit]:
     Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 90:4-96:5 -/

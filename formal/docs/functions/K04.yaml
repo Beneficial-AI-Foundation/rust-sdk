@@ -1,0 +1,28 @@
+id: K04
+rust_symbol: rmcp::model::skill::SkillResource::new
+source_file: crates/rmcp/src/model/skill.rs  # upstream 7caec76, unmodified; this function is translated from the unmodified source (translation patch 04 does not change it or anything it calls)
+source_line: 76  # at 7caec76
+generated_symbol: rmcp.model.skill.SkillResource.new
+translation: LEAN_OK  # translates since 2026-11-25 (Charon start_from entry with the patch-04 configuration; translation stage signed off by the spec owner 2026-11-25)
+spec: REVIEWED  # signed off by the spec owner 2026-11-25 after 3 review rounds (public skill.rs API, K01-K20)
+linkage: ORIGINAL  # pending S22 CI: scripts/check-original-linkage.sh passes locally (2026-11-25, scratch clone of b363a8a with the working tree committed, blocks identical up to Source:); not yet in CI
+proof: CHECKED  # proved 2026-11-25 (51/51 statements of the K01-K20 cycle); each proved statement checked rfl-equal to the signed-off text; phase-C refined (no flexible tactic); two independent proof reviews by mcp-review agents (sound; ready)
+proof_file: formal/proofs/Proofs/Model/Skill/Basic.lean
+spec_file: formal/specs/Specs/Model/Skill.lean
+theorem: rmcp.model.skill.SkillResource.new_spec  # restated as Theorems.skill.SkillResource.new
+used_by: []
+axioms: [propext, Classical.choice, Quot.sound]  # `#print axioms` of the proof theorem (2026-11-25); confirmed by the #guard_msgs check in formal/specs/Specs/Model/Skill.lean
+evidence: [formal/docs/STATUS.md]
+spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # mcp-spec drafter; draft formal/specs/Drafts/Skill.lean, removed at incorporation; restated in formal/specs/Specs/Model/Skill.lean (spec cycle K01-K20, 2026-11-25)
+spec_reviews:
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: "no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: "no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: a, verdict: "ready for sign-off", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: b, verdict: "ready for sign-off", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: a, verdict: "ready for sign-off (a cosmetic fix applied after the round)", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: b, verdict: "ready for sign-off (a cosmetic fix applied after the round)", evidence: formal/docs/STATUS.md}
+spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-25
+prover: "AI: Claude Code, claude-opus-5-5"  # mcp-lean agents; not the drafter
+reviewer: null
+behaviour: |-  # informational, not a specification
+  the manifest entry with the converted URI and digest and the given size (premise: caller code)

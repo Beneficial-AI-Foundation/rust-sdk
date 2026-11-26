@@ -14,6 +14,48 @@ signed off by the spec owner after 4 review rounds; Lean statements, proofs and
 records incorporated; proofs checked 2026-11-25 (build, guards, independent incorporation review);
 committed `0cbd67f`; accepted by the human owner 2026-11-25 (board SPEC-R09-R15).
 
+**Translation patch 04 and K01–K20 specifications (2026-11-25; signed off by the spec owner
+2026-11-25; committed 061f014 and de7b8de; accepted by the human owner 2026-11-25):** the twenty
+public functions of `crates/rmcp/src/model/skill.rs` (K01–K20) translate, 13 from the unmodified
+source (linkage `ORIGINAL`) and 7 with translation patch 04 (linkage `patch-04`); 51 statements
+signed off after 3 review rounds and proved (51/51); records `functions/K01.yaml`–`K20.yaml`. See
+"Public skill.rs API (K01–K20)" and "Trusted base" (board PATCH04-SKILL, SPEC-K01-K20).
+
+**Translation patch 05 and N01, N03–N11 specifications (2026-11-25/26; specifications signed
+off by the human spec owner 2026-11-26; proved 2026-11-26; committed 1289403 and 459995e; accepted by
+the human owner 2026-11-26):** the address policy of `crates/rmcp/src/transport/auth/metadata_resolver.rs` (N02
+`SystemResolver::resolve` dropped). Translation stage: see "Trusted base" (board
+PATCH05-RESOLVER). Spec cycle (board SPEC-N01-N11): 64 statements (the 64th, the proxy-host theorem of
+S6, added in the final fix round and renamed at sign-off to
+`…_of_new_eq_ok_of_mem_proxyHosts`, name only); readable model
+`formal/proofs/Proofs/Defs/MetadataResolver.lean`, built in the `Proofs` root (lead decision
+2026-11-26, precedent `Proofs.Defs.Net`), as
+is `Proofs.External.MetadataResolver` since the translation stage. Spec rounds 1–5 done, two
+independent reviews each, no counterexample in any round; all 64 statements proved in scratch by
+independent reviewers with the standard axioms only (all 63 of then in round 4; 13 re-proved
+independently in round 5). Human decisions (2026-11-26):
+P1 (extension of rule T4 for `proxyEnvValues`; "Trusted base"), R1 (membership and `∉`
+statements about `r.unfiltered_hosts` count as restatements of P1), R2 (the additive change to
+`Defs/Net.lean` accepted by the A01–A03 spec owner; "Phase 2"), S6 (add the proxy-host
+theorem), T1 (at sign-off: premises that a host is a configured proxy host count as
+restatements of P1; "Trusted base"). Lead decisions ND1–ND5: N03 stated by its equation plus facts about successful calls,
+no success spec (ND1); the N05 UTF-8 premise only for parsed proxies (ND2); the `Vec<String>`
+instance (ND3); exact size premises for the Lean models (ND4); final location
+`formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean` (ND5). The human spec owner
+signed off the 64 statements and the readable model on 2026-11-26. Proved 2026-11-26, 64/64, by
+`mcp-lean` agents (claude-opus-5-5, not the drafter) in
+`formal/proofs/Proofs/Transport/MetadataResolver.lean` (helpers `…/MetadataResolver/Common.lean`; shared lemmas
+`Proofs/External/WP.lean`, `Proofs/External/MetadataResolver.lean`); restated as
+`Theorems.metadata_resolver.*` and `Theorems.auth.AuthorizationManager.is_loopback_metadata_host`
+(and `_fail`) in `formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean` with
+`#guard_msgs` axiom checks: 60 × `[propext, Classical.choice, Quot.sound]`, 4 × `[propext]`; the
+restated statements are kernel-equal to the signed-off statements (64/64); two independent proof
+reviews (no blocking finding); phase C refinement done. Linkage: N01, N08 `ORIGINAL`, the others
+`patch-05`. Records `functions/N01.yaml`, `N03.yaml`–`N11.yaml` (N02 dropped, no record).
+**Committed** 1289403 (translation stage) and 459995e (specs, proofs, records). **Accepted** by the
+human owner 2026-11-26 (board PATCH05-RESOLVER and SPEC-N01-N11 ACCEPTED). Pending: CI (nothing
+pushed).
+
 **Aeneas upgrade (2026-11-24), reviewed and re-signed by the spec owner 2026-11-24:** see "Aeneas upgrade
 (2026-11-24)" below. The results sections below record the state before it (Aeneas
 `nightly-2026.08.20-5d08da4`, 35 native-code axioms); "Trusted base" is updated to the current state.
@@ -252,15 +294,22 @@ human decision H1; the Phase 1 output is byte-identical under it):
 ```
 
 Charon settings: `[package.metadata.charon]` in `crates/rmcp/Cargo.toml` (`start_from`, `exclude`,
-`opaque`), committed (they name `request_state_wire`, which exists only in the patched copy).
-Dependency pins (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`,
-`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`, and since translation patch 03 (2026-11-24,
-signed off) `serde_core 1.0.229`, checked since S21 on rmcp's own edges in the
+`opaque`), committed (they name `request_state_wire`, `rmcp::model::skill::prim` and, since
+translation patch 05, `rmcp::transport::auth::metadata_resolver::{Lookup, prim}`, which exist only
+in the patched copy).
+Dependency pins (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.2`, `base64 0.23.1`, `digest 0.11.3`,
+`zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`, since translation patch 03 (2026-11-24,
+signed off) `serde_core 1.0.229`, and since translation patch 04 (2026-11-25, signed off 2026-11-25)
+`percent-encoding 2.3.2`, `unicode-normalization 0.1.26` and `unicode-general-category 1.1.0`,
+and since translation patch 05 (2026-11-25, accepted 2026-11-26) `url 2.5.9`, checked since S21 on rmcp's own edges in the
 translated configuration (human decision 2026-11-23; other versions used only by other crates,
-e.g. `oauth2`'s `sha2 0.10.9`, are allowed). **One translation patch**,
-`formal/trusted/patches/01-request-state-wire.patch` (D2 fallback, 2026-11-23) (plus the
-test-only patch 02 and, since 2026-11-24 (signed off), translation patch 03
-`03-request-state-public.patch`, see "Trusted base"), and **no hand edit**
+e.g. `oauth2`'s `sha2 0.10.9`, are allowed). **Patches** (`formal/trusted/patches/`, applied in
+file-name order to the copy in `.llbc/work/` only): translation patch
+`01-request-state-wire.patch` (D2 fallback, 2026-11-23), the test-only patch
+`02-phase2-tests.patch`, translation patch `03-request-state-public.patch` (signed off
+2026-11-24), translation patch `04-skill-public.patch` (2026-11-25, signed off by the spec owner
+2026-11-25) and translation patch `05-metadata-resolver.patch` (2026-11-25, accepted by the human owner 2026-11-26); see
+"Trusted base". **No hand edit**
 of the generated files (`formal/translation/` is reproduced byte for byte by the translate script,
 S18). The proofs hold only for this configuration.
 
@@ -482,9 +531,84 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
     `def … := Carrier.type` (abstract, no longer itself `opaque`), with `Nonempty` instances for
     it and for `serde_json::Error`, so that the opaque outcome can be an `Err` (human decision
     2026-11-24). Still never inspected.
-  The total is 7 `opaque` constants (`hmacSha256`, `sipHash13`, `nowMs`, `SerdeJsonValue`,
-  `randomState`, `serdeJsonFromSlice`, `SerdeJsonErrorImplCarrier`). Sources and tests per model:
-  `formal/trusted/evidence/README.md`, "Public `request_state.rs` API externals".
+  With patch 03 the total was 7 `opaque` constants (`hmacSha256`, `sipHash13`, `nowMs`,
+  `SerdeJsonValue`, `randomState`, `serdeJsonFromSlice`, `SerdeJsonErrorImplCarrier`); sources
+  and tests per model: `formal/trusted/evidence/README.md`, "Public `request_state.rs` API
+  externals".
+- **Translation patch 04 models** (2026-11-25, human decisions: targets K01–K20 of `skill.rs`,
+  patch 04 with hunks H1–H9; reviewed in 3 rounds and **signed off by the spec owner 2026-11-25**): in
+  `formal/trusted/Rmcp/FunsExternal.lean` and `TypesExternal.lean`, sections "Public `skill.rs`
+  API", all definitions or structures, no axiom:
+  - **12 `prim` models**, one per one-line wrapper of the private module `skill::prim` that the
+    patch adds (opaque in the translation): `sha256`, `find_query_or_fragment`, `strip_suffix`,
+    `strip_prefix`, `last_slash_segment`, `split_slash`, `join_slash`, `split_once_percent`,
+    `split_percent`, `percent_encode_controls`, `percent_decode_utf8`, `nfkc`;
+  - **28 `core`/`alloc`/`std`/crate models**: `get_general_category`
+    (`unicode-general-category 1.1.0`), array `IntoIterator::into_iter` and `IntoIter::next`,
+    `bool::then_some`, `char: From<u8>`, `char` `PartialEq::eq`, `Iterator::all` (default),
+    `<ParseIntError as Debug>::fmt`, `u8::{is_ascii_alphanumeric, is_ascii_hexdigit,
+    from_str_radix}`, `Option::as_deref`, `Option` `Try::branch` and
+    `FromResidual::from_residual`, `Bytes::all`, `str::{is_empty, split_at_checked, split_at,
+    bytes}`, `HashSet::{with_capacity, insert}`, `Cow::into_owned`, `Cow` `Deref::deref`,
+    `str::to_ascii_uppercase`, `String::as_str`, `Vec::pop`, `serde_json::Map::{new, insert}`;
+  - **4 structures**: `array::IntoIter` (array and alive range), `str::Bytes` (the inner slice
+    iterator), `HashSet` (element list), `serde_json::Map` (the `BTreeMap` entries ascending by
+    key in Rust's `String` order, lead decision 2026-11-25);
+  - helpers in `ExtModel` (listed in the evidence README) and **three `opaque` constants** (no
+    axiom): `ExtModel.sha256` (SHA-256 of `sha2 0.11.2`), `ExtModel.nfkc` (NFKC of
+    `unicode-normalization 0.1.26`), `ExtModel.generalCategory` (the General_Category tables of
+    `unicode-general-category 1.1.0`). Their laws are not stated in `trusted/`; a statement that
+    needs one takes it as a premise (human decision 2026-11-25), under the review rule below.
+    Their placeholder values (32 zero bytes, the identity, `Unassigned`) are what compiled
+    evaluation returns, so evaluating or differentially testing anything that reaches them is
+    meaningless (lead decision 2026-11-25: no compiled replacement).
+  Stated exceptions: `<ParseIntError as Debug>::fmt` is a **total, not exact,** model (lead
+  decision 2026-11-25): `Ok(())` and the formatter unchanged, because `core::fmt::Formatter` is
+  opaque in the Aeneas library, and its only caller is the `expect` of `push_normalized_part`,
+  whose panic path two checked hexadecimal digits never take; the default `Iterator::all` is the
+  `next` loop (an iterator that overrides `try_fold` is not modelled; no generated definition
+  calls it); `HashSet::with_capacity` stores `ExtModel.randomState` (its review rule applies)
+  and does not model hashbrown's capacity-overflow panic (unreachable within the size
+  convention); the patch-induced premises for K13 and K16 (below). Proved spec theorems:
+  `formal/proofs/Proofs/External/Skill.lean`. Sources and tests per model:
+  `formal/trusted/evidence/README.md`, "Skills externals".
+  The total is now **10 `opaque` constants** (`hmacSha256`, `sipHash13`, `nowMs`,
+  `SerdeJsonValue`, `randomState`, `serdeJsonFromSlice`, `SerdeJsonErrorImplCarrier`, `sha256`,
+  `nfkc`, `generalCategory`).
+- **Translation patch 05 models** (2026-11-25, human decisions: targets N01, N03–N11 of
+  `metadata_resolver.rs`, patch 05 with hunks H1–H9 and `prim`; `Url::parse`/`host`/`host_str`
+  opaque functions of an opaque `Url`, no axiom; `proxy_env_values` an opaque constant under the
+  clock rule; accepted by the human owner 2026-11-26): in `formal/trusted/Rmcp/FunsExternal.lean` and
+  `TypesExternal.lean`, sections "`metadata_resolver.rs` address policy", all definitions or
+  structures, no axiom:
+  - **5 `prim` models**, one per function of the module `metadata_resolver::prim` that the patch
+    adds (opaque in the translation): `trim_end_dots`, `ends_with`, `contains` (exact, on bytes),
+    `system_lookup` (`ok systemLookup`), `proxy_env_values` (`ok proxyEnvValues`);
+  - **11 `core`/`alloc`/`url` models**: `<IpAddr as PartialEq>::eq`, `IpAddr::V4` as a function
+    and its `FnOnce::call_once` (typed as used in `Funs.lean`; the template prints the function
+    parameter without parentheses), `SocketAddr::ip`, `Option::map_or`,
+    `str::to_ascii_lowercase`, `<String as PartialEq<&str>>::eq`, `<Arc<[T]> as
+    From<Vec<T>>>::from` (exact), and `url::Url::{parse, host, host_str}` (`ok` of opaque
+    functions of the abstract `Url`; stated assumption: they return and do not panic);
+  - **2 structures** (`SocketAddrV4`, `SocketAddrV6`: the fields of the Rust structs) and **2
+    abstract types** (`url::Url` over `opaque ExtModel.UrlCarrier : Type`; the patch's newtype
+    `Lookup` over `opaque ExtModel.LookupCarrier : NonemptyType`);
+  - helpers `ExtModel.dropTrailingDots` (with `length_dropTrailingDots_le_max`) and
+    `ExtModel.asciiLowercase`, the premise definition `ExtModel.IsUtf8` (the UTF-8 premise of
+    the `url` review rule below), and **five `opaque` constants** (no axiom): `ExtModel.urlParse`,
+    `ExtModel.urlHost`, `ExtModel.urlHostStr` (the URL parser of `url 2.5.9`; laws only as
+    premises), `ExtModel.systemLookup` (noncomputable; only stored) and
+    `ExtModel.proxyEnvValues` (the proxy environment variables; review rule below).
+  Proved spec theorems: `formal/proofs/Proofs/External/MetadataResolver.lean` (one
+  `<generated name>_spec` per external, plus the instance specs `call_once_ip_addr_v4_spec`,
+  `map_or_ip_addr_v4_spec`, `to_ascii_lowercase_spec_of_eq_utf8` and
+  `to_ascii_lowercase_spec_of_isUtf8` (under the UTF-8 premise below), and
+  `to_ascii_lowercase_eq_fail` for the model's non-UTF-8 branch; `call_once_spec` is the
+  equation `call_once f a = f a`, covering failure; `isUtf8_dropTrailingDots` and
+  `isUtf8_map_asciiLowercase`: the two byte maps keep the UTF-8 premise). Sources and tests per
+  model: `formal/trusted/evidence/README.md`, "Address-policy externals". The total is now **17
+  `opaque` constants** (the 10 above and `UrlCarrier`, `LookupCarrier`, `urlParse`, `urlHost`,
+  `urlHostStr`, `systemLookup`, `proxyEnvValues`).
 - **Codec-state hypothesis** (accepted at S12): `Defs/CodecState.lean` defines `CodecValid`
   (keyring clauses; single-key codecs unconstrained; pairwise distinct key ids),
   `CodecFallbacksKnown` (every rs1 fallback id is a key id) and `FallbacksKnown`. It is a
@@ -527,6 +651,188 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   `scripts/aeneas-translate.sh` adds `serde_core 1.0.229` to `PINNED_DEPS`;
   `formal/trusted/translation-pins.txt` is updated to the new `Funs.lean` hash and line of the
   pinned `initialize` word.
+  And (since 2026-11-25, human decisions: targets K01–K20, hunks H1–H9; **reviewed in 3 rounds
+  and signed off by the spec owner 2026-11-25**) translation patch
+  [`formal/trusted/patches/04-skill-public.patch`](../trusted/patches/04-skill-public.patch) on
+  `crates/rmcp/src/model/skill.rs` (no test added or changed): the private module `prim` of
+  twelve one-line wrappers (each the original expression) and hunks H1 `sha256_digest`, H2
+  `Skill::validate`, H3 `skill_name_from_uri`, H4 `is_valid_skill_name`, H5
+  `manifest_resource_key`, H6 `normalize_percent_encoding`, H7 `is_sha256_digest`, H8
+  `validate_skills`, H9 `SkillResource::verify` (the header gives the error each hunk avoids and
+  why the values are unchanged; H4 and H9 are not needed for the translation and are kept by
+  human decision). **Linkage:** 13 targets are ORIGINAL (K01–K04, K08–K12, K17–K20 translate
+  unmodified) and 7 need patch 04 (K05–K07, K13–K16); `scripts/check-original-linkage.sh`
+  checks that the patch-04 targets are absent from the unpatched translation (it drops the seven
+  patch-04 skills start points and the opaque entry `rmcp::model::skill::prim` from the copy's
+  Charon settings, and in its run `scripts/aeneas-translate.sh` fails if one of the ten
+  `PATCH04_TARGETS` is translated from the unmodified source). Recorded runs (2026-11-25, scratch
+  clone of `b363a8a` with this change committed as scratch commit `b3e26c4`): exit 0, all 38
+  ORIGINAL targets defined, blocks identical up to `Source:` (`Funs.lean` 60/60, `Types.lean`
+  40/40, the two External templates 34/34 and 10/10); negative test (scratch commit `a847d99`,
+  `model.skill.Skill.name` added to `PATCH04_TARGETS`): exit 1, "patch-04 target
+  model.skill.Skill.name is translated from the unmodified source" (evidence README, "Linkage of
+  the skills targets"; plan Section 19, amendment 2026-11-25). **Patch-induced premises** (the
+  original would not need them; evidence README): (1) H2 and H4 collect the NFKC form into a
+  `Vec<char>` where the original streams it, adding a capacity-overflow panic for a form above
+  `isize::MAX` bytes (a name above of the order of `isize::MAX / 24` bytes; unreachable in practice), so a
+  K13 statement may take the NFKC length bound of `nfkc_spec` as a premise; (2) `prim::split_slash`
+  and `prim::split_percent` (H5, H6) collect the parts into a `Vec<String>` (24 bytes per
+  element) where the original streams the split (H6) or collects `&str`s (16 bytes, H5), adding a
+  capacity-overflow panic at `24 * parts > isize::MAX`, so K13 and K16 statements may take the
+  premise `hlen : 24 * (splitBytes sep s.val).length ≤ maxStringBytes` of `split_slash_spec` and
+  `split_percent_spec`; unreachable on x86_64, where a `&str` has fewer than 2^57 bytes (57-bit
+  virtual addresses) and 24 · 2^57 < 2^63 − 1 = `isize::MAX`.
+  **Charon and script changes with patch 04** (human decisions 2026-11-25): fifteen `start_from` entries for K01–K20
+  and `rmcp::model::skill::prim` in `opaque` (`crates/rmcp/Cargo.toml`); `PINNED_DEPS` adds
+  `percent-encoding 2.3.2`, `unicode-normalization 0.1.26`, `unicode-general-category 1.1.0`;
+  the two `_` globs `rmcp::model::skill::_::new` (K02, K04, K08, K10, K17) and
+  `rmcp::model::skill::_::with_meta` (K11, K20) are a stated exception to "a `_` glob matches
+  exactly one Rust item": each must match exactly its listed `rust_name`s (`MULTI` in
+  `scripts/aeneas-translate.sh`; plan Section 15, rule 3); `formal/trusted/translation-pins.txt`
+  is updated to the new `Funs.lean`.
+  And (since 2026-11-25, human decisions: targets N01, N03–N11, hunks H1–H9 and `prim`; **under
+  review**) translation patch
+  [`formal/trusted/patches/05-metadata-resolver.patch`](../trusted/patches/05-metadata-resolver.patch)
+  on `crates/rmcp/src/transport/auth/metadata_resolver.rs` and `crates/rmcp/src/transport/auth.rs`
+  (no test added or changed): the module `prim` (five functions, each the original expression)
+  and the newtype `Lookup` (H1), and hunks H2 `with_lookup`/`with_base_url`, H3 `new`, H4
+  `with_proxy_hosts`/`proxy_host`, H5 `allowing_private_addresses`, H6 `resolve`/
+  `allowed_addresses`, H7 parameter renames in `literal_ip`/`allows_url` (Lean name shadowing,
+  not a translation error), H8 `normalize_host`, H9 `is_loopback_metadata_host` (the header gives
+  the error each hunk avoids and why the values are unchanged). Stays unverified: N02
+  `SystemResolver::resolve` (not a target), the async shells of `resolve` and `with_lookup`, the
+  bodies of `prim::system_lookup` and `prim::proxy_env_values`, the derived `Clone` impls and
+  URL parsing. **Linkage:** N01 and N08 ORIGINAL; N03–N07, N09–N11 and the helpers need patch 05
+  (`PATCH05_TARGETS`); recorded runs (evidence README, "Linkage of the address-policy targets"):
+  scratch commit `6f63761` (2026-11-25) and, with the final text scan, scratch commits `64cb2fc`
+  (working tree) and `005e743` (final text scan, before step 5, 2026-11-26; `scripts/aeneas-translate.sh`
+  exit 0 on `64cb2fc` with a clean tree, then the linkage check on `005e743` exit 0: 137
+  translated items, 35 `start_from` patterns, 31 `_` globs, all 40 ORIGINAL targets,
+  blocks identical `Funs.lean` 65/65, `Types.lean` 42/42, templates 37/37 and 10/10; the
+  templates are untracked, so a clone needs the translate step first); negative test (N01 listed
+  as patch-05) exit 1; with the elaborated comparison (step 5, below): scratch commit `2172dd3`
+  (2026-11-26) exit 0, text comparison 65/65, 42/42, 37/37, 10/10, elaborated 520 constants and
+  41 externals of the unmodified-source translation identical, 40 generated instances of
+  committed-only types; scratch commit `960d6ce` (2026-11-26): exit 0, the same counts,
+  `linkage-elab/run.sh` 8/8; after round 6 on scratch commit `c400112` (on `960d6ce`): exit 0,
+  template repair 1 of 1 on each side, the same counts, `linkage-elab/run.sh` 18 cases as
+  expected; final run after round 7 on scratch commit `5bb9384` (on `c400112`): exit 0
+  (`scripts/lean-guard.sh sources` passed inside it), text 65/65, 42/42, 37/37, 10/10,
+  elaborated 520 constants and 41 externals identical, 40 generated instances;
+  `linkage-elab/run.sh` 20 cases all as expected; `linkage-scan/run.sh` 57 rejected.
+  Translation review rounds 1–7 done; human decision 2026-11-26 after round 7: "enforce in
+  script, then sign off (no further review round)"; the round-7 fixes are in the script;
+  committed 1289403; accepted by the human owner 2026-11-26.
+  **Charon and script changes with patch 05** (human decisions 2026-11-25): eleven `start_from`
+  entries; `opaque` `"url"` narrowed to `"url::Url"`, and `…::metadata_resolver::Lookup` and
+  `…::metadata_resolver::prim` added (`crates/rmcp/Cargo.toml`); `PINNED_DEPS` adds `url 2.5.9`;
+  `TARGETS`/`PATCH05_TARGETS` and the joined-`def`-line target check in
+  `scripts/aeneas-translate.sh`; the patch-05 sets, the shadow-scan refinement and the
+  elaborated comparison in `scripts/check-original-linkage.sh` and `scripts/linkage/`.
+  **Elaborated comparison** (step 5, which decides `ORIGINAL`; plan Section 19, amendment
+  2026-11-26 "elaborated comparison"; human decisions 2026-11-26 after the round-5 review a5:
+  "compare elaborated Lean" and "refuse committed-only instances", extended under them after the
+  round-6 review a6): the unmodified-source
+  translation (env0) and the committed one (env1) are built as Lean environments the same way,
+  each with its own generated External templates as externals (the known `FnOnce` template
+  printing bug repaired by `scripts/linkage/repair_template.py`, the same rewrite on both sides,
+  distinct types kept distinct, a wrong rewrite stops the build; `make_env.py` fails unless
+  `formal/.lake/packages` has `Aeneas.olean` and `Mathlib.olean` built); every non-auxiliary constant of `Rmcp.Types`/`Rmcp.Funs` of env0
+  must exist in env1 with the same module, kind, universe parameters, canonical type and body
+  (binder names, hygiene and metadata dropped; auxiliary `_proof_N`/`_sizeOf_N`, `match_N` and
+  theorems replaced by their content, a theorem by its statement), every external of env0 with
+  the same universe parameters and type, and what `Rmcp.Types`/`Rmcp.Funs` export besides
+  constants may differ only as new declarations make it differ: instance entries (name,
+  priority, scoped/global, class, argument head) of env0 unchanged, a new one only default
+  priority, global, in `Rmcp.Types`, class `SizeOf` named `<T>._sizeOf_inst` or class
+  `Aeneas.Std.Discriminant` named `instDiscriminant…`, with T a committed-only inductive;
+  reducibility of env0's non-auxiliary constants unchanged, new entries only for new constants
+  of the same module; the module-entry count of every persistent environment extension unchanged
+  except those measured to grow with new declarations, per module (`GROW_OK` in
+  `compare_env.py`; e.g. the instance extension only in `Rmcp.Types`); notation, macros, syntax,
+  `export`, unification hints and unknown extensions may not grow; a dump without an export
+  section is refused; and every constant only env1's translation modules declare, auxiliary ones
+  included, must be under `rmcp.` (after `_private.Rmcp.{Types,Funs}.0.`) or be a generated root
+  `instDiscriminant…` instance that passed the instance rule. Step 5 first runs
+  `scripts/lean-guard.sh sources` and stops if it fails (it runs Lean on committed code, so
+  build-time code such as `initialize` or `run_cmd` must be excluded); the CI stale-translation
+  check is its other gate. Any committed-only code (shadowing name, indented or
+  same-line `def`, `_root_`, `local notation`, `open`, instance, type-directed resolution such
+  as `limits/l1`/`l2`) can change an unmodified block only by changing what it elaborates to, and
+  importing code only through what the modules export; step 5 compares both. Stated limits: (1)
+  the hand-written `formal/trusted/Rmcp/*.lean` (the trusted base; both environments use the
+  templates, because the trusted models use `Type` where the templates use `Type _`); (2)
+  entries of the growing extensions that committed code attaches to existing constants
+  (`attribute [simp]`, `[inline]`, `[implemented_by]`, `[elab_as_elim]` …), which change proof
+  automation, compilation or elaboration hints, not what any constant is (Lean itself refuses a
+  global reducibility change of a constant from another module); limit (2) is narrowed in
+  practice by lean-guard (`implemented_by` banned; `simp`, `inline`, `grind`, `elab_as_elim` are in `ATTR_ALLOWED` and remain within it) and also
+  covers the reducibility hints of auxiliary constants, which step 5 ignores (the kernel ignores
+  reducibility). Round-5 findings: a5-1 (code after a head line), a5-2 (`_root_`, instances with
+  unread names) and a5-3 (instance resolution) covered by step 5, and committed-only instances
+  refused; a5-4 (`s! "…"` with a space) fixed in the pre-check; a5-5 (expected outcome per text
+  case) deferred; a5-6 (records overclaimed what the text scan reads, a5-1/a5-2, and two header-command lists lacked `noncomputable section` and `public import`) fixed in the records.
+  Round-6 findings (review a6, 2026-11-26), fixed by the lead: a6-1 (blocking; the
+  generated-instance allowlist matched names only, a hand-written `EvilP._sizeOf_inst` or
+  `instDiscriminantEvil` passed) fixed by checking priority, scope, module, class and argument;
+  a6-2 (blocking; scoped instances, `attribute [instance]` on imported constants, priority
+  changes, `macro_rules` and other exported state invisible) fixed by comparing instance and
+  reducibility entries and extension entry counts; a6-3 (`repair_template.py` rationale)
+  corrected, the message counts rewrites; a6-4 (Lake could build inside the repository) fixed by
+  the fail-fast check of `make_env.py`; a6-5 (`linkage-elab/run.sh` outcomes) classified by kind
+  (`differs`, `instance`, `exports`, `reducibility`), `END` anchor added; a6-6 (shared package
+  cache) stated as a residual risk in `aeneas-translation.yml`.
+  Round 7 (a7; human decision 2026-11-26 "enforce in script, then sign off (no further review round)"): a7-1 (build-time code such as `initialize` or `run_cmd` could forge what step 5 reads) fixed: step 5 first runs `scripts/lean-guard.sh sources` and names its two gates, lean-guard sources and the CI stale-translation check; the reviewer's attacks x1 (`initialize`) and x3 (`run_cmd`) are refused by that gate, not suite cases (`linkage-elab/run.sh` bypasses lean-guard); a7-2 (committed-only names outside `rmcp.`) fixed: every new constant, auxiliary ones included, must be under `rmcp.` (after `_private.Rmcp.{Types,Funs}.0.`) or a generated root `instDiscriminant…` instance that passed the instance rule; a7-3 `GROW_OK` per module; a7-4 script header aligned; a7-5 `run.sh` classifies by exact message prefixes; a7-6 (oleans checked to exist, not to be current) and a7-7 (efficiency, about 20 s) recorded as notes. Negative controls
+  `formal/trusted/evidence/linkage-elab/`: 20 cases (e0–e9, a6-x1, a6-x2, a6-x2b, a6-x2c, a6-x3,
+  a6-x4, a6-x5, a6-x7, a7-x4-root-name-capture, a7-root-theorem), 18 attacks refused, 2 controls
+  pass (e0, e7). CI
+  (`aeneas-translation.yml`) caches `formal/.lake/packages`, runs `lake exe cache get` and
+  `lake build Aeneas` before the check, triggers on `scripts/linkage/**`, and states the
+  residual risk of the shared package cache (the cache-free `check` job of `lean-build.yml` is
+  the clean build).
+  **Text pre-check** (step 4; plan Section 19, amendment 2026-11-25, patch 05; human
+  decisions 2026-11-25 and 2026-11-26: "fix + one extra review round" after reviews a3-1 and
+  b3-1, then "fail closed + one fresh reviewer" after reviews a4-1, b4-1 and b4-2; no longer the
+  guarantee since 2026-11-26): the scan reads
+  the layout Aeneas emits and, on both sides, stops with "cannot be scanned" on a block that is
+  neither a header block (every code line exactly one header command: `module`, `import` or
+  `public import`, `@[expose] public section`, `open` of plain names without
+  `in`/`renaming`/`hiding`, `set_option`, `namespace`, `end`, `section`, `noncomputable section`)
+  nor one declaration whose head it reads (its line-based rules do not read code after a head
+  line, a5-1/a5-2; step 5 covers that),
+  preceded only by docstrings or comments (attributes; only `noncomputable`, `private`,
+  `partial`, `unsafe`; the keyword; the full name, `«…»` with spaces included, possibly on the
+  next line), on a committed header block that the unmodified source lacks, on a non-instance
+  declaration without a read name, on `where` or `let rec` in a
+  `def`/`theorem`/`abbrev`/`opaque`/`impl_def`, on `extends`, on a structure, class
+  or inductive whose head `where` does not end a line or whose member line is not `  f g : T`,
+  `  C ::`, `| C : T` or `| C`, on an interpolated string (`s!"…"`) and on a non-ASCII letter Lean
+  does not read as one; one left-to-right lexer pass drops string literals (also raw `r#"…"#`),
+  char literals, `--` comments and nested `/- … -/` comments; identifiers follow Lean's
+  `isIdFirst`/`isIdRest`/`isLetterLike`/`isSubScriptAlnum` and are compared without guillemets;
+  `EXTRA` also holds the names Lean generates for a committed-only structure, inductive or class
+  (`mk`, `mk.injEq`, `mk.inj`, `rec`, `recOn`, `casesOn`, `noConfusion`, `noConfusionType`,
+  `below`, `brecOn`, `ctorIdx`, `toCtorIdx`, the projections and constructors of the member lines
+  read, constructors with `.injEq`/`.inj`); exempt are only the block's own declared name, the
+  binding occurrences of the signature parameters, and an identifier whose first segment is a
+  signature parameter after its binder group closed (depth-0 binder groups before the type colon,
+  only with a depth-0 `:=`; not in earlier binders, its own type or default value); `fun`, `let`
+  and `match` binders are checked like free identifiers. Not read by the pre-check, covered by
+  step 5: names resolved through the type of a term (field notation `t.a`, `(e).a`, `e |>.a`,
+  leading-dot `.a`), generated names beyond those listed (e.g. anonymous instance names), the
+  a5 forms. Negative controls
+  `formal/trusted/evidence/linkage-scan/`: reviews a2-1 and b2-1 (2026-11-25) found 8 false
+  negatives of a first version (cases a1, b1–b7, b7b; b0 a control), reviews a3-1 and b3-1
+  (2026-11-26) 10 of the second (c1–c10), reviews a4-1, b4-1 and b4-2 (2026-11-26) 26 of the third
+  (a4-*, b4-d*), the records fix of round 4 (2026-11-26) 9 of the fourth (r4-p*: header-like
+  blocks with code, committed-only `open`, a command above a head, `extends`; fixed by lead
+  decision under the human decision "fail closed"); the committed translation was affected by
+  none; now 57/57 cases are rejected (29 as shadowing, 28 as "cannot be scanned"),
+  `limits/l1` (field notation) and `limits/l2` (leading dot), not read by the pre-check and
+  covered by step 5, are reported as accepted; the real comparison passes on scratch commit `005e743` (65/65, 42/42, 37/37, 10/10);
+  `formal/trusted/translation-pins.txt` updated to the new `Funs.lean` (sha256
+  `b3a880f6e544e9a6ef645d9753692b51d00794e40134536a4a4ed81786642a43`; the pinned T06
+  `initialize` line is now 3782, was 3739).
   **Exclusions:** the list above (plan Section 2.3).
 - **Statements:** `formal/specs/Defs/` and `formal/specs/Specs/` (public API; index
   `formal/specs/README.md`), and `formal/proofs/Proofs/Internal/` with `formal/proofs/Proofs/Defs/`
@@ -548,10 +854,12 @@ External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
 | Phase 2: `i64::from_str`, `Ipv4Addr`/`Ipv6Addr` | definitions, structures (S27) | signed off 2026-11-23; 21 laws proved |
 | `serde_json::Value` (type) | `opaque ExtModel.SerdeJsonValue` (S27) | signed off 2026-11-23 (no law: only moved) |
 | Translation patch 03: `Duration::as_millis`, `str::to_owned`, `HashMap::{contains_key, is_empty, new, entry}`, `VacantEntry::insert`, `Hash for str`, `Borrow<str>`/`PartialEq<str>` for `String`, `slice::Iter::any`, `Iterator::any`, `serde_json::from_slice`, `Error::source`; types `OccupiedEntry`, `VacantEntry` | 14 definitions, 2 structures; `opaque ExtModel.randomState`, `opaque ExtModel.serdeJsonFromSlice` | reviewed, signed off by the spec owner (2026-11-24) |
+| Translation patch 04: the 12 `skill::prim` wrappers; 28 `core`/`alloc`/`std`/`serde_json`/`unicode-general-category` functions; types `array::IntoIter`, `str::Bytes`, `HashSet`, `serde_json::Map` | 40 definitions, 4 structures; `opaque ExtModel.sha256`, `opaque ExtModel.nfkc`, `opaque ExtModel.generalCategory`; `<ParseIntError as Debug>::fmt` total (lead decision) | reviewed (3 rounds), signed off by the spec owner (2026-11-25) |
+| Translation patch 05: the 5 `metadata_resolver::prim` functions; 8 `core`/`alloc` functions; `url::Url::{parse, host, host_str}`; types `SocketAddrV4`, `SocketAddrV6`, `url::Url`, `Lookup` | 16 definitions, 2 structures, 2 abstract types; `opaque ExtModel.{UrlCarrier, LookupCarrier, urlParse, urlHost, urlHostStr, systemLookup, proxyEnvValues}` | accepted 2026-11-26 |
 
 Details:
 - HMAC: both functions always succeed. Stated exception: the SHA-256 bit-length `u64` counter
-  (`sha2-0.11.1/src/block_api.rs` line 66) overflows for a message of at least `2^61 − 64` bytes
+  (`sha2-0.11.2/src/block_api.rs` line 66) overflows for a message of at least `2^61 − 64` bytes
   or a key of at least `2^61` bytes; not modelled (the `x86_64` address space is at most `2^57`
   bytes).
 - Base64url: strict decoding; round trip, canonicity, URL-safe alphabet (no `.`) and length laws
@@ -592,8 +900,11 @@ Review rules that stay in force:
   result)`, `sealAt` (`Defs.CodecState`) being the model of the private `seal_at` (human decision
   2026-11-25; it replaces the earlier wording "the result of the translated `seal_at` at
   `ExtModel.nowMs`"). Their docstrings state the one-reading caveat and the inherited exceptions.
-  No other statement names `ExtModel.nowMs`, no statement has a premise or conclusion about its
-  value, and no statement relates two clock readings; `now_ms` itself stays unmentioned. The
+  Besides these, only the model's own spec theorem
+  `model.request_state.RequestStateCodec.now_ms_spec` (postcondition `result = ExtModel.nowMs`;
+  human decision 2026-11-25) names `now_ms` and `ExtModel.nowMs`. No other statement names
+  `ExtModel.nowMs`, no statement has a premise or conclusion about its value, and no statement
+  relates two clock readings. The
   internal statements of `seal_at` (R10a) and of its round trip with `open_at` (R10b) use
   explicit times.
 - **`HashMap::get`.** Faithful for `Hash`/`Eq` instances that agree and do not fail (only
@@ -612,9 +923,113 @@ Review rules that stay in force:
   `Deserialize` impl that panics, aborts or does not terminate, and one that is
   non-deterministic or has side effects (global or thread-local state, a random number
   generator).
+- **`ExtModel.sha256`, `ExtModel.nfkc`, `ExtModel.generalCategory`** (translation patch 04,
+  human decision 2026-11-25 that their laws are premises; rule signed off by the spec owner
+  2026-11-25): no axiom and no
+  `trusted/` definition states a law about them. A statement may mention them in its
+  conclusion only unopened, as the value the Rust code computes (`ExtModel.sha256 bytes`,
+  `ExtModel.nfkc t.toList`, `ExtModel.generalCategory c`). A fact about them may enter a
+  statement only as an explicit premise, and only if it is true of the real function on every
+  input it quantifies over, with the source cited in the statement's docstring; a premise that
+  is false of the real function (which would make the statement vacuous) is a review defect.
+  In particular:
+  - `sha256`: no premise about its values except equalities or inequalities of digests of the
+    specific inputs of the statement, as conditions on those inputs (e.g. "the digest of these
+    bytes is the recorded one"); no universal law, and never injectivity or collision freedom
+    (false: the function maps every byte list to 32 bytes).
+  - `nfkc`: the NFKC-length domain: a premise `4 * (ExtModel.nfkc cs).length ≤ maxStringBytes`
+    (the `Vec` bound of `prim::nfkc`, the patch-induced premise of K13) for the specific `cs`
+    of the statement; facts of UAX #15 for the specific input, such as "an ASCII-only `cs` is
+    its own NFKC form" or idempotence `nfkc (nfkc cs) = nfkc cs`, each as a premise with the
+    clause of UAX #15 cited. No premise that equates the NFKC forms of two inputs unless that
+    is the condition the Rust code tests.
+  - `generalCategory`: facts about specific characters or about the ASCII range, each as a
+    premise matching `UnicodeData.txt` of the Unicode version of `unicode-general-category
+    1.1.0` (e.g. `'a'`–`'z'` are `LowercaseLetter`, `'0'`–`'9'` `DecimalNumber`, `'-'`
+    `DashPunctuation`); a universal premise over non-ASCII characters only if it is a stability
+    guarantee of the Unicode standard (cited).
+  Review checks for each such premise that it is satisfiable by the real function on the
+  inputs the statement is meant for. Form of the premises (lead decision 2026-11-25, finding
+  U3): each premise about an opaque constant is either
+  - a **law**, stated in implication form over the inputs it covers (e.g. "for an ASCII-only
+    `cs`, `ExtModel.nfkc cs = cs`", i.e. `(∀ c ∈ cs, c.toNat < 128) → ExtModel.nfkc cs = cs`;
+    "`'a' ≤ c ≤ 'z'` → `ExtModel.generalCategory c = LowercaseLetter`"), which is true of the
+    real function for every input satisfying its hypothesis and does not narrow the statement;
+    or
+  - a **domain restriction**: an unconditional fact about the statement's own input (e.g.
+    `4 * (ExtModel.nfkc t.toList).length ≤ maxStringBytes`, or "the digest of these bytes is the
+    recorded one"), which narrows the inputs the statement covers; it must be declared as a
+    domain restriction in the statement's docstring and in the "Assumptions" column of the
+    summary table of `formal/specs/README.md`, with the inputs it excludes.
+  A premise taken from UAX #15, FIPS 180-4 or `UnicodeData.txt` must also cite evidence that the
+  pinned crate conforms on those inputs: for `nfkc`, the conformance of `unicode-normalization
+  0.1.26` (Unicode 18.0.0, `src/tables.rs` line 18) to the Unicode `NormalizationTest.txt` on
+  those inputs (the upstream `tests/normalization_tests.rs`, generated by the crate's
+  `scripts/unicode.py` and not shipped in the crates.io package, run at the 0.1.26 release) or a
+  Rust vector run against the pinned crate; for `sha256`, a Rust vector of `sha2 0.11.2` (e.g. the spec
+  example of `sha256_digest::matches_the_digest_in_the_spec_example`); for `generalCategory`,
+  a Rust vector of `unicode-general-category 1.1.0` on the characters concerned. A premise
+  without that evidence, or in neither form, is a review defect.
+- **`HashSet` element order** (translation patch 04, lead decision 2026-11-25): Rust's
+  `HashSet` iteration order is unspecified, so no statement may depend on the order of the
+  `elements` list of the model; statements speak of membership, of the `bool` of `insert` and
+  of order-independent quantities only.
+- **`serde_json::Map`** (translation patch 04, lead decision 2026-11-25): modelled exactly as
+  the `BTreeMap` it is (no `preserve_order`): entries ascending by key in Rust's `String` order,
+  so each Rust map has one model value; statements may rely on that order.
+- **`ExtModel.proxyEnvValues`** (translation patch 05, human decision 2026-11-25: the clock rule
+  extended to the environment): one constant for every reading of the proxy variables, so N03
+  `new` is pure in the model. No statement has a premise or conclusion about its value or
+  relates two readings; a statement may name `proxyEnvValues`, `…prim.proxy_env_values` or
+  `…MetadataAddressResolver.new` only to say that `new` passes the values read to
+  `with_proxy_hosts` (so that it holds for every environment), besides the model's own spec
+  `prim.proxy_env_values_spec`. Human decision 2026-11-26: a statement may also state a fact
+  about `new` that does not depend on the proxy environment (e.g. the fields not set from the
+  proxy values, `base_ip`, `base_classes`, `lookup`, equal those of `with_base_url u` with the
+  lookup `ExtModel.systemLookup`), proved from the body for every environment; nothing is assumed
+  about `proxyEnvValues` beyond its own spec.
+  Human decision 2026-11-26 (spec round 1, finding P1; an extension of this rule): for `new u = ok
+  r`, and with no premise on the value of `ExtModel.proxyEnvValues`, a statement may also conclude
+  (1) that `r.unfiltered_hosts` (as bytes) equals `ExtModel.proxyEnvValues.val.filterMap (fun p =>
+  Defs.MetadataResolver.proxyHost (Defs.utf8Bytes p))` (`Defs.MetadataResolver.proxyHost` is defined in `formal/proofs/Proofs/Defs/MetadataResolver.lean`), naming `proxyEnvValues` only as the values `new` reads and passes
+  to `with_proxy_hosts`; (2) the invariant that every unfiltered host of `new`'s result is a
+  normalized host; (3) production security theorems about resolvers built by `new` (e.g. a filtered
+  host's returned addresses are Public for a non-localhost domain base). Still no premise on, and no
+  other statement about, the value of `proxyEnvValues`.
+  Human decision 2026-11-26 (spec round 3, R1): for `new u = ok r`, statements of the form `host ∈
+  r.unfiltered_hosts ↔ Defs.utf8Bytes host ∈ ExtModel.proxyEnvValues.val.filterMap
+  (Defs.MetadataResolver.proxyHost ∘ Defs.utf8Bytes)` and premises `host ∉ r.unfiltered_hosts` in
+  production theorems count as restatements of items (1) and (3).
+  Human decision 2026-11-26 (spec sign-off, T1): premises of the form `Defs.utf8Bytes host ∈
+  ExtModel.proxyEnvValues.val.filterMap (Defs.MetadataResolver.proxyHost ∘ Defs.utf8Bytes)` (the
+  host is a configured proxy host; used by
+  `MetadataAddressResolver.allowed_addresses_eq_ok_some_of_new_eq_ok_of_mem_proxyHosts`) also count
+  as restatements of P1.
+- **`ExtModel.urlParse`, `ExtModel.urlHost`, `ExtModel.urlHostStr`** (translation patch 05, human
+  decision 2026-11-25): opaque functions of the abstract `url::Url`, no axiom; they appear in
+  conclusions only unopened, and a fact about them (e.g. that `host` and `host_str` agree, or the
+  host of a given URL string) enters a statement only as an explicit premise true of `url 2.5.9` on
+  the inputs it quantifies over. Stated assumption: `Url::parse`, `host` and `host_str` return and
+  do not panic. **UTF-8 premise** (human decisions 2026-11-25/2026-11-26: rule (ii) 2026-11-26,
+  nested `&str` 2026-11-26): a statement may assume that a `Str` is valid UTF-8 (the Rust `&str`
+  invariant) (i) only as the premise `ExtModel.IsUtf8 s.val` (`ExtModel.IsUtf8 l := ∃ t : String,
+  l = ExtModel.utf8 t`, a definition in `formal/trusted/Rmcp/FunsExternal.lean`; no axiom or model
+  asserts it), and (ii) only for (a) a `&str` argument of the function the statement is about, or
+  a `&str` carried by an argument (such as the domain `d` of the argument `host : Host<&str>` of
+  `AuthorizationManager::is_loopback_metadata_host`, `host = url.host.Host.Domain d`), and (b) the
+  hosts that the opaque `url` functions return: `ExtModel.IsUtf8 d.val` for `ExtModel.urlHost u =
+  some (url.host.Host.Domain d)` and `ExtModel.IsUtf8 h.val` for `ExtModel.urlHostStr u = some h`.
+  That a `Str` computed from such values is UTF-8 is proved, not assumed (`isUtf8_dropTrailingDots`,
+  `isUtf8_map_asciiLowercase` in `Proofs.External.MetadataResolver`;
+  `to_ascii_lowercase_spec_of_isUtf8` takes the premise).
 
 Opaque items (Charon `opaque` setting in `crates/rmcp/Cargo.toml`, committed):
 `rmcp::model::request_state_wire::prim` (wraps the HMAC and base64 `Engine` types, B1, B3),
+`rmcp::model::skill::prim` (translation patch 04: the `str` pattern APIs, SHA-256, NFKC and
+percent-encoding, B1, B2), `rmcp::transport::auth::metadata_resolver::prim` and
+`rmcp::transport::auth::metadata_resolver::Lookup` (translation patch 05: the `str` pattern
+APIs, the operating-system resolver, the proxy environment reading, and the trait object `Arc<dyn
+Resolve>`),
 `rmcp::model::request_state::_::now_ms` (system clock; since translation patch 03 called by the
 targets `seal_with` and hence `seal`, under the extended clock rule, and by non-target wrappers), and
 the external crates `zeroize`, `base64`, `hmac`, `sha2`, `thiserror`, `chrono`, `serde_json`
@@ -623,7 +1038,8 @@ and trait declarations, for `DeserializeOwned` in the `open_json*` signatures); 
 (`http`, `tokio`, `tokio_util`, `tracing`, `tracing_core`, `futures`, `futures_util`, `futures_core`,
 `bytes`, `sse_stream`, `hyper`, `tower_service`, `uuid`, `schemars`, `pin_project_lite`,
 `tokio_stream`, `http_body`, `http_body_util`, `rand`, `async_trait`, `pastey`, `oauth2`, `reqwest`,
-`url`; signatures only) and the type `rmcp::transport::auth::AuthorizationManager` (H4; it appears
+`url`; signatures only; since translation patch 05 only the type `url::Url` instead of the crate
+`url`, so `url::host::Host` and `url::parser::ParseError` are translated) and the type `rmcp::transport::auth::AuthorizationManager` (H4; it appears
 in no generated file). Marking an item opaque only keeps its signature; its contract is the model
 above.
 
@@ -666,6 +1082,14 @@ forms, A03), and a resolved address in it is classed `Public` by the DNS-resolve
 `is_disallowed_metadata_ipv4` at line 52), although the module doc (lines 8–9) says reserved
 addresses are never allowed. The A02 statement describes the code (the plan's list of eleven
 ranges). Not yet reported upstream (see "Open items").
+
+**Public `skill.rs` API (K01–K20, 2026-11-25): no bug found.** The 51 signed-off statements
+describe the code as it is; no disagreement was found between them and `skill.rs` (spec cycle of 3
+review rounds, differential tests with 0 mismatches, 51/51 proved). Behaviours recorded as
+premises or exceptions, not bugs: the patch-induced premise `NfkcFits` of K13/K16 (translation
+patch 04 collects the NFKC form into a `Vec<char>`, the original streams it); SHA-256's bit counter
+for inputs of at least 2^61 bytes, the `HashSet` random source and the `serde_json` feature
+`preserve_order` are not covered (see "Public skill.rs API (K01–K20)").
 
 Defects found in the plan, documents and tooling, with their state:
 
@@ -942,6 +1366,103 @@ R15 proves that every codec `new_with_keyring` returns satisfies `CodecValid`. R
 `formal/docs/functions/R09.yaml`–`R15.yaml` (spec `REVIEWED`; proof pending the build and the
 lead's checks). With these, R16–R17 are the only public `request_state.rs` functions not covered.
 
+**Readability rewrite of R01–R15 (2026-11-25; signed off by the spec owner and accepted by the
+human owner 2026-11-25):** the
+public spec file `formal/specs/Specs/Model/RequestState.lean` (18 theorems: R01–R15 and the
+corollaries of R08, R09, R10) was rewritten for human readers without changing any statement's
+meaning. Text changes: the module docstring (summary table first, with "Premises" and "Not
+covered" columns; one glossary of premise keys and inherited exceptions, including the new key
+(I), caller code with side effects outside its state, for R04–R06, R11, R12, R15; the clock rule;
+provenance last); plain-English docstrings; readable binder names in place of generated ones;
+and ten abbreviations appended to `Defs.CodecState` (`strBytes`, `FallbacksKnownForToken`,
+`TranscriptV1Fits`, `TranscriptV2Fits`, `appendIfAbsent`, `IsInvalidKeyring`, `IsKeyTooShort`,
+`entryBytes`, `ItemsConvert`, `mapErrDeserialization`), each with the replaced text as its body;
+no existing definition changed. `formal/specs/README.md` gained key (I). Spec cycle: 5 rounds,
+2 fresh independent `mcp-review` reviewers per round (round 1: 1 blocking docstring finding,
+fixed; rounds 3–5 no blocking; round 5 both reviewers "ready for sign-off"). Spec-owner
+decisions 2026-11-25: ID order and restated text differing from the spec theorems, both recorded
+as exceptions in `docs/STYLE_GUIDE.md` "Spec Files"; optional round-5 wording polish deferred
+(the (F) phrase "for Rust not to panic", the native-code history phrase, R15's caller-code
+premise in the table and README, glossary lines for `rs1`/`rs2`, seal mode, `openAt`, `sealAt`,
+`keyringCheck`, two wraps). Evidence that the meaning is unchanged: a scratch Lean file that
+imports `Specs.Model.RequestState`, contains the 18 theorems of
+`git show 8debe97:formal/specs/Specs/Model/RequestState.lean` with `Theorems.` renamed to
+`SignedOff.` (same `open` lines), and checks for each pair
+`example : type_of% @SignedOff.X = type_of% @Theorems.X := rfl` plus a command comparing the
+binder kinds of the two types binder by binder; `cd formal && lake env lean <file>` exits 0 (18
+`rfl`, 18 binder checks). Negative controls (e.g. `versionV1`→`versionV2` in R07, `≤` for `=` in
+R06, append-always in R12, an implicit binder made explicit) fail, each at the mutated theorem;
+every reviewer re-ran the check and built its own controls. Final validation (round 5): `lake
+build --wfail` (3775 jobs), `lean-guard.sh` sources, build-log and axioms exit 0; all 18
+`#print axioms` lists `[propext, Classical.choice, Quot.sound]`, unchanged. AI-drafted (mcp-spec)
+and AI-reviewed (mcp-review), Claude Code, claude-opus-5-5. R16–R17 (`seal_json`,
+`seal_json_with`) stay untranslated; issue record
+`formal/trusted/issues/aeneas-serde-ser-mutual-traits.md`.
+
+**Public skill.rs API (K01–K20, 2026-11-25; translation and specifications signed off by the spec
+owner 2026-11-25; committed 061f014 and de7b8de; accepted by the human owner 2026-11-25):** verify
+the twenty public functions of `crates/rmcp/src/model/skill.rs` (upstream `7caec76`, unmodified in
+the repository): K01 `Resource::is_directory`, K02 `SkillsCapability::new`, K03
+`SkillsCapability::with_directory_read`, K04 `SkillResource::new`, K05 `SkillResource::from_bytes`,
+K06 `SkillResource::verify`, K07 `sha256_digest`, K08 `SkillFrontmatter::new`, K09
+`SkillFrontmatter::with_field`, K10 `Skill::new`, K11 `Skill::with_meta`, K12 `Skill::name`, K13
+`Skill::validate`, K14 `skill_name_from_uri`, K15 `is_sha256_digest`, K16 `validate_skills`, K17
+`GetSkillResult::new`, K18 `GetSkillResult::with_ttl_ms`, K19 `GetSkillResult::with_cache_scope`,
+K20 `GetSkillResult::with_meta`.
+- **Translation stage** (board PATCH04-SKILL): translation patch 04 (hunks H1–H9), the Charon
+  settings and script changes, 40 exact function models, 4 type models and 3 `opaque` constants
+  (`sha256`, `nfkc`, `generalCategory`; 0 axioms), with the spec lemmas of the models in
+  `formal/proofs/Proofs/External/Skill.lean` ("Trusted base"). Review: 3 rounds (2, 2 and 1 fresh
+  `mcp-review` reviewers); signed off by the spec owner (Hoang Le Truong) 2026-11-25. Human
+  decisions 2026-11-25: patch 04 with H9; opaque functions whose laws enter statements as premises
+  (no axiom); the script change (canonical names and `MULTI` for the `_::new` and `_::with_meta`
+  globs); 13 targets ORIGINAL. Lead decisions 2026-11-25: `serde_json::Map` modelled as the
+  `BTreeMap`; no `implemented_by`; `<ParseIntError as Debug>::fmt` a total model (stated
+  exception).
+- **Linkage:** K01–K04, K08–K12, K17–K20 `ORIGINAL` (`scripts/check-original-linkage.sh` passes
+  locally; CI pending, as for every ORIGINAL record, since nothing is pushed); K05–K07, K13–K16
+  `patch-04` (`formal/trusted/patches/04-skill-public.patch`). Source lines in the records are
+  upstream; for K05–K07 and K13–K16 also those of the patched copy
+  `.llbc/work/crates/rmcp/src/model/skill.rs`.
+- **Specifications** (board SPEC-K01-K20): definitions `formal/specs/Defs/Skill.lean`; 51
+  statements: 20 spec theorems (K01–K20), 3 corollaries (of K09, K13, K16), 10 compositions
+  (`from_bytes` then `verify`, twice; `from_bytes` as a computation with `sha256Digest`; the
+  digest of `from_bytes` is well-formed; `verify` is `Ok` iff length and digest match;
+  `sha256_digest` then `is_sha256_digest`; `with_meta` then `validate`; `skill_name_from_uri`
+  with `validate`, twice; `validate_skills` on one skill)
+  and 18 consequences of the model (statements about `Defs.Skill` only). Drafted by AI (Claude
+  Code, claude-opus-5-5, `mcp-spec`; draft `formal/specs/Drafts/Skill.lean`, removed at incorporation); spec cycle of 3
+  rounds with 2 fresh `mcp-review` reviewers each (round 1 no blocking finding; rounds 2 and 3
+  both reviewers ready for sign-off), then one cosmetic fix; differential tests 0 mismatches;
+  signed off by the spec owner 2026-11-25. Premises: `UsizeFits` (a string within `usize::MAX`
+  bytes), `UriFits` (a URI with `24 * (n + 1) ≤ isize::MAX` for its `n` bytes), `SkillFits` (the
+  skill's strings and manifest URIs fit), and `NfkcFits` (the NFKC forms of the name and the
+  decoded URI segment within `isize::MAX / 4` characters), a **patch-induced domain restriction**
+  (patch 04 collects the NFKC form into a `Vec<char>`, the original streams it); the bridge lemma
+  `Defs.Skill.NfkcFits.of_utf8ByteSize_le` derives it from `72 * n ≤ isize::MAX` for the name's
+  and the URI's bytes and the law that NFKC expands a character sequence at most 18-fold, taken as
+  a premise (Rust evidence: `formal/trusted/evidence/README.md`, "NFKC expansion bound"). Not
+  covered (Rust may panic or behave otherwise while a statement promises a result): caller
+  conversions with side effects (K04, K05, K08–K10 and the statements built on them); SHA-256 for inputs of at least 2^61 bytes
+  (K05–K07 and the compositions that hash); the `HashSet` random source (K13, K16); the
+  `serde_json` feature `preserve_order` (K09 and its corollary: the order clauses).
+- **Proofs:** `formal/proofs/Proofs/Model/Skill/{Common,Basic,Verify,Model,ValidateHelpers,Validate}.lean`,
+  by 4 parallel `mcp-lean` agents (not the drafter): 51/51 proved; each proved statement checked
+  `rfl`-equal to the signed-off text; `#print axioms`: 49 statements `[propext, Classical.choice,
+  Quot.sound]`, `Defs.Skill.nameCharsValid_iff_words` `[propext, Quot.sound]`,
+  `Defs.Skill.firstFileFault_ne_malformedDigest` `[propext]`; phase-C refinement (0 flexible
+  tactics; per-file check 2.0–3.65 s); 2 independent proof reviews (sound; ready). Records
+  `formal/docs/functions/K01.yaml`–`K20.yaml` (spec `REVIEWED`, proof `CHECKED`).
+- **Incorporated** 2026-11-25 (human approval): restated as `Theorems.skill.*` in
+  `formal/specs/Specs/Model/Skill.lean` (51 theorems, each `rfl`-equal to the signed-off text;
+  the `#guard_msgs` checks confirm the axiom lists of the records); proof modules and spec file
+  added to the `Proofs` and `Specs` roots; draft removed. `lake build --wfail` (3793 jobs) and
+  `lean-guard.sh` build-log, sources and axioms pass; `scripts/check-original-linkage.sh` passes on
+  a scratch commit of the tree (Funs 60/60, Types 40/40, templates 34/34 and 10/10 identical).
+- **Committed** 061f014 (translation stage) and de7b8de (specs, proofs, records);
+  `check-original-linkage.sh` passes on de7b8de. **Accepted** by the human owner 2026-11-25 (board
+  PATCH04-SKILL and SPEC-K01-K20 ACCEPTED). Pending: CI (nothing pushed).
+
 **Public and internal specifications (2026-11-24, human decision):** `formal/specs/` now holds only
 the public rmcp API (functions `pub` in upstream rmcp): `Specs/Model.lean` (M01–M05, M09–M14, the
 `_fail` companions, the Section 16.1 joint lemmas, C03) and `Specs/Model/Task.lean` (M08), with the
@@ -1016,6 +1537,17 @@ Signed off by the spec owner Hoang Le Truong on 2026-11-24. Deferred to incorpor
 `Defs.Net` check pinning the outer edges of `2002::/16`, `::ffff:0:0/96` and `::/96`; the citation
 "lines 120–121" in `Defs/Sse.lean`. Candidate lemmas for S31/S32 are in plan Section 21.
 
+**A01–A03: `Defs/Net.lean` additive change (2026-11-26; accepted by the human A01–A03 spec owner
+on 2026-11-26).** `formal/proofs/Proofs/Defs/Net.lean` gained `public import Rmcp.Types` and the
+`DecidableEq` instances of `Ipv4Addr`, `Ipv6Addr` (decided on octets and segments) and `IpAddr`
+(derived), moved there in the `metadata_resolver.rs` spec round 2 (targets N01–N11) so that every
+statement comparing IP addresses shares them. Additive only: no A01–A03 definition, regression
+check or statement changed (the checks moved by 31 lines, now lines 221–330; evidence README,
+"Phase 2 boundary cases"). The A01–A03 `#print axioms`/`#guard_msgs` lists are unchanged
+(`propext`, `Classical.choice`, `Quot.sound`): `lake build --wfail`, `lean-guard.sh build-log` and
+`lean-guard.sh axioms` pass (2026-11-26). The commit lists it under "Breaking changes" (a change
+to a signed-off `Defs` module; `docs/WORKFLOW_AND_PR_GUIDE.md`, footer format).
+
 **Mathlib naming batch (2026-11-24, human decision):** a read-only audit of the hand-written Lean
 under `formal/` listed the names that break Mathlib conventions; the clear violations were renamed,
 name only, with every statement, definition body and proof unchanged (checked by re-applying the
@@ -1084,6 +1616,9 @@ then S23 and S34); S35 and S36 `NOT_STARTED`; S37 `ACCEPTED` (results written an
 ## Open items
 
 Human decisions and actions:
+- **Skills API (K01–K20, 2026-11-25):** committed (061f014, de7b8de) and accepted; the 13
+  ORIGINAL skills records wait for the first CI run of the linkage check (push), as the Phase 2
+  records do.
 - **Phase 2 owner and budget (H5)**: not named; blocks S20 acceptance and gate G1 (plan Section 21).
 - **S31 candidate lemma (open, not a signed-off statement):** prove
   `∀ cap ≥ 1, Defs.Sse.observe cap (init m) h = historyOutcome cap m h` (checked only on finite

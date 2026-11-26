@@ -1,28 +1,35 @@
 # What is verified: index of the guarantees
 
-> **At a glance.** Lean proves, for 25 Phase 1 and 25 Phase 2 Rust functions of `rmcp` and 15
-> public functions of `request_state.rs` (R01–R15), that the translated call does not panic and
-> returns what the statement says. Phase 2 is upstream `7caec76` unmodified; Phase 1 and R01–R08
-> are about a patched copy (translation patch 01), R09–R15 about the copy with translation
-> patches 01 and 03. 37 guarantees are about the public API
-> (`Specs/`), 53 about private, crate-internal or patch-only functions and 116 are laws of the
-> trusted models (`../proofs/Proofs/Internal/`): 206 restated theorems. The public
+> **At a glance.** Lean proves, for 25 Phase 1 and 25 Phase 2 Rust functions of `rmcp`, 15
+> public functions of `request_state.rs` (R01–R15) and the 20 public functions of `skill.rs`
+> (K01–K20), that the translated call does not panic and returns what the statement says. Phase 2
+> and 13 of the `skill.rs` functions are upstream `7caec76` unmodified; Phase 1 and R01–R08 are
+> about a patched copy (translation patch 01), R09–R15 about the copy with translation patches 01
+> and 03, and the other 7 `skill.rs` functions (K05–K07, K13–K16) about the copy with translation
+> patch 04. 88 guarantees are about the public API
+> (`Specs/`: 37 before the skills API, 51 for it), 53 about private, crate-internal or patch-only
+> functions and 116 are laws of the trusted models (`../proofs/Proofs/Internal/`): 257 restated
+> theorems (the lemmas about the patch-04 models, `../proofs/Proofs/External/Skill.lean`, are
+> proved but not restated). The public
 > `request_state.rs` API is covered except 2 of its 17 public functions (R16–R17 `seal_json*`,
-> excluded, blocked upstream); R09–R15 were signed off by the spec owner on 2026-11-25. Main
+> excluded, blocked upstream); R09–R15 were signed off by the spec owner on 2026-11-25; the
+> `skill.rs` API is covered completely, signed off by the spec owner on 2026-11-25. Main
 > trust items: Charon/Aeneas/Lean, the translated
-> configuration, patches 01 and 03, the hand-written models (including the one clock reading of
-> `open`, `open_json` and `seal`);
+> configuration, patches 01, 03 and 04, the hand-written models (including the one clock reading of
+> `open`, `open_json` and `seal`, and the opaque SHA-256, NFKC and General_Category functions);
 > no native-code assumption remains (35 were locked until the Aeneas upgrade of 2026-11-24, which is
-> reviewed and re-signed by the spec owner 2026-11-24). Two bugs found: H7 (`async_rw` method lists) and H8 (`240.0.0.0/4` not blocked).
+> reviewed and re-signed by the spec owner 2026-11-24). Two bugs found: H7 (`async_rw` method lists) and H8 (`240.0.0.0/4` not blocked); none in `skill.rs`.
 
 **What, against what.** Each guarantee below is a Lean theorem about the
 [Aeneas](https://github.com/AeneasVerif/aeneas) translation of the Rust code of `rmcp` (Charon
 `0.1.324`, Aeneas `nightly-2026.11.24-fb44cb4`, Lean `v4.36.0`; until 2026-11-24 Charon
-`0.1.235`, Aeneas `nightly-2026.08.20-5d08da4`, Lean `v4.31.0`). Phase 2 (IDs M, T, A, C) is
-about upstream rmcp commit `7caec76`, **unmodified**. This rests on
+`0.1.235`, Aeneas `nightly-2026.08.20-5d08da4`, Lean `v4.31.0`). Phase 2 (IDs M, T, A, C) and
+the skills functions K01–K04, K08–K12, K17–K20 are about upstream rmcp commit `7caec76`,
+**unmodified**. This rests on
 `scripts/check-original-linkage.sh`, which checks that the committed translation, generated from
-the patched copy, equals block for block the translation of unmodified `7caec76` for the Phase 2
-targets; it passes locally, and its CI run (step S22) is pending (the records say "pending S22").
+the patched copy, equals block for block the translation of unmodified `7caec76` for these
+targets (and that K05–K07, K13–K16, which need translation patch 04, do not translate from the
+unmodified source); it passes locally, and its CI run (step S22) is pending (the records say "pending S22").
 Phase 1 (IDs W, E, S15) and the public `request_state.rs` statements (IDs R; R01–R15 except
 `seal_at` and `open_json_with` have the same text upstream, ten lines lower) are about a
 **patched copy**: `7caec76` plus translation patch 01
@@ -53,7 +60,7 @@ guarantee assumes the translated configuration and the trusted models listed at 
 
 File [`Specs/Model.lean`](Specs/Model.lean) (`crates/rmcp/src/model.rs`) unless noted. The only
 premises in this first table are the size premises of M13/M14 (met by every Rust `String`) and
-of their failing-case companions; the request-state table below has its own.
+of their failing-case companions; the request-state and skills tables below have their own.
 
 | ID | Rust function | Guarantee | Assumptions | Lean theorem |
 |---|---|---|---|---|
@@ -86,7 +93,8 @@ and R10).
 Rust functions are `rmcp::model::request_state::…`. Premise keys (the same in the file's
 docstring): **`h_into`** the caller's `Into<Vec<u8>>` conversion of `key` returns the vector `v`
 (user code, which may panic); **(F)** for a token whose first `.`-component is `rs1`, every rs1
-fallback id of the codec is a key id (`CodecFallbacksKnown`; else the code's `expect` panics);
+fallback id of the codec is a key id (`CodecFallbacksKnown`; sufficient, not necessary, for the
+code's `expect` not to panic);
 **(T)** the MAC transcript (`transcriptV1`/`transcriptV2` of the decoded components and `ad`)
 fits in `usize::MAX` bytes; **(L)** `ad.len() + sealed.len() + 36 ≤ usize::MAX` (implies (T));
 **(S)** the seal-mode key id is a key id (`CodecSealKeyKnown`; else the code's `expect` panics);
@@ -109,17 +117,20 @@ first); **(H)** HMAC's bit counter overflows for a transcript of at least `2^61 
 key of at least `2^61` bytes; **(V)** `open_with`, `open_json_with`, `seal_with` only: a transcript
 `Vec` above `isize::MAX` bytes; **(J)** `open_json*`: the `serde_json::from_slice` model (a
 `Deserialize` impl that panics, does not terminate, is non-deterministic or has side effects);
-**(P)** a caller `Drop` impl that panics (R11, R12, R15); **(N)** `HashMap::new` panics if the
-operating system's random source fails (R15).
+**(I)** R04–R06, R11, R12, R15: a caller conversion or iterator (`Into`, `AsRef`,
+`IntoIterator`) with side effects outside its argument or state (global or thread-local state,
+input/output), which the premises do not describe; **(P)** a caller `Drop` impl that panics
+(R11, R12, R15); **(N)** `HashMap::new` panics if the operating system's random source fails
+(R15).
 
 | ID | Rust function | Guarantee | Assumptions | Lean theorem |
 |---|---|---|---|---|
 | R01 | `SealOptions::new` | Returns options with no associated data (empty) and no time-to-live (`None`). | none | [`Theorems.request_state.SealOptions.new`](Specs/Model/RequestState.lean) |
 | R02 | `SealOptions::associated_data` | Returns the options with the associated data set to the argument and the time-to-live unchanged. | none | [`Theorems.request_state.SealOptions.associated_data`](Specs/Model/RequestState.lean) |
 | R03 | `SealOptions::ttl` | Returns the options with the time-to-live set to `Some(ttl)` and the associated data unchanged. | none | [`Theorems.request_state.SealOptions.ttl`](Specs/Model/RequestState.lean) |
-| R04 | `RequestStateCodec::new` (deprecated) | Returns the single-key codec of `v`, for a key of any length; it satisfies `CodecValid`. | `h_into` | [`Theorems.request_state.RequestStateCodec.new`](Specs/Model/RequestState.lean) |
-| R05 | `RequestStateCodec::new_unchecked` | Returns the single-key codec of `v`, for a key of any length; it satisfies `CodecValid`. | `h_into` | [`…RequestStateCodec.new_unchecked`](Specs/Model/RequestState.lean) |
-| R06 | `RequestStateCodec::try_new` | `Ok` of the single-key codec of `v` (satisfying `CodecValid`) exactly when `v` has at least 32 bytes, otherwise `KeyTooShort { minimum: 32, actual: v.len() }`. | `h_into` | [`…RequestStateCodec.try_new`](Specs/Model/RequestState.lean) |
+| R04 | `RequestStateCodec::new` (deprecated) | Returns the single-key codec of `v`, for a key of any length; it satisfies `CodecValid`. | `h_into`; inherited exception (I) | [`Theorems.request_state.RequestStateCodec.new`](Specs/Model/RequestState.lean) |
+| R05 | `RequestStateCodec::new_unchecked` | Returns the single-key codec of `v`, for a key of any length; it satisfies `CodecValid`. | `h_into`; inherited exception (I) | [`…RequestStateCodec.new_unchecked`](Specs/Model/RequestState.lean) |
+| R06 | `RequestStateCodec::try_new` | `Ok` of the single-key codec of `v` (satisfying `CodecValid`) exactly when `v` has at least 32 bytes, otherwise `KeyTooShort { minimum: 32, actual: v.len() }`. | `h_into`; inherited exception (I) | [`…RequestStateCodec.try_new`](Specs/Model/RequestState.lean) |
 | R07 | `RequestStateCodec::open` | Returns exactly `openAt` of the token with no associated data at the clock reading (one reading; says nothing about two calls). | (F); inherited exceptions (K) clock range, (H) HMAC `2^61` | [`…RequestStateCodec.open`](Specs/Model/RequestState.lean) |
 | R08 | `RequestStateCodec::open_with` | Returns exactly `openAt` of the token with associated data `ad` at the clock reading (one reading; says nothing about two calls). | (T), (F); inherited exceptions (K) clock range, (H) HMAC `2^61`, (V) `Vec` above `isize::MAX` | [`…RequestStateCodec.open_with`](Specs/Model/RequestState.lean) |
 | R08 | `open_with` (corollary) | As R08, with the length premise (L) in place of (T). | (L), (F); inherited exceptions (K) clock range, (H) HMAC `2^61`, (V) `Vec` above `isize::MAX` | [`…RequestStateCodec.open_with_of_length_le`](Specs/Model/RequestState.lean) |
@@ -127,11 +138,111 @@ operating system's random source fails (R15).
 | R09 | `seal` (corollary) | As R09, with `CodecValid` and `2 * payload.len() + 512 ≤ isize::MAX` in place of (S), (D). | `CodecValid`, (Ls); inherited exceptions (K), (H) | [`…RequestStateCodec.seal_of_length_le`](Specs/Model/RequestState.lean) |
 | R10 | `RequestStateCodec::seal_with` | Returns the token `sealAt` gives with the options' associated data and time-to-live at the clock reading (one reading; says nothing about two calls). | (S), (D); inherited exceptions (K), (H), (V) | [`…RequestStateCodec.seal_with`](Specs/Model/RequestState.lean) |
 | R10 | `seal_with` (corollary) | As R10, with `CodecValid` and (Ls) in place of (S), (D). | `CodecValid`, (Ls); inherited exceptions (K), (H) | [`…RequestStateCodec.seal_with_of_length_le`](Specs/Model/RequestState.lean) |
-| R11 | `RequestStateCodec::with_rs1_signing` | On a keyring, for a configured key id: `Ok` of the codec with the same keys, seal mode `Rs1 { key_id }` and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exception (P) | [`…RequestStateCodec.with_rs1_signing`](Specs/Model/RequestState.lean) |
-| R12 | `RequestStateCodec::with_rs1_fallback` | On a keyring, for a configured key id: `Ok` of the codec with the same keys and seal mode and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exception (P) | [`…RequestStateCodec.with_rs1_fallback`](Specs/Model/RequestState.lean) |
+| R11 | `RequestStateCodec::with_rs1_signing` | On a keyring, for a configured key id: `Ok` of the codec with the same keys, seal mode `Rs1 { key_id }` and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exceptions (I), (P) | [`…RequestStateCodec.with_rs1_signing`](Specs/Model/RequestState.lean) |
+| R12 | `RequestStateCodec::with_rs1_fallback` | On a keyring, for a configured key id: `Ok` of the codec with the same keys and seal mode and the id appended to the rs1 fallbacks unless already there; preserves `CodecValid`. Otherwise `InvalidKeyring` with the exact message (single-key codec; unknown id). | caller code, (R); inherited exceptions (I), (P) | [`…RequestStateCodec.with_rs1_fallback`](Specs/Model/RequestState.lean) |
 | R13 | `RequestStateCodec::open_json` | If `openAt` of the token with no associated data at the clock reading is an error, that error; otherwise the `serde_json::from_slice` outcome of the payload, an error mapped to `Deserialization`. | (F); inherited exceptions (K), (H), (J) | [`…RequestStateCodec.open_json`](Specs/Model/RequestState.lean) |
 | R14 | `RequestStateCodec::open_json_with` | As R13, with associated data `ad`. | (T), (F); inherited exceptions (K), (H), (V), (J) | [`…RequestStateCodec.open_json_with`](Specs/Model/RequestState.lean) |
-| R15 | `RequestStateCodec::new_with_keyring` | `Err` exactly when the Rust checks reject the entries or the active id (`keyringCheck`), with the exact error of the first failure in the Rust order (per entry: empty id, id over 255 bytes, key under 32 bytes, duplicate id; then no entry, active id invalid, active id absent). Otherwise `Ok` of a keyring with exactly the configured keys (ids up to order), seal mode `Rs2 { key_id: active }`, no rs1 fallback, satisfying `CodecValid`. | caller code (iterator, conversions), (U); inherited exceptions (P), (N) | [`…RequestStateCodec.new_with_keyring`](Specs/Model/RequestState.lean) |
+| R15 | `RequestStateCodec::new_with_keyring` | `Err` exactly when the Rust checks reject the entries or the active id (`keyringCheck`), with the exact error of the first failure in the Rust order (per entry: empty id, id over 255 bytes, key under 32 bytes, duplicate id; then no entry, active id invalid, active id absent). Otherwise `Ok` of a keyring with exactly the configured keys (ids up to order), seal mode `Rs2 { key_id: active }`, no rs1 fallback, satisfying `CodecValid`. | caller code (iterator, conversions), (U); inherited exceptions (I), (P), (N) | [`…RequestStateCodec.new_with_keyring`](Specs/Model/RequestState.lean) |
+
+**Skills, public API** — [`Specs/Model/Skill.lean`](Specs/Model/Skill.lean)
+(`crates/rmcp/src/model/skill.rs`, upstream `7caec76`; K01–K20 with 3 corollaries, 10
+compositions and 18 consequences of the model: 51 theorems). K01–K04, K08–K12 and K17–K20 are
+about the **unmodified** source (linkage `ORIGINAL`, as Phase 2); K05–K07 and K13–K16 about the
+copy with translation patch 04
+([`../trusted/patches/04-skill-public.patch`](../trusted/patches/04-skill-public.patch), hunks
+H1–H9: the `str` pattern APIs, SHA-256, NFKC and percent-encoding behind a private module `prim`
+of one-line wrappers, and loops without early return), signed off by the spec owner on
+2026-11-25. Rust functions are `rmcp::model::skill::…` (K01 is an inherent method of
+`rmcp::model::Resource` written in `skill.rs`). Expected results are definitions of
+[`Defs/Skill.lean`](Defs/Skill.lean): `sha256Digest bytes` is `sha256:` followed by the
+lowercase hex of the SHA-256 digest; `skillNameOfUri uri` the name segment of a URI
+`…/<segment>/SKILL.md` without `?` or `#`; `isSha256Digest` the digest format; `validateResult s`
+`Ok(())` or the first failing check of `Skill::validate` in the Rust order (URI names no skill,
+invalid name, name does not match the segment, manifest without `SKILL.md`, then the first per-file
+fault), with its payload; `validateSkillsResult` the same for a listing, plus `DuplicateSkill`
+for the first repeated percent-normalised URI; `ValidSkill`, `ValidSkills` the `Ok` cases.
+
+The assumptions of this table are written in words, because the letters of the spec file's own
+glossary are local to it and differ from the request-state keys above. **Premises** (the caller
+must ensure them; nothing is promised otherwise): **caller code** — the caller's `Into<String>` or
+`Into<serde_json::Value>` conversion returns the value the statement names (the standard `From`
+impls for `&str` and `String` do); **string fits** (`UsizeFits`) — the string has at most
+`usize::MAX` UTF-8 bytes (every Rust `String` does); **skill fits** (`SkillFits`) — the skill's URI
+and name fit, every manifest file's digest fits and its URI meets `24 * (n + 1) ≤ isize::MAX` for
+its `n` bytes (every skill held in memory does); **URI fits** (`UriFits`) — the same bound for each
+skill's URI in `validate_skills`; **NFKC fits** (`NfkcFits`), a **domain restriction induced by
+patch 04** — the NFKC forms of the name and of the decoded URI segment have at most `isize::MAX / 4`
+characters (the patched copy collects them into a `Vec<char>` and would panic above that; the
+original streams them). It holds whenever the name and the URI have at most `isize::MAX / 72`
+bytes (more than `2^56`), given that NFKC expands a character sequence at most 18-fold (the last row;
+Rust evidence in [`../trusted/evidence/README.md`](../trusted/evidence/README.md), "NFKC expansion
+bound"). **Not covered** (inherited exceptions, not premises: Rust may panic or behave otherwise
+while the statement promises a result): **caller side effects** — a caller conversion with side
+effects or reading global state, or a caller `Drop` that panics; **SHA-256 at `2^61` bytes** —
+the bit counter of `sha2` overflows for an input of at least `2^61` bytes (K05, K07, K06 when the
+length matches, and the statements built on them); **`HashSet` random source** — the random hash
+keys of `HashSet::with_capacity` and a failing operating-system random source are not modelled;
+the statements depend only on set membership (K13, K16); **`preserve_order`** — if a downstream
+build enables the `serde_json` feature `preserve_order`, `serde_json::Map` keeps insertion order,
+and the order clauses of K09 (not its lookups) no longer hold. The three opaque SHA-256, NFKC and
+General_Category functions appear only unopened, as the values the Rust code computes.
+
+| ID | Rust function | Guarantee | Assumptions | Lean theorem |
+|---|---|---|---|---|
+| K01 | `Resource::is_directory` | `true` exactly when the MIME type is `Some("inode/directory")`. | MIME type: string fits | [`Theorems.skill.Resource.is_directory`](Specs/Model/Skill.lean) |
+| K02 | `SkillsCapability::new` | The capability with `directory_read = false`. | none | [`Theorems.skill.SkillsCapability.new`](Specs/Model/Skill.lean) |
+| K03 | `SkillsCapability::with_directory_read` | `directory_read = true` (its only field). | none | [`…SkillsCapability.with_directory_read`](Specs/Model/Skill.lean) |
+| K04 | `SkillResource::new` | The entry with the converted URI and digest and the given size. | caller code; not covered: caller side effects | [`…SkillResource.new`](Specs/Model/Skill.lean) |
+| K05 | `SkillResource::from_bytes` | The entry with the converted URI, digest `sha256Digest bytes` and size `bytes.len()`. | caller code; not covered: caller side effects, SHA-256 at `2^61` bytes | [`…SkillResource.from_bytes`](Specs/Model/Skill.lean) |
+| K06 | `SkillResource::verify` | `Ok(())` exactly when the length is `size` and the digest matches; otherwise `Size` (the length is checked first), else `Digest`, with the expected and actual values. | none; not covered: SHA-256 at `2^61` bytes | [`…SkillResource.verify`](Specs/Model/Skill.lean) |
+| K07 | `sha256_digest` | `sha256:` followed by the lowercase hex of the SHA-256 digest (`sha256Digest`). | none; not covered: SHA-256 at `2^61` bytes | [`Theorems.skill.sha256_digest`](Specs/Model/Skill.lean) |
+| K08 | `SkillFrontmatter::new` | The converted name and description, no extra field. | caller code; not covered: caller side effects | [`…SkillFrontmatter.new`](Specs/Model/Skill.lean) |
+| K09 | `SkillFrontmatter::with_field` | `extra` with `key ↦ value` set, other keys and fields unchanged; still sorted by key if it was. | caller code; not covered: caller side effects, `preserve_order` | [`…SkillFrontmatter.with_field`](Specs/Model/Skill.lean) |
+| K09 | `with_field` (corollary) | The entries of `extra` are those of the `BTreeMap` insertion of `key ↦ value`. | as K09 | [`…SkillFrontmatter.with_field_extra_entries_eq_mapInsert`](Specs/Model/Skill.lean) |
+| K10 | `Skill::new` | The converted URI, the frontmatter and resources given, no `_meta`. | caller code; not covered: caller side effects | [`…Skill.new`](Specs/Model/Skill.lean) |
+| K11 | `Skill::with_meta` | `_meta = Some(meta)`, other fields unchanged. | none | [`…Skill.with_meta`](Specs/Model/Skill.lean) |
+| K12 | `Skill::name` | The bytes of the frontmatter name. | name: string fits | [`…Skill.name`](Specs/Model/Skill.lean) |
+| K13 | `Skill::validate` | `validateResult self`: the first failing check in the Rust order, with its payload, else `Ok(())`. | skill fits, NFKC fits (patch-induced); not covered: `HashSet` random source | [`…Skill.validate`](Specs/Model/Skill.lean) |
+| K13 | `validate` (corollary) | `Ok(())` exactly when the skill is valid (`ValidSkill`). | as K13 | [`…Skill.validate_eq_ok_iff`](Specs/Model/Skill.lean) |
+| K14 | `skill_name_from_uri` | `skillNameOfUri uri`. | none | [`Theorems.skill.skill_name_from_uri`](Specs/Model/Skill.lean) |
+| K15 | `is_sha256_digest` | `isSha256Digest digest`: `sha256:` followed by 64 lowercase hex digits. | none | [`Theorems.skill.is_sha256_digest`](Specs/Model/Skill.lean) |
+| K16 | `validate_skills` | `validateSkillsResult skills`: the first skill's error, or `DuplicateSkill` for the first repeated normalised URI, else `Ok(())`. | for each skill: skill fits, URI fits, NFKC fits (patch-induced); not covered: `HashSet` random source | [`Theorems.skill.validate_skills`](Specs/Model/Skill.lean) |
+| K16 | `validate_skills` (corollary) | `Ok(())` exactly when every skill is valid and the normalised URIs are distinct (`ValidSkills`). | as K16 | [`…validate_skills_eq_ok_iff`](Specs/Model/Skill.lean) |
+| K17 | `GetSkillResult::new` | `result_type = Some(COMPLETE)`, the skill, no TTL, cache scope or `_meta`. | none | [`…GetSkillResult.new`](Specs/Model/Skill.lean) |
+| K18 | `GetSkillResult::with_ttl_ms` | `ttl_ms = Some(ttl_ms)`, other fields unchanged. | none | [`…GetSkillResult.with_ttl_ms`](Specs/Model/Skill.lean) |
+| K19 | `GetSkillResult::with_cache_scope` | `cache_scope = Some(cache_scope)`, other fields unchanged. | none | [`…GetSkillResult.with_cache_scope`](Specs/Model/Skill.lean) |
+| K20 | `GetSkillResult::with_meta` | `_meta = Some(meta)`, other fields unchanged. | none | [`…GetSkillResult.with_meta`](Specs/Model/Skill.lean) |
+| K05+K06 | `from_bytes`, then `verify` | An entry made from bytes verifies them: `Ok(())`. | caller code; not covered: caller side effects, SHA-256 at `2^61` bytes | [`…SkillResource.verify_from_bytes_self`](Specs/Model/Skill.lean) |
+| K05+K06 | `from_bytes`, then `verify` | Against other bytes: `Ok(())` exactly when they have the same length and SHA-256 digest; else `Size` or `Digest`, with the values. | as above | [`…SkillResource.verify_from_bytes`](Specs/Model/Skill.lean) |
+| K05 | `from_bytes` (same computation) | The same computation as `uri.into()` followed by the entry with digest `sha256Digest bytes` and size `bytes.len()`. | none; not covered: SHA-256 at `2^61` bytes | [`…SkillResource.from_bytes_eq`](Specs/Model/Skill.lean) |
+| K05 | `from_bytes` (with the model) | The entry's digest is well-formed (`isSha256Digest`), so `validate` never reports it as `MalformedDigest`. | caller code; not covered: caller side effects, SHA-256 at `2^61` bytes | [`…SkillResource.isSha256Digest_from_bytes`](Specs/Model/Skill.lean) |
+| K06 | `verify` (corollary) | `Ok(())` exactly when the length is `size` and `sha256Digest bytes` is the digest. | none; not covered: SHA-256 at `2^61` bytes | [`…SkillResource.verify_eq_ok_iff`](Specs/Model/Skill.lean) |
+| K07+K15 | `sha256_digest`, then `is_sha256_digest` | A computed digest is well-formed (`true`). | none; not covered: SHA-256 at `2^61` bytes | [`…is_sha256_digest_sha256_digest`](Specs/Model/Skill.lean) |
+| K11+K13 | `Skill::with_meta`, then `validate` | `validate` ignores `_meta`: the result is `validateResult self`. | skill fits, NFKC fits for `self`; not covered: `HashSet` random source | [`…Skill.validate_with_meta`](Specs/Model/Skill.lean) |
+| K13+K14 | `skill_name_from_uri`, `validate` | On the skill's URI, `None` exactly when `validate` returns `UriNotSkillMd(uri)`. | as K13 | [`…Skill.skill_name_from_uri_eq_none_iff_validate_eq_err`](Specs/Model/Skill.lean) |
+| K13+K14 | `skill_name_from_uri`, `validate` | If `validate` returns `Ok(())`, `Some(segment)` with a segment that matches the name. | as K13 | [`…Skill.exists_skill_name_from_uri_eq_some_of_validate_eq_ok`](Specs/Model/Skill.lean) |
+| K16+K13 | `validate_skills`, `validate` | On one skill, `validate_skills` returns what `validate` returns. | skill fits, URI fits, NFKC fits for the skill; not covered: `HashSet` random source | [`…validate_skills_singleton`](Specs/Model/Skill.lean) |
+| model | — | What `skillNameOfUri` accepts: no `?`/`#`, and the URI is `dir ++ segment ++ "/SKILL.md"`. | none | [`…skillNameOfUri_eq_some_iff`](Specs/Model/Skill.lean) |
+| model | — | Example: `billing/SKILL.md` names the skill `billing`. | none | [`…skillNameOfUri_billing`](Specs/Model/Skill.lean) |
+| model | — | `sha256Digest` of any bytes is well-formed (71 ASCII bytes). | none | [`…isSha256Digest_sha256Digest`](Specs/Model/Skill.lean) |
+| model | — | The name rule as words joined by single `-`. | none | [`…nameCharsValid_iff_words`](Specs/Model/Skill.lean) |
+| model | — | `validateResult s = Ok` exactly when `ValidSkill s`. | none | [`…validateResult_eq_ok_iff`](Specs/Model/Skill.lean) |
+| model | — | `UriNotSkillMd u` exactly when the URI names no skill, with `u` the URI. | none | [`…validateResult_eq_err_uriNotSkillMd_iff`](Specs/Model/Skill.lean) |
+| model | — | `InvalidName n` exactly when the URI names a skill and the name `n` is invalid. | none | [`…validateResult_eq_err_invalidName_iff`](Specs/Model/Skill.lean) |
+| model | — | `NameMismatch u n` exactly when the URI names a skill, the name is valid and does not match the segment, with the payloads. | none | [`…validateResult_eq_err_nameMismatch_iff`](Specs/Model/Skill.lean) |
+| model | — | `MissingSkillMd u` exactly when checks 1–3 pass and `resources` is a manifest without the skill's URI. | none | [`…validateResult_eq_err_missingSkillMd_iff`](Specs/Model/Skill.lean) |
+| model | — | A per-file error `e` exactly when checks 1–5 pass and `e` is the first file fault. | none | [`…validateResult_eq_err_iff_firstFileFault_eq_some`](Specs/Model/Skill.lean) |
+| model | — | `validateResult` never gives `DuplicateSkill`. | none | [`…validateResult_ne_err_duplicateSkill`](Specs/Model/Skill.lean) |
+| model | — | `validateResult` does not depend on `_meta`. | none | [`…validateResult_with_meta`](Specs/Model/Skill.lean) |
+| model | — | Files with well-formed digests never give `MalformedDigest`. | none | [`…firstFileFault_ne_malformedDigest`](Specs/Model/Skill.lean) |
+| model | — | `validateSkillsResult l = Ok` exactly when `ValidSkills l`. | none | [`…validateSkillsResult_eq_ok_iff`](Specs/Model/Skill.lean) |
+| model | — | `validateSkillsResult [s] = validateResult s`. | none | [`…validateSkillsResult_singleton`](Specs/Model/Skill.lean) |
+| model | — | A sublist (e.g. a prefix) of a valid listing is valid. | none | [`…ValidSkills.sublist`](Specs/Model/Skill.lean) |
+| model | — | An error of a prefix is the error of the whole listing. | none | [`…validateSkillsResult_append_of_eq_err`](Specs/Model/Skill.lean) |
+| model | — | NFKC fits follows from `72 * n ≤ isize::MAX` for the `n` bytes of the name and of the URI. | the law that NFKC expands a character sequence of length `m` to at most `18 * m` characters (a premise in law form about the opaque NFKC function; true of `unicode-normalization 0.1.26`, largest expansion U+FDFA) | [`…NfkcFits.of_utf8ByteSize_le`](Specs/Model/Skill.lean) |
+
+"Model" rows are statements about the definitions of `Defs/Skill.lean` only (no Rust call); a
+reader can use them to check that the expected results say what the Rust documentation says.
 
 ## Internal guarantees
 
@@ -298,9 +409,19 @@ Rust documentation. Used by: the proofs of all statements above.
 >   in `seal_at`, an explicit `match` in place of `.map_err(RequestStateError::Deserialization)`
 >   in `open_json_with`), reviewed and signed off 2026-11-24; same computation, covered by the
 >   existing tests and the boundary tests of the test-only patch 02, not proved.
+> - **Translation patch 04** (K05–K07, K13–K16 of `skill.rs`): a private module `prim` of twelve
+>   one-line wrappers, each the original expression (SHA-256, the `str` pattern APIs,
+>   percent-encoding, NFKC), and hunks H1–H9 that call them or use loops without early return,
+>   keeping the computed values; reviewed in 3 rounds and signed off 2026-11-25; not proved
+>   equivalent to the unpatched code. It adds one behavioural difference that the statements take
+>   as a premise (NFKC fits, above). K01–K04, K08–K12 and K17–K20 do not depend on it (linkage
+>   `ORIGINAL`, checked by `scripts/check-original-linkage.sh` locally, CI pending).
 > - **The models in [`formal/trusted/`](../trusted/)** of the external functions (standard
->   library, `core::net`, integer parsing, HMAC-SHA256, Base64url, `zeroize`): definitions,
->   structures and seven `opaque` constants (five until translation patch 03), no trusted axiom (`axioms.lock` is empty). They do
+>   library, `core::net`, integer parsing, HMAC-SHA256, Base64url, `zeroize`, and for `skill.rs`
+>   the `prim` wrappers, `HashSet` and `serde_json::Map`, the latter as the `BTreeMap` it is):
+>   definitions, structures and ten `opaque` constants (five until translation patch 03, seven
+>   until patch 04, which adds SHA-256, NFKC and the Unicode General_Category, whose laws enter
+>   statements only as premises), no trusted axiom (`axioms.lock` is empty). They do
 >   not appear in `#print axioms`; their fidelity rests on review and their cited sources.
 >   Stated exceptions (`formal/trusted/Rmcp/FunsExternal.lean`, module docstring, "Memory" and
 >   "Size convention"): the models make no claim about inputs of `2^61` bytes or more, which
@@ -363,6 +484,12 @@ Rust documentation. Used by: the proofs of all statements above.
 - Cryptographic security (HMAC unforgeability), constant-time behaviour, the correctness of the
   `hmac`, `sha2`, `base64` and `zeroize` crates; negative round trips (a tampered token is
   rejected).
+- For `skill.rs`: the serialisation impls (`Serialize`/`Deserialize`, `JsonSchema`), the
+  `Display`/`Error` impls of its error types, and the correctness of the `sha2`,
+  `unicode-normalization`, `unicode-general-category` and `percent-encoding` crates (SHA-256, NFKC
+  and General_Category are opaque; no statement assumes collision freedom); the "not covered"
+  cases of the skills table (caller side effects, SHA-256 at `2^61` bytes, the `HashSet` random
+  source, the `serde_json` feature `preserve_order`).
 - Allocation failure, and inputs covered by the stated exceptions above (for those a statement
   may promise a result where Rust panics).
 - The full MCP protocol: the method lists are core protocol only (extensions are out of scope),

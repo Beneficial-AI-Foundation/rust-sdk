@@ -83,6 +83,41 @@ start_from = [
   "rmcp::transport::auth::_::embedded_ipv4",                       # A01
   "rmcp::transport::auth::_::is_disallowed_metadata_ipv4",         # A02
   "rmcp::transport::auth::_::is_disallowed_metadata_ipv6",         # A03
+  # Skills (SEP-2640), public API of skill.rs (human decisions 2026-11-25): K01-K04, K08-K12,
+  # K17-K20 translate unmodified (ORIGINAL linkage); K05-K07, K13-K16 need translation patch 04
+  # (formal/trusted/patches/04-skill-public.patch). `impl Resource` is written in skill.rs but
+  # Charon resolves the glob through the type's module; the `_::new` and `_::with_meta` globs
+  # match a fixed list of methods (MULTI in scripts/aeneas-translate.sh).
+  "rmcp::model::resource::_::is_directory",  # K01
+  "rmcp::model::skill::_::new",  # K02 K04 K08 K10 K17
+  "rmcp::model::skill::_::with_directory_read",  # K03
+  "rmcp::model::skill::_::from_bytes",  # K05
+  "rmcp::model::skill::_::verify",  # K06
+  "rmcp::model::skill::sha256_digest",  # K07
+  "rmcp::model::skill::_::with_field",  # K09
+  "rmcp::model::skill::_::with_meta",  # K11 K20
+  "rmcp::model::skill::_::name",  # K12
+  "rmcp::model::skill::_::validate",  # K13
+  "rmcp::model::skill::skill_name_from_uri",  # K14
+  "rmcp::model::skill::is_sha256_digest",  # K15
+  "rmcp::model::skill::validate_skills",  # K16
+  "rmcp::model::skill::_::with_ttl_ms",  # K18
+  "rmcp::model::skill::_::with_cache_scope",  # K19
+  # OAuth metadata address policy, metadata_resolver.rs (human decisions 2026-11-25): N01 and N08
+  # translate unmodified (ORIGINAL linkage); the others need translation patch 05
+  # (formal/trusted/patches/05-metadata-resolver.patch). N02 SystemResolver::resolve (async OS DNS)
+  # is not a target; the async shells of resolve and with_lookup are unverified glue.
+  "rmcp::transport::auth::metadata_resolver::_::of",  # N01
+  "rmcp::transport::auth::metadata_resolver::_::new",  # N03 (patch 05)
+  "rmcp::transport::auth::metadata_resolver::_::with_base_url",  # N04 (patch 05)
+  "rmcp::transport::auth::metadata_resolver::_::allowed_addresses",  # N09 (patch 05)
+  "rmcp::transport::auth::metadata_resolver::_::with_proxy_hosts",  # N05
+  "rmcp::transport::auth::metadata_resolver::_::allowing_private_addresses",  # N06
+  "rmcp::transport::auth::metadata_resolver::_::allows_url",  # N07
+  "rmcp::transport::auth::metadata_resolver::_::is_allowed",  # N08
+  "rmcp::transport::auth::metadata_resolver::literal_ip",  # N10
+  "rmcp::transport::auth::metadata_resolver::proxy_host",  # N05 helper (patch 05)
+  "rmcp::transport::auth::metadata_resolver::normalize_host",  # N11
 ]
 hide_marker_traits = true
 exclude = [
@@ -124,7 +159,17 @@ opaque = [
   "http", "tokio", "tokio_util", "tracing", "tracing_core", "futures", "futures_util",
   "futures_core", "bytes", "sse_stream", "hyper", "tower_service", "uuid", "schemars",
   "pin_project_lite", "tokio_stream", "http_body", "http_body_util", "rand", "async_trait",
-  "pastey", "oauth2", "reqwest", "url",
+  "pastey", "oauth2", "reqwest",
+  # url: only the type Url is opaque; Host<S> and ParseError are translated from url's source.
+  "url::Url",
+  # Created by translation patch 05: Lookup wraps the Arc<dyn Resolve> of MetadataAddressResolver
+  # (Aeneas: dynamic trait types); prim wraps the OS resolver, the proxy env reads (opaque constant,
+  # clock rule) and the str Pattern APIs (B2); Lean models: formal/trusted/Rmcp/FunsExternal.lean.
+  "rmcp::transport::auth::metadata_resolver::Lookup",
+  "rmcp::transport::auth::metadata_resolver::prim",
+  # Created by translation patch 04: one-line wrappers of the str Pattern APIs (B2), SHA-256
+  # (B1), NFKC and percent-encoding; Lean models: formal/trusted/Rmcp/FunsExternal.lean.
+  "rmcp::model::skill::prim",
   # Phase 2, human decision H4: the type only. A01-A03 are associated functions of
   # AuthorizationManager that never use `self`; translating the type makes Charon fail (a hax
   # panic on the fields `Arc<dyn CredentialStore>` and `Arc<dyn StateStore>`, auth.rs:1252-1253;

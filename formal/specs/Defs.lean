@@ -11,6 +11,7 @@ public import Defs.JsonRpc
 public import Defs.Wire
 public import Defs.RequestState
 public import Defs.CodecState
+public import Defs.Skill
 
 @[expose] public section
 

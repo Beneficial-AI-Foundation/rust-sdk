@@ -26,6 +26,8 @@ accumulated value of the loop, so an overflow at some digit is an out-of-range f
 
 The S27 deferred law `from_str_eq_parseI64` (signed off 2026-11-24, S24/S25 spec cycle) relates
 the model to the documented grammar `Defs.parseI64`, through `parseI64_append` and `from_str_eq`.
+`core.str.Str.parse_spec` (for every `FromStr` instance) was added on 2026-11-25 (human decision:
+every external reached by the translation has a `_spec` theorem).
 -/
 
 open Aeneas Aeneas.Std Result
@@ -396,6 +398,15 @@ theorem core.str.Str.parse_eq {F : Type} {Clause0_Err : Type}
     (traitsFromStrInst : core.str.traits.FromStr F Clause0_Err) (self : Str) :
     core.str.Str.parse traitsFromStrInst self = traitsFromStrInst.from_str self := by
   rfl
+
+/-- **Spec theorem for `str::parse`**, for every `FromStr` instance: the result meets every
+postcondition that the instance's `from_str` meets (from `parse_eq`). -/
+theorem core.str.Str.parse_spec {F : Type} {Clause0_Err : Type}
+    (traitsFromStrInst : core.str.traits.FromStr F Clause0_Err) (self : Str)
+    (P : core.result.Result F Clause0_Err → Prop) (h : traitsFromStrInst.from_str self ⦃ P ⦄) :
+    core.str.Str.parse traitsFromStrInst self ⦃ P ⦄ := by
+  rw [core.str.Str.parse_eq]
+  exact h
 
 namespace Proofs.External.IntParse
 

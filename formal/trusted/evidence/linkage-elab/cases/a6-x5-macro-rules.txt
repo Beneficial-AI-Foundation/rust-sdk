@@ -1,0 +1,3 @@
+EXPECT: exports
+ANCHOR: END
+macro_rules | `($a + $b) => `(HSub.hSub $a $b)

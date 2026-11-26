@@ -1,0 +1,3 @@
+EXPECT: instance+exports
+ANCHOR: END
+attribute [instance 10000] lexOrd

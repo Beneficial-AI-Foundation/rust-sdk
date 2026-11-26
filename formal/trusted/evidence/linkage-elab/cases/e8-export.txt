@@ -1,0 +1,8 @@
+EXPECT: differs+exports
+ANCHOR: END
+end rmcp
+namespace Evil
+def g : Nat := 1
+end Evil
+export Evil (g)
+namespace rmcp

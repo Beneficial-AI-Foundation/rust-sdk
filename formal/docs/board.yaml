@@ -704,3 +704,304 @@ steps:
       [propext, Classical.choice, Quot.sound]; lake build --wfail and all lean-guard.sh checks
       pass; the clock rule text matches the statements; the patched copy passes its 847 library
       tests; one independent review; commit approved by the human.
+  - id: READ-R01-R15  # not a plan step; readability rewrite of the public request_state.rs statements (human request 2026-11-25)
+    day: 2026-11-25
+    state: ACCEPTED  # accepted by the human owner 2026-11-25. Text signed off by the spec owner
+    # 2026-11-25 after 5 review rounds (2 fresh reviewers each; rounds 3-5 no blocking).
+    # Meaning unchanged: each of the 18 types rfl-equal to 8debe97, binder kinds unchanged.
+    # Spec-owner decisions 2026-11-25: ID order and restated text differing from the spec theorems
+    # (both exceptions in docs/STYLE_GUIDE.md); round-5 wording polish deferred.
+    depends_on: [SPEC-R09-R15]
+    owner: Lead + human owner
+    files:
+      - formal/specs/Specs/Model/RequestState.lean
+      - formal/specs/Defs/CodecState.lean  # header notes; ten abbreviations appended
+      - formal/specs/README.md  # key (I), (F) wording
+      - docs/STYLE_GUIDE.md  # two exceptions
+      - formal/docs/functions/R01.yaml  # to R15.yaml: spec comment and one spec_reviews entry
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/trusted/issues/aeneas-serde-ser-mutual-traits.md  # new; R16-R17 blocker record, cited by the spec file
+    acceptance: >-
+      Every restated theorem keeps its name and its type is definitionally equal to the 8debe97
+      text with the same binder kinds; lake build --wfail and all lean-guard.sh checks pass; the
+      spec owner signs off the text; commit approved by the human.
+
+  - id: PATCH04-SKILL  # not a plan step; translation patch 04, public skill.rs API K01-K20, plan Sections 2.3, 15 and 19 (amendments 2026-11-25)
+    day: 2026-11-25
+    state: ACCEPTED  # accepted by the human owner 2026-11-25; committed 061f014. Translated on
+    # Aeneas nightly-2026.11.24-fb44cb4 (base b363a8a); records and docs updated; reviewed (3 rounds
+    # of 2, 2 and 1 fresh mcp-review reviewers); patch 04 (hunks H1-H9), Charon settings, script
+    # changes, 40 exact models (12 skill::prim wrappers, 28
+    # core/alloc/std/serde_json/unicode-general-category functions) with 4 type models, 3 opaque
+    # constants (sha256, nfkc, generalCategory; 0 axioms) and the spec lemmas of the models signed
+    # off by the spec owner 2026-11-25. Linkage: 13 ORIGINAL (K01-K04, K08-K12, K17-K20), 7 patch-04
+    # (K05-K07, K13-K16); scripts/check-original-linkage.sh passes locally (also on the committed
+    # head de7b8de), CI pending (nothing pushed). The K01-K20 specs, proofs and records are
+    # SPEC-K01-K20. Human decisions 2026-11-25: patch 04 with H9; opaque functions with laws as
+    # premises (no axiom); script change (canon + MULTI for the `_::new` and `_::with_meta` globs);
+    # 13 targets ORIGINAL. Lead decisions 2026-11-25: serde_json::Map modelled as BTreeMap; no
+    # implemented_by; <ParseIntError as Debug>::fmt a total model (stated exception).
+    depends_on: [PATCH03-V2]  # patch 04 applies after patches 01-03
+    owner: Lead + human owner
+    files:
+      - formal/trusted/patches/04-skill-public.patch  # new
+      - crates/rmcp/Cargo.toml  # Charon table only: fifteen start_from entries; rmcp::model::skill::prim in opaque
+      - scripts/aeneas-translate.sh  # PINNED_DEPS: percent-encoding 2.3.2, unicode-normalization 0.1.26, unicode-general-category 1.1.0; MULTI; PATCH04_TARGETS
+      - scripts/check-original-linkage.sh  # drops the patch-04 start points and skill::prim
+      - formal/translation/Rmcp/Funs.lean
+      - formal/translation/Rmcp/Types.lean
+      - formal/translation/translation.json
+      - formal/trusted/translation-pins.txt
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/evidence/README.md
+      - formal/proofs/Proofs/External/Skill.lean  # new; spec lemmas of the patch-04 models
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 15 and 19 (amendments)
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+    acceptance: >-
+      The twenty public functions of skill.rs (K01-K20) translate with real bodies and no sorry;
+      every earlier generated block is unchanged up to its Source line numbers; the 13 ORIGINAL
+      targets pass scripts/check-original-linkage.sh and the 7 patch-04 targets are absent from the
+      unpatched translation; lake build --wfail and all lean-guard.sh checks pass; the patch, the
+      Charon and script changes and the new models reviewed by independent agents and signed off by
+      the human. Specifying K01-K20 is a separate step.
+
+  - id: SPEC-K01-K20  # not a plan step; specification and proof of K01-K20, public skill.rs API (plan Section 2.3 amendment 2026-11-25)
+    day: 2026-11-25
+    state: ACCEPTED  # accepted by the human owner 2026-11-25; committed de7b8de. Spec cycle of 3
+    # review rounds (2 fresh mcp-review reviewers each; round 1 no blocking finding, rounds 2 and 3
+    # both reviewers ready for sign-off; one cosmetic fix); differential tests 0 mismatches; 51
+    # statements (20 spec theorems, 3 corollaries of K09, K13, K16, 10 compositions, 18 consequences
+    # of the model) and the definitions Defs.Skill signed off by the spec owner 2026-11-25. Proved
+    # 2026-11-25 by mcp-lean agents (not the drafter), 51/51, each checked rfl-equal to the
+    # signed-off text; phase-C refined; two independent proof reviews (sound; ready). Incorporated
+    # 2026-11-25 (human approval): restated as Theorems.skill.* in
+    # formal/specs/Specs/Model/Skill.lean (51, each rfl-equal to the signed-off text, axioms pinned
+    # by #guard_msgs), modules added to the Proofs and Specs roots, draft removed; lake build
+    # --wfail (3793 jobs), lean-guard build-log/sources/axioms pass; check-original-linkage.sh
+    # passes on a scratch commit of the tree (60/40/34/10 blocks identical). CI pending (nothing
+    # pushed). Premises: UsizeFits, UriFits, SkillFits and the patch-induced domain restriction
+    # NfkcFits (bridge lemma Defs.Skill.NfkcFits.of_utf8ByteSize_le from the 18x NFKC expansion law,
+    # Rust evidence in formal/trusted/evidence/README.md). Not covered: caller code with side
+    # effects, SHA-256 for inputs of at least 2^61 bytes, the HashSet random source, the serde_json
+    # feature preserve_order. No disagreement found between the statements and skill.rs.
+    depends_on: [PATCH04-SKILL]
+    owner: Lead + human owner
+    files:
+      - formal/specs/Specs.lean  # root: public import Specs.Model.Skill
+      - formal/specs/Defs.lean
+      - formal/specs/Defs/Skill.lean  # new
+      - formal/specs/Specs/Model/Skill.lean  # new; restated public statements
+      - formal/proofs/Proofs.lean
+      - formal/proofs/Proofs/Model/Skill/*.lean  # Common, Basic, Verify, Model, ValidateHelpers, Validate (new)
+      - formal/docs/functions/K01.yaml  # to K20.yaml, new
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - formal/specs/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Section 2.3 (amendment)
+    acceptance: >-
+      The 51 signed-off statements are in the spec file verbatim (rfl-equal) and proved, with
+      #print axioms within [propext, Classical.choice, Quot.sound]; lake build --wfail and all
+      lean-guard.sh checks pass; the premise and Not-covered keys restated in words in
+      formal/specs/README.md; independent proof review; commit approved by the human.
+
+  - id: PATCH05-RESOLVER  # not a plan step; translation patch 05, OAuth metadata address policy of metadata_resolver.rs, targets N01, N03-N11; plan Sections 2.3, 4, 15, 19 and 23 (amendments 2026-11-25)
+    day: 2026-11-25
+    state: ACCEPTED  # accepted by the human owner 2026-11-26; committed 1289403. Translated on
+    # Aeneas nightly-2026.11.24-fb44cb4 (base 8b21c5e); records and docs updated; translation review rounds 1-7 done and answered (rounds 1-4 with 2 fresh
+    # mcp-review reviewers each, round 4 the extra round approved by the human on 2026-11-26 after
+    # a3-1/b3-1; round 5 the fresh reviewer of the fail-closed scan, findings a5-1..a5-6; round 6
+    # one reviewer of step 5, findings a6-1..a6-6; round 7 one reviewer, findings a7-1..a7-7);
+    # human decision 2026-11-26 after round 7: enforce the round-7 fixes in the script, then sign
+    # off without another review round; the fixes are in the script. Patch 05 (module prim of 5 wrappers, newtype Lookup, hunks H1-H9), Charon
+    # settings, script changes, 16 exact models (5 metadata_resolver::prim wrappers, 8
+    # core/alloc functions, url::Url::{parse, host, host_str} as ok of opaque values) with 2
+    # structures and 2 abstract types, 7 opaque constants (UrlCarrier, LookupCarrier, urlParse,
+    # urlHost, urlHostStr, systemLookup, proxyEnvValues; 0 axioms), the premise definition
+    # ExtModel.IsUtf8 and the spec lemmas of the models in Proofs/External/MetadataResolver.lean.
+    # Linkage: 2 ORIGINAL (N01, N08), the rest patch-05; check-original-linkage.sh (with step 5)
+    # passes on scratch commit 5bb9384 (on c400112; lean-guard sources passed inside it; text
+    # 65/65, 42/42, 37/37, 10/10; elaborated 520 constants and 41 externals identical, 40
+    # generated instances; linkage-elab 20/20 as expected; linkage-scan 57 rejected), CI pending
+    # (nothing pushed). Differential tests of the patch against the original code:
+    # 7 tests, 0 differences (formal/trusted/evidence/differential/metadata-resolver/).
+    # The N01, N03-N11 specs, proofs and records are SPEC-N01-N11.
+    # Human decisions 2026-11-25: targets N01, N03-N11 (N02 SystemResolver::resolve dropped:
+    # async OS DNS); patch 05 with H1-H9 and prim; url::Url opaque with opaque parse/host/host_str
+    # (laws only as premises, no axiom); proxy_env_values an opaque constant under the clock rule
+    # extended to the environment; the shadow-scan refinement of check-original-linkage.sh;
+    # the sha2 pin bumped to 0.11.2 (src/block_api.rs identical to 0.11.1); the own-spec
+    # exception for now_ms_spec (result = ExtModel.nowMs) and proxy_env_values_spec
+    # (result = ExtModel.proxyEnvValues); the 23 gap-fill _spec lemmas of the External models
+    # (Proofs/External/{Std,String,Option,IntParse,Skill}.lean).
+    # Human decisions 2026-11-25/2026-11-26: the UTF-8 premise rule (only as the premise
+    # ExtModel.IsUtf8 s.val; rule (ii) 2026-11-26: only for (a) a &str argument of the stated
+    # function or a &str carried by an argument (nested &str 2026-11-26, e.g. the domain of the
+    # Host<&str> of is_loopback_metadata_host) and (b) the hosts of urlHost/urlHostStr; anything
+    # computed from them proved).
+    # Human decision 2026-11-26 (reviews a3-1/b3-1): fix the shadow scan plus one extra review
+    # round; one lexer pass (strings, raw strings, chars, -- and nested /- -/ comments),
+    # guillemet/Unicode identifiers, signature-only parameter exemption (depth-0 binder groups
+    # before the type colon, only with a depth-0 :=); 20 negative controls rejected, limits
+    # l1/l2 (type-directed names) stated.
+    # Human decision 2026-11-26 (reviews a4-1/b4-1/b4-2): the shadow scan fails closed ("cannot be
+    # scanned") on both sides on anything outside the Aeneas layout it reads (one declaration
+    # head per block with attributes and noncomputable/private/partial/unsafe only; no where/let
+    # rec auxiliaries; one member per line after a head ended by where; no interpolated strings;
+    # Lean's identifier characters only), and a parameter is exempt only after its binder group
+    # closes; plus one fresh reviewer. Lead decision 2026-11-26 under it (records fix of round 4,
+    # cases r4-p*): strict header lines, head first in its block (only docstrings/comments before
+    # it), committed header blocks must be unmodified-source header blocks, extends refused.
+    # 57 negative controls rejected (29 shadowing, 28 cannot be scanned), l1/l2 stated; final
+    # real run on scratch commit 005e743 (on 64cb2fc) exit 0.
+    # Human decisions 2026-11-26 (round-5 review a5): "compare elaborated Lean" - step 5 of
+    # check-original-linkage.sh builds the unmodified-source and the committed translation as Lean
+    # environments with their own generated External templates and decides ORIGINAL (every
+    # non-auxiliary constant of Rmcp.Types/Funs identical in canonical form, every external of the
+    # same type); the text scan stays as a fail-closed pre-check, no longer the guarantee; the only
+    # stated limit is the hand-written formal/trusted/Rmcp/*.lean; and "refuse committed-only
+    # instances" (except the SizeOf/@[discriminant] instances generated for committed-only types).
+    # Outcomes: a5-1, a5-2, a5-3 (and the type-directed l1/l2) covered by step 5; a5-4 fixed in the
+    # pre-check; a5-5 (expected outcome per text case) deferred; a5-6 (records overclaimed
+    # what the text scan reads; header-command lists lacked noncomputable section and public
+    # import) fixed in the records. CI: the workflow
+    # caches formal/.lake/packages and builds Aeneas before the check.
+    # Round 6 (review a6, 2026-11-26), fixed by the lead under the same human decisions: a6-1
+    # (blocking; generated-instance allowlist by name only) and a6-2 (blocking; scoped instances,
+    # attribute [instance], priorities, macro_rules, other exported state invisible) fixed: step 5
+    # compares instance entries (priority, scope, module, class, argument), reducibility entries
+    # and the entry counts of every persistent extension (GROW_OK only may grow); a6-3
+    # repair_template.py rationale corrected, rewrites counted; a6-4 make_env.py fails fast
+    # unless Aeneas/Mathlib oleans are built; a6-5 linkage-elab/run.sh outcomes by kind, END
+    # anchor; a6-6 shared package cache stated as residual risk in the workflow. Stated limits
+    # now: (1) hand-written formal/trusted/Rmcp/*.lean; (2) growing-extension entries attached to
+    # existing constants (attribute [simp]/[inline]/[implemented_by]/[elab_as_elim] ...).
+    # linkage-elab: 18 cases.
+    # Round 7 (review a7, 2026-11-26); human decision 2026-11-26: "enforce in script, then sign
+    # off (no further review round)". a7-1 (blocking; build-time code such as initialize/run_cmd
+    # could forge what step 5 reads) fixed: step 5 first runs scripts/lean-guard.sh sources and
+    # names its gates (lean-guard sources, CI stale-translation check); the reviewer's x1/x3
+    # build-time attacks are refused by that gate (not suite cases: run.sh bypasses lean-guard).
+    # a7-2 fixed: every new constant (auxiliary included) must be under rmcp. or a generated
+    # root instDiscriminant instance that passed the instance rule. a7-3: GROW_OK per module;
+    # limit 2 narrowed in practice by lean-guard (implemented_by banned; simp, inline, grind,
+    # elab_as_elim are in ATTR_ALLOWED and remain within it) and covers reducibility hints of auxiliary constants (ignored). a7-4 header
+    # aligned; a7-5 run.sh by exact message prefixes; a7-6 (oleans exist, not checked current)
+    # and a7-7 (efficiency ~20 s) recorded as notes. linkage-elab: 20 cases.
+    # Human decision 2026-11-26 (T4): specs may state facts about MetadataAddressResolver::new that
+    # do not depend on the proxy environment (e.g. base_ip, base_classes, lookup equal to those
+    # of with_base_url u), proved from the body; nothing assumed about proxyEnvValues beyond its
+    # own spec.
+    # Human decision 2026-11-26 (spec round 1, finding P1; extension of T4): for new u = ok r and
+    # with no premise on the value of ExtModel.proxyEnvValues, statements may conclude that
+    # r.unfiltered_hosts (as bytes) = ExtModel.proxyEnvValues.val.filterMap (fun p =>
+    # Defs.MetadataResolver.proxyHost (Defs.utf8Bytes p)) (proxyHost defined in
+    # formal/proofs/Proofs/Defs/MetadataResolver.lean) (naming proxyEnvValues only as the values new reads and passes to
+    # with_proxy_hosts), that every unfiltered host of new's result is a normalized host, and
+    # production security theorems about resolvers built by new (e.g. a filtered host's returned
+    # addresses are Public for a non-localhost domain base). Still no premise on, and no other
+    # statement about, the value of proxyEnvValues.
+    # Human decision 2026-11-26 (spec round 3, R1): for new u = ok r, statements of the form host ∈
+    # r.unfiltered_hosts ↔ Defs.utf8Bytes host ∈ ExtModel.proxyEnvValues.val.filterMap
+    # (Defs.MetadataResolver.proxyHost ∘ Defs.utf8Bytes) and premises host ∉ r.unfiltered_hosts in
+    # production theorems count as restatements of items (1) and (3).
+    # Human decision 2026-11-26 (spec sign-off, T1): premises of the form Defs.utf8Bytes host ∈
+    # ExtModel.proxyEnvValues.val.filterMap (Defs.MetadataResolver.proxyHost ∘ Defs.utf8Bytes) (the
+    # host is a configured proxy host; used by
+    # MetadataAddressResolver.allowed_addresses_eq_ok_some_of_new_eq_ok_of_mem_proxyHosts) also
+    # count as restatements of P1.
+    # Lead decision 2026-11-25: H7 (parameter renames) kept without an upstream report.
+    depends_on: [PATCH04-SKILL]  # patch 05 applies after patches 01-04
+    owner: Lead + human owner
+    files:
+      - formal/trusted/patches/05-metadata-resolver.patch  # new
+      - crates/rmcp/Cargo.toml  # Charon table only: eleven start_from entries; opaque "url" narrowed to "url::Url"; metadata_resolver::{Lookup, prim} in opaque
+      - scripts/aeneas-translate.sh  # PINNED_DEPS: url 2.5.9 (and sha2 0.11.2); TARGETS; PATCH05_TARGETS; joined-def target check
+      - scripts/check-original-linkage.sh  # drops the patch-05 start points and Lookup/prim; EXTERNAL_OPAQUE url::Url; shadow-scan refinement (fail-closed pre-check); step 5 elaborated comparison
+      - formal/translation/Rmcp/Funs.lean
+      - formal/translation/Rmcp/Types.lean
+      - formal/translation/translation.json
+      - formal/trusted/translation-pins.txt
+      - formal/trusted/Rmcp/FunsExternal.lean
+      - formal/trusted/Rmcp/TypesExternal.lean
+      - formal/trusted/evidence/README.md
+      - formal/trusted/evidence/differential/metadata-resolver/*  # new; differential tests of the patch
+      - formal/trusted/evidence/linkage-scan/*  # new; README.md, run.sh, cases/ (57), limits/ (2): negative controls of the text pre-check
+      - scripts/linkage/{make_env.py,repair_template.py,Dump.lean,compare_env.py}  # new; step 5, the elaborated comparison
+      - formal/trusted/evidence/linkage-elab/*  # new; README.md, run.sh, cases/ (20): negative controls of step 5
+      - .github/workflows/aeneas-translation.yml  # caches formal/.lake/packages, lake exe cache get + lake build Aeneas before the linkage check, triggers on scripts/linkage/**
+      - formal/specs/Specs/Model/{RequestState,Skill}.lean  # comment-only: sha2-0.11.1 -> sha2-0.11.2 in the (H)/(S) notes
+      - formal/proofs/Proofs/External/MetadataResolver.lean  # new; spec lemmas of the patch-05 models
+      - formal/proofs/Proofs/External/{Std,String,Option,IntParse,Skill}.lean  # new spec lemmas; generic UTF-8 lemmas moved from Skill to String
+      - formal/proofs/Proofs.lean
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+      - formal/README.md
+      - docs/MCP_SDK_Verification_Master_Plan_EN.md  # Sections 2.3, 4, 15, 19 and 23 (amendments)
+      - docs/WORKFLOW_AND_PR_GUIDE.md
+    acceptance: >-
+      N01, N03, N05-N08, N10, N11 and the helpers with_base_url, is_loopback_metadata_host,
+      proxy_host and allowed_addresses (for N04 and N09) translate with real bodies and no sorry;
+      every earlier generated block is unchanged up to its Source line numbers; the 2 ORIGINAL
+      targets pass scripts/check-original-linkage.sh and the patch-05 targets are absent from the
+      unpatched translation; every external has a proved _spec theorem; lake build --wfail and
+      all lean-guard.sh checks pass; the patched lib tests and the differential tests pass; the
+      patch, the Charon and script changes and the new models reviewed by independent agents and
+      signed off by the human. Specifying N01-N11 is a separate step.
+  - id: SPEC-N01-N11  # not a plan step; specification of N01, N03-N11, OAuth metadata address policy of metadata_resolver.rs (plan Section 2.3 amendment 2026-11-25)
+    day: 2026-11-26
+    state: ACCEPTED  # accepted by the human owner 2026-11-26; committed 459995e. Signed off
+    # 2026-11-26; proved 2026-11-26; CI pending (nothing pushed).
+    # Proofs: 64/64 by mcp-lean (claude-opus-5-5, not the drafter) in
+    # formal/proofs/Proofs/Transport/MetadataResolver.lean (helpers .../MetadataResolver/Common.lean;
+    # shared lemmas Proofs/External/WP.lean, Proofs/External/MetadataResolver.lean); restated as
+    # Theorems.metadata_resolver.* and Theorems.auth.AuthorizationManager.is_loopback_metadata_host
+    # {,_fail} in formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean with
+    # #guard_msgs axiom checks (60 x [propext, Classical.choice, Quot.sound], 4 x [propext]);
+    # restated statements kernel-equal to the signed-off statements (64/64); two independent proof
+    # reviews (no blocking finding); phase C refinement done. Linkage: N01, N08 ORIGINAL, the
+    # others patch-05. Records formal/docs/functions/N01.yaml, N03.yaml-N11.yaml (N02 dropped, no
+    # record). 64 statements (the 64th, the
+    # proxy-host theorem of S6, renamed at sign-off to ..._of_new_eq_ok_of_mem_proxyHosts, name
+    # only) and the readable model formal/proofs/Proofs/Defs/MetadataResolver.lean, built in the
+    # Proofs root (lead decision 2026-11-26, precedent Proofs.Defs.Net), as is
+    # Proofs.External.MetadataResolver since the translation stage. Spec rounds 1-5 done (2
+    # independent mcp-review reviewers each), no counterexample in any round; all 64 statements
+    # proved in scratch by independent reviewers with the standard axioms only (13 re-proved
+    # independently in round 5). Signed off by the human spec owner 2026-11-26.
+    # Human decisions 2026-11-26: P1 (extension of rule T4 for proxyEnvValues: new's unfiltered
+    # hosts as filterMap of Defs.MetadataResolver.proxyHost over the values read, their
+    # normalization, security theorems about resolvers built by new; no premise on the value);
+    # R1 (membership and not-member statements about r.unfiltered_hosts count as restatements of
+    # P1); R2 (additive change to formal/proofs/Proofs/Defs/Net.lean accepted by the A01-A03 spec
+    # owner); S6 (add the proxy-host theorem); T1 (at sign-off: premises that a host is a
+    # configured proxy host, Defs.utf8Bytes host in the filterMap of proxyHost over
+    # proxyEnvValues, count as restatements of P1).
+    # Lead decisions: ND1 N03 stated by its equation plus facts about successful calls, no success
+    # spec; ND2 the N05 UTF-8 premise only for parsed proxies; ND3 the Vec<String> instance; ND4
+    # exact size premises for the Lean models; ND5 final location
+    # formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean.
+    depends_on: [PATCH05-RESOLVER]
+    owner: Lead + human owner
+    files:
+      - formal/proofs/Proofs/Defs/MetadataResolver.lean  # new; readable model, in the Proofs root
+      - formal/proofs/Proofs/Defs/Net.lean  # additive: public import Rmcp.Types, DecidableEq instances (R2)
+      - formal/proofs/Proofs.lean
+      - formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean  # final location (ND5); restated statements with #guard_msgs axiom checks
+      - formal/proofs/Proofs/Transport/MetadataResolver.lean  # new; proofs (64/64)
+      - formal/proofs/Proofs/Transport/MetadataResolver/Common.lean  # new; proof helpers
+      - formal/proofs/Proofs/External/WP.lean  # shared lemmas
+      - formal/proofs/Proofs/External/MetadataResolver.lean  # shared lemmas
+      - formal/docs/functions/N01.yaml  # and N03.yaml to N11.yaml, new
+      - formal/trusted/Rmcp/FunsExternal.lean  # docstrings: P1 and R1 rule text
+      - formal/docs/STATUS.md
+      - formal/docs/board.yaml
+    acceptance: >-
+      The statements of N01, N03-N11 reviewed by independent agents until a round has no blocking
+      finding, signed off by the human spec owner, then proved by agents that did not draft them
+      and incorporated with lake build --wfail and all lean-guard.sh checks passing.

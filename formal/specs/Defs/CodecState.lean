@@ -28,7 +28,17 @@ Signed off by the spec owner on 2026-11-23 with the E07–E11 statements (the S0
 
 Rust source: `crates/rmcp/src/model/request_state.rs` (and `request_state_wire.rs` where named)
 in the patched copy (patch 01 on origin/main 7caec76, D2 fallback 2026-11-23); line numbers
-below refer to it (its non-test lines are those of `9bd8144`).
+below refer to it (its non-test lines are those of `9bd8144`) up to the end of `resultBytes`. The
+R09–R15 sections from "`InvalidKeyring` messages of the keyring builders" on ("Sealing",
+"Keyring configuration" and "Abbreviations used by the public statements") cite the patches
+01–03 copy as "patched", origin/main `7caec76` as "upstream", and the patch-01 copy only where
+they say "patch-01 copy".
+
+The section "Abbreviations used by the public statements" at the end of this file was added by
+the readability rewrite of 2026-11-25 of `Specs/Model/RequestState.lean`. That rewrite changes
+the text of signed-off statements and was **signed off by the spec owner on 2026-11-25**; each
+rewritten statement's type is definitionally equal to its text at commit `8debe97` (checked by
+`rfl`; evidence in `formal/docs/STATUS.md`, "Readability rewrite of R01–R15"). No definition above that section changes.
 -/
 
 namespace Defs.CodecState
@@ -478,5 +488,106 @@ def keyringCheck (active : String) (entries : List (String × List U8)) :
     else if maxKidLen < active.utf8ByteSize then .error .kidTooLong
     else if active ∈ entries.map Prod.fst then .ok ()
     else .error .activeKidMissing
+
+/-! ### Abbreviations used by the public statements
+
+Each definition below names a formula that the public `request_state.rs` statements
+(`formal/specs/Specs/Model/RequestState.lean`, R06–R15) used to spell out in full. Its body is
+exactly the replaced text, so each statement that uses it is definitionally equal (`rfl`) to its
+signed-off form; none adds or drops a condition (readability rewrite of 2026-11-25, signed off
+by the spec owner on 2026-11-25). Line numbers: "patched" is the patched copy of
+`request_state.rs` (patches 01–03 on origin/main `7caec76`), which agrees with the patch-01 copy cited above up to
+line 526; "upstream" is `7caec76`. -/
+
+/-- The bytes of a Rust `&str`. Aeneas translates `&str` to `Str`, the slice of its UTF-8 bytes
+(`def Str := Slice U8`, `Aeneas/Std/StringDef.lean`); this is that list of bytes. Used for the
+`sealed: &str` token of `open`, `open_with`, `open_json` and `open_json_with` (patched lines 476,
+495–498, 509 and 521–525; upstream 486, 505–508, 519 and 531–535) and for the `&str` that
+`kid.as_ref()` returns in `with_rs1_signing` and `with_rs1_fallback` (patched lines 374 and 411,
+upstream 384 and 421). -/
+def strBytes (s : Str) : List U8 := (s : Slice U8).val
+
+/-- **Premise (F) for one token**: if the first `.`-component of `token` is `rs1`, every rs1
+fallback id of `codec` is a key id (`CodecFallbacksKnown`). The premise is sufficient, not
+necessary, for Rust not to panic: `open_at` dispatches on the first component (patch-01 copy
+lines 565–568), and the fallback loop, whose `keys.get(kid).expect("validated rs1 fallback key")`
+(patch-01 copy line 652, patched 656, upstream 661) panics on the first fallback id that is not a
+key id, is reached only by an `rs1` token that splits into three components, opened by a keyring
+with a non-empty fallback list, whose body and tag both decode (patch-01 copy lines 613–624).
+A single-key codec never reaches the loop (it checks the tag directly, patch-01 copy line 629);
+any other `rs1` token opened by a keyring returns an error (`MalformedFormat`, `UnknownKeyId` or
+`InvalidEncoding`) before the loop. -/
+def FallbacksKnownForToken (codec : RequestStateCodec) (token : List U8) : Prop :=
+  (components token).head? = some versionV1 → CodecFallbacksKnown codec
+
+/-- **Premise (T), `rs1` tokens**: if `token` splits on `.` into `["rs1", b, t]` and `b` decodes
+(`ExtModel.b64Decode`) to `body`, the MAC transcript `transcriptV1 ad body` has at most
+`usize::MAX` bytes. This is the domain of the Lean model of `Vec::extend_from_slice` (an Aeneas
+`Vec` holds at most `usize::MAX` elements), which builds the transcript of the tag check of
+`open_rs1_at` (patch-01 copy lines 627–638; see `openRs1`). -/
+def TranscriptV1Fits (token ad : List U8) : Prop :=
+  ∀ b t body, components token = [versionV1, b, t] → ExtModel.b64Decode b = some body →
+    (transcriptV1 ad body).length ≤ Usize.max
+
+/-- **Premise (T), `rs2` tokens**: if `token` splits on `.` into `["rs2", k, b, t]`, `k` decodes
+to `kid` and `b` to `body`, the MAC transcript `transcriptV2 kid ad body` has at most
+`usize::MAX` bytes (as `TranscriptV1Fits`, for the tag check of `open_rs2_at`, patch-01 copy
+lines 687–690; see `openRs2`). -/
+def TranscriptV2Fits (token ad : List U8) : Prop :=
+  ∀ k b t kid body, components token = [versionV2, k, b, t] →
+    ExtModel.b64Decode k = some kid → ExtModel.b64Decode b = some body →
+    (transcriptV2 kid ad body).length ≤ Usize.max
+
+/-- The list `l` with `x` appended at the end, unless `x` already occurs in `l` (then `l`
+unchanged): the rs1 fallback update of `with_rs1_signing`,
+`if !rs1_fallbacks.iter().any(|existing| existing == &kid) { rs1_fallbacks.push(kid); }`
+(patched lines 394–396, upstream 404–406, with `kid` the owned `String`), and of
+`with_rs1_fallback`,
+`if !rs1_fallbacks.iter().any(|existing| existing == kid) { rs1_fallbacks.push(kid.to_owned()); }`
+(patched lines 426–428, upstream 436–438, with `kid` the `&str`). -/
+def appendIfAbsent (l : List String) (x : String) : List String :=
+  if x ∈ l then l else l ++ [x]
+
+/-- `e` is `RequestStateError::InvalidKeyring(msg)` (patched line 129, upstream 139) whose
+`&'static str` message `msg` holds exactly the UTF-8 bytes of `text` (`StrIs`). -/
+def IsInvalidKeyring (e : RequestStateError) (text : String) : Prop :=
+  ∃ msg, e = .InvalidKeyring msg ∧ StrIs msg text
+
+/-- The converted keyring entries of `new_with_keyring`, each key given as its list of bytes:
+`(kid, key) ↦ (kid, key.val)`. These are the pairs `(kid.into(), key.into())` of the loop
+(patched lines 328–330, upstream 338–340), in the form `keyringCheck` takes. -/
+def entryBytes (entries : List (String × alloc.vec.Vec U8)) : List (String × List U8) :=
+  entries.map fun c => (c.1, c.2.val)
+
+/-- How `open_json_with` turns the outcome of `serde_json::from_slice` into its result:
+`Ok value ↦ Ok value`, `Err error ↦ Err(RequestStateError::Deserialization(error))` (patched
+lines 527–530, patch 03; upstream `.map_err(RequestStateError::Deserialization)`, line 537). It
+names no model: the statements apply it to `ExtModel.serdeJsonFromSlice …` at the call site. -/
+def mapErrDeserialization {T : Type} (r : core.result.Result T serde_json.error.Error) :
+    core.result.Result T RequestStateError :=
+  match r with
+  | .Ok value => .Ok value
+  | .Err error => .Err (.Deserialization error)
+
+/-- `e` is `RequestStateError::KeyTooShort { minimum, actual }` (patched line 99, upstream 109;
+built by `validate_key_length`, patched lines 708–716, upstream 755–763) with `minimum = 32`
+(`minKeyLength`; `Self::MIN_KEY_LENGTH`, patched line 270, upstream 280) and `actual = n`. Used
+for the `Err` case of `try_new` (R06), where `n` is the length of the converted key. -/
+def IsKeyTooShort (e : RequestStateError) (n : Nat) : Prop :=
+  ∃ minimum actual : Usize, e = .KeyTooShort minimum actual ∧
+    minimum.val = minKeyLength ∧ actual.val = n
+
+/-- The caller's conversions turn the items `items` of the `keys` iterator of `new_with_keyring`
+into the converted entries `entries`, position by position: for the item `(kid, key)` at a
+position, `kid.into()` (with the caller's `Into<String>`, `kidInto`) returns the key id and
+`key.into()` (with the caller's `Into<Vec<u8>>`, `keyInto`) returns the key of the entry at the
+same position (patched lines 329–330, upstream 339–340). Both conversions are caller code,
+translated as functions of their argument; as for `IterYields`, a conversion with side effects
+outside its argument (global or thread-local state, input/output) is not described. -/
+def ItemsConvert {K V : Type} (kidInto : core.convert.Into K String)
+    (keyInto : core.convert.Into V (alloc.vec.Vec U8)) (items : List (K × V))
+    (entries : List (String × alloc.vec.Vec U8)) : Prop :=
+  List.Forall₂ (fun (p : K × V) (c : String × alloc.vec.Vec U8) =>
+    kidInto.into p.1 = ok c.1 ∧ keyInto.into p.2 = ok c.2) items entries
 
 end Defs.CodecState

@@ -106,13 +106,23 @@ BUILD_RS_SHA256="31b905abf91292bab290271e993e347e06a1944e6305f742f69dbd01e6b8934
 # (2026-11-24: opaque crate whose trait declarations, e.g. DeserializeOwned, are translated).
 PINNED_DEPS=(
   "hmac 0.13.0"
-  "sha2 0.11.1"
+  "sha2 0.11.2"
   "base64 0.23.1"
   "digest 0.11.3"
   "zeroize 1.9.2"
   "chrono 0.4.45"
   "serde_json 1.0.154"
   "serde_core 1.0.229"
+  # Skills targets K01-K20 (translation patch 04): the models of prim::{percent_encode_controls,
+  # percent_decode_utf8, nfkc} and of get_general_category cite these crates; the enum
+  # GeneralCategory is translated from unicode-general-category's source.
+  "percent-encoding 2.3.2"
+  "unicode-normalization 0.1.26"
+  "unicode-general-category 1.1.0"
+  # metadata_resolver.rs targets N01-N11 (translation patch 05): the enums url::host::Host and
+  # url::parser::ParseError are translated from url's source; the models of Url::{parse, host,
+  # host_str} cite this crate.
+  "url 2.5.9"
 )
 
 # Lean names of the targets (plan Section 2): each needs a `def` in Funs.lean.
@@ -168,16 +178,73 @@ TARGETS=(
   transport.auth.AuthorizationManager.embedded_ipv4         # A01
   transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4  # A02
   transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6  # A03
+  # Skills (SEP-2640), translation patch 04.
+  model.skill.Resource.is_directory                         # K01
+  model.skill.SkillsCapability.new                          # K02
+  model.skill.SkillsCapability.with_directory_read          # K03
+  model.skill.SkillResource.new                             # K04
+  model.skill.SkillResource.from_bytes                      # K05
+  model.skill.SkillResource.verify                          # K06
+  model.skill.sha256_digest                                 # K07
+  model.skill.SkillFrontmatter.new                          # K08
+  model.skill.SkillFrontmatter.with_field                   # K09
+  model.skill.Skill.new                                     # K10
+  model.skill.Skill.with_meta                               # K11
+  model.skill.Skill.name                                    # K12
+  model.skill.Skill.validate                                # K13
+  model.skill.is_valid_skill_name                           # K13 (private helper)
+  model.skill.manifest_resource_key                         # K13 (private helper)
+  model.skill.normalize_percent_encoding                    # K13 (private helper)
+  model.skill.skill_name_from_uri                           # K14
+  model.skill.is_sha256_digest                              # K15
+  model.skill.validate_skills                               # K16
+  model.skill.GetSkillResult.new                            # K17
+  model.skill.GetSkillResult.with_ttl_ms                    # K18
+  model.skill.GetSkillResult.with_cache_scope               # K19
+  model.skill.GetSkillResult.with_meta                      # K20
+  # metadata_resolver.rs (OAuth metadata address policy), translation patch 05.
+  transport.auth.metadata_resolver.AddressClass.of          # N01
+  transport.auth.metadata_resolver.MetadataAddressResolver.new  # N03 (patch 05)
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_base_url  # N04 (patch 05 helper)
+  transport.auth.AuthorizationManager.is_loopback_metadata_host  # N04 (callee, patch 05)
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts  # N05
+  transport.auth.metadata_resolver.proxy_host               # N05 (patch 05 helper)
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowing_private_addresses  # N06
+  transport.auth.metadata_resolver.MetadataAddressResolver.allows_url  # N07
+  transport.auth.metadata_resolver.MetadataAddressResolver.is_allowed  # N08
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses  # N09 (patch 05 helper)
+  transport.auth.metadata_resolver.literal_ip               # N10
+  transport.auth.metadata_resolver.normalize_host           # N11
 )
 
 
 # RMCP_TARGET_SET=phase2 (used only by scripts/check-original-linkage.sh, plan Section 19): check
-# only the Phase 2 targets; the Phase 1 targets (model.request_state*) exist only with patch 01.
+# only the targets of ORIGINAL linkage: the Phase 1 targets (model.request_state*) exist only with
+# patch 01, and the skills targets K05-K07, K13-K16 (with the private helpers of K13) only with
+# patch 04 (human decision 2026-11-25: the other 13 skills targets are ORIGINAL).
+PATCH04_TARGETS=" model.skill.SkillResource.from_bytes model.skill.SkillResource.verify
+  model.skill.sha256_digest model.skill.Skill.validate model.skill.is_valid_skill_name
+  model.skill.manifest_resource_key model.skill.normalize_percent_encoding
+  model.skill.skill_name_from_uri model.skill.is_sha256_digest model.skill.validate_skills "
+# Likewise the metadata_resolver.rs targets and helpers that need translation patch 05 (N01 and
+# N08 are ORIGINAL).
+PATCH05_TARGETS=" transport.auth.metadata_resolver.MetadataAddressResolver.new
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_base_url
+  transport.auth.AuthorizationManager.is_loopback_metadata_host
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts
+  transport.auth.metadata_resolver.proxy_host
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowing_private_addresses
+  transport.auth.metadata_resolver.MetadataAddressResolver.allows_url
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses
+  transport.auth.metadata_resolver.literal_ip transport.auth.metadata_resolver.normalize_host "
 case "${RMCP_TARGET_SET:-all}" in
   all) ;;
   phase2)
     phase2=()
-    for t in "${TARGETS[@]}"; do [[ "$t" == model.request_state* ]] || phase2+=("$t"); done
+    for t in "${TARGETS[@]}"; do
+      [[ "$t" == model.request_state* || "$(printf '%s' "$PATCH04_TARGETS$PATCH05_TARGETS" | tr '\n' ' ')" == *" $t "* ]] \
+        || phase2+=("$t")
+    done
     TARGETS=("${phase2[@]}")
     ;;
   *) printf '[aeneas-translate] error: RMCP_TARGET_SET must be all or phase2\n' >&2; exit 1 ;;
@@ -189,15 +256,28 @@ die() { printf '[aeneas-translate] error: %s\n' "$*" >&2; exit 1; }
 # Output checks on a directory holding Rmcp/Funs.lean: every target has a `def`
 # (a real body, not an opaque declaration), and no generated file mentions `sorry`.
 check_output() {
-  local out="$1" funs="$1/Rmcp/Funs.lean" missing=() t pat sorries f rc hit
+  local out="$1" funs="$1/Rmcp/Funs.lean" missing=() t pat sorries f rc hit defs
   [[ -f "$funs" ]] || die "no Rmcp/Funs.lean in $out"
+  # Aeneas puts a long name on the line after a bare `def` (e.g. allowing_private_addresses, N06);
+  # join such a line with the next one before matching.
+  defs="$(awk '/^(noncomputable )?(private )?def$/ { d = $0; getline; sub(/^[[:space:]]+/, ""); print d " " $0; next } { print }' "$funs")"
   for t in "${TARGETS[@]}"; do
     pat="^(noncomputable )?(private )?def ${t//./\\.}([[:space:]]|$)"
-    grep -Eq "$pat" "$funs" || missing+=("$t")
+    grep -Eq "$pat" <<<"$defs" || missing+=("$t")
   done
   if [[ ${#missing[@]} -gt 0 ]]; then
     printf '[aeneas-translate] missing target: %s\n' "${missing[@]}" >&2
     die "${#missing[@]} target(s) have no definition in Funs.lean"
+  fi
+  # In the linkage run, the patch-04 targets must be absent: the unmodified copy starts from no
+  # patch-04 entry point, so a patch-04 target that is still translated is reached from an ORIGINAL
+  # target, i.e. PATCH04_TARGETS (here) and `patch04` (scripts/check-original-linkage.sh) disagree
+  # with the call graph, and the ORIGINAL claim would silently skip checking it.
+  if [[ "${RMCP_TARGET_SET:-all}" == phase2 ]]; then
+    for t in $PATCH04_TARGETS $PATCH05_TARGETS; do
+      pat="^(noncomputable )?(private )?def ${t//./\\.}([[:space:]]|$)"
+      ! grep -Eq "$pat" <<<"$defs" || die "patch-04/05 target $t is translated from the unmodified source; update PATCH04_TARGETS/PATCH05_TARGETS and check-original-linkage.sh"
+    done
   fi
   # Each `_` glob in [package.metadata.charon].start_from matches exactly one Rust item (plan
   # Section 15, rule 3): counted as distinct local `rust_name`s in translation.json that match the
@@ -223,6 +303,30 @@ def segs(path):
             out.append(cur); cur = ""; i += 2; continue
         cur += c; i += 1
     return out + [cur]
+def canon(name):
+    # An inherent impl written in another module than its type (`impl Resource` in
+    # rmcp::model::skill) is named by Charon after the module of the impl, but its `start_from`
+    # glob resolves through the module of the type: compare with the impl element moved under
+    # the module of the type (identity when both modules agree). Only a braced element that is an rmcp
+    # type path (`{rmcp::…}`) is moved; `{closure}`, `{[T]}`, `{dyn …}` and `{impl …}` elements are kept.
+    s = segs(name)
+    for i, e in enumerate(s):
+        if e.startswith("{rmcp::"):
+            ty = segs(e[1:-1].split("<", 1)[0])
+            return "::".join(ty[:-1] + s[i:])
+    return name
+# `_` globs that are meant to reach several inherent methods of the same name, each listed.
+MULTI = {
+    "rmcp::model::skill::_::new": [
+        "rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::new",
+        "rmcp::model::skill::{rmcp::model::skill::SkillFrontmatter}::new",
+        "rmcp::model::skill::{rmcp::model::skill::SkillResource}::new",
+        "rmcp::model::skill::{rmcp::model::skill::SkillsCapability}::new",
+        "rmcp::model::skill::{rmcp::model::skill::Skill}::new"],
+    "rmcp::model::skill::_::with_meta": [
+        "rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::with_meta",
+        "rmcp::model::skill::{rmcp::model::skill::Skill}::with_meta"],
+}
 names = {f["rust_name"] for f in json.load(open(tj))["functions"] if f.get("is_local")}
 bad = 0
 for g in start:
@@ -230,7 +334,15 @@ for g in start:
     if "_" not in gs:
         continue
     hits = sorted(n for n in names
-                  if len(segs(n)) == len(gs) and all(a == "_" or a == b for a, b in zip(gs, segs(n))))
+                  if len(segs(canon(n))) == len(gs)
+                  and all(a == "_" or a == b for a, b in zip(gs, segs(canon(n)))))
+    if g in MULTI:
+        if hits != sorted(MULTI[g]):
+            bad += 1
+            print(f"BAD {g}: {hits}, expected {sorted(MULTI[g])}")
+        else:
+            print(f"OK {g}")
+        continue
     if len(hits) != 1:
         bad += 1
         print(f"BAD {g}: {len(hits)} Rust items: {hits}")
@@ -239,7 +351,7 @@ for g in start:
 sys.exit(1 if bad else 0)
 PY
 )" || { printf '%s\n' "$globs" | grep '^BAD' >&2; die "a Phase 2 \`_\` glob does not match exactly one Rust item (plan Section 15)"; }
-  log "$(grep -c '^OK' <<<"$globs") \`_\` globs of start_from each match exactly one Rust item"
+  log "$(grep -c '^OK' <<<"$globs") \`_\` globs of start_from match their expected Rust items (exactly one each, or the MULTI list)"
   # grep: exit 0 = match, 1 = no match, anything else = error (not swallowed).
   sorries=""
   while IFS= read -r -d '' f; do
@@ -644,8 +756,16 @@ for k in ("types", "globals"):
             errs.append(f"opaque by {op[0]!r} but translated with a definition: {d['rust_name']}")
         if d.get("is_local") and ext and not op:
             errs.append(f"local {k[:-1]} emitted as external, not in opaque: {d['rust_name']}")
+def canon(name):
+    # As in check_output: an inherent impl written in another module than its type.
+    e = elems(name)
+    for i, x in enumerate(e):
+        if x.startswith("{rmcp::"):
+            ty = elems(x[1:-1].split("<", 1)[0])
+            return "::".join(ty[:-1] + e[i:])
+    return name
 for pat in meta["start_from"]:
-    if not any(matches(pat, d["rust_name"]) for _, d in items):
+    if not any(matches(pat, d["rust_name"]) or matches(pat, canon(d["rust_name"])) for _, d in items):
         errs.append(f"start_from {pat!r} matches no translated item")
 for e in errs:
     print(f"[aeneas-translate] {e}", file=sys.stderr)

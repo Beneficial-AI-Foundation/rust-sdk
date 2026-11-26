@@ -14,6 +14,8 @@ public import Rmcp.Funs
 Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27),
 restated in `formal/proofs/Proofs/Internal/External.lean` (Phase 2 part); the draft file was removed at
 incorporation. For this group (spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
+`core.option.Option.or_else_spec` was added on 2026-11-25 (human decision: every external reached
+by the translation has a `_spec` theorem).
 -/
 
 open Aeneas Aeneas.Std Result
@@ -34,6 +36,18 @@ theorem core.option.Option.or_else_none {T : Type} {F : Type}
     core.option.Option.or_else opsfunctionFnOnceFTupleOptionInst none f =
       opsfunctionFnOnceFTupleOptionInst.call_once f () := by
   rfl
+
+/-- **Spec theorem for `Option::or_else`**, for every closure instance: a postcondition `P` holds
+of the result when it holds of `Some x` for `self = Some x` (the closure is not called) and the
+closure's `call_once` meets it for `self = None` (`or_else_some`, `or_else_none`). -/
+theorem core.option.Option.or_else_spec {T : Type} {F : Type}
+    (opsfunctionFnOnceFTupleOptionInst : core.ops.function.FnOnce F Unit (Option T))
+    (self : Option T) (f : F) (P : Option T → Prop) (hsome : ∀ x, self = some x → P (some x))
+    (hnone : self = none → opsfunctionFnOnceFTupleOptionInst.call_once f () ⦃ P ⦄) :
+    core.option.Option.or_else opsfunctionFnOnceFTupleOptionInst self f ⦃ P ⦄ := by
+  cases self with
+  | some x => simp only [core.option.Option.or_else, WP.spec_ok]; exact hsome x rfl
+  | none => exact hnone rfl
 
 /-- `<Option<T> as PartialEq>::eq`, for every instance of `T`: `Some l == Some r` is `l == r`
 through the instance (including its failure); a `Some` and a `None` are unequal; two `None`

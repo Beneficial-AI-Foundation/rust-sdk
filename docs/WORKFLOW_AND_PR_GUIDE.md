@@ -168,8 +168,10 @@ bundle's channel. `RUSTUP_HOME` is allowed (container images set it); every othe
 refused. A fake `rustc` that prints exactly these lines is not caught by this check.
 
 The dependency versions that the axioms rely on are pinned in `scripts/aeneas-translate.sh`
-(`PINNED_DEPS`: `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`, `zeroize 1.9.2`,
-`chrono 0.4.45`, `serde_json 1.0.154`, and since translation patch 03 `serde_core 1.0.229`). The script runs one `cargo tree` over the whole dependency
+(`PINNED_DEPS`: `hmac 0.13.0`, `sha2 0.11.2`, `base64 0.23.1`, `digest 0.11.3`, `zeroize 1.9.2`,
+`chrono 0.4.45`, `serde_json 1.0.154`, since translation patch 03 `serde_core 1.0.229`, since
+translation patch 04 `percent-encoding 2.3.2`, `unicode-normalization 0.1.26`,
+`unicode-general-category 1.1.0`, and since translation patch 05 `url 2.5.9`). The script runs one `cargo tree` over the whole dependency
 tree of `rmcp` in the translated configuration and fails if any dependency does not come from
 crates.io (path, git or other registry), and checks the pins on the normal-edge tree of `rmcp` in that configuration (`cargo tree --prefix depth`).
 Since S21 (human decision 2026-11-23) the version that counts is the one `rmcp` itself uses: a
@@ -216,7 +218,9 @@ not emitted into an `*External_Template.lean` file or a local one emitted there 
 pattern names, a `start_from` pattern that matches
 no translated item (this replaces the comparison with the options recorded in the LLBC, which
 Charon `0.1.324` no longer records; Aeneas upgrade of 2026-11-24, lead decision N1), a missing target, a `_` glob of `start_from` that does
-not match exactly one Rust item, any `sorry` in the generated files, or a dependency version mismatch. The exact lists are in `formal/README.md` ("Translated
+not match exactly one Rust item (stated exception since translation patch 04: the globs
+`rmcp::model::skill::_::new` and `rmcp::model::skill::_::with_meta` must match exactly the
+`rust_name`s listed for them in `MULTI` of `scripts/aeneas-translate.sh`), any `sorry` in the generated files, or a dependency version mismatch. The exact lists are in `formal/README.md` ("Translated
 configuration") and the header of `scripts/aeneas-translate.sh`.
 
 Aeneas writes into the scratch directory `$RMCP_LLBC_DIR/out` (default `.llbc/out`); only after
@@ -382,7 +386,17 @@ CI runs three workflows on every relevant PR: the translation is not stale
 the crate's tests (`patched-tests.yml`). A PR is ready only when all three pass. From S22 (Phase 2),
 `aeneas-translation.yml` also runs `scripts/check-original-linkage.sh`, which translates the Phase 2
 targets from the unmodified source and fails if any differs from the committed translation (plan
-Section 19).
+Section 19): a text comparison of the blocks is a fail-closed pre-check, and since 2026-11-26 the
+elaborated comparison decides (both translations built as Lean environments with their generated
+External templates; every unmodified-source constant must elaborate identically, and what the
+translation modules export besides constants, instances, reducibility and extension entries, may
+differ only as the new declarations make it differ, and no new name may lie outside `rmcp.`;
+`scripts/linkage/`). Step 5 first runs `scripts/lean-guard.sh sources` and relies on it and on the
+stale-translation check, because it runs Lean on committed code. Its stated limits are
+the hand-written `formal/trusted/Rmcp/*.lean` (the trusted base) and entries that committed code
+attaches to existing constants in extensions that grow with new declarations (`attribute [simp]`,
+`[inline]`, …; plan Section 19). The workflow caches `formal/.lake/packages` and builds `Aeneas`
+in `formal` before the check.
 
 `lean-build.yml` has two jobs, because `lake build` elaborates the project, and elaboration runs
 code that could rewrite files of the runner (a `#eval` rewriting `scripts/lean-guard.sh`, say)

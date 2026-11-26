@@ -1,0 +1,555 @@
+Translation patch: the skills API of crates/rmcp/src/model/skill.rs, so that its twenty public
+functions translate (plan Section 2.3, targets K01-K20; human decisions 2026-11-25: patch 04
+with hunks H1-H9, all twenty targets)
+
+Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
+01-request-state-wire.patch, 02-phase2-tests.patch and 03-request-state-public.patch
+(scripts/apply-patches.sh applies formal/trusted/patches/*.patch in file-name order, patch -p1
+-F 0, only to the copy in .llbc/work/; the real source is never patched). File:
+crates/rmcp/src/model/skill.rs (blob 9abf078, which patches 01-03 do not touch). Generated with
+git diff from the patch-01..03 copy. The patch body below is the authoritative content.
+Toolchain measured: Aeneas nightly-2026.11.24-fb44cb4, Charon 0.1.324, Rust nightly-2026-09-17.
+
+Not part of this patch (they stay in the repository): the Charon settings in
+crates/rmcp/Cargo.toml (fifteen start_from entries for K01-K20; the private module
+rmcp::model::skill::prim added to opaque), the PINNED_DEPS entries percent-encoding 2.3.2,
+unicode-normalization 0.1.26 and unicode-general-category 1.1.0 of scripts/aeneas-translate.sh,
+and the external models of formal/trusted/Rmcp/ (section "Public `skill.rs` API"). Without this
+patch K01-K04, K08-K12 and K17-K20 translate unmodified (ORIGINAL linkage); K05-K07 and
+K13-K16 need it (linkage patch-04).
+
+Change (non-test lines only; no test is added or changed). Every hunk replaces calls that the
+translation cannot handle by calls to the new private module `prim` or by loops without an
+early return, and keeps the computed values:
+ prim  New private module `prim` at the end of the file (before `mod tests`): twelve one-line
+       wrappers, opaque in the translation and modelled in Lean, each the original expression:
+       sha256 (`Sha256::digest(bytes).into()`), find_query_or_fragment (`s.find(['?', '#'])`),
+       strip_suffix / strip_prefix (`&str` patterns), last_slash_segment
+       (`s.rsplit('/').next().unwrap_or(s)`), split_slash / split_percent
+       (`s.split(c).map(str::to_owned).collect()`), join_slash (`segments.join("/")`),
+       split_once_percent (`s.split_once('%')`), percent_encode_controls
+       (`utf8_percent_encode(value, CONTROLS).into()`), percent_decode_utf8
+       (`percent_decode_str(s).decode_utf8().ok().map(Cow::into_owned)`), nfkc
+       (`s.nfkc().collect()`). Used by H1-H7.
+ H1  sha256_digest: `prim::sha256` instead of `Sha256::digest`; the hex digits are pushed with
+     the new private helper `lower_hex_digit` instead of `write!(digest, "{byte:02x}")`.
+ H2  Skill::validate: the name check through `prim::percent_decode_utf8` and `prim::nfkc`
+     (a `match`); the `any` over the files and the `for` loop with early returns become `while`
+     loops that `break`, the latter storing the error in `result`, which is returned after the
+     loop.
+ H3  skill_name_from_uri: `prim::find_query_or_fragment`, `prim::strip_suffix` (twice) and
+     `prim::last_slash_segment` instead of `contains`, `strip_suffix` and `rsplit`.
+ H4  is_valid_skill_name: the NFKC characters collected by `prim::nfkc` and read with an index
+     loop instead of `for (index, ch) in name.nfkc().enumerate()`.
+ H5  manifest_resource_key: `prim::strip_suffix`, `prim::strip_prefix`,
+     `prim::find_query_or_fragment`, `prim::split_slash` and `prim::join_slash`; the last segment
+     taken with `Vec::pop` instead of `Split::next_back`; the dot-segment loop moved to the new
+     private helpers `resolve_segments` and `resolve_segment` (no early return in a loop; the
+     resolved segments are `String`s).
+ H6  normalize_percent_encoding: `prim::percent_encode_controls`, `prim::split_once_percent`
+     and `prim::split_percent`; the loop body moved verbatim to the new private helper
+     `push_normalized_part`, with `hex.bytes().all(..)` as the new helper `is_ascii_hex` (an
+     index loop) and the unreserved test as the new helper `is_unreserved`.
+ H7  is_sha256_digest: `prim::strip_prefix` instead of `str::strip_prefix`.
+ H8  validate_skills: the set key is `normalize_percent_encoding(&skill.uri).into_owned()`
+     (a `String`) instead of the `Cow<str>`.
+ H9  SkillResource::verify: `if digest == self.digest { return Ok(()); } Err(..)` instead of
+     `if digest != self.digest { return Err(..); } Ok(())`.
+
+Why each hunk is needed (each measured alone on 2026-11-25: the patched file with that one
+function reverted to the original, everything else, including the Charon settings and the
+script above, as in the repository):
+ H1  Charon reports errors ("GATs cannot work with the `--lift-associated-types` option")
+     on hybrid-array's `ArraySize` and `impl IntoIterator for Array` (skill.rs lines 121 and
+     124 of that file: `Sha256::digest`, `for byte in hash`), and the script stops.
+ H2  "[Error] Early returns inside of loops are not supported yet" on Skill::validate; Aeneas
+     ignores its body and exits with 1.
+ H3  "[Error] Unimplemented": the signatures of `str::strip_suffix`, `str::rsplit` and
+     `RSplit::next` (the `core::str::pattern::Pattern` trait, `core/src/str/pattern.rs` line
+     99, has a generic associated type) cannot be translated; Aeneas fails (CFailure).
+ H4  Not needed for the translation: without it everything translates. It is kept (human
+     decision 2026-11-25) because without it the translation calls
+     `<&str as UnicodeNormalization>::nfkc` and `<Recompositions<Chars> as Iterator>::next`
+     and needs the external type `unicode_normalization::recompose::Recompositions`, a stateful
+     streaming iterator; with H4, NFKC is reached only through `prim::nfkc`, one function from a
+     string to its characters, modelled by the opaque `ExtModel.nfkc` shared with H2.
+ H5  "[Error] Unimplemented": the signatures of `str::strip_suffix` and of
+     `DoubleEndedIterator::next_back` for `str::Split` (the `Pattern` trait); Aeneas fails.
+ H6  "[Error] Unimplemented" on the `Pattern` trait (pattern.rs line 99) through
+     `split_once('%')` and `split('%')`; Aeneas fails (exit 2).
+ H7  "[Error] Unimplemented" on the `Pattern` trait through `str::strip_prefix`; Aeneas fails
+     (exit 2).
+ H8  "[Error] Unimplemented: found a loan and its corresponding borrow in the same region
+     abstraction" on validate_skills (the `HashSet<Cow<'_, str>>` borrowing each `skill.uri`
+     across iterations); Aeneas exits with 1.
+ H9  Not needed for the translation: without it everything translates. It is kept (human
+     decision 2026-11-25) because `!=` on `String` makes Aeneas require the `ne` method of the
+     external `PartialEq` impls, adding three externals (`ne` of `char`, of `String` against
+     `str` and of `Arc<T>`) that no target otherwise needs.
+No upstream Charon or Aeneas issue has been filed (as of 2026-11-25); the variants are kept
+outside the repository.
+With the whole patch all twenty targets K01-K20 and the private helpers is_valid_skill_name,
+manifest_resource_key and normalize_percent_encoding translate with real bodies, no sorry is
+generated, and every earlier block of Funs.lean and Types.lean is unchanged up to its Source
+line numbers.
+
+Behaviour (the public API is unchanged; the new functions and the module `prim` are private):
+ prim  Each wrapper is the original expression with the same arguments, so each call site
+       computes what it computed before. `rsplit('/')` always yields at least one item, so the
+       `unwrap_or(s)` of last_slash_segment is never taken and its `?` in the original never
+       returned. `split_slash`/`split_percent` copy the parts into `String`s with the same
+       bytes; `percent_decode_utf8` returns `Some` exactly when `decode_utf8` is `Ok`, with the
+       same characters. One difference: `split_slash`/`split_percent` collect all parts into a
+       `Vec<String>` (24 bytes per element on the translated 64-bit target), which the original
+       call sites do not (H5, H6; patch-induced premise 2 below).
+ H1  `Sha256::digest` returns the same 32 bytes as `[u8; 32]`. `write!(digest, "{byte:02x}")`
+     writes two lowercase hexadecimal digits, high nibble first, zero-padded; `lower_hex_digit`
+     maps 0..=15 to `0-9a-f`, so the two pushed chars are the same. Writing to a `String` never
+     fails, so the removed `expect` never fired; the capacity reserved is unchanged.
+ H2  `is_ok_and(|segment| segment.nfkc().eq(name.nfkc()))` is `true` exactly when decoding
+     succeeds and the two NFKC character sequences are equal (`Iterator::eq`), which is the
+     `Vec<char>` equality of the `match`; NFKC is pure, so computing `nfkc(name)` only in the
+     `Some` arm changes no value. One difference: `prim::nfkc` collects each NFKC form into a
+     `Vec<char>` (4 bytes per char), where `Iterator::eq` streams both forms and stops at the
+     first difference, so the patched copy panics with "capacity overflow" when a form would
+     exceed `isize::MAX` bytes, which the original never allocates. Unreachable in practice:
+     NFKC expands a char to at most 18 chars (UAX #15; U+FDFA, 3 UTF-8 bytes), so it needs a
+     name or decoded segment of more than of the order of `isize::MAX / 24` bytes. Because of it the Lean
+     model of K13 needs a premise that the original would not (the NFKC length bound of
+     `prim::nfkc`; formal/trusted/evidence/README.md). The `while` loop over `files` computes `any(..)` with the same
+     short circuit. The second loop visits the files in the same order, performs the same
+     `manifest_resource_key`, `seen.insert` and `is_sha256_digest` calls, and stops at the same
+     first error, which is returned with the same fields; without an error the result is
+     `Ok(())` as before.
+ H3  `contains(['?', '#'])` is `find(['?', '#']).is_some()`; `strip_suffix('/')` with a char
+     pattern and with the one-char string "/" remove the same byte; the rest is unchanged.
+ H4  The loop sees the same `(index, ch)` pairs in the same order and returns at the same
+     point. The difference is that the whole NFKC form is collected into a `Vec<char>` before
+     the loop instead of streamed: the same values, but, as for H2, the patched copy panics
+     with "capacity overflow" for a form of more than `isize::MAX` bytes, which the original
+     never allocates (unreachable in practice: a name of more than of the order of `isize::MAX / 24`
+     bytes), and the model of K13 needs the same NFKC length premise.
+ H5  `relative.split_at(..)` and the prefix and suffix tests are unchanged. `split('/')` then
+     `next_back()` gives the same last segment as `pop()` on the collected segments, and the
+     remaining segments in the same order. `resolve_segments` applies the same step to each
+     remaining segment in order ("." skipped, ".." pops and yields `None` on an empty vector,
+     anything else is pushed); once `None` it stays `None`, so the result is `None` exactly
+     when the original returned `None` and otherwise the same segments (as `String`s). The join
+     and the appended suffix are unchanged. One difference: `prim::split_slash` collects every
+     segment into a `Vec<String>` (24 bytes per element), where the original iterates
+     `split('/')` lazily and collects only the resolved segments into a `Vec<&str>` (16 bytes
+     per element), so the patched copy panics with "capacity overflow" when 24 times the
+     number of segments exceeds `isize::MAX`, where the original does not (patch-induced
+     premise 2 below; unreachable).
+ H6  The encoded `Cow`, its first split at `%` and the early return are unchanged; the parts
+     after the first `%` are the same, visited in order, and `push_normalized_part` is the
+     original loop body; `is_ascii_hex` is `bytes().all(|b| b.is_ascii_hexdigit())` and
+     `is_unreserved` the original `matches!` test. One difference: `prim::split_percent`
+     collects the parts into a `Vec<String>` (24 bytes per element), where the original streams
+     `split('%')` without allocating, so the patched copy panics with "capacity overflow" when 24
+     times the number of parts exceeds `isize::MAX` (patch-induced premise 2 below;
+     unreachable).
+ H7  The same `strip_prefix` call.
+ H8  `Cow<str>`'s `Hash` and `Eq` are those of the borrowed `str`, and `String`'s agree with
+     them on the same bytes, so `insert` reports a duplicate for the same keys.
+ H9  `!=` on `String` is the negation of `==`; the two branches are swapped with the test.
+Patch-induced premises (the Lean statements may need them; the original would not):
+ 1  NFKC length (H2, H4; K13): the bound `4 * (ExtModel.nfkc t.toList).length ≤ maxStringBytes`
+    of `nfkc_spec` for the strings `t` passed to `prim::nfkc` (see H2).
+ 2  Split vector length (prim, H5, H6; K13 through manifest_resource_key and
+    normalize_percent_encoding, K16 through normalize_percent_encoding): the premise
+    `hlen : 24 * (splitBytes sep s.val).length ≤ maxStringBytes` of `split_slash_spec` and
+    `split_percent_spec` (`sep` = `/` or `%`). Unreachable on the translated target
+    x86_64-unknown-linux-gnu: `isize::MAX` is 2^63 - 1, and a virtual address has at most 57
+    bits (5-level paging; 48 with 4-level), so every `&str` has fewer than 2^57 bytes and at
+    most 2^57 parts (one more than its separator bytes), and 24 * 2^57 = 3 * 2^60 < 2^63 - 1.
+    Exhausting memory while copying the parts aborts the process in both versions and is not
+    modelled.
+Existing tests that cover the changed lines (in skill.rs `mod tests`; all pass on the copy with
+this patch, with the crate's other library tests in the translated feature configuration plus
+macros, 847 in total, 2026-11-25; clippy reports nothing for skill.rs): for H1
+sha256_digest::matches_the_digest_in_the_spec_example and skill_resource_verify::*; for H2
+skill_validate::* (11 tests, among them accepts_a_percent_encoded_unicode_name,
+compares_unicode_names_in_normalized_form, rejects_invalid_encoded_name_matches,
+rejects_a_manifest_without_skill_md, rejects_a_duplicate_file, rejects_a_malformed_digest); for
+H3 skill_name_from_uri::* (4 tests); for H4 skill_validate::enforces_the_agent_skills_name_rules;
+for H5 manifest_paths_must_resolve_to_files_within_the_skill_directory,
+rejects_resources_with_a_different_root and
+skill_validate::rejects_two_spellings_of_the_same_manifest_file; for H6 and H8
+validate_skills::* (3 tests); for H7 is_sha256_digest::* (4 tests); for H9
+skill_resource_verify::{accepts_the_bytes_the_manifest_describes,
+reports_a_digest_mismatch_for_same_sized_bytes, from_bytes_produces_an_entry_that_verifies}.
+
+diff --git a/crates/rmcp/src/model/skill.rs b/crates/rmcp/src/model/skill.rs
+index 9abf078..7cdb9fa 100644
+--- a/crates/rmcp/src/model/skill.rs
++++ b/crates/rmcp/src/model/skill.rs
+@@ -101,32 +101,34 @@ impl SkillResource {
+             });
+         }
+         let digest = sha256_digest(bytes);
+-        if digest != self.digest {
+-            return Err(SkillIntegrityError::Digest {
+-                uri: self.uri.clone(),
+-                expected: self.digest.clone(),
+-                actual: digest,
+-            });
++        if digest == self.digest {
++            return Ok(());
+         }
+-        Ok(())
++        Err(SkillIntegrityError::Digest {
++            uri: self.uri.clone(),
++            expected: self.digest.clone(),
++            actual: digest,
++        })
+     }
+ }
+ 
+ /// The `sha256:` digest of `bytes` in the form the spec requires.
+ pub fn sha256_digest(bytes: &[u8]) -> String {
+-    use std::fmt::Write;
+-
+-    use sha2::{Digest, Sha256};
+-
+-    let hash = Sha256::digest(bytes);
++    let hash = prim::sha256(bytes);
+     let mut digest = String::with_capacity(7 + 64);
+     digest.push_str("sha256:");
+     for byte in hash {
+-        write!(digest, "{byte:02x}").expect("writing to a String cannot fail");
++        digest.push(lower_hex_digit(byte >> 4));
++        digest.push(lower_hex_digit(byte & 0x0f));
+     }
+     digest
+ }
+ 
++/// The lowercase hex digit of the low four bits of `nibble`.
++fn lower_hex_digit(nibble: u8) -> char {
++    char::from(b"0123456789abcdef"[usize::from(nibble & 0x0f)])
++}
++
+ /// File bytes that do not match the manifest entry.
+ #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+ #[non_exhaustive]
+@@ -282,10 +284,11 @@ impl Skill {
+         if !is_valid_skill_name(name) {
+             return Err(SkillValidationError::InvalidName(name.to_owned()));
+         }
+-        if !percent_decode_str(encoded_name)
+-            .decode_utf8()
+-            .is_ok_and(|segment| segment.nfkc().eq(name.nfkc()))
+-        {
++        let names_match = match prim::percent_decode_utf8(encoded_name) {
++            Some(segment) => prim::nfkc(&segment) == prim::nfkc(name),
++            None => false,
++        };
++        if !names_match {
+             return Err(SkillValidationError::NameMismatch {
+                 uri: self.uri.clone(),
+                 name: self.frontmatter.name.clone(),
+@@ -294,28 +297,44 @@ impl Skill {
+         let SkillResources::Files(files) = &self.resources else {
+             return Ok(());
+         };
+-        if !files.iter().any(|file| file.uri == self.uri) {
++        let mut listed = false;
++        let mut i = 0;
++        while i < files.len() {
++            if files[i].uri == self.uri {
++                listed = true;
++                break;
++            }
++            i += 1;
++        }
++        if !listed {
+             return Err(SkillValidationError::MissingSkillMd(self.uri.clone()));
+         }
+         let mut seen = std::collections::HashSet::with_capacity(files.len());
+-        for file in files {
++        let mut result = Ok(());
++        let mut i = 0;
++        while i < files.len() {
++            let file = &files[i];
+             let Some(key) = manifest_resource_key(&self.uri, &file.uri) else {
+-                return Err(SkillValidationError::ResourceOutsideSkill {
++                result = Err(SkillValidationError::ResourceOutsideSkill {
+                     uri: file.uri.clone(),
+                     skill_uri: self.uri.clone(),
+                 });
++                break;
+             };
+             if !seen.insert(key) {
+-                return Err(SkillValidationError::DuplicateResource(file.uri.clone()));
++                result = Err(SkillValidationError::DuplicateResource(file.uri.clone()));
++                break;
+             }
+             if !is_sha256_digest(&file.digest) {
+-                return Err(SkillValidationError::MalformedDigest {
++                result = Err(SkillValidationError::MalformedDigest {
+                     uri: file.uri.clone(),
+                     digest: file.digest.clone(),
+                 });
++                break;
+             }
++            i += 1;
+         }
+-        Ok(())
++        result
+     }
+ }
+ 
+@@ -324,11 +343,11 @@ pub const SKILL_MD: &str = "SKILL.md";
+ 
+ /// The skill name encoded in a `SKILL.md` URI: the path segment before `SKILL.md`.
+ pub fn skill_name_from_uri(uri: &str) -> Option<&str> {
+-    if uri.contains(['?', '#']) {
++    if prim::find_query_or_fragment(uri).is_some() {
+         return None;
+     }
+-    let path = uri.strip_suffix(SKILL_MD)?.strip_suffix('/')?;
+-    let name = path.rsplit('/').next()?;
++    let path = prim::strip_suffix(prim::strip_suffix(uri, SKILL_MD)?, "/")?;
++    let name = prim::last_slash_segment(path);
+     (!name.is_empty()).then_some(name)
+ }
+ 
+@@ -336,7 +355,10 @@ pub fn skill_name_from_uri(uri: &str) -> Option<&str> {
+ /// Letters from scripts without case are valid in a skill name.
+ fn is_valid_skill_name(name: &str) -> bool {
+     let mut needs_alphanumeric = true;
+-    for (index, ch) in name.nfkc().enumerate() {
++    let chars = prim::nfkc(name);
++    let mut index = 0;
++    while index < chars.len() {
++        let ch = chars[index];
+         if index >= 64 {
+             return false;
+         }
+@@ -350,6 +372,7 @@ fn is_valid_skill_name(name: &str) -> bool {
+             _ if ch == '-' && !needs_alphanumeric => needs_alphanumeric = true,
+             _ => return false,
+         }
++        index += 1;
+     }
+     !needs_alphanumeric
+ }
+@@ -358,64 +381,105 @@ fn is_valid_skill_name(name: &str) -> bool {
+ fn manifest_resource_key(skill_uri: &str, resource_uri: &str) -> Option<String> {
+     // Keep the trailing slash to distinguish a child from a sibling whose
+     // directory name merely starts with the skill's name, under any scheme.
+-    let root = skill_uri.strip_suffix(SKILL_MD)?;
+-    let relative = resource_uri.strip_prefix(root)?;
+-    let (path, suffix) = relative.split_at(relative.find(['?', '#']).unwrap_or(relative.len()));
+-    let path = normalize_percent_encoding(path);
+-    let mut segments = path.split('/');
++    let root = prim::strip_suffix(skill_uri, SKILL_MD)?;
++    let relative = prim::strip_prefix(resource_uri, root)?;
++    let (path, suffix) =
++        relative.split_at(prim::find_query_or_fragment(relative).unwrap_or(relative.len()));
++    let mut segments = prim::split_slash(&normalize_percent_encoding(path));
+     // An empty or dot-segment leaf resolves to a directory.
+-    let file = segments.next_back()?;
+-    if matches!(file, "" | "." | "..") {
++    let file = segments.pop()?;
++    if matches!(file.as_str(), "" | "." | "..") {
+         return None;
+     }
+-    let mut resolved = Vec::new();
+-    for segment in segments {
+-        match segment {
+-            "." => {}
+-            ".." => {
+-                resolved.pop()?;
+-            }
+-            _ => resolved.push(segment),
+-        }
+-    }
++    let mut resolved = resolve_segments(&segments)?;
+     resolved.push(file);
+-    let mut key = resolved.join("/");
++    let mut key = prim::join_slash(resolved);
+     key.push_str(suffix);
+     Some(key)
+ }
+ 
++/// Dot-segment removal over `segments`: `None` once `..` climbs above the root.
++fn resolve_segments(segments: &[String]) -> Option<Vec<String>> {
++    let mut resolved = Some(Vec::new());
++    let mut i = 0;
++    while i < segments.len() {
++        resolved = resolve_segment(resolved, &segments[i]);
++        i += 1;
++    }
++    resolved
++}
++
++/// One step of dot-segment removal: `None` once `..` has climbed above the root.
++fn resolve_segment(resolved: Option<Vec<String>>, segment: &str) -> Option<Vec<String>> {
++    let mut resolved = resolved?;
++    match segment {
++        "." => {}
++        ".." => {
++            resolved.pop()?;
++        }
++        _ => resolved.push(segment.to_owned()),
++    }
++    Some(resolved)
++}
++
+ // First percent-encode literal Unicode and ASCII control characters. Then apply
+ // RFC 3986 §6.2.2: decode unreserved bytes and uppercase the other escapes,
+ // keeping reserved delimiters encoded in the comparison key.
+ fn normalize_percent_encoding(value: &str) -> Cow<'_, str> {
+-    let encoded: Cow<'_, str> = utf8_percent_encode(value, CONTROLS).into();
+-    let Some((prefix, escaped)) = encoded.split_once('%') else {
++    let encoded: Cow<'_, str> = prim::percent_encode_controls(value);
++    let Some((prefix, escaped)) = prim::split_once_percent(&encoded) else {
+         return encoded;
+     };
+     let mut normalized = prefix.to_owned();
+-    for part in escaped.split('%') {
+-        if let Some((hex, rest)) = part.split_at_checked(2)
+-            && hex.bytes().all(|b| b.is_ascii_hexdigit())
+-        {
+-            let byte = u8::from_str_radix(hex, 16).expect("two hex digits");
+-            if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+-                normalized.push(char::from(byte));
+-            } else {
+-                normalized.push('%');
+-                normalized.push_str(&hex.to_ascii_uppercase());
+-            }
+-            normalized.push_str(rest);
++    let parts = prim::split_percent(escaped);
++    let mut i = 0;
++    while i < parts.len() {
++        normalized = push_normalized_part(normalized, &parts[i]);
++        i += 1;
++    }
++    Cow::Owned(normalized)
++}
++
++/// Append `%` and `part` to `normalized`, decoding an unreserved escape at the start of `part`
++/// and uppercasing any other.
++fn push_normalized_part(mut normalized: String, part: &str) -> String {
++    if let Some((hex, rest)) = part.split_at_checked(2)
++        && is_ascii_hex(hex)
++    {
++        let byte = u8::from_str_radix(hex, 16).expect("two hex digits");
++        if is_unreserved(byte) {
++            normalized.push(char::from(byte));
+         } else {
+             normalized.push('%');
+-            normalized.push_str(part);
++            normalized.push_str(&hex.to_ascii_uppercase());
+         }
++        normalized.push_str(rest);
++    } else {
++        normalized.push('%');
++        normalized.push_str(part);
+     }
+-    Cow::Owned(normalized)
++    normalized
++}
++
++fn is_ascii_hex(s: &str) -> bool {
++    let bytes = s.as_bytes();
++    let mut i = 0;
++    while i < bytes.len() {
++        if !bytes[i].is_ascii_hexdigit() {
++            return false;
++        }
++        i += 1;
++    }
++    true
++}
++
++fn is_unreserved(byte: u8) -> bool {
++    byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~')
+ }
+ 
+ /// Whether `digest` is `sha256:` followed by 64 lowercase hex characters.
+ pub fn is_sha256_digest(digest: &str) -> bool {
+-    digest.strip_prefix("sha256:").is_some_and(|hex| {
++    prim::strip_prefix(digest, "sha256:").is_some_and(|hex| {
+         hex.len() == 64 && hex.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+     })
+ }
+@@ -425,7 +489,7 @@ pub fn validate_skills(skills: &[Skill]) -> Result<(), SkillValidationError> {
+     let mut seen = std::collections::HashSet::with_capacity(skills.len());
+     for skill in skills {
+         skill.validate()?;
+-        if !seen.insert(normalize_percent_encoding(&skill.uri)) {
++        if !seen.insert(normalize_percent_encoding(&skill.uri).into_owned()) {
+             return Err(SkillValidationError::DuplicateSkill(skill.uri.clone()));
+         }
+     }
+@@ -511,6 +575,68 @@ impl GetSkillResult {
+     }
+ }
+ 
++/// Wrappers around the string, Unicode, percent-encoding and SHA-256 operations that the
++/// translation cannot see through (`core::str::pattern::Pattern` and `hybrid_array::ArraySize`
++/// have generic associated types). Opaque in the translation; modelled in Lean.
++mod prim {
++    use std::borrow::Cow;
++
++    use sha2::{Digest, Sha256};
++
++    use super::{CONTROLS, UnicodeNormalization, percent_decode_str, utf8_percent_encode};
++
++    pub fn sha256(bytes: &[u8]) -> [u8; 32] {
++        Sha256::digest(bytes).into()
++    }
++
++    pub fn find_query_or_fragment(s: &str) -> Option<usize> {
++        s.find(['?', '#'])
++    }
++
++    pub fn strip_suffix<'a>(s: &'a str, suffix: &str) -> Option<&'a str> {
++        s.strip_suffix(suffix)
++    }
++
++    pub fn strip_prefix<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
++        s.strip_prefix(prefix)
++    }
++
++    pub fn last_slash_segment(s: &str) -> &str {
++        s.rsplit('/').next().unwrap_or(s)
++    }
++
++    pub fn split_slash(s: &str) -> Vec<String> {
++        s.split('/').map(str::to_owned).collect()
++    }
++
++    pub fn join_slash(segments: Vec<String>) -> String {
++        segments.join("/")
++    }
++
++    pub fn split_once_percent(s: &str) -> Option<(&str, &str)> {
++        s.split_once('%')
++    }
++
++    pub fn split_percent(s: &str) -> Vec<String> {
++        s.split('%').map(str::to_owned).collect()
++    }
++
++    pub fn percent_encode_controls(value: &str) -> Cow<'_, str> {
++        utf8_percent_encode(value, CONTROLS).into()
++    }
++
++    pub fn percent_decode_utf8(s: &str) -> Option<String> {
++        percent_decode_str(s)
++            .decode_utf8()
++            .ok()
++            .map(Cow::into_owned)
++    }
++
++    pub fn nfkc(s: &str) -> Vec<char> {
++        s.nfkc().collect()
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use serde_json::json;

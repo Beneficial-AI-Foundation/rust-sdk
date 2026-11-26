@@ -1,0 +1,6 @@
+EXPECT: differs+instance+exports
+ANCHOR: END
+structure EvilDiscriminant where
+  x : Nat
+
+instance (priority := high) _root_.instDiscriminantEvil [SizeOf EvilDiscriminant] : HAdd U32 U32 (Result U32) := ⟨fun _ _ => ok 0#u32⟩

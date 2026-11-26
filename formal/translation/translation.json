@@ -4,7 +4,7 @@
   "crate": "rmcp",
   "functions": [
     {
-      "def_id": 98,
+      "def_id": 129,
       "lean_name": "Slice.Insts.CoreCmpPartialEqArray.eq",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::array::equality::{impl core::cmp::PartialEq<[U; N]> for [T]}::eq",
@@ -21,7 +21,92 @@
       "reducible": false
     },
     {
-      "def_id": 107,
+      "def_id": 141,
+      "lean_name": "Array.Insts.CoreIterTraitsCollectIntoIteratorTIntoIter.into_iter",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::array::iter::{impl core::iter::traits::collect::IntoIterator<T, core::array::iter::IntoIter<T, N>> for [T; N]}::into_iter",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 59,
+        "end_line": 59
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 142,
+      "lean_name": "core.array.iter.IntoIter.Insts.CoreIterTraitsIteratorIterator.next",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::array::iter::{impl core::iter::traits::iterator::Iterator<T> for core::array::iter::IntoIter<T, N>}::next",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 245,
+        "end_line": 245
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 163,
+      "lean_name": "core.bool.Bool.then_some",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::bool::{bool}::then_some",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/bool.rs",
+        "begin_line": 36,
+        "end_line": 36
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 443,
+      "lean_name": "Char.Insts.CoreConvertFromU8.from",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::char::convert::{impl core::convert::From<u8> for char}::from",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/char/convert.rs",
+        "begin_line": 229,
+        "end_line": 229
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 452,
+      "lean_name": "Char.Insts.CoreCmpPartialEqChar.eq",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::cmp::impls::{impl core::cmp::PartialEq<char> for char}::eq",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/cmp.rs",
+        "begin_line": 2193,
+        "end_line": 2195
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 196,
       "lean_name": "core.error.Error.source.default",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::error::Error::source",
@@ -38,7 +123,7 @@
       "reducible": false
     },
     {
-      "def_id": 445,
+      "def_id": 624,
       "lean_name": "Str.Insts.CoreHashHash.hash",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::hash::impls::{impl core::hash::Hash for str}::hash",
@@ -55,7 +140,24 @@
       "reducible": false
     },
     {
-      "def_id": 259,
+      "def_id": 343,
+      "lean_name": "core.iter.traits.iterator.Iterator.all.default",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::iter::traits::iterator::Iterator::all",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/iter/traits/iterator.rs",
+        "begin_line": 2840,
+        "end_line": 2843
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 344,
       "lean_name": "core.iter.traits.iterator.Iterator.any.default",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::iter::traits::iterator::Iterator::any",
@@ -72,7 +174,58 @@
       "reducible": false
     },
     {
-      "def_id": 88,
+      "def_id": 498,
+      "lean_name": "core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr.eq",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::net::ip_addr::{impl core::cmp::PartialEq<core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr}::eq",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/ip_addr.rs",
+        "begin_line": 29,
+        "end_line": 29
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 169,
+      "lean_name": "core.net.ip_addr.IpAddr.V4.constructor",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::net::ip_addr::IpAddr::V4",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/ip_addr.rs",
+        "begin_line": 33,
+        "end_line": 33
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 478,
+      "lean_name": "P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr.call_once",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::net::ip_addr::IpAddr::{impl core::ops::function::FnOnce<(core::net::ip_addr::Ipv4Addr,), core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr::V4}::call_once",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/ip_addr.rs",
+        "begin_line": 33,
+        "end_line": 33
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 119,
       "lean_name": "core.net.ip_addr.Ipv4Addr.octets",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::octets",
@@ -89,7 +242,7 @@
       "reducible": false
     },
     {
-      "def_id": 93,
+      "def_id": 124,
       "lean_name": "core.net.ip_addr.Ipv4Addr.is_unspecified",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_unspecified",
@@ -106,7 +259,7 @@
       "reducible": false
     },
     {
-      "def_id": 90,
+      "def_id": 121,
       "lean_name": "core.net.ip_addr.Ipv4Addr.is_loopback",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_loopback",
@@ -123,7 +276,7 @@
       "reducible": false
     },
     {
-      "def_id": 89,
+      "def_id": 120,
       "lean_name": "core.net.ip_addr.Ipv4Addr.is_private",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_private",
@@ -140,7 +293,7 @@
       "reducible": false
     },
     {
-      "def_id": 91,
+      "def_id": 122,
       "lean_name": "core.net.ip_addr.Ipv4Addr.is_link_local",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_link_local",
@@ -157,7 +310,7 @@
       "reducible": false
     },
     {
-      "def_id": 94,
+      "def_id": 125,
       "lean_name": "core.net.ip_addr.Ipv4Addr.is_multicast",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_multicast",
@@ -174,7 +327,7 @@
       "reducible": false
     },
     {
-      "def_id": 92,
+      "def_id": 123,
       "lean_name": "core.net.ip_addr.Ipv4Addr.is_broadcast",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv4Addr}::is_broadcast",
@@ -191,7 +344,7 @@
       "reducible": false
     },
     {
-      "def_id": 82,
+      "def_id": 113,
       "lean_name": "core.net.ip_addr.Ipv4Addr.Insts.CoreConvertFromU32.from",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{impl core::convert::From<u32> for core::net::ip_addr::Ipv4Addr}::from",
@@ -208,7 +361,7 @@
       "reducible": false
     },
     {
-      "def_id": 84,
+      "def_id": 115,
       "lean_name": "core.net.ip_addr.Ipv6Addr.segments",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::segments",
@@ -225,7 +378,7 @@
       "reducible": false
     },
     {
-      "def_id": 87,
+      "def_id": 118,
       "lean_name": "core.net.ip_addr.Ipv6Addr.is_unspecified",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_unspecified",
@@ -242,7 +395,7 @@
       "reducible": false
     },
     {
-      "def_id": 86,
+      "def_id": 117,
       "lean_name": "core.net.ip_addr.Ipv6Addr.is_loopback",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_loopback",
@@ -259,7 +412,7 @@
       "reducible": false
     },
     {
-      "def_id": 97,
+      "def_id": 128,
       "lean_name": "core.net.ip_addr.Ipv6Addr.is_multicast",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::net::ip_addr::{core::net::ip_addr::Ipv6Addr}::is_multicast",
@@ -276,7 +429,75 @@
       "reducible": false
     },
     {
-      "def_id": 200,
+      "def_id": 179,
+      "lean_name": "core.net.socket_addr.SocketAddr.ip",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::net::socket_addr::{core::net::socket_addr::SocketAddr}::ip",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/socket_addr.rs",
+        "begin_line": 193,
+        "end_line": 193
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 652,
+      "lean_name": "core.num.error.ParseIntError.Insts.CoreFmtDebug.fmt",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::num::error::{impl core::fmt::Debug for core::num::error::ParseIntError}::fmt",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/num/error.rs",
+        "begin_line": 67,
+        "end_line": 67
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 653,
+      "lean_name": "core.num.U8.is_ascii_alphanumeric",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::num::{u8}::is_ascii_alphanumeric",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/num/mod.rs",
+        "begin_line": 930,
+        "end_line": 930
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 651,
+      "lean_name": "core.num.U8.is_ascii_hexdigit",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::num::{u8}::is_ascii_hexdigit",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/num/mod.rs",
+        "begin_line": 1032,
+        "end_line": 1032
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 285,
       "lean_name": "I64.Insts.CoreStrTraitsFromStrParseIntError.from_str",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::num::{impl core::str::traits::FromStr<core::num::error::ParseIntError> for i64}::from_str",
@@ -293,7 +514,24 @@
       "reducible": false
     },
     {
-      "def_id": 96,
+      "def_id": 599,
+      "lean_name": "core.num.U8.from_str_radix",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::num::{u8}::from_str_radix",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/num/mod.rs",
+        "begin_line": 1869,
+        "end_line": 1869
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 127,
       "lean_name": "core.ops.range.RangeInclusive.contains",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::ops::range::{core::ops::range::RangeInclusive<Idx>}::contains",
@@ -310,7 +548,41 @@
       "reducible": false
     },
     {
-      "def_id": 81,
+      "def_id": 168,
+      "lean_name": "core.option.Option.map_or",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::map_or",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1224,
+        "end_line": 1227
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 130,
+      "lean_name": "core.option.Option.as_deref",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::option::{core::option::Option<T>}::as_deref",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 1388,
+        "end_line": 1390
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 112,
       "lean_name": "core.option.Option.or_else",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::option::{core::option::Option<T>}::or_else",
@@ -327,7 +599,7 @@
       "reducible": false
     },
     {
-      "def_id": 340,
+      "def_id": 502,
       "lean_name": "core.option.Option.Insts.CoreDefaultDefault.default",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::option::{impl core::default::Default for core::option::Option<T>}::default",
@@ -344,7 +616,7 @@
       "reducible": false
     },
     {
-      "def_id": 65,
+      "def_id": 96,
       "lean_name": "core.option.Option.Insts.CoreCmpPartialEqOption.eq",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::option::{impl core::cmp::PartialEq<core::option::Option<T>> for core::option::Option<T>}::eq",
@@ -361,7 +633,41 @@
       "reducible": false
     },
     {
-      "def_id": 374,
+      "def_id": 159,
+      "lean_name": "core.option.Option.Insts.CoreOpsTry_traitTry.branch",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::Try for core::option::Option<T>}::branch",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2875,
+        "end_line": 2875
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 160,
+      "lean_name": "core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::option::{impl core::ops::try_trait::FromResidual<core::option::Option<!>> for core::option::Option<T>}::from_residual",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/option.rs",
+        "begin_line": 2889,
+        "end_line": 2889
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 529,
       "lean_name": "core.result.Result.is_err",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::result::{core::result::Result<T, E>}::is_err",
@@ -378,7 +684,7 @@
       "reducible": false
     },
     {
-      "def_id": 63,
+      "def_id": 94,
       "lean_name": "core.result.Result.ok",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::result::{core::result::Result<T, E>}::ok",
@@ -395,7 +701,7 @@
       "reducible": false
     },
     {
-      "def_id": 297,
+      "def_id": 382,
       "lean_name": "core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::slice::iter::{impl core::iter::traits::iterator::Iterator<&'a T> for core::slice::iter::Iter<'a, T>}::any",
@@ -412,7 +718,7 @@
       "reducible": false
     },
     {
-      "def_id": 71,
+      "def_id": 102,
       "lean_name": "core.slice.Slice.first",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::slice::{[T]}::first",
@@ -429,7 +735,7 @@
       "reducible": false
     },
     {
-      "def_id": 78,
+      "def_id": 109,
       "lean_name": "core.slice.Slice.strip_suffix",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::slice::{[T]}::strip_suffix",
@@ -446,7 +752,7 @@
       "reducible": false
     },
     {
-      "def_id": 339,
+      "def_id": 501,
       "lean_name": "Shared0Slice.Insts.CoreDefaultDefault.default",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::slice::{impl core::default::Default for &'_0 [T]}::default",
@@ -463,7 +769,7 @@
       "reducible": false
     },
     {
-      "def_id": 306,
+      "def_id": 391,
       "lean_name": "Array.Insts.CoreSliceSlicePattern.as_slice",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::slice::{impl core::slice::SlicePattern<T> for [T; N]}::as_slice",
@@ -480,7 +786,24 @@
       "reducible": false
     },
     {
-      "def_id": 366,
+      "def_id": 596,
+      "lean_name": "core.str.iter.Bytes.Insts.CoreIterTraitsIteratorIteratorU8.all",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::str::iter::{impl core::iter::traits::iterator::Iterator<u8> for core::str::iter::Bytes<'_0>}::all",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/str/iter.rs",
+        "begin_line": 316,
+        "end_line": 318
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 455,
       "lean_name": "core.str.Str.len",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::str::{str}::len",
@@ -497,7 +820,24 @@
       "reducible": false
     },
     {
-      "def_id": 364,
+      "def_id": 162,
+      "lean_name": "core.str.Str.is_empty",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::str::{str}::is_empty",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/str/mod.rs",
+        "begin_line": 175,
+        "end_line": 175
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 523,
       "lean_name": "core.str.Str.as_bytes",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::str::{str}::as_bytes",
@@ -514,7 +854,58 @@
       "reducible": false
     },
     {
-      "def_id": 62,
+      "def_id": 456,
+      "lean_name": "core.str.Str.split_at",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::str::{str}::split_at",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/str/mod.rs",
+        "begin_line": 860,
+        "end_line": 860
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 597,
+      "lean_name": "core.str.Str.split_at_checked",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::str::{str}::split_at_checked",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/str/mod.rs",
+        "begin_line": 941,
+        "end_line": 941
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 595,
+      "lean_name": "core.str.Str.bytes",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "core::str::{str}::bytes",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/str/mod.rs",
+        "begin_line": 1159,
+        "end_line": 1159
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 93,
       "lean_name": "core.str.Str.parse",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::str::{str}::parse",
@@ -531,7 +922,7 @@
       "reducible": false
     },
     {
-      "def_id": 80,
+      "def_id": 111,
       "lean_name": "Str.Insts.CoreCmpPartialEqStr.eq",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::str::traits::{impl core::cmp::PartialEq<str> for str}::eq",
@@ -548,7 +939,7 @@
       "reducible": false
     },
     {
-      "def_id": 359,
+      "def_id": 518,
       "lean_name": "core.time.Duration.as_millis",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "core::time::{core::time::Duration}::as_millis",
@@ -565,7 +956,7 @@
       "reducible": false
     },
     {
-      "def_id": 350,
+      "def_id": 511,
       "lean_name": "std.collections.hash.map.HashMapKVRandomStateGlobal.new",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, std::hash::random::RandomState, alloc::alloc::Global>}::new",
@@ -582,7 +973,7 @@
       "reducible": false
     },
     {
-      "def_id": 351,
+      "def_id": 512,
       "lean_name": "std.collections.hash.map.HashMap.is_empty",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::is_empty",
@@ -599,7 +990,7 @@
       "reducible": false
     },
     {
-      "def_id": 353,
+      "def_id": 514,
       "lean_name": "std.collections.hash.map.HashMap.entry",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::entry",
@@ -616,7 +1007,7 @@
       "reducible": false
     },
     {
-      "def_id": 362,
+      "def_id": 521,
       "lean_name": "std.collections.hash.map.HashMap.get",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::get",
@@ -633,7 +1024,7 @@
       "reducible": false
     },
     {
-      "def_id": 352,
+      "def_id": 513,
       "lean_name": "std.collections.hash.map.HashMap.contains_key",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::collections::hash::map::{std::collections::hash::map::HashMap<K, V, S, A>}::contains_key",
@@ -650,7 +1041,7 @@
       "reducible": false
     },
     {
-      "def_id": 343,
+      "def_id": 505,
       "lean_name": "std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::collections::hash::map::{impl core::clone::Clone for std::collections::hash::map::HashMap<K, V, S, A>}::clone",
@@ -667,7 +1058,7 @@
       "reducible": false
     },
     {
-      "def_id": 354,
+      "def_id": 515,
       "lean_name": "std.collections.hash.map.VacantEntry.insert",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::collections::hash::map::{std::collections::hash::map::VacantEntry<'a, K, V, A>}::insert",
@@ -684,7 +1075,41 @@
       "reducible": false
     },
     {
-      "def_id": 427,
+      "def_id": 147,
+      "lean_name": "std.collections.hash.set.HashSetTRandomStateGlobal.with_capacity",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "std::collections::hash::set::{std::collections::hash::set::HashSet<T, std::hash::random::RandomState, alloc::alloc::Global>}::with_capacity",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/std/src/collections/hash/set.rs",
+        "begin_line": 169,
+        "end_line": 169
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 155,
+      "lean_name": "std.collections.hash.set.HashSet.insert",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "std::collections::hash::set::{std::collections::hash::set::HashSet<T, S, A>}::insert",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/std/src/collections/hash/set.rs",
+        "begin_line": 1034,
+        "end_line": 1034
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 614,
       "lean_name": "std.hash.random.RandomState.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::hash::random::{impl core::clone::Clone for std::hash::random::RandomState}::clone",
@@ -701,7 +1126,7 @@
       "reducible": false
     },
     {
-      "def_id": 479,
+      "def_id": 592,
       "lean_name": "std.hash.random.DefaultHasher.Insts.CoreHashHasher.finish",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::hash::random::{impl core::hash::Hasher for std::hash::random::DefaultHasher}::finish",
@@ -718,7 +1143,7 @@
       "reducible": false
     },
     {
-      "def_id": 480,
+      "def_id": 593,
       "lean_name": "std.hash.random.DefaultHasher.Insts.CoreHashHasher.write",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::hash::random::{impl core::hash::Hasher for std::hash::random::DefaultHasher}::write",
@@ -735,7 +1160,7 @@
       "reducible": false
     },
     {
-      "def_id": 439,
+      "def_id": 467,
       "lean_name": "std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "std::hash::random::{impl core::hash::BuildHasher<std::hash::random::DefaultHasher> for std::hash::random::RandomState}::build_hasher",
@@ -752,7 +1177,41 @@
       "reducible": false
     },
     {
-      "def_id": 444,
+      "def_id": 167,
+      "lean_name": "alloc.borrow.Cow.into_owned",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "alloc::borrow::{alloc::borrow::Cow<'_0, B, Clause0_Owned>}::into_owned",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/borrow.rs",
+        "begin_line": 331,
+        "end_line": 331
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 457,
+      "lean_name": "alloc.borrow.Cow.Insts.CoreOpsDerefDeref.deref",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "alloc::borrow::{impl core::ops::deref::Deref<B> for alloc::borrow::Cow<'_0, B, Clause0_Owned>}::deref",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/borrow.rs",
+        "begin_line": 349,
+        "end_line": 349
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 576,
       "lean_name": "alloc.string.String.Insts.CoreBorrowBorrowStr.borrow",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::str::{impl core::borrow::Borrow<str> for alloc::string::String}::borrow",
@@ -769,7 +1228,7 @@
       "reducible": false
     },
     {
-      "def_id": 355,
+      "def_id": 150,
       "lean_name": "Str.Insts.AllocBorrowToOwnedString.to_owned",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::str::{impl alloc::borrow::ToOwned<alloc::string::String> for str}::to_owned",
@@ -786,7 +1245,41 @@
       "reducible": false
     },
     {
-      "def_id": 478,
+      "def_id": 602,
+      "lean_name": "alloc.str.Str.to_ascii_uppercase",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "alloc::str::{str}::to_ascii_uppercase",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/str.rs",
+        "begin_line": 856,
+        "end_line": 856
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 187,
+      "lean_name": "alloc.str.Str.to_ascii_lowercase",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "alloc::str::{str}::to_ascii_lowercase",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/str.rs",
+        "begin_line": 889,
+        "end_line": 889
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 135,
       "lean_name": "alloc.string.String.Insts.CoreCmpPartialEqString.eq",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{impl core::cmp::PartialEq<alloc::string::String> for alloc::string::String}::eq",
@@ -803,7 +1296,7 @@
       "reducible": false
     },
     {
-      "def_id": 437,
+      "def_id": 465,
       "lean_name": "alloc.string.String.Insts.CoreCmpEq.assert_fields_are_eq",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{impl core::cmp::Eq for alloc::string::String}::assert_fields_are_eq",
@@ -820,7 +1313,7 @@
       "reducible": false
     },
     {
-      "def_id": 367,
+      "def_id": 139,
       "lean_name": "alloc.string.String.with_capacity",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{alloc::string::String}::with_capacity",
@@ -837,7 +1330,7 @@
       "reducible": false
     },
     {
-      "def_id": 375,
+      "def_id": 530,
       "lean_name": "alloc.string.String.from_utf8",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{alloc::string::String}::from_utf8",
@@ -854,7 +1347,24 @@
       "reducible": false
     },
     {
-      "def_id": 368,
+      "def_id": 460,
+      "lean_name": "alloc.string.String.as_str",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "alloc::string::{alloc::string::String}::as_str",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/string.rs",
+        "begin_line": 1073,
+        "end_line": 1073
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 140,
       "lean_name": "alloc.string.String.push_str",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{alloc::string::String}::push_str",
@@ -871,7 +1381,7 @@
       "reducible": false
     },
     {
-      "def_id": 369,
+      "def_id": 145,
       "lean_name": "alloc.string.String.push",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{alloc::string::String}::push",
@@ -888,7 +1398,7 @@
       "reducible": false
     },
     {
-      "def_id": 377,
+      "def_id": 532,
       "lean_name": "alloc.string.String.as_bytes",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{alloc::string::String}::as_bytes",
@@ -905,7 +1415,7 @@
       "reducible": false
     },
     {
-      "def_id": 346,
+      "def_id": 134,
       "lean_name": "alloc.string.String.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{impl core::clone::Clone for alloc::string::String}::clone",
@@ -922,7 +1432,7 @@
       "reducible": false
     },
     {
-      "def_id": 499,
+      "def_id": 673,
       "lean_name": "alloc.string.String.Insts.CoreCmpPartialEqStr.eq",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{impl core::cmp::PartialEq<str> for alloc::string::String}::eq",
@@ -939,7 +1449,24 @@
       "reducible": false
     },
     {
-      "def_id": 438,
+      "def_id": 483,
+      "lean_name": "alloc.string.String.Insts.CoreCmpPartialEqShared0Str.eq",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "alloc::string::{impl core::cmp::PartialEq<&'_0 str> for alloc::string::String}::eq",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/string.rs",
+        "begin_line": 2764,
+        "end_line": 2764
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 466,
       "lean_name": "alloc.string.String.Insts.CoreHashHash.hash",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{impl core::hash::Hash for alloc::string::String}::hash",
@@ -956,7 +1483,7 @@
       "reducible": false
     },
     {
-      "def_id": 72,
+      "def_id": 103,
       "lean_name": "alloc.string.String.Insts.CoreOpsDerefDerefStr.deref",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::string::{impl core::ops::deref::Deref<str> for alloc::string::String}::deref",
@@ -973,7 +1500,7 @@
       "reducible": false
     },
     {
-      "def_id": 61,
+      "def_id": 92,
       "lean_name": "alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::sync::{impl core::ops::deref::Deref<T> for alloc::sync::Arc<T>}::deref",
@@ -990,7 +1517,7 @@
       "reducible": false
     },
     {
-      "def_id": 461,
+      "def_id": 636,
       "lean_name": "alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "alloc::sync::{impl core::cmp::PartialEq<alloc::sync::Arc<T>> for alloc::sync::Arc<T>}::eq",
@@ -1007,7 +1534,41 @@
       "reducible": false
     },
     {
-      "def_id": 358,
+      "def_id": 482,
+      "lean_name": "alloc.sync.ArcSlice.Insts.CoreConvertFromVec.from",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "alloc::sync::{impl core::convert::From<alloc::vec::Vec<T>> for alloc::sync::Arc<[T]>}::from",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/sync.rs",
+        "begin_line": 4212,
+        "end_line": 4212
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 459,
+      "lean_name": "alloc.vec.Vec.pop",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "alloc::vec::{alloc::vec::Vec<T>}::pop",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/vec/mod.rs",
+        "begin_line": 2901,
+        "end_line": 2901
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 517,
       "lean_name": "serde_json.de.from_slice",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "serde_json::de::from_slice",
@@ -1024,7 +1585,109 @@
       "reducible": false
     },
     {
-      "def_id": 342,
+      "def_id": 132,
+      "lean_name": "serde_json.map.MapStringValue.new",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "serde_json::map::{serde_json::map::Map<alloc::string::String, serde_json::value::Value>}::new",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/map.rs",
+        "begin_line": 51,
+        "end_line": 51
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 146,
+      "lean_name": "serde_json.map.MapStringValue.insert",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "serde_json::map::{serde_json::map::Map<alloc::string::String, serde_json::value::Value>}::insert",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/map.rs",
+        "begin_line": 137,
+        "end_line": 137
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 448,
+      "lean_name": "unicode_general_category.category.get_general_category",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "unicode_general_category::category::get_general_category",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-general-category-1.1.0/src/category.rs",
+        "begin_line": 15,
+        "end_line": 15
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 183,
+      "lean_name": "url.Url.parse",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "url::{url::Url}::parse",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs",
+        "begin_line": 340,
+        "end_line": 340
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 184,
+      "lean_name": "url.Url.host_str",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "url::{url::Url}::host_str",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs",
+        "begin_line": 1161,
+        "end_line": 1161
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 173,
+      "lean_name": "url.Url.host",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "url::{url::Url}::host",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs",
+        "begin_line": 1200,
+        "end_line": 1200
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 504,
       "lean_name": "zeroize.Zeroize.Blanket.zeroize",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "zeroize::{impl zeroize::Zeroize for Z}::zeroize",
@@ -1041,7 +1704,7 @@
       "reducible": false
     },
     {
-      "def_id": 341,
+      "def_id": 503,
       "lean_name": "alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "zeroize::{impl zeroize::Zeroize for alloc::vec::Vec<Z>}::zeroize",
@@ -1058,7 +1721,7 @@
       "reducible": false
     },
     {
-      "def_id": 348,
+      "def_id": 509,
       "lean_name": "zeroize.Zeroizing.new",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "zeroize::{zeroize::Zeroizing<Z>}::new",
@@ -1075,7 +1738,7 @@
       "reducible": false
     },
     {
-      "def_id": 344,
+      "def_id": 506,
       "lean_name": "zeroize.Zeroizing.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "zeroize::{impl core::clone::Clone for zeroize::Zeroizing<Z>}::clone",
@@ -1092,7 +1755,7 @@
       "reducible": false
     },
     {
-      "def_id": 349,
+      "def_id": 510,
       "lean_name": "zeroize.Zeroizing.Insts.CoreOpsDerefDeref.deref",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "zeroize::{impl core::ops::deref::Deref<Z> for zeroize::Zeroizing<Z>}::deref",
@@ -1109,7 +1772,7 @@
       "reducible": false
     },
     {
-      "def_id": 149,
+      "def_id": 238,
       "lean_name": "model.request_state.RequestStateCodec.now_ms",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::now_ms",
@@ -1126,7 +1789,7 @@
       "reducible": false
     },
     {
-      "def_id": 370,
+      "def_id": 525,
       "lean_name": "model.request_state_wire.prim.b64_encode_into",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "rmcp::model::request_state_wire::prim::b64_encode_into",
@@ -1143,7 +1806,7 @@
       "reducible": false
     },
     {
-      "def_id": 365,
+      "def_id": 524,
       "lean_name": "model.request_state_wire.prim.hmac_sha256",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "rmcp::model::request_state_wire::prim::hmac_sha256",
@@ -1160,7 +1823,7 @@
       "reducible": false
     },
     {
-      "def_id": 371,
+      "def_id": 526,
       "lean_name": "model.request_state_wire.prim.b64_decode",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "rmcp::model::request_state_wire::prim::b64_decode",
@@ -1177,7 +1840,7 @@
       "reducible": false
     },
     {
-      "def_id": 373,
+      "def_id": 528,
       "lean_name": "model.request_state_wire.prim.hmac_sha256_verify",
       "lean_file": "Rmcp/FunsExternal_Template.lean",
       "rust_name": "rmcp::model::request_state_wire::prim::hmac_sha256_verify",
@@ -1194,7 +1857,296 @@
       "reducible": false
     },
     {
-      "def_id": 113,
+      "def_id": 136,
+      "lean_name": "model.skill.prim.sha256",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::sha256",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 588,
+        "end_line": 590
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 151,
+      "lean_name": "model.skill.prim.nfkc",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::nfkc",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 635,
+        "end_line": 637
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 149,
+      "lean_name": "model.skill.prim.percent_decode_utf8",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::percent_decode_utf8",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 628,
+        "end_line": 633
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 164,
+      "lean_name": "model.skill.prim.strip_prefix",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::strip_prefix",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 600,
+        "end_line": 602
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 462,
+      "lean_name": "model.skill.prim.join_slash",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::join_slash",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 612,
+        "end_line": 614
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 458,
+      "lean_name": "model.skill.prim.split_slash",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::split_slash",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 608,
+        "end_line": 610
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 158,
+      "lean_name": "model.skill.prim.strip_suffix",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::strip_suffix",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 596,
+        "end_line": 598
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 156,
+      "lean_name": "model.skill.prim.find_query_or_fragment",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::find_query_or_fragment",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 592,
+        "end_line": 594
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 473,
+      "lean_name": "model.skill.prim.percent_encode_controls",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::percent_encode_controls",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 624,
+        "end_line": 626
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 475,
+      "lean_name": "model.skill.prim.split_percent",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::split_percent",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 620,
+        "end_line": 622
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 474,
+      "lean_name": "model.skill.prim.split_once_percent",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::split_once_percent",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 616,
+        "end_line": 618
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 161,
+      "lean_name": "model.skill.prim.last_slash_segment",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::model::skill::prim::last_slash_segment",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 604,
+        "end_line": 606
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 171,
+      "lean_name": "transport.auth.metadata_resolver.prim.proxy_env_values",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::prim::proxy_env_values",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 280,
+        "end_line": 285
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 170,
+      "lean_name": "transport.auth.metadata_resolver.prim.system_lookup",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::prim::system_lookup",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 275,
+        "end_line": 277
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 182,
+      "lean_name": "transport.auth.metadata_resolver.prim.contains",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::prim::contains",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 270,
+        "end_line": 272
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 186,
+      "lean_name": "transport.auth.metadata_resolver.prim.trim_end_dots",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::prim::trim_end_dots",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 262,
+        "end_line": 264
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 484,
+      "lean_name": "transport.auth.metadata_resolver.prim.ends_with",
+      "lean_file": "Rmcp/FunsExternal_Template.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::prim::ends_with",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 266,
+        "end_line": 268
+      },
+      "is_opaque": true,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 202,
       "lean_name": "rmcp.model.request_state.SealOptions.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{impl core::clone::Clone for rmcp::model::request_state::SealOptions<'a>}::clone",
@@ -1211,7 +2163,7 @@
       "reducible": false
     },
     {
-      "def_id": 115,
+      "def_id": 204,
       "lean_name": "rmcp.model.request_state.SealOptions.Insts.CoreDefaultDefault.default",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{impl core::default::Default for rmcp::model::request_state::SealOptions<'a>}::default",
@@ -1228,7 +2180,7 @@
       "reducible": false
     },
     {
-      "def_id": 116,
+      "def_id": 205,
       "lean_name": "rmcp.model.request_state.SealOptions.new",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::SealOptions<'a>}::new",
@@ -1245,7 +2197,7 @@
       "reducible": false
     },
     {
-      "def_id": 117,
+      "def_id": 206,
       "lean_name": "rmcp.model.request_state.SealOptions.impl.associated_data",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::SealOptions<'a>}::associated_data",
@@ -1262,7 +2214,7 @@
       "reducible": false
     },
     {
-      "def_id": 118,
+      "def_id": 207,
       "lean_name": "rmcp.model.request_state.SealOptions.impl.ttl",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::SealOptions<'a>}::ttl",
@@ -1279,7 +2231,7 @@
       "reducible": false
     },
     {
-      "def_id": 121,
+      "def_id": 210,
       "lean_name": "rmcp.model.request_state.SealMode.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{impl core::clone::Clone for rmcp::model::request_state::SealMode}::clone",
@@ -1296,7 +2248,7 @@
       "reducible": false
     },
     {
-      "def_id": 120,
+      "def_id": 209,
       "lean_name": "rmcp.model.request_state.Keys.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{impl core::clone::Clone for rmcp::model::request_state::Keys}::clone",
@@ -1313,7 +2265,7 @@
       "reducible": false
     },
     {
-      "def_id": 119,
+      "def_id": 208,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{impl core::clone::Clone for rmcp::model::request_state::RequestStateCodec}::clone",
@@ -1330,7 +2282,7 @@
       "reducible": false
     },
     {
-      "def_id": 125,
+      "def_id": 214,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.new_unchecked",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::new_unchecked",
@@ -1347,7 +2299,7 @@
       "reducible": false
     },
     {
-      "def_id": 124,
+      "def_id": 213,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.new",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::new",
@@ -1364,7 +2316,7 @@
       "reducible": false
     },
     {
-      "def_id": 46,
+      "def_id": 77,
       "lean_name": "rmcp.model.request_state_wire.key_length_ok",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::key_length_ok",
@@ -1381,7 +2333,7 @@
       "reducible": false
     },
     {
-      "def_id": 146,
+      "def_id": 235,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.validate_key_length",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::validate_key_length",
@@ -1398,7 +2350,7 @@
       "reducible": false
     },
     {
-      "def_id": 126,
+      "def_id": 215,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.try_new",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::try_new",
@@ -1415,7 +2367,7 @@
       "reducible": false
     },
     {
-      "def_id": 47,
+      "def_id": 78,
       "lean_name": "rmcp.model.request_state_wire.check_kid_len",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::check_kid_len",
@@ -1432,7 +2384,7 @@
       "reducible": false
     },
     {
-      "def_id": 147,
+      "def_id": 236,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.validate_config_kid",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::validate_config_kid",
@@ -1449,7 +2401,7 @@
       "reducible": false
     },
     {
-      "def_id": 127,
+      "def_id": 216,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.new_with_keyring_loop.body",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::new_with_keyring",
@@ -1468,7 +2420,7 @@
       "parent_lean_name": "rmcp.model.request_state.RequestStateCodec.new_with_keyring"
     },
     {
-      "def_id": 127,
+      "def_id": 216,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.new_with_keyring_loop",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::new_with_keyring",
@@ -1487,7 +2439,7 @@
       "parent_lean_name": "rmcp.model.request_state.RequestStateCodec.new_with_keyring"
     },
     {
-      "def_id": 127,
+      "def_id": 216,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.new_with_keyring",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::new_with_keyring",
@@ -1504,7 +2456,7 @@
       "reducible": false
     },
     {
-      "def_id": 443,
+      "def_id": 623,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool.call_mut",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{impl core::ops::function::FnMut<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}<'_0, '_1, T0>}::call_mut",
@@ -1521,7 +2473,7 @@
       "reducible": false
     },
     {
-      "def_id": 482,
+      "def_id": 655,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool.call_once",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{impl core::ops::function::FnOnce<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}<'_0, '_1, T0>}::call_once",
@@ -1538,7 +2490,7 @@
       "reducible": false
     },
     {
-      "def_id": 128,
+      "def_id": 217,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_signing",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing",
@@ -1555,7 +2507,7 @@
       "reducible": false
     },
     {
-      "def_id": 446,
+      "def_id": 625,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool.call_mut",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{impl core::ops::function::FnMut<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}<'_0, '_1, '_2, T0>}::call_mut",
@@ -1572,7 +2524,7 @@
       "reducible": false
     },
     {
-      "def_id": 483,
+      "def_id": 656,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool.call_once",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{impl core::ops::function::FnOnce<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}<'_0, '_1, '_2, T0>}::call_once",
@@ -1589,7 +2541,7 @@
       "reducible": false
     },
     {
-      "def_id": 129,
+      "def_id": 218,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_fallback",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback",
@@ -1606,7 +2558,7 @@
       "reducible": false
     },
     {
-      "def_id": 59,
+      "def_id": 90,
       "lean_name": "rmcp.model.request_state_wire.frame",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::frame",
@@ -1623,7 +2575,7 @@
       "reducible": false
     },
     {
-      "def_id": 55,
+      "def_id": 86,
       "lean_name": "rmcp.model.request_state_wire.transcript_v2",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::transcript_v2",
@@ -1640,7 +2592,7 @@
       "reducible": false
     },
     {
-      "def_id": 45,
+      "def_id": 76,
       "lean_name": "rmcp.model.request_state_wire.b64_len",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::b64_len",
@@ -1657,7 +2609,7 @@
       "reducible": false
     },
     {
-      "def_id": 148,
+      "def_id": 237,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.b64_len",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::b64_len",
@@ -1674,7 +2626,7 @@
       "reducible": false
     },
     {
-      "def_id": 141,
+      "def_id": 230,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.seal_rs2",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_rs2",
@@ -1691,7 +2643,7 @@
       "reducible": false
     },
     {
-      "def_id": 54,
+      "def_id": 85,
       "lean_name": "rmcp.model.request_state_wire.transcript_v1",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::transcript_v1",
@@ -1708,7 +2660,7 @@
       "reducible": false
     },
     {
-      "def_id": 140,
+      "def_id": 229,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.seal_rs1",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_rs1",
@@ -1725,7 +2677,7 @@
       "reducible": false
     },
     {
-      "def_id": 138,
+      "def_id": 227,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.seal_at",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_at",
@@ -1742,7 +2694,7 @@
       "reducible": false
     },
     {
-      "def_id": 131,
+      "def_id": 220,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.seal_with",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal_with",
@@ -1759,7 +2711,7 @@
       "reducible": false
     },
     {
-      "def_id": 130,
+      "def_id": 219,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.seal",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::seal",
@@ -1776,7 +2728,7 @@
       "reducible": false
     },
     {
-      "def_id": 49,
+      "def_id": 80,
       "lean_name": "rmcp.model.request_state_wire.next_dot_loop.body",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::next_dot",
@@ -1795,7 +2747,7 @@
       "parent_lean_name": "rmcp.model.request_state_wire.next_dot"
     },
     {
-      "def_id": 49,
+      "def_id": 80,
       "lean_name": "rmcp.model.request_state_wire.next_dot_loop",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::next_dot",
@@ -1814,7 +2766,7 @@
       "parent_lean_name": "rmcp.model.request_state_wire.next_dot"
     },
     {
-      "def_id": 49,
+      "def_id": 80,
       "lean_name": "rmcp.model.request_state_wire.next_dot",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::next_dot",
@@ -1831,7 +2783,7 @@
       "reducible": true
     },
     {
-      "def_id": 48,
+      "def_id": 79,
       "lean_name": "rmcp.model.request_state_wire.bytes_eq_loop.body",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::bytes_eq",
@@ -1850,7 +2802,7 @@
       "parent_lean_name": "rmcp.model.request_state_wire.bytes_eq"
     },
     {
-      "def_id": 48,
+      "def_id": 79,
       "lean_name": "rmcp.model.request_state_wire.bytes_eq_loop",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::bytes_eq",
@@ -1869,7 +2821,7 @@
       "parent_lean_name": "rmcp.model.request_state_wire.bytes_eq"
     },
     {
-      "def_id": 48,
+      "def_id": 79,
       "lean_name": "rmcp.model.request_state_wire.bytes_eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::bytes_eq",
@@ -1886,7 +2838,7 @@
       "reducible": false
     },
     {
-      "def_id": 51,
+      "def_id": 82,
       "lean_name": "rmcp.model.request_state_wire.version_of",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::version_of",
@@ -1903,7 +2855,7 @@
       "reducible": false
     },
     {
-      "def_id": 50,
+      "def_id": 81,
       "lean_name": "rmcp.model.request_state_wire.component_count_loop.body",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::component_count",
@@ -1922,7 +2874,7 @@
       "parent_lean_name": "rmcp.model.request_state_wire.component_count"
     },
     {
-      "def_id": 50,
+      "def_id": 81,
       "lean_name": "rmcp.model.request_state_wire.component_count_loop",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::component_count",
@@ -1941,7 +2893,7 @@
       "parent_lean_name": "rmcp.model.request_state_wire.component_count"
     },
     {
-      "def_id": 50,
+      "def_id": 81,
       "lean_name": "rmcp.model.request_state_wire.component_count",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::component_count",
@@ -1958,7 +2910,7 @@
       "reducible": true
     },
     {
-      "def_id": 53,
+      "def_id": 84,
       "lean_name": "rmcp.model.request_state_wire.parse_rs2",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::parse_rs2",
@@ -1975,7 +2927,7 @@
       "reducible": false
     },
     {
-      "def_id": 57,
+      "def_id": 88,
       "lean_name": "rmcp.model.request_state_wire.is_expired",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::is_expired",
@@ -1992,7 +2944,7 @@
       "reducible": false
     },
     {
-      "def_id": 56,
+      "def_id": 87,
       "lean_name": "rmcp.model.request_state_wire.decode_expiry",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::decode_expiry",
@@ -2009,7 +2961,7 @@
       "reducible": false
     },
     {
-      "def_id": 58,
+      "def_id": 89,
       "lean_name": "rmcp.model.request_state_wire.open_frame",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::open_frame",
@@ -2026,7 +2978,7 @@
       "reducible": false
     },
     {
-      "def_id": 145,
+      "def_id": 234,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_authenticated_body",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_authenticated_body",
@@ -2043,7 +2995,7 @@
       "reducible": false
     },
     {
-      "def_id": 455,
+      "def_id": 634,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_rs2_at.closure.Insts.CoreOpsFunctionFnOnceTupleFromUtf8ErrorRequestStateError.call_once",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{impl core::ops::function::FnOnce<(alloc::string::FromUtf8Error,), rmcp::model::request_state::RequestStateError> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{closure}}::call_once",
@@ -2060,7 +3012,7 @@
       "reducible": false
     },
     {
-      "def_id": 144,
+      "def_id": 233,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_rs2_at",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at",
@@ -2077,7 +3029,7 @@
       "reducible": false
     },
     {
-      "def_id": 52,
+      "def_id": 83,
       "lean_name": "rmcp.model.request_state_wire.parse_rs1",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::parse_rs1",
@@ -2094,7 +3046,7 @@
       "reducible": false
     },
     {
-      "def_id": 143,
+      "def_id": 232,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop.body",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::rs1_fallbacks_verify",
@@ -2113,7 +3065,7 @@
       "parent_lean_name": "rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify"
     },
     {
-      "def_id": 143,
+      "def_id": 232,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify_loop",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::rs1_fallbacks_verify",
@@ -2132,7 +3084,7 @@
       "parent_lean_name": "rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify"
     },
     {
-      "def_id": 143,
+      "def_id": 232,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.rs1_fallbacks_verify",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::rs1_fallbacks_verify",
@@ -2149,7 +3101,7 @@
       "reducible": false
     },
     {
-      "def_id": 142,
+      "def_id": 231,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_rs1_at",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs1_at",
@@ -2166,7 +3118,7 @@
       "reducible": false
     },
     {
-      "def_id": 139,
+      "def_id": 228,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_at",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_at",
@@ -2183,7 +3135,7 @@
       "reducible": false
     },
     {
-      "def_id": 135,
+      "def_id": 224,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_with",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_with",
@@ -2200,7 +3152,7 @@
       "reducible": false
     },
     {
-      "def_id": 134,
+      "def_id": 223,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open",
@@ -2217,7 +3169,7 @@
       "reducible": false
     },
     {
-      "def_id": 137,
+      "def_id": 226,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_json_with",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_json_with",
@@ -2234,7 +3186,7 @@
       "reducible": false
     },
     {
-      "def_id": 136,
+      "def_id": 225,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_json",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_json",
@@ -2251,7 +3203,7 @@
       "reducible": false
     },
     {
-      "def_id": 166,
+      "def_id": 253,
       "lean_name": "rmcp.model.request_state_wire.KidError.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::clone::Clone for rmcp::model::request_state_wire::KidError}::clone",
@@ -2268,7 +3220,7 @@
       "reducible": false
     },
     {
-      "def_id": 167,
+      "def_id": 254,
       "lean_name": "rmcp.model.request_state_wire.KidError.Insts.CoreCmpPartialEqKidError.eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::cmp::PartialEq<rmcp::model::request_state_wire::KidError> for rmcp::model::request_state_wire::KidError}::eq",
@@ -2285,7 +3237,7 @@
       "reducible": false
     },
     {
-      "def_id": 173,
+      "def_id": 259,
       "lean_name": "rmcp.model.request_state_wire.Version.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::clone::Clone for rmcp::model::request_state_wire::Version}::clone",
@@ -2302,7 +3254,7 @@
       "reducible": false
     },
     {
-      "def_id": 174,
+      "def_id": 260,
       "lean_name": "rmcp.model.request_state_wire.Version.Insts.CoreCmpPartialEqVersion.eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::cmp::PartialEq<rmcp::model::request_state_wire::Version> for rmcp::model::request_state_wire::Version}::eq",
@@ -2319,7 +3271,7 @@
       "reducible": false
     },
     {
-      "def_id": 176,
+      "def_id": 262,
       "lean_name": "rmcp.model.request_state_wire.Rs1Parts.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::clone::Clone for rmcp::model::request_state_wire::Rs1Parts<'a>}::clone",
@@ -2336,7 +3288,7 @@
       "reducible": false
     },
     {
-      "def_id": 177,
+      "def_id": 263,
       "lean_name": "rmcp.model.request_state_wire.Rs1Parts.Insts.CoreCmpPartialEqRs1Parts.eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::cmp::PartialEq<rmcp::model::request_state_wire::Rs1Parts<'a>> for rmcp::model::request_state_wire::Rs1Parts<'a>}::eq",
@@ -2353,7 +3305,7 @@
       "reducible": false
     },
     {
-      "def_id": 178,
+      "def_id": 264,
       "lean_name": "rmcp.model.request_state_wire.Rs1Parts.Insts.CoreCmpEq.assert_fields_are_eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::cmp::Eq for rmcp::model::request_state_wire::Rs1Parts<'a>}::assert_fields_are_eq",
@@ -2370,7 +3322,7 @@
       "reducible": false
     },
     {
-      "def_id": 180,
+      "def_id": 266,
       "lean_name": "rmcp.model.request_state_wire.Rs2Parts.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::clone::Clone for rmcp::model::request_state_wire::Rs2Parts<'a>}::clone",
@@ -2387,7 +3339,7 @@
       "reducible": false
     },
     {
-      "def_id": 181,
+      "def_id": 267,
       "lean_name": "rmcp.model.request_state_wire.Rs2Parts.Insts.CoreCmpPartialEqRs2Parts.eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::cmp::PartialEq<rmcp::model::request_state_wire::Rs2Parts<'a>> for rmcp::model::request_state_wire::Rs2Parts<'a>}::eq",
@@ -2404,7 +3356,7 @@
       "reducible": false
     },
     {
-      "def_id": 182,
+      "def_id": 268,
       "lean_name": "rmcp.model.request_state_wire.Rs2Parts.Insts.CoreCmpEq.assert_fields_are_eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::cmp::Eq for rmcp::model::request_state_wire::Rs2Parts<'a>}::assert_fields_are_eq",
@@ -2421,7 +3373,7 @@
       "reducible": false
     },
     {
-      "def_id": 188,
+      "def_id": 273,
       "lean_name": "rmcp.model.request_state_wire.FrameError.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::clone::Clone for rmcp::model::request_state_wire::FrameError}::clone",
@@ -2438,7 +3390,7 @@
       "reducible": false
     },
     {
-      "def_id": 189,
+      "def_id": 274,
       "lean_name": "rmcp.model.request_state_wire.FrameError.Insts.CoreCmpPartialEqFrameError.eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state_wire::{impl core::cmp::PartialEq<rmcp::model::request_state_wire::FrameError> for rmcp::model::request_state_wire::FrameError}::eq",
@@ -2447,6 +3399,871 @@
         "file": "crates/rmcp/src/model/request_state_wire.rs",
         "begin_line": 215,
         "end_line": 215
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 37,
+      "lean_name": "rmcp.model.skill.Resource.is_directory",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::resource::Resource}::is_directory",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 28,
+        "end_line": 30
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 131,
+      "lean_name": "rmcp.model.skill.SkillsCapability.Insts.CoreDefaultDefault.default",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{impl core::default::Default for rmcp::model::skill::SkillsCapability}::default",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 34,
+        "end_line": 34
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 38,
+      "lean_name": "rmcp.model.skill.SkillsCapability.new",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::SkillsCapability}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 46,
+        "end_line": 48
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 43,
+      "lean_name": "rmcp.model.skill.SkillsCapability.with_directory_read",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::SkillsCapability}::with_directory_read",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 51,
+        "end_line": 54
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 39,
+      "lean_name": "rmcp.model.skill.SkillResource.new",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::SkillResource}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 76,
+        "end_line": 82
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 144,
+      "lean_name": "rmcp.model.skill.lower_hex_digit",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::lower_hex_digit",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 128,
+        "end_line": 130
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 46,
+      "lean_name": "rmcp.model.skill.sha256_digest_loop.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::sha256_digest",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 120,
+        "end_line": 123
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.model.skill.sha256_digest"
+    },
+    {
+      "def_id": 46,
+      "lean_name": "rmcp.model.skill.sha256_digest_loop",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::sha256_digest",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 120,
+        "end_line": 123
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.model.skill.sha256_digest"
+    },
+    {
+      "def_id": 46,
+      "lean_name": "rmcp.model.skill.sha256_digest",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::sha256_digest",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 116,
+        "end_line": 125
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 44,
+      "lean_name": "rmcp.model.skill.SkillResource.from_bytes",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::SkillResource}::from_bytes",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 85,
+        "end_line": 87
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 45,
+      "lean_name": "rmcp.model.skill.SkillResource.verify",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::SkillResource}::verify",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 94,
+        "end_line": 112
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 40,
+      "lean_name": "rmcp.model.skill.SkillFrontmatter.new",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::SkillFrontmatter}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 163,
+        "end_line": 169
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 47,
+      "lean_name": "rmcp.model.skill.SkillFrontmatter.with_field",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::SkillFrontmatter}::with_field",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 172,
+        "end_line": 179
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 41,
+      "lean_name": "rmcp.model.skill.Skill.new",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::Skill}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 249,
+        "end_line": 260
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 48,
+      "lean_name": "rmcp.model.skill.Skill.with_meta",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::Skill}::with_meta",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 262,
+        "end_line": 265
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 50,
+      "lean_name": "rmcp.model.skill.Skill.name",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::Skill}::name",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 268,
+        "end_line": 270
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 640,
+      "lean_name": "rmcp.model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnMutTupleU8Bool.call_mut",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest::{closure}::{impl core::ops::function::FnMut<(u8,), bool> for rmcp::model::skill::is_sha256_digest::{closure}::{closure}<'_0>}::call_mut",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 483,
+        "end_line": 483
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 672,
+      "lean_name": "rmcp.model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnOnceTupleU8Bool.call_once",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest::{closure}::{impl core::ops::function::FnOnce<(u8,), bool> for rmcp::model::skill::is_sha256_digest::{closure}::{closure}<'_0>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 483,
+        "end_line": 483
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 470,
+      "lean_name": "rmcp.model.skill.is_sha256_digest.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrBool.call_once",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest::{impl core::ops::function::FnOnce<(&'_0 str,), bool> for rmcp::model::skill::is_sha256_digest::{closure}<'_0>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 482,
+        "end_line": 484
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 53,
+      "lean_name": "rmcp.model.skill.is_sha256_digest",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 481,
+        "end_line": 485
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 601,
+      "lean_name": "rmcp.model.skill.is_unreserved",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_unreserved",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 476,
+        "end_line": 478
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 598,
+      "lean_name": "rmcp.model.skill.is_ascii_hex_loop.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_ascii_hex",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 467,
+        "end_line": 474
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.model.skill.is_ascii_hex"
+    },
+    {
+      "def_id": 598,
+      "lean_name": "rmcp.model.skill.is_ascii_hex_loop",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_ascii_hex",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 467,
+        "end_line": 474
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.model.skill.is_ascii_hex"
+    },
+    {
+      "def_id": 598,
+      "lean_name": "rmcp.model.skill.is_ascii_hex",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_ascii_hex",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 464,
+        "end_line": 474
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 476,
+      "lean_name": "rmcp.model.skill.push_normalized_part",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::push_normalized_part",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 445,
+        "end_line": 462
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 166,
+      "lean_name": "rmcp.model.skill.normalize_percent_encoding_loop.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::normalize_percent_encoding",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 436,
+        "end_line": 439
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.model.skill.normalize_percent_encoding"
+    },
+    {
+      "def_id": 166,
+      "lean_name": "rmcp.model.skill.normalize_percent_encoding_loop",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::normalize_percent_encoding",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 436,
+        "end_line": 439
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.model.skill.normalize_percent_encoding"
+    },
+    {
+      "def_id": 166,
+      "lean_name": "rmcp.model.skill.normalize_percent_encoding",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::normalize_percent_encoding",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 428,
+        "end_line": 441
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 577,
+      "lean_name": "rmcp.model.skill.resolve_segment",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::resolve_segment",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 413,
+        "end_line": 423
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 461,
+      "lean_name": "rmcp.model.skill.resolve_segments_loop.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::resolve_segments",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 405,
+        "end_line": 408
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.model.skill.resolve_segments"
+    },
+    {
+      "def_id": 461,
+      "lean_name": "rmcp.model.skill.resolve_segments_loop",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::resolve_segments",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 405,
+        "end_line": 408
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.model.skill.resolve_segments"
+    },
+    {
+      "def_id": 461,
+      "lean_name": "rmcp.model.skill.resolve_segments",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::resolve_segments",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 402,
+        "end_line": 410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": true
+    },
+    {
+      "def_id": 154,
+      "lean_name": "rmcp.model.skill.manifest_resource_key",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::manifest_resource_key",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 381,
+        "end_line": 399
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 148,
+      "lean_name": "rmcp.model.skill.is_valid_skill_name_loop.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_valid_skill_name",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 360,
+        "end_line": 378
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.model.skill.is_valid_skill_name"
+    },
+    {
+      "def_id": 148,
+      "lean_name": "rmcp.model.skill.is_valid_skill_name_loop",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_valid_skill_name",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 360,
+        "end_line": 378
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.model.skill.is_valid_skill_name"
+    },
+    {
+      "def_id": 148,
+      "lean_name": "rmcp.model.skill.is_valid_skill_name",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_valid_skill_name",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 356,
+        "end_line": 378
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 52,
+      "lean_name": "rmcp.model.skill.skill_name_from_uri",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::skill_name_from_uri",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 345,
+        "end_line": 352
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 51,
+      "lean_name": "rmcp.model.skill.Skill.validate_loop0.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::Skill}::validate",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 302,
+        "end_line": 308
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.model.skill.Skill.validate"
+    },
+    {
+      "def_id": 51,
+      "lean_name": "rmcp.model.skill.Skill.validate_loop0",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::Skill}::validate",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 302,
+        "end_line": 308
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.model.skill.Skill.validate"
+    },
+    {
+      "def_id": 51,
+      "lean_name": "rmcp.model.skill.Skill.validate_loop1.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::Skill}::validate",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 315,
+        "end_line": 336
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 1 ], "is_body": true },
+      "parent_lean_name": "rmcp.model.skill.Skill.validate"
+    },
+    {
+      "def_id": 51,
+      "lean_name": "rmcp.model.skill.Skill.validate_loop1",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::Skill}::validate",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 315,
+        "end_line": 336
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 1, "pos": [ 1 ], "is_body": false },
+      "parent_lean_name": "rmcp.model.skill.Skill.validate"
+    },
+    {
+      "def_id": 51,
+      "lean_name": "rmcp.model.skill.Skill.validate",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::Skill}::validate",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 279,
+        "end_line": 338
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 54,
+      "lean_name": "rmcp.model.skill.validate_skills_loop.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::validate_skills",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 490,
+        "end_line": 497
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.model.skill.validate_skills"
+    },
+    {
+      "def_id": 54,
+      "lean_name": "rmcp.model.skill.validate_skills_loop",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::validate_skills",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 490,
+        "end_line": 497
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.model.skill.validate_skills"
+    },
+    {
+      "def_id": 54,
+      "lean_name": "rmcp.model.skill.validate_skills",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::validate_skills",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 488,
+        "end_line": 497
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 42,
+      "lean_name": "rmcp.model.skill.GetSkillResult.new",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 552,
+        "end_line": 560
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 55,
+      "lean_name": "rmcp.model.skill.GetSkillResult.with_ttl_ms",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::with_ttl_ms",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 562,
+        "end_line": 565
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 56,
+      "lean_name": "rmcp.model.skill.GetSkillResult.with_cache_scope",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::with_cache_scope",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 567,
+        "end_line": 570
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 49,
+      "lean_name": "rmcp.model.skill.GetSkillResult.with_meta",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::{rmcp::model::skill::GetSkillResult}::with_meta",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 572,
+        "end_line": 575
       },
       "is_opaque": false,
       "can_fail": true,
@@ -2472,7 +4289,7 @@
       "reducible": false
     },
     {
-      "def_id": 202,
+      "def_id": 287,
       "lean_name": "rmcp.model.NumberOrString.Insts.CoreCmpPartialEqNumberOrString.eq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::{impl core::cmp::PartialEq<rmcp::model::NumberOrString> for rmcp::model::NumberOrString}::eq",
@@ -2761,15 +4578,32 @@
       "reducible": false
     },
     {
-      "def_id": 35,
-      "lean_name": "rmcp.transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4",
+      "def_id": 497,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone.clone",
       "lean_file": "Rmcp/Funs.lean",
-      "rust_name": "rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{impl core::clone::Clone for rmcp::transport::auth::metadata_resolver::AddressClass}::clone",
       "is_local": true,
       "source": {
-        "file": "crates/rmcp/src/transport/auth.rs",
-        "begin_line": 1343,
-        "end_line": 1354
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 33,
+        "end_line": 33
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 496,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass.eq",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{impl core::cmp::PartialEq<rmcp::transport::auth::metadata_resolver::AddressClass> for rmcp::transport::auth::metadata_resolver::AddressClass}::eq",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 33,
+        "end_line": 33
       },
       "is_opaque": false,
       "can_fail": true,
@@ -2795,6 +4629,23 @@
       "reducible": false
     },
     {
+      "def_id": 35,
+      "lean_name": "rmcp.transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth.rs",
+        "begin_line": 1343,
+        "end_line": 1354
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
       "def_id": 36,
       "lean_name": "rmcp.transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6",
       "lean_file": "Rmcp/Funs.lean",
@@ -2808,6 +4659,303 @@
       "is_opaque": false,
       "can_fail": true,
       "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 57,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.AddressClass.of",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::AddressClass}::of",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 42,
+        "end_line": 74
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 67,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.normalize_host",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::normalize_host",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 255,
+        "end_line": 257
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 499,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString.call_once",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::proxy_host::{impl core::ops::function::FnOnce<(&'_0 str,), alloc::string::String> for rmcp::transport::auth::metadata_resolver::proxy_host::{closure}<'_0>}::call_once",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 244,
+        "end_line": 244
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 66,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.proxy_host",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::proxy_host",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 233,
+        "end_line": 245
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 61,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 142,
+        "end_line": 146
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts"
+    },
+    {
+      "def_id": 61,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 142,
+        "end_line": 146
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts"
+    },
+    {
+      "def_id": 61,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 140,
+        "end_line": 149
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 175,
+      "lean_name": "rmcp.transport.auth.AuthorizationManager.is_loopback_metadata_host",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_loopback_metadata_host",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth.rs",
+        "begin_line": 1401,
+        "end_line": 1410
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 65,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.literal_ip",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::literal_ip",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 247,
+        "end_line": 253
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 59,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.with_base_url",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_base_url",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 114,
+        "end_line": 136
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 58,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.new",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::new",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 105,
+        "end_line": 108
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 62,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allowing_private_addresses",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowing_private_addresses",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 152,
+        "end_line": 159
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 64,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.is_allowed",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::is_allowed",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 179,
+        "end_line": 185
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 63,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allows_url",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allows_url",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 163,
+        "end_line": 171
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": false,
+      "is_rec": false,
+      "reducible": false
+    },
+    {
+      "def_id": 60,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop.body",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 220,
+        "end_line": 224
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": true },
+      "parent_lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses"
+    },
+    {
+      "def_id": 60,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 220,
+        "end_line": 224
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
+      "is_rec": false,
+      "reducible": false,
+      "loop": { "id": 0, "pos": [ 0 ], "is_body": false },
+      "parent_lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses"
+    },
+    {
+      "def_id": 60,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 210,
+        "end_line": 229
+      },
+      "is_opaque": false,
+      "can_fail": true,
+      "can_diverge": true,
       "is_rec": false,
       "reducible": false
     },
@@ -2918,7 +5066,7 @@
       "reducible": false
     },
     {
-      "def_id": 309,
+      "def_id": 394,
       "lean_name": "rmcp.transport.streamable_http_server.tower.AllowedPort.matches.closure.Insts.CoreOpsFunctionFnOnceTupleOptionU16.call_once",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches::{impl core::ops::function::FnOnce<(), core::option::Option<u16>> for rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches::{closure}<'_0>}::call_once",
@@ -2954,7 +5102,19 @@
   ],
   "types": [
     {
-      "def_id": 36,
+      "def_id": 68,
+      "lean_name": "core.array.iter.IntoIter",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "core::array::iter::IntoIter",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/array/iter.rs",
+        "begin_line": 20,
+        "end_line": 20
+      }
+    },
+    {
+      "def_id": 44,
       "lean_name": "core.mem.maybe_uninit.MaybeUninit",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "core::mem::maybe_uninit::MaybeUninit",
@@ -2966,19 +5126,7 @@
       }
     },
     {
-      "def_id": 48,
-      "lean_name": "core.net.ip_addr.Ipv4Addr",
-      "lean_file": "Rmcp/TypesExternal_Template.lean",
-      "rust_name": "core::net::ip_addr::Ipv4Addr",
-      "is_local": false,
-      "source": {
-        "file": "/rustc/library/core/src/net/ip_addr.rs",
-        "begin_line": 74,
-        "end_line": 74
-      }
-    },
-    {
-      "def_id": 47,
+      "def_id": 55,
       "lean_name": "core.net.ip_addr.Ipv6Addr",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "core::net::ip_addr::Ipv6Addr",
@@ -2990,7 +5138,43 @@
       }
     },
     {
-      "def_id": 33,
+      "def_id": 56,
+      "lean_name": "core.net.ip_addr.Ipv4Addr",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "core::net::ip_addr::Ipv4Addr",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/ip_addr.rs",
+        "begin_line": 74,
+        "end_line": 74
+      }
+    },
+    {
+      "def_id": 137,
+      "lean_name": "core.net.socket_addr.SocketAddrV6",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "core::net::socket_addr::SocketAddrV6",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/socket_addr.rs",
+        "begin_line": 147,
+        "end_line": 147
+      }
+    },
+    {
+      "def_id": 136,
+      "lean_name": "core.net.socket_addr.SocketAddrV4",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "core::net::socket_addr::SocketAddrV4",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/socket_addr.rs",
+        "begin_line": 81,
+        "end_line": 81
+      }
+    },
+    {
+      "def_id": 41,
       "lean_name": "core.num.error.ParseIntError",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "core::num::error::ParseIntError",
@@ -3002,7 +5186,19 @@
       }
     },
     {
-      "def_id": 58,
+      "def_id": 154,
+      "lean_name": "core.str.iter.Bytes",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "core::str::iter::Bytes",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/str/iter.rs",
+        "begin_line": 284,
+        "end_line": 284
+      }
+    },
+    {
+      "def_id": 89,
       "lean_name": "core.time.Duration",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "core::time::Duration",
@@ -3014,7 +5210,7 @@
       }
     },
     {
-      "def_id": 60,
+      "def_id": 91,
       "lean_name": "std.collections.hash.map.HashMap",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "std::collections::hash::map::HashMap",
@@ -3026,7 +5222,7 @@
       }
     },
     {
-      "def_id": 61,
+      "def_id": 71,
       "lean_name": "std.hash.random.RandomState",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "std::hash::random::RandomState",
@@ -3038,7 +5234,7 @@
       }
     },
     {
-      "def_id": 109,
+      "def_id": 143,
       "lean_name": "std.collections.hash.map.VacantEntry",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "std::collections::hash::map::VacantEntry",
@@ -3050,7 +5246,7 @@
       }
     },
     {
-      "def_id": 118,
+      "def_id": 156,
       "lean_name": "std.collections.hash.map.OccupiedEntry",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "std::collections::hash::map::OccupiedEntry",
@@ -3062,7 +5258,19 @@
       }
     },
     {
-      "def_id": 120,
+      "def_id": 70,
+      "lean_name": "std.collections.hash.set.HashSet",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "std::collections::hash::set::HashSet",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/std/src/collections/hash/set.rs",
+        "begin_line": 126,
+        "end_line": 130
+      }
+    },
+    {
+      "def_id": 135,
       "lean_name": "std.hash.random.DefaultHasher",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "std::hash::random::DefaultHasher",
@@ -3074,7 +5282,7 @@
       }
     },
     {
-      "def_id": 112,
+      "def_id": 146,
       "lean_name": "alloc.string.FromUtf8Error",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "alloc::string::FromUtf8Error",
@@ -3086,7 +5294,7 @@
       }
     },
     {
-      "def_id": 30,
+      "def_id": 38,
       "lean_name": "alloc.sync.Arc",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "alloc::sync::Arc",
@@ -3098,7 +5306,7 @@
       }
     },
     {
-      "def_id": 51,
+      "def_id": 82,
       "lean_name": "serde_json.error.Error",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "serde_json::error::Error",
@@ -3110,7 +5318,19 @@
       }
     },
     {
-      "def_id": 68,
+      "def_id": 62,
+      "lean_name": "serde_json.map.Map",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "serde_json::map::Map",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.154/src/map.rs",
+        "begin_line": 34,
+        "end_line": 34
+      }
+    },
+    {
+      "def_id": 63,
       "lean_name": "serde_json.value.Value",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "serde_json::value::Value",
@@ -3122,7 +5342,19 @@
       }
     },
     {
-      "def_id": 59,
+      "def_id": 76,
+      "lean_name": "url.Url",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "url::Url",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs",
+        "begin_line": 227,
+        "end_line": 227
+      }
+    },
+    {
+      "def_id": 90,
       "lean_name": "zeroize.Zeroizing",
       "lean_file": "Rmcp/TypesExternal_Template.lean",
       "rust_name": "zeroize::Zeroizing",
@@ -3134,7 +5366,43 @@
       }
     },
     {
-      "def_id": 108,
+      "def_id": 75,
+      "lean_name": "transport.auth.metadata_resolver.Lookup",
+      "lean_file": "Rmcp/TypesExternal_Template.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::Lookup",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 102,
+        "end_line": 102
+      }
+    },
+    {
+      "def_id": 74,
+      "lean_name": "rmcp.core.net.ip_addr.IpAddr",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "core::net::ip_addr::IpAddr",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/ip_addr.rs",
+        "begin_line": 30,
+        "end_line": 30
+      }
+    },
+    {
+      "def_id": 78,
+      "lean_name": "rmcp.core.net.socket_addr.SocketAddr",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "core::net::socket_addr::SocketAddr",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/socket_addr.rs",
+        "begin_line": 33,
+        "end_line": 33
+      }
+    },
+    {
+      "def_id": 142,
       "lean_name": "rmcp.std.collections.hash.map.Entry",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "std::collections::hash::map::Entry",
@@ -3146,7 +5414,7 @@
       }
     },
     {
-      "def_id": 67,
+      "def_id": 73,
       "lean_name": "rmcp.alloc.borrow.Cow",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "alloc::borrow::Cow",
@@ -3158,7 +5426,79 @@
       }
     },
     {
-      "def_id": 13,
+      "def_id": 133,
+      "lean_name": "rmcp.unicode_general_category.tables.GeneralCategory",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "unicode_general_category::tables::GeneralCategory",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-general-category-1.1.0/src/tables.rs",
+        "begin_line": 11,
+        "end_line": 11
+      }
+    },
+    {
+      "def_id": 77,
+      "lean_name": "rmcp.url.host.Host",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "url::host::Host",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/host.rs",
+        "begin_line": 46,
+        "end_line": 46
+      }
+    },
+    {
+      "def_id": 80,
+      "lean_name": "rmcp.url.parser.ParseError",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "url::parser::ParseError",
+      "is_local": false,
+      "source": {
+        "file": "/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/parser.rs",
+        "begin_line": 87,
+        "end_line": 98
+      }
+    },
+    {
+      "def_id": 132,
+      "lean_name": "rmcp.model.Role",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::Role",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model.rs",
+        "begin_line": 2860,
+        "end_line": 2865
+      }
+    },
+    {
+      "def_id": 61,
+      "lean_name": "rmcp.model.annotated.Annotations",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::annotated::Annotations",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/annotated.rs",
+        "begin_line": 17,
+        "end_line": 28
+      }
+    },
+    {
+      "def_id": 60,
+      "lean_name": "rmcp.model.meta.MetaObject",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::meta::MetaObject",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/meta.rs",
+        "begin_line": 247,
+        "end_line": 247
+      }
+    },
+    {
+      "def_id": 21,
       "lean_name": "rmcp.model.request_state.RequestStateError",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state::RequestStateError",
@@ -3170,7 +5510,7 @@
       }
     },
     {
-      "def_id": 14,
+      "def_id": 22,
       "lean_name": "rmcp.model.request_state.SealOptions",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state::SealOptions",
@@ -3182,7 +5522,7 @@
       }
     },
     {
-      "def_id": 17,
+      "def_id": 25,
       "lean_name": "rmcp.model.request_state.SealMode",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state::SealMode",
@@ -3194,7 +5534,7 @@
       }
     },
     {
-      "def_id": 16,
+      "def_id": 24,
       "lean_name": "rmcp.model.request_state.Keys",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state::Keys",
@@ -3206,7 +5546,7 @@
       }
     },
     {
-      "def_id": 15,
+      "def_id": 23,
       "lean_name": "rmcp.model.request_state.RequestStateCodec",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state::RequestStateCodec",
@@ -3218,7 +5558,7 @@
       }
     },
     {
-      "def_id": 18,
+      "def_id": 26,
       "lean_name": "rmcp.model.request_state_wire.KidError",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state_wire::KidError",
@@ -3230,7 +5570,7 @@
       }
     },
     {
-      "def_id": 110,
+      "def_id": 144,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_signing.closure",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}",
@@ -3242,7 +5582,7 @@
       }
     },
     {
-      "def_id": 111,
+      "def_id": 145,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_fallback.closure",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}",
@@ -3254,7 +5594,7 @@
       }
     },
     {
-      "def_id": 19,
+      "def_id": 27,
       "lean_name": "rmcp.model.request_state_wire.Version",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state_wire::Version",
@@ -3266,7 +5606,7 @@
       }
     },
     {
-      "def_id": 21,
+      "def_id": 29,
       "lean_name": "rmcp.model.request_state_wire.Rs2Parts",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state_wire::Rs2Parts",
@@ -3278,7 +5618,7 @@
       }
     },
     {
-      "def_id": 22,
+      "def_id": 30,
       "lean_name": "rmcp.model.request_state_wire.FrameError",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state_wire::FrameError",
@@ -3290,7 +5630,7 @@
       }
     },
     {
-      "def_id": 113,
+      "def_id": 147,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_rs2_at.closure",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{closure}",
@@ -3302,7 +5642,7 @@
       }
     },
     {
-      "def_id": 20,
+      "def_id": 28,
       "lean_name": "rmcp.model.request_state_wire.Rs1Parts",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::request_state_wire::Rs1Parts",
@@ -3311,6 +5651,186 @@
         "file": "crates/rmcp/src/model/request_state_wire.rs",
         "begin_line": 129,
         "end_line": 134
+      }
+    },
+    {
+      "def_id": 131,
+      "lean_name": "rmcp.model.IconTheme",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::IconTheme",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model.rs",
+        "begin_line": 1622,
+        "end_line": 1627
+      }
+    },
+    {
+      "def_id": 59,
+      "lean_name": "rmcp.model.Icon",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::Icon",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model.rs",
+        "begin_line": 1642,
+        "end_line": 1655
+      }
+    },
+    {
+      "def_id": 9,
+      "lean_name": "rmcp.model.resource.Resource",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::resource::Resource",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/resource.rs",
+        "begin_line": 12,
+        "end_line": 38
+      }
+    },
+    {
+      "def_id": 10,
+      "lean_name": "rmcp.model.skill.SkillsCapability",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::SkillsCapability",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 38,
+        "end_line": 42
+      }
+    },
+    {
+      "def_id": 11,
+      "lean_name": "rmcp.model.skill.SkillResource",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::SkillResource",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 66,
+        "end_line": 73
+      }
+    },
+    {
+      "def_id": 67,
+      "lean_name": "rmcp.model.skill.SkillIntegrityError",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::SkillIntegrityError",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 135,
+        "end_line": 148
+      }
+    },
+    {
+      "def_id": 12,
+      "lean_name": "rmcp.model.skill.SkillFrontmatter",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::SkillFrontmatter",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 154,
+        "end_line": 160
+      }
+    },
+    {
+      "def_id": 64,
+      "lean_name": "rmcp.model.skill.SkillResources",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::SkillResources",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 186,
+        "end_line": 189
+      }
+    },
+    {
+      "def_id": 13,
+      "lean_name": "rmcp.model.skill.Skill",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::Skill",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 239,
+        "end_line": 246
+      }
+    },
+    {
+      "def_id": 69,
+      "lean_name": "rmcp.model.skill.SkillValidationError",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::SkillValidationError",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 502,
+        "end_line": 521
+      }
+    },
+    {
+      "def_id": 155,
+      "lean_name": "rmcp.model.skill.is_sha256_digest.closure.closure",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest::{closure}::{closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 483,
+        "end_line": 483
+      }
+    },
+    {
+      "def_id": 72,
+      "lean_name": "rmcp.model.skill.is_sha256_digest.closure",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest::{closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 482,
+        "end_line": 484
+      }
+    },
+    {
+      "def_id": 66,
+      "lean_name": "rmcp.model.CacheScope",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::CacheScope",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model.rs",
+        "begin_line": 1854,
+        "end_line": 1860
+      }
+    },
+    {
+      "def_id": 65,
+      "lean_name": "rmcp.model.ResultType",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::ResultType",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model.rs",
+        "begin_line": 1032,
+        "end_line": 1032
+      }
+    },
+    {
+      "def_id": 14,
+      "lean_name": "rmcp.model.skill.GetSkillResult",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::model::skill::GetSkillResult",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 528,
+        "end_line": 549
       }
     },
     {
@@ -3326,7 +5846,7 @@
       }
     },
     {
-      "def_id": 65,
+      "def_id": 95,
       "lean_name": "rmcp.model.JsonRpcVersion2_0",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::JsonRpcVersion2_0",
@@ -3350,7 +5870,7 @@
       }
     },
     {
-      "def_id": 23,
+      "def_id": 31,
       "lean_name": "rmcp.model.JsonRpcRequest",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::JsonRpcRequest",
@@ -3362,7 +5882,7 @@
       }
     },
     {
-      "def_id": 24,
+      "def_id": 32,
       "lean_name": "rmcp.model.JsonRpcResponse",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::JsonRpcResponse",
@@ -3374,7 +5894,7 @@
       }
     },
     {
-      "def_id": 66,
+      "def_id": 96,
       "lean_name": "rmcp.model.ErrorCode",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::ErrorCode",
@@ -3386,7 +5906,7 @@
       }
     },
     {
-      "def_id": 28,
+      "def_id": 36,
       "lean_name": "rmcp.model.ErrorData",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::ErrorData",
@@ -3398,7 +5918,7 @@
       }
     },
     {
-      "def_id": 26,
+      "def_id": 34,
       "lean_name": "rmcp.model.JsonRpcError",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::JsonRpcError",
@@ -3410,7 +5930,7 @@
       }
     },
     {
-      "def_id": 25,
+      "def_id": 33,
       "lean_name": "rmcp.model.JsonRpcNotification",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::JsonRpcNotification",
@@ -3446,7 +5966,7 @@
       }
     },
     {
-      "def_id": 39,
+      "def_id": 47,
       "lean_name": "rmcp.model.PromptReference",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::PromptReference",
@@ -3458,7 +5978,7 @@
       }
     },
     {
-      "def_id": 38,
+      "def_id": 46,
       "lean_name": "rmcp.model.ResourceTemplateReference",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::model::ResourceTemplateReference",
@@ -3479,6 +5999,42 @@
         "file": "crates/rmcp/src/model.rs",
         "begin_line": 3710,
         "end_line": 3715
+      }
+    },
+    {
+      "def_id": 15,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.AddressClass",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::AddressClass",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 34,
+        "end_line": 39
+      }
+    },
+    {
+      "def_id": 16,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.MetadataAddressResolver",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::MetadataAddressResolver",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 93,
+        "end_line": 98
+      }
+    },
+    {
+      "def_id": 81,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.proxy_host.closure",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::proxy_host::{closure}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 244,
+        "end_line": 244
       }
     },
     {
@@ -3506,7 +6062,7 @@
       }
     },
     {
-      "def_id": 43,
+      "def_id": 51,
       "lean_name": "rmcp.transport.streamable_http_server.tower.AllowedPort.matches.closure",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "rmcp::transport::streamable_http_server::tower::{rmcp::transport::streamable_http_server::tower::AllowedPort}::matches::{closure}",
@@ -3611,7 +6167,7 @@
       "can_fail": false
     },
     {
-      "def_id": 29,
+      "def_id": 34,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.MIN_KEY_LENGTH",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::MIN_KEY_LENGTH",
@@ -3713,11 +6269,62 @@
         "end_line": 25
       },
       "can_fail": false
+    },
+    {
+      "def_id": 88,
+      "lean_name": "rmcp.model.skill.DIRECTORY_MIME_TYPE",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::DIRECTORY_MIME_TYPE",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 24,
+        "end_line": 24
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 25,
+      "lean_name": "rmcp.model.skill.SKILL_MD",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::SKILL_MD",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 342,
+        "end_line": 342
+      },
+      "can_fail": false
+    },
+    {
+      "def_id": 24,
+      "lean_name": "rmcp.model.ResultType.COMPLETE",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::{rmcp::model::ResultType}::COMPLETE",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model.rs",
+        "begin_line": 1035,
+        "end_line": 1035
+      },
+      "can_fail": false
     }
   ],
   "trait_decls": [
     {
-      "def_id": 41,
+      "def_id": 19,
+      "lean_name": "rmcp.core.alloc.AllocatorClone",
+      "lean_file": "Rmcp/Types.lean",
+      "rust_name": "core::alloc::AllocatorClone",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/alloc/mod.rs",
+        "begin_line": 541,
+        "end_line": 541
+      }
+    },
+    {
+      "def_id": 16,
       "lean_name": "rmcp.core.hash.BuildHasher",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "core::hash::BuildHasher",
@@ -3753,7 +6360,7 @@
       }
     },
     {
-      "def_id": 21,
+      "def_id": 17,
       "lean_name": "rmcp.alloc.borrow.ToOwned",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "alloc::borrow::ToOwned",
@@ -3765,7 +6372,7 @@
       }
     },
     {
-      "def_id": 50,
+      "def_id": 51,
       "lean_name": "rmcp.serde_core.de.Error",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "serde_core::de::Error",
@@ -3777,7 +6384,7 @@
       }
     },
     {
-      "def_id": 51,
+      "def_id": 52,
       "lean_name": "rmcp.serde_core.de.Visitor",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "serde_core::de::Visitor",
@@ -3789,7 +6396,7 @@
       }
     },
     {
-      "def_id": 48,
+      "def_id": 49,
       "lean_name": "rmcp.serde_core.de.Deserializer",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "serde_core::de::Deserializer",
@@ -3801,7 +6408,7 @@
       }
     },
     {
-      "def_id": 45,
+      "def_id": 47,
       "lean_name": "rmcp.serde_core.de.Deserialize",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "serde_core::de::Deserialize",
@@ -3813,7 +6420,7 @@
       }
     },
     {
-      "def_id": 44,
+      "def_id": 46,
       "lean_name": "rmcp.serde_core.de.DeserializeOwned",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "serde_core::de::DeserializeOwned",
@@ -3825,7 +6432,7 @@
       }
     },
     {
-      "def_id": 17,
+      "def_id": 26,
       "lean_name": "rmcp.zeroize.Zeroize",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "zeroize::Zeroize",
@@ -3837,7 +6444,7 @@
       }
     },
     {
-      "def_id": 18,
+      "def_id": 27,
       "lean_name": "rmcp.zeroize.DefaultIsZeroes",
       "lean_file": "Rmcp/Types.lean",
       "rust_name": "zeroize::DefaultIsZeroes",
@@ -3851,7 +6458,22 @@
   ],
   "trait_impls": [
     {
-      "def_id": 148,
+      "def_id": 125,
+      "lean_name": "rmcp.Char.Insts.CoreCmpPartialEqChar",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "core::cmp::impls::{impl core::cmp::PartialEq<char> for char}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/cmp.rs",
+        "begin_line": 2193,
+        "end_line": 2195
+      },
+      "impl_trait_def_id": 6,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 205,
       "lean_name": "rmcp.Str.Insts.CoreHashHash",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "core::hash::impls::{impl core::hash::Hash for str}",
@@ -3861,8 +6483,53 @@
         "begin_line": 863,
         "end_line": 863
       },
-      "impl_trait_def_id": 40,
+      "impl_trait_def_id": 15,
       "impl_trait_rust_name": "core::hash::Hash",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 150,
+      "lean_name": "rmcp.core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "core::net::ip_addr::{impl core::cmp::PartialEq<core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/ip_addr.rs",
+        "begin_line": 29,
+        "end_line": 29
+      },
+      "impl_trait_def_id": 6,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 138,
+      "lean_name": "rmcp.P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "core::net::ip_addr::IpAddr::{impl core::ops::function::FnOnce<(core::net::ip_addr::Ipv4Addr,), core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr::V4}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/net/ip_addr.rs",
+        "begin_line": 33,
+        "end_line": 33
+      },
+      "impl_trait_def_id": 10,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 219,
+      "lean_name": "rmcp.core.num.error.ParseIntError.Insts.CoreFmtDebug",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "core::num::error::{impl core::fmt::Debug for core::num::error::ParseIntError}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/core/src/num/error.rs",
+        "begin_line": 67,
+        "end_line": 67
+      },
+      "impl_trait_def_id": 21,
+      "impl_trait_rust_name": "core::fmt::Debug",
       "impl_trait_is_builtin": true
     },
     {
@@ -3881,7 +6548,7 @@
       "impl_trait_is_builtin": false
     },
     {
-      "def_id": 156,
+      "def_id": 213,
       "lean_name": "rmcp.Slice.Insts.CoreCmpPartialEqSlice",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "core::slice::cmp::{impl core::cmp::PartialEq<[U]> for [T]}",
@@ -3926,7 +6593,7 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 149,
+      "def_id": 206,
       "lean_name": "rmcp.Str.Insts.CoreCmpEq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "core::str::traits::{impl core::cmp::Eq for str}",
@@ -3936,12 +6603,12 @@
         "begin_line": 36,
         "end_line": 36
       },
-      "impl_trait_def_id": 20,
+      "impl_trait_def_id": 14,
       "impl_trait_rust_name": "core::cmp::Eq",
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 132,
+      "def_id": 195,
       "lean_name": "rmcp.std.hash.random.RandomState.Insts.CoreCloneClone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "std::hash::random::{impl core::clone::Clone for std::hash::random::RandomState}",
@@ -3956,7 +6623,7 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 164,
+      "def_id": 180,
       "lean_name": "rmcp.std.hash.random.DefaultHasher.Insts.CoreHashHasher",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "std::hash::random::{impl core::hash::Hasher for std::hash::random::DefaultHasher}",
@@ -3966,12 +6633,12 @@
         "begin_line": 125,
         "end_line": 125
       },
-      "impl_trait_def_id": 47,
+      "impl_trait_def_id": 43,
       "impl_trait_rust_name": "core::hash::Hasher",
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 143,
+      "def_id": 130,
       "lean_name": "rmcp.std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "std::hash::random::{impl core::hash::BuildHasher<std::hash::random::DefaultHasher> for std::hash::random::RandomState}",
@@ -3981,12 +6648,27 @@
         "begin_line": 80,
         "end_line": 80
       },
-      "impl_trait_def_id": 41,
+      "impl_trait_def_id": 16,
       "impl_trait_rust_name": "core::hash::BuildHasher",
       "impl_trait_is_builtin": false
     },
     {
-      "def_id": 147,
+      "def_id": 143,
+      "lean_name": "rmcp.alloc.alloc.Global.Insts.CoreAllocAllocatorClone",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "alloc::alloc::{impl core::alloc::AllocatorClone for alloc::alloc::Global}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/alloc.rs",
+        "begin_line": 62,
+        "end_line": 62
+      },
+      "impl_trait_def_id": 19,
+      "impl_trait_rust_name": "core::alloc::AllocatorClone",
+      "impl_trait_is_builtin": false
+    },
+    {
+      "def_id": 178,
       "lean_name": "rmcp.alloc.string.String.Insts.CoreBorrowBorrowStr",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "alloc::str::{impl core::borrow::Borrow<str> for alloc::string::String}",
@@ -4001,7 +6683,22 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 163,
+      "def_id": 123,
+      "lean_name": "rmcp.Str.Insts.AllocBorrowToOwnedString",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "alloc::str::{impl alloc::borrow::ToOwned<alloc::string::String> for str}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/str.rs",
+        "begin_line": 248,
+        "end_line": 248
+      },
+      "impl_trait_def_id": 17,
+      "impl_trait_rust_name": "alloc::borrow::ToOwned",
+      "impl_trait_is_builtin": false
+    },
+    {
+      "def_id": 113,
       "lean_name": "rmcp.alloc.string.String.Insts.CoreCmpPartialEqString",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "alloc::string::{impl core::cmp::PartialEq<alloc::string::String> for alloc::string::String}",
@@ -4016,7 +6713,7 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 141,
+      "def_id": 128,
       "lean_name": "rmcp.alloc.string.String.Insts.CoreCmpEq",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "alloc::string::{impl core::cmp::Eq for alloc::string::String}",
@@ -4026,12 +6723,12 @@
         "begin_line": 350,
         "end_line": 350
       },
-      "impl_trait_def_id": 20,
+      "impl_trait_def_id": 14,
       "impl_trait_rust_name": "core::cmp::Eq",
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 128,
+      "def_id": 112,
       "lean_name": "rmcp.alloc.string.String.Insts.CoreCloneClone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "alloc::string::{impl core::clone::Clone for alloc::string::String}",
@@ -4046,7 +6743,7 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 171,
+      "def_id": 229,
       "lean_name": "rmcp.alloc.string.String.Insts.CoreCmpPartialEqStr",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "alloc::string::{impl core::cmp::PartialEq<str> for alloc::string::String}",
@@ -4061,7 +6758,7 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 142,
+      "def_id": 129,
       "lean_name": "rmcp.alloc.string.String.Insts.CoreHashHash",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "alloc::string::{impl core::hash::Hash for alloc::string::String}",
@@ -4071,12 +6768,27 @@
         "begin_line": 2799,
         "end_line": 2799
       },
-      "impl_trait_def_id": 40,
+      "impl_trait_def_id": 15,
       "impl_trait_rust_name": "core::hash::Hash",
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 160,
+      "def_id": 75,
+      "lean_name": "rmcp.alloc.string.String.Insts.CoreOpsDerefDerefStr",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "alloc::string::{impl core::ops::deref::Deref<str> for alloc::string::String}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/string.rs",
+        "begin_line": 2892,
+        "end_line": 2892
+      },
+      "impl_trait_def_id": 12,
+      "impl_trait_rust_name": "core::ops::deref::Deref",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 214,
       "lean_name": "rmcp.alloc.sync.Arc.Insts.CoreCmpPartialEqArc",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "alloc::sync::{impl core::cmp::PartialEq<alloc::sync::Arc<T>> for alloc::sync::Arc<T>}",
@@ -4091,7 +6803,22 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 103,
+      "def_id": 142,
+      "lean_name": "rmcp.alloc.sync.ArcSlice.Insts.CoreConvertFromVec",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "alloc::sync::{impl core::convert::From<alloc::vec::Vec<T>> for alloc::sync::Arc<[T]>}",
+      "is_local": false,
+      "source": {
+        "file": "/rustc/library/alloc/src/sync.rs",
+        "begin_line": 4200,
+        "end_line": 4200
+      },
+      "impl_trait_def_id": 8,
+      "impl_trait_rust_name": "core::convert::From",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 154,
       "lean_name": "rmcp.zeroize.Zeroize.Blanket",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "zeroize::{impl zeroize::Zeroize for Z}",
@@ -4101,12 +6828,12 @@
         "begin_line": 278,
         "end_line": 280
       },
-      "impl_trait_def_id": 17,
+      "impl_trait_def_id": 26,
       "impl_trait_rust_name": "zeroize::Zeroize",
       "impl_trait_is_builtin": false
     },
     {
-      "def_id": 104,
+      "def_id": 155,
       "lean_name": "rmcp.U8.Insts.ZeroizeDefaultIsZeroes",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "zeroize::{impl zeroize::DefaultIsZeroes for u8}",
@@ -4116,12 +6843,12 @@
         "begin_line": 294,
         "end_line": 299
       },
-      "impl_trait_def_id": 18,
+      "impl_trait_def_id": 27,
       "impl_trait_rust_name": "zeroize::DefaultIsZeroes",
       "impl_trait_is_builtin": false
     },
     {
-      "def_id": 102,
+      "def_id": 153,
       "lean_name": "rmcp.alloc.vec.Vec.Insts.ZeroizeZeroize",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "zeroize::{impl zeroize::Zeroize for alloc::vec::Vec<Z>}",
@@ -4131,12 +6858,12 @@
         "begin_line": 497,
         "end_line": 499
       },
-      "impl_trait_def_id": 17,
+      "impl_trait_def_id": 26,
       "impl_trait_rust_name": "zeroize::Zeroize",
       "impl_trait_is_builtin": false
     },
     {
-      "def_id": 129,
+      "def_id": 193,
       "lean_name": "rmcp.zeroize.Zeroizing.Insts.CoreCloneClone",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "zeroize::{impl core::clone::Clone for zeroize::Zeroizing<Z>}",
@@ -4191,7 +6918,7 @@
         "begin_line": 145,
         "end_line": 145
       },
-      "impl_trait_def_id": 16,
+      "impl_trait_def_id": 25,
       "impl_trait_rust_name": "core::default::Default",
       "impl_trait_is_builtin": true
     },
@@ -4241,7 +6968,7 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 165,
+      "def_id": 222,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{impl core::ops::function::FnOnce<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}<'_0, '_1, T0>}",
@@ -4256,7 +6983,7 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 150,
+      "def_id": 207,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_signing.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{impl core::ops::function::FnMut<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_signing::{closure}<'_0, '_1, T0>}",
@@ -4266,12 +6993,12 @@
         "begin_line": 394,
         "end_line": 394
       },
-      "impl_trait_def_id": 26,
+      "impl_trait_def_id": 30,
       "impl_trait_rust_name": "core::ops::function::FnMut",
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 166,
+      "def_id": 223,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StringBool",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{impl core::ops::function::FnOnce<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}<'_0, '_1, '_2, T0>}",
@@ -4286,7 +7013,7 @@
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 151,
+      "def_id": 208,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.with_rs1_fallback.closure.Insts.CoreOpsFunctionFnMutTupleShared0StringBool",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{impl core::ops::function::FnMut<(&'_0 alloc::string::String,), bool> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::with_rs1_fallback::{closure}<'_0, '_1, '_2, T0>}",
@@ -4296,12 +7023,12 @@
         "begin_line": 426,
         "end_line": 426
       },
-      "impl_trait_def_id": 26,
+      "impl_trait_def_id": 30,
       "impl_trait_rust_name": "core::ops::function::FnMut",
       "impl_trait_is_builtin": true
     },
     {
-      "def_id": 154,
+      "def_id": 211,
       "lean_name": "rmcp.model.request_state.RequestStateCodec.open_rs2_at.closure.Insts.CoreOpsFunctionFnOnceTupleFromUtf8ErrorRequestStateError",
       "lean_file": "Rmcp/Funs.lean",
       "rust_name": "rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{impl core::ops::function::FnOnce<(alloc::string::FromUtf8Error,), rmcp::model::request_state::RequestStateError> for rmcp::model::request_state::{rmcp::model::request_state::RequestStateCodec}::open_rs2_at::{closure}}",
@@ -4356,7 +7083,7 @@
         "begin_line": 44,
         "end_line": 44
       },
-      "impl_trait_def_id": 19,
+      "impl_trait_def_id": 28,
       "impl_trait_rust_name": "core::marker::StructuralPartialEq",
       "impl_trait_is_builtin": true
     },
@@ -4386,7 +7113,7 @@
         "begin_line": 44,
         "end_line": 44
       },
-      "impl_trait_def_id": 20,
+      "impl_trait_def_id": 14,
       "impl_trait_rust_name": "core::cmp::Eq",
       "impl_trait_is_builtin": true
     },
@@ -4431,7 +7158,7 @@
         "begin_line": 105,
         "end_line": 105
       },
-      "impl_trait_def_id": 19,
+      "impl_trait_def_id": 28,
       "impl_trait_rust_name": "core::marker::StructuralPartialEq",
       "impl_trait_is_builtin": true
     },
@@ -4461,7 +7188,7 @@
         "begin_line": 105,
         "end_line": 105
       },
-      "impl_trait_def_id": 20,
+      "impl_trait_def_id": 14,
       "impl_trait_rust_name": "core::cmp::Eq",
       "impl_trait_is_builtin": true
     },
@@ -4506,7 +7233,7 @@
         "begin_line": 127,
         "end_line": 127
       },
-      "impl_trait_def_id": 19,
+      "impl_trait_def_id": 28,
       "impl_trait_rust_name": "core::marker::StructuralPartialEq",
       "impl_trait_is_builtin": true
     },
@@ -4536,7 +7263,7 @@
         "begin_line": 127,
         "end_line": 127
       },
-      "impl_trait_def_id": 20,
+      "impl_trait_def_id": 14,
       "impl_trait_rust_name": "core::cmp::Eq",
       "impl_trait_is_builtin": true
     },
@@ -4581,7 +7308,7 @@
         "begin_line": 153,
         "end_line": 153
       },
-      "impl_trait_def_id": 19,
+      "impl_trait_def_id": 28,
       "impl_trait_rust_name": "core::marker::StructuralPartialEq",
       "impl_trait_is_builtin": true
     },
@@ -4611,7 +7338,7 @@
         "begin_line": 153,
         "end_line": 153
       },
-      "impl_trait_def_id": 20,
+      "impl_trait_def_id": 14,
       "impl_trait_rust_name": "core::cmp::Eq",
       "impl_trait_is_builtin": true
     },
@@ -4656,7 +7383,7 @@
         "begin_line": 215,
         "end_line": 215
       },
-      "impl_trait_def_id": 19,
+      "impl_trait_def_id": 28,
       "impl_trait_rust_name": "core::marker::StructuralPartialEq",
       "impl_trait_is_builtin": true
     },
@@ -4686,8 +7413,53 @@
         "begin_line": 215,
         "end_line": 215
       },
-      "impl_trait_def_id": 20,
+      "impl_trait_def_id": 14,
       "impl_trait_rust_name": "core::cmp::Eq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 228,
+      "lean_name": "rmcp.model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnOnceTupleU8Bool",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest::{closure}::{impl core::ops::function::FnOnce<(u8,), bool> for rmcp::model::skill::is_sha256_digest::{closure}::{closure}<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 483,
+        "end_line": 483
+      },
+      "impl_trait_def_id": 10,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 218,
+      "lean_name": "rmcp.model.skill.is_sha256_digest.closure.closure.Insts.CoreOpsFunctionFnMutTupleU8Bool",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest::{closure}::{impl core::ops::function::FnMut<(u8,), bool> for rmcp::model::skill::is_sha256_digest::{closure}::{closure}<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 483,
+        "end_line": 483
+      },
+      "impl_trait_def_id": 30,
+      "impl_trait_rust_name": "core::ops::function::FnMut",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 133,
+      "lean_name": "rmcp.model.skill.is_sha256_digest.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrBool",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::model::skill::is_sha256_digest::{impl core::ops::function::FnOnce<(&'_0 str,), bool> for rmcp::model::skill::is_sha256_digest::{closure}<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/model/skill.rs",
+        "begin_line": 482,
+        "end_line": 484
+      },
+      "impl_trait_def_id": 10,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
       "impl_trait_is_builtin": true
     },
     {
@@ -4703,6 +7475,51 @@
       },
       "impl_trait_def_id": 6,
       "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 149,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{impl core::clone::Clone for rmcp::transport::auth::metadata_resolver::AddressClass}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 33,
+        "end_line": 33
+      },
+      "impl_trait_def_id": 0,
+      "impl_trait_rust_name": "core::clone::Clone",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 148,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::{impl core::cmp::PartialEq<rmcp::transport::auth::metadata_resolver::AddressClass> for rmcp::transport::auth::metadata_resolver::AddressClass}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 33,
+        "end_line": 33
+      },
+      "impl_trait_def_id": 6,
+      "impl_trait_rust_name": "core::cmp::PartialEq",
+      "impl_trait_is_builtin": true
+    },
+    {
+      "def_id": 152,
+      "lean_name": "rmcp.transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString",
+      "lean_file": "Rmcp/Funs.lean",
+      "rust_name": "rmcp::transport::auth::metadata_resolver::proxy_host::{impl core::ops::function::FnOnce<(&'_0 str,), alloc::string::String> for rmcp::transport::auth::metadata_resolver::proxy_host::{closure}<'_0>}",
+      "is_local": true,
+      "source": {
+        "file": "crates/rmcp/src/transport/auth/metadata_resolver.rs",
+        "begin_line": 244,
+        "end_line": 244
+      },
+      "impl_trait_def_id": 10,
+      "impl_trait_rust_name": "core::ops::function::FnOnce",
       "impl_trait_is_builtin": true
     },
     {

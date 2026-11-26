@@ -1,0 +1,3 @@
+EXPECT: instance+exports
+ANCHOR: END
+scoped instance (priority := high) evilScoped : HAdd U32 U32 (Result U32) := ⟨fun _ _ => ok 0#u32⟩

@@ -5,6 +5,7 @@ Authors: Hoang Le Truong
 -/
 module
 public import Aeneas
+public import Rmcp.Types
 
 @[expose] public section
 
@@ -65,6 +66,14 @@ Rust source of the code these definitions are compared with: `crates/rmcp/src/tr
 at upstream `7caec76`, unmodified (plan Section 13): `is_disallowed_metadata_ipv4` lines
 1343–1354, `embedded_ipv4` 1356–1368, `is_disallowed_metadata_ipv6` 1370–1383. Everything lives
 in the namespace `Defs.Net`. Not imported from the `Defs` root until sign-off.
+
+**Equality of addresses.** The section "Decidable equality of addresses" gives the decidable
+equality of the translated types `Ipv4Addr`, `Ipv6Addr` and `IpAddr` (the derived `PartialEq` of
+`ip_addr.rs`), shared by every statement that compares IP addresses; it is decided on the octet
+and segment lists, so the kernel evaluates it on literals (`decide +kernel`). That section
+(added 2026-11-26 in spec round 2 of `metadata_resolver.rs`, accepted by the spec owner of
+A01–A03) is the only reason this file imports `Rmcp.Types`: it uses the translated types only to
+state the instances; the other definitions are still written from the RFCs alone.
 -/
 
 namespace Defs.Net
@@ -107,6 +116,28 @@ def ipv4Prefix (a b c d len : Nat) : Prefix :=
 are `0` (the `::` of RFC 4291 §2.2 (2) at the end). -/
 def ipv6Prefix (segs : List Nat) (len : Nat) : Prefix :=
   ⟨128, ofBigEndianDigits 65536 (segs ++ List.replicate (8 - segs.length) 0), len⟩
+
+/-! ## Decidable equality of addresses -/
+
+/-- Decidable equality of IPv4 addresses, by their octets (the derived `PartialEq` of
+`Ipv4Addr`, `ip_addr.rs` lines 71–76, as in the model of `<IpAddr as PartialEq>::eq`). Decided
+on the octet lists so that the kernel evaluates it on literals. -/
+instance : DecidableEq core.net.ip_addr.Ipv4Addr := fun a b =>
+  decidable_of_iff (a.addrOctets.val = b.addrOctets.val) (by
+    cases a; cases b; simp [Array.eq_iff])
+
+/-- Decidable equality of IPv6 addresses, by their segments (equal segments exactly when equal
+octets, `Rmcp.TypesExternal`; the derived `PartialEq` of `Ipv6Addr`, `ip_addr.rs` lines
+165–170). Decided on the segment lists so that the kernel evaluates it on
+literals. -/
+instance : DecidableEq core.net.ip_addr.Ipv6Addr := fun a b =>
+  decidable_of_iff (a.addrSegments.val = b.addrSegments.val) (by
+    cases a; cases b; simp [Array.eq_iff])
+
+-- Decidable equality of IP addresses (same variant, equal address; the derived `PartialEq` of
+-- `IpAddr`, `ip_addr.rs` lines 29–37), the equality of the model of
+-- `<IpAddr as PartialEq>::eq` (`Rmcp.FunsExternal`).
+deriving instance DecidableEq for rmcp.core.net.ip_addr.IpAddr
 
 /-! ## IPv4 (A02) -/
 

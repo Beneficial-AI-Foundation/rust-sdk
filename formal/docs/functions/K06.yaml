@@ -1,0 +1,28 @@
+id: K06
+rust_symbol: rmcp::model::skill::SkillResource::verify
+source_file: crates/rmcp/src/model/skill.rs  # upstream 7caec76, unmodified in the repository; translated from the patched copy .llbc/work/crates/rmcp/src/model/skill.rs (patches 01-04 on 7caec76)
+source_line: 94  # at 7caec76; the same line in the patched copy
+generated_symbol: rmcp.model.skill.SkillResource.verify
+translation: LEAN_OK  # translates since translation patch 04 (2026-11-25, signed off by the spec owner 2026-11-25)
+spec: REVIEWED  # signed off by the spec owner 2026-11-25 after 3 review rounds (public skill.rs API, K01-K20)
+linkage: patch-04  # translated from the copy with patches 01-04 (hunk H9); absence from the unpatched translation checked by scripts/check-original-linkage.sh (PATCH04_TARGETS)
+proof: CHECKED  # proved 2026-11-25 (51/51 statements of the K01-K20 cycle); each proved statement checked rfl-equal to the signed-off text; phase-C refined (no flexible tactic); two independent proof reviews by mcp-review agents (sound; ready)
+proof_file: formal/proofs/Proofs/Model/Skill/Verify.lean
+spec_file: formal/specs/Specs/Model/Skill.lean
+theorem: rmcp.model.skill.SkillResource.verify_spec  # restated as Theorems.skill.SkillResource.verify; corollary SkillResource.verify_eq_ok_iff (Ok iff the length and the SHA-256 digest match, proof Verify.lean), restated as Theorems.skill.SkillResource.verify_eq_ok_iff; compositions with K05 under K05
+used_by: []  # consumed only by the K05+K06 compositions (not IDs)
+axioms: [propext, Classical.choice, Quot.sound]  # `#print axioms` of the proof theorem (2026-11-25); confirmed by the #guard_msgs check in formal/specs/Specs/Model/Skill.lean
+evidence: [formal/docs/STATUS.md]
+spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # mcp-spec drafter; draft formal/specs/Drafts/Skill.lean, removed at incorporation; restated in formal/specs/Specs/Model/Skill.lean (spec cycle K01-K20, 2026-11-25)
+spec_reviews:
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: "no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: "no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: a, verdict: "ready for sign-off", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: b, verdict: "ready for sign-off", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: a, verdict: "ready for sign-off (a cosmetic fix applied after the round)", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: b, verdict: "ready for sign-off (a cosmetic fix applied after the round)", evidence: formal/docs/STATUS.md}
+spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-25
+prover: "AI: Claude Code, claude-opus-5-5"  # mcp-lean agents; not the drafter
+reviewer: null
+behaviour: |-  # informational, not a specification
+  `Ok(())` iff the length is `size` and the digest matches; otherwise `Size` (length checked first), else `Digest`, with the payloads (not covered: SHA-256 for inputs of at least 2^61 bytes)

@@ -1,0 +1,3 @@
+EXPECT: differs+exports
+ANCHOR: /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]
+local notation "true" => Bool.false
