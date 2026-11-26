@@ -1,4 +1,4 @@
-# Lean project builds (docs/MCP_SDK_Verification_Master_Plan_EN.md, Section 5, "CI").
+# Lean project builds (master plan (git history at 9047c72), Section 5, "CI").
 # The gate (human decision at S03): every library in formal/lakefile.toml sets
 # `warningAsError`, and CI runs `lake build --wfail`, which fails on any warning in this
 # project's modules, including `sorry`, and runs every `#guard_msgs` axiom check in the

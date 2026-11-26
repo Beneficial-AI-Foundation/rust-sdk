@@ -54,7 +54,7 @@ theorems last (plan Section 16.4, proofs in the same file): C01
 `SseEventSizeLimiter.exists_observe_eq_ok_and_max_size_eq_and_satAdd_le_of_observe_append_eq_ok`.
 
 The statements were signed off by the spec owner Hoang Le Truong on 2026-11-24 after the S25
-spec cycle ("S24/S25 spec cycle" in `formal/docs/STATUS.md`); their signed-off text was in
+spec cycle ("S24/S25 spec cycle" in `STATUS.md` at 9047c72); their signed-off text was in
 `specs/Drafts/ClientSideSse.lean`, removed at incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,

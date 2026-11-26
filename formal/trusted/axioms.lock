@@ -22,7 +22,7 @@
 # guard's informational list show it, so review of trusted/ is the barrier for such axioms.
 #
 # Updating: in the same PR that adds or changes the axiom (with its justification docstring
-# and backing Rust tests, docs/WORKFLOW_AND_PR_GUIDE.md "External functions and axioms"), run
+# and backing Rust tests, formal/CONTRIBUTING.md "External models"), run
 # `lake build` and `scripts/lean-guard.sh axioms`; the failure message prints the line to add
 # for each used axiom not in the lock. Reviewers check that every line here belongs to a
 # reviewed axiom of that PR (this covers the locked axioms only, see above).

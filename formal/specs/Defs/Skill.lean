@@ -30,7 +30,7 @@ digest, a percent-normalised URI and a manifest key are, and the expected result
 **Evaluation.** The data-valued definitions (`Bool`, `Option`, `List`, `String` or `Result`
 valued) are computable by structural recursion (the kernel evaluates them on small inputs),
 except where they name one of the three `opaque` constants of the trusted base, which they do
-only unopened, as the value the Rust code computes (review rule of `formal/docs/STATUS.md`,
+only unopened, as the value the Rust code computes (review rule of `formal/README.md`,
 "Trusted base"): `ExtModel.sha256` (SHA-256, FIPS 180-4) in `sha256Digest`, `ExtModel.nfkc`
 (Unicode NFKC, UAX #15) in `isSkillName`, `nameMatchesSegment` and `NfkcFits`, and
 `ExtModel.generalCategory` (the Unicode General_Category property) in `isNameAlnum`. No

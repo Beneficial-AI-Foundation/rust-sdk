@@ -43,7 +43,7 @@ on 2026-11-24). Under H8:
 - `64:ff9b:1::/48` (RFC 8215) is blocked outright, whatever IPv4 address it carries, including
   a public one: intended conservative behaviour, not a bug (plan Section 16.3, A03).
 - `240.0.0.0/4` other than `255.255.255.255` (reserved, RFC 1112 §4; RFC 6890 §2.2.2) is not in
-  the plan's A02 list and not blocked by the code: recorded as a bug (`formal/docs/STATUS.md`,
+  the plan's A02 list and not blocked by the code: recorded as a bug (`formal/README.md`,
   "Bugs found"). `ipv4Disallowed` follows the plan and the code here.
 - Other special-purpose or deprecated ranges outside the lists are a scope note. Not blocked by
   `ipv4Disallowed`, for example: `192.0.0.0/24` (IETF protocol assignments, RFC 6890 §2.2.2),

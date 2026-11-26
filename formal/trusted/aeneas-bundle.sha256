@@ -2,7 +2,7 @@
 # scripts/aeneas-install.sh checks the release bundle against this file and
 # scripts/lean-guard.sh checks the Lean-library archive that Lake downloads; both fail on a
 # mismatch or a missing entry. Changing the Aeneas `rev` in formal/lakefile.toml means adding
-# the new tag's entries here in the same PR (docs/WORKFLOW_AND_PR_GUIDE.md, "Pinned toolchain").
+# the new tag's entries here in the same PR (formal/CONTRIBUTING.md, "Pinned toolchain").
 # Source: the digests GitHub publishes for the release
 # (gh api repos/AeneasVerif/aeneas/releases/tags/<tag> --jq '.assets[] | .digest + "  " + .name').
 8291c8304951b91fe0cb322db038fcbdc18e63b8ba3a5dfbc1712592fe9f7fd0  nightly-2026.08.20-5d08da4/aeneas-macos-aarch64.tar.gz

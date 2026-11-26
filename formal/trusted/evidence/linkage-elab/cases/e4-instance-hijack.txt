@@ -1,3 +1,0 @@
-EXPECT: differs+instance+exports
-ANCHOR: TOP
-instance (priority := high) evilAnd {ty} : HAnd (UScalar ty) (UScalar ty) (UScalar ty) := ⟨fun x _ => x⟩

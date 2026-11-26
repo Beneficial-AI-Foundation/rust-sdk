@@ -27,7 +27,7 @@ Rows T04–T06 say that the call does not panic and that its result satisfies th
 "Core" names are the lists `Defs.Methods.standardRequests` and `standardNotifications` (union of
 the official MCP `schema.ts` of five protocol versions, human decision H6), compared byte for
 byte. (a) except the six names of `Defs.Methods.codeOmits` that the code does not list (recorded
-bug, human decision H7; `formal/docs/STATUS.md`, "Bugs found"). (b) the call of
+bug, human decision H7; `formal/README.md`, "Bugs found"). (b) the call of
 `is_standard_notification` returned `true`. Used by: `AsyncRwTransport::receive` and the
 `Decoder` impl of `JsonRpcMessageCodec` (T04 on each line; T05/T06 in `should_ignore_notification`,
 which `try_parse_with_compatibility` asks whether a line that fails to deserialize is dropped),
@@ -38,7 +38,7 @@ source order, each restated as a theorem `Theorems.async_rw.<function>` proved b
 theorem in `Proofs/Transport/AsyncRw.lean` and followed by the assumptions its proof depends on,
 checked by `#print axioms` under `#guard_msgs`; the composition theorem C05 last (plan Section
 16.4). The statements were signed off by the spec owner on 2026-11-24 (S24/S25 spec cycle,
-`formal/docs/STATUS.md`); their signed-off text was in `specs/Drafts/Transport.lean`, removed at
+`STATUS.md` at 9047c72); their signed-off text was in `specs/Drafts/Transport.lean`, removed at
 incorporation.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,

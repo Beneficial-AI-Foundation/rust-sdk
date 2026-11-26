@@ -19,7 +19,7 @@ public import Defs.Skill
 # Defs
 
 Root of the `Defs` library: the definitions used by the public spec statements (plan Section 5).
-Maintained by hand (docs/WORKFLOW_AND_PR_GUIDE.md, "Library roots"). Imports `Defs.Bytes`,
+Maintained by hand (formal/CONTRIBUTING.md, "Library roots"). Imports `Defs.Bytes`,
 `Defs.IntParse` and `Defs.JsonRpc` (signed off at S24, 2026-11-24) and `Defs.Wire`,
 `Defs.RequestState`, `Defs.CodecState` (signed off at S05; back here since the public
 `request_state.rs` statements use them; `Defs.RequestState` since R09–R15, 2026-11-25, with the

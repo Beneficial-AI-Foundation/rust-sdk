@@ -115,7 +115,7 @@ def utf8 (s : String) : List Std.U8 := s.toByteArray.toList.map (fun x => byte x
 encoding of a string. Every Rust `&str` is valid UTF-8; an Aeneas `Str` need not be (the `Str`
 convention above). Review rule (translation patch 05, human decisions 2026-11-25/2026-11-26:
 rule (ii) 2026-11-26, nested `&str` 2026-11-26; the same statement is in `formal/README.md`,
-`formal/docs/STATUS.md` and `formal/trusted/evidence/README.md`): a statement may assume that a
+`formal/README.md` and `formal/trusted/evidence/README.md`): a statement may assume that a
 `Str` is valid UTF-8 (i) only as the premise `IsUtf8 s.val`, and (ii) only for (a) a `&str`
 argument of the function the statement is about, or a `&str` carried by an argument (such as the
 domain `d` of the argument `host : Host<&str>` of `AuthorizationManager::is_loopback_metadata_host`,

@@ -1,3 +1,0 @@
-EXPECT: differs
-ANCHOR: /-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::AddressClass}::of]
-def transport.auth.metadata_resolver.transport.auth.AuthorizationManager.embedded_ipv4 (v6 : core.net.ip_addr.Ipv6Addr) : Result (Option core.net.ip_addr.Ipv4Addr) := ok none
