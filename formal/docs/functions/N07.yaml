@@ -1,0 +1,32 @@
+id: N07
+rust_symbol: rmcp::transport::auth::metadata_resolver::MetadataAddressResolver::allows_url
+source_file: crates/rmcp/src/transport/auth/metadata_resolver.rs  # upstream 7caec76, unmodified in the repository; translated from the patched copy .llbc/work/ (patches 01-05 on 7caec76; hunk H7)
+source_line: 164  # at 7caec76; line 163 in the patched copy
+generated_symbol: rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allows_url
+translation: LEAN_OK  # translates since translation patch 05 (2026-11-25; board PATCH05-RESOLVER)
+spec: DRAFT  # signed off by the human spec owner 2026-11-26 after 5 review rounds (metadata_resolver.rs, N01, N03-N11); awaiting human acceptance (the human sets REVIEWED)
+linkage: patch-05  # needs translation patch 05 (hunk H7); absence from the unpatched translation checked by scripts/check-original-linkage.sh (PATCH05_TARGETS; board PATCH05-RESOLVER)
+proof: CHECKED  # proved 2026-11-26 (64/64 statements of the N01, N03-N11 cycle); restated statements kernel-equal to the signed-off draft (64/64); phase C refinement done; two independent proof reviews by mcp-review agents (no blocking finding); awaiting human acceptance
+proof_file: formal/proofs/Proofs/Transport/MetadataResolver.lean  # helpers Proofs/Transport/MetadataResolver/Common.lean; shared lemmas Proofs/External/WP.lean, Proofs/External/MetadataResolver.lean
+spec_file: formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean  # signed-off text formal/specs/Drafts/MetadataResolver.lean, removed at incorporation
+theorem: rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allows_url_spec  # main: rmcp.transport.auth.metadata_resolver.MetadataAddressResolver.allows_url_spec (restated as Theorems.metadata_resolver.MetadataAddressResolver.allows_url); laws and compositions: Theorems.metadata_resolver.allowsHost_literalIp_self, Theorems.metadata_resolver.MetadataAddressResolver.allows_url_eq_false_of_blocked
+used_by: [N03, N04]  # targets whose statements or compositions in this cycle use it
+axioms: [propext, Classical.choice, Quot.sound]  # `#print axioms` of the main theorem(s), checked by #guard_msgs in the spec file
+evidence: [formal/docs/STATUS.md, formal/trusted/evidence/README.md, formal/trusted/evidence/differential/metadata-resolver/]
+spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # mcp-spec drafter; draft formal/specs/Drafts/MetadataResolver.lean (64 statements), readable model formal/proofs/Proofs/Defs/MetadataResolver.lean
+spec_reviews:
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: "no counterexample; no blocking findings; one judgment finding (sa1-1, new's unfiltered_hosts unspecified) recommended as blocking, resolved by human decision P1 2026-11-26", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: b, verdict: "no counterexample; no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: a, verdict: "no counterexample; no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 2, reviewer: b, verdict: "no counterexample; no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: a, verdict: "no counterexample; no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 3, reviewer: b, verdict: "no counterexample; no blocking findings; 13 statements proved in scratch", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 4, reviewer: a, verdict: "no counterexample; no blocking findings", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 4, reviewer: b, verdict: "no counterexample; no blocking findings; all 63 statements of the round-4 draft proved in scratch", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 5, reviewer: a, verdict: "no counterexample; no blocking findings; ready for sign-off (rule-text gap sa5-1 resolved by human decision T1)", evidence: formal/docs/STATUS.md}
+  - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 5, reviewer: b, verdict: "no counterexample; no blocking findings; ready for sign-off; 13 statements re-proved independently", evidence: formal/docs/STATUS.md}
+spec_owner: "Hoang Le Truong"   # human spec owner, sign-off 2026-11-26
+prover: "AI: Claude Code, claude-opus-5-5"  # mcp-lean agent; not the drafter
+reviewer: null
+behaviour: |-  # informational, not a specification
+  a target with no IP literal is allowed; an IP literal is allowed if it is the base IP or its class (N01) is allowed by the base classes (N08) (Defs.MetadataResolver.allowsHost)
