@@ -25,8 +25,7 @@ signed off after 3 review rounds and proved (51/51); records `functions/K01.yaml
 off by the human spec owner 2026-11-26; proved 2026-11-26; committed 1289403 and 459995e; accepted by
 the human owner 2026-11-26):** the address policy of `crates/rmcp/src/transport/auth/metadata_resolver.rs` (N02
 `SystemResolver::resolve` dropped). Translation stage: see "Trusted base" (board
-PATCH05-RESOLVER). Spec cycle (board SPEC-N01-N11): draft
-`formal/specs/Drafts/MetadataResolver.lean`, 64 statements (the 64th, the proxy-host theorem of
+PATCH05-RESOLVER). Spec cycle (board SPEC-N01-N11): 64 statements (the 64th, the proxy-host theorem of
 S6, added in the final fix round and renamed at sign-off to
 `…_of_new_eq_ok_of_mem_proxyHosts`, name only); readable model
 `formal/proofs/Proofs/Defs/MetadataResolver.lean`, built in the `Proofs` root (lead decision
@@ -50,7 +49,7 @@ signed off the 64 statements and the readable model on 2026-11-26. Proved 2026-1
 `Theorems.metadata_resolver.*` and `Theorems.auth.AuthorizationManager.is_loopback_metadata_host`
 (and `_fail`) in `formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean` with
 `#guard_msgs` axiom checks: 60 × `[propext, Classical.choice, Quot.sound]`, 4 × `[propext]`; the
-restated statements are kernel-equal to the signed-off draft (64/64); two independent proof
+restated statements are kernel-equal to the signed-off statements (64/64); two independent proof
 reviews (no blocking finding); phase C refinement done. Linkage: N01, N08 `ORIGINAL`, the others
 `patch-05`. Records `functions/N01.yaml`, `N03.yaml`–`N11.yaml` (N02 dropped, no record).
 **Committed** 1289403 (translation stage) and 459995e (specs, proofs, records). **Accepted** by the

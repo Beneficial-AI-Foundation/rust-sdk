@@ -963,10 +963,10 @@ steps:
     # Theorems.metadata_resolver.* and Theorems.auth.AuthorizationManager.is_loopback_metadata_host
     # {,_fail} in formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean with
     # #guard_msgs axiom checks (60 x [propext, Classical.choice, Quot.sound], 4 x [propext]);
-    # restated statements kernel-equal to the signed-off draft (64/64); two independent proof
+    # restated statements kernel-equal to the signed-off statements (64/64); two independent proof
     # reviews (no blocking finding); phase C refinement done. Linkage: N01, N08 ORIGINAL, the
     # others patch-05. Records formal/docs/functions/N01.yaml, N03.yaml-N11.yaml (N02 dropped, no
-    # record). Draft formal/specs/Drafts/MetadataResolver.lean: 64 statements (the 64th, the
+    # record). 64 statements (the 64th, the
     # proxy-host theorem of S6, renamed at sign-off to ..._of_new_eq_ok_of_mem_proxyHosts, name
     # only) and the readable model formal/proofs/Proofs/Defs/MetadataResolver.lean, built in the
     # Proofs root (lead decision 2026-11-26, precedent Proofs.Defs.Net), as is
@@ -989,7 +989,6 @@ steps:
     depends_on: [PATCH05-RESOLVER]
     owner: Lead + human owner
     files:
-      - formal/specs/Drafts/MetadataResolver.lean  # draft, removed at incorporation
       - formal/proofs/Proofs/Defs/MetadataResolver.lean  # new; readable model, in the Proofs root
       - formal/proofs/Proofs/Defs/Net.lean  # additive: public import Rmcp.Types, DecidableEq instances (R2)
       - formal/proofs/Proofs.lean

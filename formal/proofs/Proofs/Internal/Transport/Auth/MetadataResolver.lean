@@ -132,8 +132,8 @@ for the spec theorems) in `Proofs/Transport/MetadataResolver.lean` (namespaces
 `rmcp.transport.auth.metadata_resolver`, `rmcp.transport.auth.AuthorizationManager` and, for the
 laws, `Defs.MetadataResolver`), and followed by the assumptions its proof depends on, checked by
 `#print axioms` under `#guard_msgs`. Signed off by the spec owner on 2026-11-26 (five spec-cycle
-rounds); the signed-off text is in `specs/Drafts/MetadataResolver.lean`, to be removed at
-incorporation. N02 is dropped (human decision 2026-11-25).
+rounds) and accepted by the human owner 2026-11-26. N02 is dropped (human decision
+2026-11-25).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 `--no-default-features` with the features of Phase 2 (plan Section 15), with

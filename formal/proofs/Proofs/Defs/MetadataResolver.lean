@@ -16,15 +16,12 @@ public import Proofs.Defs.Net
 /-!
 # Definitions for the OAuth metadata address-policy statements (N01, N03–N11)
 
-**Built; spec cycle round 5 done; statements signed off by the human spec owner 2026-11-26;
-proved 2026-11-26 (Proofs/Transport/MetadataResolver.lean; restated in
-Proofs/Internal/Transport/Auth/MetadataResolver.lean)** (drafted by AI, Claude Code
-`claude-opus-5-5`; five review rounds, two independent reviews each). Built as part of the
-`Proofs` root
-(precedent `Proofs.Defs.Net`, lead decision 2026-11-26) because the draft statements in
-`formal/specs/Drafts/MetadataResolver.lean` import it; building it checks only that the
-definitions elaborate and that the regression examples hold, not that they are the right
-specification. The vocabulary of those draft statements about
+**Signed off by the human spec owner 2026-11-26; proved 2026-11-26
+(Proofs/Transport/MetadataResolver.lean; restated in
+Proofs/Internal/Transport/Auth/MetadataResolver.lean); accepted by the human owner 2026-11-26**
+(written by AI, Claude Code `claude-opus-5-5`; five review rounds, two independent reviews each).
+Built as part of the `Proofs` root (precedent `Proofs.Defs.Net`). The vocabulary of the
+statements about
 `crates/rmcp/src/transport/auth/metadata_resolver.rs`: the class of an IP address
 (`addressClass`), the policy check (`isAllowed`), the classes a base URL grants
 (`baseClasses`), the policy for an IP-literal target (`allowsHost`), host normalization
@@ -54,14 +51,14 @@ lists `Defs.Net.ipv4DisallowedPrefixes` and `Defs.Net.ipv6DisallowedPrefixes`, i
   embedded in IPv6 (a recorded bug, `formal/docs/STATUS.md`, "Bugs found"; human decision
   2026-11-24: the statements describe the code).
 Kernel-checked examples of each are at the end of the file. This is the only copy of the list:
-the docstrings of `AllPublic` and of the draft statements point here.
+the docstrings of `AllPublic` and of the statements point here.
 
 **Addresses** are read through the numbers and prefixes of `Defs.Net` (A01–A03): the class of
 an address is defined from the RFC ranges, in the order "loopback, private, otherwise blocked
 if A02/A03 block it, otherwise public", not in the code's order (which tests the A02/A03 guard
 first). The two agree because `127/8`, the private prefixes, `::1` and `fc00::/7` lie inside the
 blocked lists. Below, this is kernel-checked only at the two end points of each range; for every
-address the agreement is what N01's draft spec theorem `AddressClass.of_spec` states.
+address the agreement is what N01's spec theorem `AddressClass.of_spec` states.
 
 **Strings.** A Rust `&str` or `String` is described by its UTF-8 bytes (`Defs.utf8Bytes`).
 Host normalization is defined on bytes (`List.rdropWhile` of the byte `.`, then ASCII
@@ -242,7 +239,7 @@ under which `proxy_host` reaches no size failure; every Rust `String` meets the 
 the second fails in Rust too (the capacity panic of `format!`, upstream line 136). "Exact" is
 meant for the Lean models (memory convention, `Rmcp.FunsExternal` module docstring: allocation
 failure is not modelled): `proxy_host` fails with `maximumSizeExceeded` when the first part
-fails and with `panic` when only the second fails (draft `proxy_host_fail`). -/
+fails and with `panic` when only the second fails (`proxy_host_fail`). -/
 def ProxyFits (proxy : String) : Prop :=
   proxy.utf8ByteSize ≤ Usize.max ∧
     (¬ utf8Bytes "://" <:+: utf8Bytes proxy →
@@ -252,7 +249,7 @@ def ProxyFits (proxy : String) : Prop :=
 `Rmcp.FunsExternal`): if `proxyUrl proxy` parses to `u` and `u` has a host string `h`, the bytes
 of `h` are UTF-8. Every Rust `&str` that `Url::host_str` returns is; the Lean model of
 `host_str` is opaque (`ExtModel.urlHostStr`), so the premise is needed, and without it
-`normalize_host` (patched line 244) fails with `undef` (draft `proxy_host_fail_undef`). -/
+`normalize_host` (patched line 244) fails with `undef` (`proxy_host_fail_undef`). -/
 def ProxyHostUtf8 (proxy : String) : Prop :=
   ∀ u h, ExtModel.urlParse (proxyUrl (utf8Bytes proxy)) = .Ok u →
     ExtModel.urlHostStr u = some h → ExtModel.IsUtf8 h.val

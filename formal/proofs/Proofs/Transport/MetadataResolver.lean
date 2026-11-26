@@ -23,9 +23,9 @@ equation `with_proxy_hosts ∘ with_base_url` and facts about its successful cal
 definitions of `Defs.MetadataResolver` and the composition theorems and invariants, among them
 the production guarantees for `AuthorizationManager::new` and `new_allowing_private_addresses`.
 
-The statements are the ones signed off by the human spec owner on 2026-11-26 (text of
-`formal/specs/Drafts/MetadataResolver.lean`; statements unchanged, two docstring
-cross-references updated: `utf8Bytes_injective`, `utf8Bytes_mem_map_iff`); they are restated, as
+The statements are the ones signed off by the human spec owner on 2026-11-26 (statements
+unchanged, two docstring cross-references updated: `utf8Bytes_injective`,
+`utf8Bytes_mem_map_iff`); they are restated, as
 `Theorems.metadata_resolver.*` and `Theorems.auth.AuthorizationManager.is_loopback_metadata_host*`,
 in `Proofs.Internal.Transport.Auth.MetadataResolver`. Each proof goes through the equations and
 inversion lemmas of `Proofs.Transport.MetadataResolver.Common`; the composition theorems combine
