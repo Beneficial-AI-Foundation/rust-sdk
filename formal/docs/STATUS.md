@@ -22,7 +22,8 @@ signed off after 3 review rounds and proved (51/51); records `functions/K01.yaml
 "Public skill.rs API (K01–K20)" and "Trusted base" (board PATCH04-SKILL, SPEC-K01-K20).
 
 **Translation patch 05 and N01, N03–N11 specifications (2026-11-25/26; specifications signed
-off by the human spec owner 2026-11-26; proved 2026-11-26; awaiting human acceptance):** the address policy of `crates/rmcp/src/transport/auth/metadata_resolver.rs` (N02
+off by the human spec owner 2026-11-26; proved 2026-11-26; committed 1289403 and 459995e; accepted by
+the human owner 2026-11-26):** the address policy of `crates/rmcp/src/transport/auth/metadata_resolver.rs` (N02
 `SystemResolver::resolve` dropped). Translation stage: see "Trusted base" (board
 PATCH05-RESOLVER). Spec cycle (board SPEC-N01-N11): draft
 `formal/specs/Drafts/MetadataResolver.lean`, 64 statements (the 64th, the proxy-host theorem of
@@ -52,7 +53,9 @@ signed off the 64 statements and the readable model on 2026-11-26. Proved 2026-1
 restated statements are kernel-equal to the signed-off draft (64/64); two independent proof
 reviews (no blocking finding); phase C refinement done. Linkage: N01, N08 `ORIGINAL`, the others
 `patch-05`. Records `functions/N01.yaml`, `N03.yaml`–`N11.yaml` (N02 dropped, no record).
-Awaiting human acceptance.
+**Committed** 1289403 (translation stage) and 459995e (specs, proofs, records). **Accepted** by the
+human owner 2026-11-26 (board PATCH05-RESOLVER and SPEC-N01-N11 ACCEPTED). Pending: CI (nothing
+pushed).
 
 **Aeneas upgrade (2026-11-24), reviewed and re-signed by the spec owner 2026-11-24:** see "Aeneas upgrade
 (2026-11-24)" below. The results sections below record the state before it (Aeneas
@@ -299,14 +302,14 @@ Dependency pins (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.2`, `base64 0.23.1`, 
 `zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`, since translation patch 03 (2026-11-24,
 signed off) `serde_core 1.0.229`, and since translation patch 04 (2026-11-25, signed off 2026-11-25)
 `percent-encoding 2.3.2`, `unicode-normalization 0.1.26` and `unicode-general-category 1.1.0`,
-and since translation patch 05 (2026-11-25, under review) `url 2.5.9`, checked since S21 on rmcp's own edges in the
+and since translation patch 05 (2026-11-25, accepted 2026-11-26) `url 2.5.9`, checked since S21 on rmcp's own edges in the
 translated configuration (human decision 2026-11-23; other versions used only by other crates,
 e.g. `oauth2`'s `sha2 0.10.9`, are allowed). **Patches** (`formal/trusted/patches/`, applied in
 file-name order to the copy in `.llbc/work/` only): translation patch
 `01-request-state-wire.patch` (D2 fallback, 2026-11-23), the test-only patch
 `02-phase2-tests.patch`, translation patch `03-request-state-public.patch` (signed off
 2026-11-24), translation patch `04-skill-public.patch` (2026-11-25, signed off by the spec owner
-2026-11-25) and translation patch `05-metadata-resolver.patch` (2026-11-25, under review); see
+2026-11-25) and translation patch `05-metadata-resolver.patch` (2026-11-25, accepted by the human owner 2026-11-26); see
 "Trusted base". **No hand edit**
 of the generated files (`formal/translation/` is reproduced byte for byte by the translate script,
 S18). The proofs hold only for this configuration.
@@ -576,7 +579,7 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
 - **Translation patch 05 models** (2026-11-25, human decisions: targets N01, N03–N11 of
   `metadata_resolver.rs`, patch 05 with hunks H1–H9 and `prim`; `Url::parse`/`host`/`host_str`
   opaque functions of an opaque `Url`, no axiom; `proxy_env_values` an opaque constant under the
-  clock rule; **under review**): in `formal/trusted/Rmcp/FunsExternal.lean` and
+  clock rule; accepted by the human owner 2026-11-26): in `formal/trusted/Rmcp/FunsExternal.lean` and
   `TypesExternal.lean`, sections "`metadata_resolver.rs` address policy", all definitions or
   structures, no axiom:
   - **5 `prim` models**, one per function of the module `metadata_resolver::prim` that the patch
@@ -719,8 +722,8 @@ modules; kernel replay of 4038 constants accepted, 9 unsafe/partial skipped; S23
   elaborated 520 constants and 41 externals identical, 40 generated instances;
   `linkage-elab/run.sh` 20 cases all as expected; `linkage-scan/run.sh` 57 rejected.
   Translation review rounds 1–7 done; human decision 2026-11-26 after round 7: "enforce in
-  script, then sign off (no further review round)"; the round-7 fixes are in the script; not
-  signed off yet (awaiting the human).
+  script, then sign off (no further review round)"; the round-7 fixes are in the script;
+  committed 1289403; accepted by the human owner 2026-11-26.
   **Charon and script changes with patch 05** (human decisions 2026-11-25): eleven `start_from`
   entries; `opaque` `"url"` narrowed to `"url::Url"`, and `…::metadata_resolver::Lookup` and
   `…::metadata_resolver::prim` added (`crates/rmcp/Cargo.toml`); `PINNED_DEPS` adds `url 2.5.9`;
@@ -853,7 +856,7 @@ External models (plan Section 4), in `formal/trusted/Rmcp/FunsExternal.lean` and
 | `serde_json::Value` (type) | `opaque ExtModel.SerdeJsonValue` (S27) | signed off 2026-11-23 (no law: only moved) |
 | Translation patch 03: `Duration::as_millis`, `str::to_owned`, `HashMap::{contains_key, is_empty, new, entry}`, `VacantEntry::insert`, `Hash for str`, `Borrow<str>`/`PartialEq<str>` for `String`, `slice::Iter::any`, `Iterator::any`, `serde_json::from_slice`, `Error::source`; types `OccupiedEntry`, `VacantEntry` | 14 definitions, 2 structures; `opaque ExtModel.randomState`, `opaque ExtModel.serdeJsonFromSlice` | reviewed, signed off by the spec owner (2026-11-24) |
 | Translation patch 04: the 12 `skill::prim` wrappers; 28 `core`/`alloc`/`std`/`serde_json`/`unicode-general-category` functions; types `array::IntoIter`, `str::Bytes`, `HashSet`, `serde_json::Map` | 40 definitions, 4 structures; `opaque ExtModel.sha256`, `opaque ExtModel.nfkc`, `opaque ExtModel.generalCategory`; `<ParseIntError as Debug>::fmt` total (lead decision) | reviewed (3 rounds), signed off by the spec owner (2026-11-25) |
-| Translation patch 05: the 5 `metadata_resolver::prim` functions; 8 `core`/`alloc` functions; `url::Url::{parse, host, host_str}`; types `SocketAddrV4`, `SocketAddrV6`, `url::Url`, `Lookup` | 16 definitions, 2 structures, 2 abstract types; `opaque ExtModel.{UrlCarrier, LookupCarrier, urlParse, urlHost, urlHostStr, systemLookup, proxyEnvValues}` | under review |
+| Translation patch 05: the 5 `metadata_resolver::prim` functions; 8 `core`/`alloc` functions; `url::Url::{parse, host, host_str}`; types `SocketAddrV4`, `SocketAddrV6`, `url::Url`, `Lookup` | 16 definitions, 2 structures, 2 abstract types; `opaque ExtModel.{UrlCarrier, LookupCarrier, urlParse, urlHost, urlHostStr, systemLookup, proxyEnvValues}` | accepted 2026-11-26 |
 
 Details:
 - HMAC: both functions always succeed. Stated exception: the SHA-256 bit-length `u64` counter

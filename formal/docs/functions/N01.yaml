@@ -4,9 +4,9 @@ source_file: crates/rmcp/src/transport/auth/metadata_resolver.rs  # upstream 7ca
 source_line: 42  # at 7caec76
 generated_symbol: rmcp.transport.auth.metadata_resolver.AddressClass.of
 translation: LEAN_OK  # translates since translation patch 05 (2026-11-25; board PATCH05-RESOLVER)
-spec: DRAFT  # signed off by the human spec owner 2026-11-26 after 5 review rounds (metadata_resolver.rs, N01, N03-N11); awaiting human acceptance (the human sets REVIEWED)
+spec: REVIEWED  # signed off by the spec owner 2026-11-26 after 5 review rounds (metadata_resolver.rs, N01, N03-N11); accepted by the human owner 2026-11-26
 linkage: ORIGINAL  # translates from the unmodified source; checked by scripts/check-original-linkage.sh (step 5 elaborated comparison, final run on scratch commit 5bb9384; board PATCH05-RESOLVER); CI pending
-proof: CHECKED  # proved 2026-11-26 (64/64 statements of the N01, N03-N11 cycle); restated statements kernel-equal to the signed-off draft (64/64); phase C refinement done; two independent proof reviews by mcp-review agents (no blocking finding); awaiting human acceptance
+proof: CHECKED  # proved 2026-11-26 (64/64 statements of the N01, N03-N11 cycle); restated statements kernel-equal to the signed-off draft (64/64); phase C refinement done; two independent proof reviews by mcp-review agents (no blocking finding); accepted by the human owner 2026-11-26
 proof_file: formal/proofs/Proofs/Transport/MetadataResolver.lean  # helpers Proofs/Transport/MetadataResolver/Common.lean; shared lemmas Proofs/External/WP.lean, Proofs/External/MetadataResolver.lean
 spec_file: formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean  # signed-off text formal/specs/Drafts/MetadataResolver.lean, removed at incorporation
 theorem: rmcp.transport.auth.metadata_resolver.AddressClass.of_spec  # main: rmcp.transport.auth.metadata_resolver.AddressClass.of_spec (restated as Theorems.metadata_resolver.AddressClass.of); laws and compositions: Theorems.metadata_resolver.AddressClass.of_v6_eq_of_embedded_ipv4_eq_ok_some

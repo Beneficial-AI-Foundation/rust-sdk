@@ -164,7 +164,7 @@ The dependency versions the external models rely on are pinned in `scripts/aenea
 translation patch 03 `serde_core 1.0.229`, whose traits are translated opaque, and since
 translation patch 04 `percent-encoding 2.3.2`, `unicode-normalization 0.1.26` and
 `unicode-general-category 1.1.0`, which the skills models cite, and since translation patch 05
-(under review) `url 2.5.9`, whose `url::host::Host` and `url::parser::ParseError` are translated
+(accepted 2026-11-26) `url 2.5.9`, whose `url::host::Host` and `url::parser::ParseError` are translated
 from its source and which the `Url` models cite); the
 script fails on a source other than crates.io or on another version of a pinned crate. Since S21 (human decision 2026-11-23) the version that counts is the one `rmcp` itself uses: a
 version reached, in the normal-edge tree of `rmcp` for the translated configuration (`cargo tree`),
@@ -655,7 +655,8 @@ at `24 * parts > isize::MAX` (K13, K16: the premise `hlen` of `split_slash_spec`
 all (a `&str` has fewer than 2^57 bytes there, and 24 · 2^57 < `isize::MAX`).
 A fifth patch, `trusted/patches/05-metadata-resolver.patch` (human decisions 2026-11-25: targets
 N01, N03–N11 of `transport/auth/metadata_resolver.rs`, hunks H1–H9 and the module `prim`; N02
-`SystemResolver::resolve` is not a target; **under review**), adds the module `prim` (five
+`SystemResolver::resolve` is not a target; **committed 1289403; accepted by the human owner
+2026-11-26**), adds the module `prim` (five
 functions: the `str` pattern wrappers `trim_end_dots`, `ends_with`, `contains`, the
 operating-system resolver `system_lookup` and the proxy environment reading `proxy_env_values`)
 and the newtype `Lookup(Arc<dyn Resolve>)`, both opaque in the Charon settings, and rewrites
@@ -690,7 +691,7 @@ the `BTreeMap` entries ascending by key) and three `opaque` constants, `ExtModel
 `ExtModel.nfkc` and `ExtModel.generalCategory`, whose laws are premises of the statements that
 need them (human decision 2026-11-25); still no axiom. Their placeholder values are what
 compiled evaluation returns, so evaluating anything that reaches them is meaningless.
-Translation patch 05 (under review) adds 16 function models (the 5 `metadata_resolver::prim`
+Translation patch 05 (accepted 2026-11-26) adds 16 function models (the 5 `metadata_resolver::prim`
 functions, `url::Url::{parse, host, host_str}` and 8 `core`/`alloc` functions), 2 structures
 (`SocketAddrV4`, `SocketAddrV6`), 2 abstract types over `opaque` carriers (`url::Url` over
 `ExtModel.UrlCarrier`, `Lookup` over `ExtModel.LookupCarrier : NonemptyType`) and five more
@@ -760,7 +761,7 @@ input), declared as such in the docstring and the "Assumptions" column of `specs
 fact taken from UAX #15, FIPS 180-4 or `UnicodeData.txt` also cites evidence that the pinned
 crate conforms on those inputs (NormalizationTest conformance or a Rust vector). No statement may depend on the order of the `elements` of a `HashSet`
 (unspecified in Rust); `serde_json::Map` entries are sorted by key, as in the `BTreeMap`.
-Review rules of the patch 05 opaque constants (human decision 2026-11-25; under review): the clock
+Review rules of the patch 05 opaque constants (human decision 2026-11-25; accepted 2026-11-26): the clock
 rule extends to the environment: no statement has a premise or conclusion about the value of
 `ExtModel.proxyEnvValues` or relates two environment readings, and a statement may name
 `ExtModel.proxyEnvValues`, `transport.auth.metadata_resolver.prim.proxy_env_values` or
@@ -839,7 +840,7 @@ trusted axioms, 0 native-code axioms (35 locked until the Aeneas upgrade of 2026
 `SerdeJsonErrorImpl` into a `def` over the carrier, signed off 2026-11-24; 10 with translation
 patch 04, which adds `sha256`, `nfkc` and `generalCategory`, signed off 2026-11-25; 17 with
 translation patch 05, which adds `UrlCarrier`, `LookupCarrier`, `urlParse`, `urlHost`,
-`urlHostStr`, `systemLookup` and `proxyEnvValues`, under review).
+`urlHostStr`, `systemLookup` and `proxyEnvValues`, accepted 2026-11-26).
 
 ### Tools
 

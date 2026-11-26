@@ -812,14 +812,13 @@ steps:
 
   - id: PATCH05-RESOLVER  # not a plan step; translation patch 05, OAuth metadata address policy of metadata_resolver.rs, targets N01, N03-N11; plan Sections 2.3, 4, 15, 19 and 23 (amendments 2026-11-25)
     day: 2026-11-25
-    state: IN_PROGRESS  # translated on Aeneas nightly-2026.11.24-fb44cb4 (base 8b21c5e); records and
-    # docs updated; translation review rounds 1-7 done and answered (rounds 1-4 with 2 fresh
+    state: ACCEPTED  # accepted by the human owner 2026-11-26; committed 1289403. Translated on
+    # Aeneas nightly-2026.11.24-fb44cb4 (base 8b21c5e); records and docs updated; translation review rounds 1-7 done and answered (rounds 1-4 with 2 fresh
     # mcp-review reviewers each, round 4 the extra round approved by the human on 2026-11-26 after
     # a3-1/b3-1; round 5 the fresh reviewer of the fail-closed scan, findings a5-1..a5-6; round 6
     # one reviewer of step 5, findings a6-1..a6-6; round 7 one reviewer, findings a7-1..a7-7);
     # human decision 2026-11-26 after round 7: enforce the round-7 fixes in the script, then sign
-    # off without another review round; the fixes are in the script; not signed off yet (awaiting
-    # the human). Patch 05 (module prim of 5 wrappers, newtype Lookup, hunks H1-H9), Charon
+    # off without another review round; the fixes are in the script. Patch 05 (module prim of 5 wrappers, newtype Lookup, hunks H1-H9), Charon
     # settings, script changes, 16 exact models (5 metadata_resolver::prim wrappers, 8
     # core/alloc functions, url::Url::{parse, host, host_str} as ok of opaque values) with 2
     # structures and 2 abstract types, 7 opaque constants (UrlCarrier, LookupCarrier, urlParse,
@@ -828,10 +827,10 @@ steps:
     # Linkage: 2 ORIGINAL (N01, N08), the rest patch-05; check-original-linkage.sh (with step 5)
     # passes on scratch commit 5bb9384 (on c400112; lean-guard sources passed inside it; text
     # 65/65, 42/42, 37/37, 10/10; elaborated 520 constants and 41 externals identical, 40
-    # generated instances; linkage-elab 20/20 as expected; linkage-scan 57 rejected), CI pending. Differential tests of the patch against the original code:
+    # generated instances; linkage-elab 20/20 as expected; linkage-scan 57 rejected), CI pending
+    # (nothing pushed). Differential tests of the patch against the original code:
     # 7 tests, 0 differences (formal/trusted/evidence/differential/metadata-resolver/).
-    # Pending: review, sign-off by the spec owner and the commit (human approval). Specifying
-    # N01-N11 is a separate step.
+    # The N01, N03-N11 specs, proofs and records are SPEC-N01-N11.
     # Human decisions 2026-11-25: targets N01, N03-N11 (N02 SystemResolver::resolve dropped:
     # async OS DNS); patch 05 with H1-H9 and prim; url::Url opaque with opaque parse/host/host_str
     # (laws only as premises, no axiom); proxy_env_values an opaque constant under the clock rule
@@ -956,7 +955,8 @@ steps:
       signed off by the human. Specifying N01-N11 is a separate step.
   - id: SPEC-N01-N11  # not a plan step; specification of N01, N03-N11, OAuth metadata address policy of metadata_resolver.rs (plan Section 2.3 amendment 2026-11-25)
     day: 2026-11-26
-    state: IN_PROGRESS  # signed off 2026-11-26; proved 2026-11-26; awaiting human acceptance.
+    state: ACCEPTED  # accepted by the human owner 2026-11-26; committed 459995e. Signed off
+    # 2026-11-26; proved 2026-11-26; CI pending (nothing pushed).
     # Proofs: 64/64 by mcp-lean (claude-opus-5-5, not the drafter) in
     # formal/proofs/Proofs/Transport/MetadataResolver.lean (helpers .../MetadataResolver/Common.lean;
     # shared lemmas Proofs/External/WP.lean, Proofs/External/MetadataResolver.lean); restated as

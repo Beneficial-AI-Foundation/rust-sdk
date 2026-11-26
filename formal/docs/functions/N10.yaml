@@ -4,9 +4,9 @@ source_file: crates/rmcp/src/transport/auth/metadata_resolver.rs  # upstream 7ca
 source_line: 215  # at 7caec76; line 247 in the patched copy
 generated_symbol: rmcp.transport.auth.metadata_resolver.literal_ip
 translation: LEAN_OK  # translates since translation patch 05 (2026-11-25; board PATCH05-RESOLVER)
-spec: DRAFT  # signed off by the human spec owner 2026-11-26 after 5 review rounds (metadata_resolver.rs, N01, N03-N11); awaiting human acceptance (the human sets REVIEWED)
+spec: REVIEWED  # signed off by the spec owner 2026-11-26 after 5 review rounds (metadata_resolver.rs, N01, N03-N11); accepted by the human owner 2026-11-26
 linkage: patch-05  # needs translation patch 05 (hunk H7); absence from the unpatched translation checked by scripts/check-original-linkage.sh (PATCH05_TARGETS; board PATCH05-RESOLVER)
-proof: CHECKED  # proved 2026-11-26 (64/64 statements of the N01, N03-N11 cycle); restated statements kernel-equal to the signed-off draft (64/64); phase C refinement done; two independent proof reviews by mcp-review agents (no blocking finding); awaiting human acceptance
+proof: CHECKED  # proved 2026-11-26 (64/64 statements of the N01, N03-N11 cycle); restated statements kernel-equal to the signed-off draft (64/64); phase C refinement done; two independent proof reviews by mcp-review agents (no blocking finding); accepted by the human owner 2026-11-26
 proof_file: formal/proofs/Proofs/Transport/MetadataResolver.lean  # helpers Proofs/Transport/MetadataResolver/Common.lean; shared lemmas Proofs/External/WP.lean, Proofs/External/MetadataResolver.lean
 spec_file: formal/proofs/Proofs/Internal/Transport/Auth/MetadataResolver.lean  # signed-off text formal/specs/Drafts/MetadataResolver.lean, removed at incorporation
 theorem: rmcp.transport.auth.metadata_resolver.literal_ip_spec  # main: rmcp.transport.auth.metadata_resolver.literal_ip_spec (restated as Theorems.metadata_resolver.literal_ip)
