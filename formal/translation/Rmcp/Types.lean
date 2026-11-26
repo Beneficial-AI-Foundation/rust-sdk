@@ -21,6 +21,15 @@ set_option maxRecDepth 2048
 
 namespace rmcp
 
+/-- Trait declaration: [core::alloc::AllocatorClone]
+    Source: '/rustc/library/core/src/alloc/mod.rs', lines 541:0-541:50
+    Name pattern: [core::alloc::AllocatorClone]
+    Visibility: public -/
+@[rust_trait "core::alloc::AllocatorClone"
+  (parentClauses := ["cloneCloneInst"])]
+structure core.alloc.AllocatorClone (Self : Type _) where
+  cloneCloneInst : core.clone.Clone Self
+
 /-- Trait declaration: [core::hash::BuildHasher]
     Source: '/rustc/library/core/src/hash/mod.rs', lines 637:0-637:21
     Name pattern: [core::hash::BuildHasher]
@@ -29,6 +38,24 @@ namespace rmcp
 structure core.hash.BuildHasher (Self : Type _) (Self_Hasher : Type _) where
   HasherInst : core.hash.Hasher Self_Hasher
   build_hasher : Self → Result Self_Hasher
+
+/-- [core::net::ip_addr::IpAddr]
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 30:0-30:15
+    Name pattern: [core::net::ip_addr::IpAddr]
+    Visibility: public -/
+@[discriminant isize, rust_type "core::net::ip_addr::IpAddr"]
+inductive core.net.ip_addr.IpAddr where
+| V4 : core.net.ip_addr.Ipv4Addr → core.net.ip_addr.IpAddr
+| V6 : core.net.ip_addr.Ipv6Addr → core.net.ip_addr.IpAddr
+
+/-- [core::net::socket_addr::SocketAddr]
+    Source: '/rustc/library/core/src/net/socket_addr.rs', lines 33:0-33:19
+    Name pattern: [core::net::socket_addr::SocketAddr]
+    Visibility: public -/
+@[discriminant isize, rust_type "core::net::socket_addr::SocketAddr"]
+inductive core.net.socket_addr.SocketAddr where
+| V4 : core.net.socket_addr.SocketAddrV4 → core.net.socket_addr.SocketAddr
+| V6 : core.net.socket_addr.SocketAddrV6 → core.net.socket_addr.SocketAddr
 
 /-- Trait declaration: [core::str::traits::FromStr]
     Source: '/rustc/library/core/src/str/traits.rs', lines 868:0-868:30
@@ -251,6 +278,33 @@ inductive unicode_general_category.tables.GeneralCategory where
 | TitlecaseLetter : unicode_general_category.tables.GeneralCategory
 | Unassigned : unicode_general_category.tables.GeneralCategory
 | UppercaseLetter : unicode_general_category.tables.GeneralCategory
+
+/-- [url::host::Host]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/host.rs', lines 46:0-46:25
+    Name pattern: [url::host::Host]
+    Visibility: public -/
+@[discriminant isize, rust_type "url::host::Host"]
+inductive url.host.Host (S : Type _) where
+| Domain : S → url.host.Host S
+| Ipv4 : core.net.ip_addr.Ipv4Addr → url.host.Host S
+| Ipv6 : core.net.ip_addr.Ipv6Addr → url.host.Host S
+
+/-- [url::parser::ParseError]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/parser.rs', lines 57:8-57:27; this code is generated from a macro invocation at: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/parser.rs', lines 87:0-98:1
+    Name pattern: [url::parser::ParseError]
+    Visibility: public -/
+@[discriminant isize, rust_type "url::parser::ParseError"]
+inductive url.parser.ParseError where
+| EmptyHost : url.parser.ParseError
+| IdnaError : url.parser.ParseError
+| InvalidPort : url.parser.ParseError
+| InvalidIpv4Address : url.parser.ParseError
+| InvalidIpv6Address : url.parser.ParseError
+| InvalidDomainCharacter : url.parser.ParseError
+| RelativeUrlWithoutBase : url.parser.ParseError
+| RelativeUrlWithCannotBeABaseBase : url.parser.ParseError
+| SetHostOnCannotBeABaseUrl : url.parser.ParseError
+| Overflow : url.parser.ParseError
 
 /-- Trait declaration: [zeroize::Zeroize]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.2/src/lib.rs', lines 253:0-253:17
@@ -646,6 +700,29 @@ structure model.ResourceTemplateReference where
 inductive model.Reference where
 | Resource : model.ResourceTemplateReference → model.Reference
 | Prompt : model.PromptReference → model.Reference
+
+/-- [rmcp::transport::auth::metadata_resolver::AddressClass]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 34:0-39:1 -/
+@[discriminant isize]
+inductive transport.auth.metadata_resolver.AddressClass where
+| Public : transport.auth.metadata_resolver.AddressClass
+| Loopback : transport.auth.metadata_resolver.AddressClass
+| Private : transport.auth.metadata_resolver.AddressClass
+| Blocked : transport.auth.metadata_resolver.AddressClass
+
+/-- [rmcp::transport::auth::metadata_resolver::MetadataAddressResolver]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 93:0-98:1 -/
+structure transport.auth.metadata_resolver.MetadataAddressResolver where
+  base_ip : Option core.net.ip_addr.IpAddr
+  unfiltered_hosts : alloc.sync.Arc (Slice String)
+  base_classes : alloc.sync.Arc (Slice
+    transport.auth.metadata_resolver.AddressClass)
+  lookup : transport.auth.metadata_resolver.Lookup
+
+/-- [rmcp::transport::auth::metadata_resolver::proxy_host::{closure}]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 244:13-244:40 -/
+@[reducible]
+def transport.auth.metadata_resolver.proxy_host.closure := Unit
 
 /-- [rmcp::transport::common::client_side_sse::SseEventSizeLimiter]
     Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 29:0-35:1 -/

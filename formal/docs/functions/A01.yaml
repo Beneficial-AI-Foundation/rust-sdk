@@ -12,7 +12,9 @@ spec_file: formal/proofs/Proofs/Internal/Transport/Auth.lean
 theorem: rmcp.transport.auth.AuthorizationManager.embedded_ipv4_spec  # restated as Theorems.auth.AuthorizationManager.embedded_ipv4
 used_by: [A03, C04]  # Phase 2 targets/composition theorems consuming this theorem (plan Section 16)
 axioms: [propext, Classical.choice, Quot.sound]  # as printed by `#print axioms` in the spec file
-evidence: [formal/docs/STATUS.md]
+evidence: [formal/docs/STATUS.md, formal/trusted/evidence/README.md]
+# axioms unchanged after the additive formal/proofs/Proofs/Defs/Net.lean change of 2026-11-26
+# (public import Rmcp.Types, DecidableEq instances for Ipv4Addr/Ipv6Addr/IpAddr; accepted by the spec owner)
 spec_drafted_by: "AI: Claude Code, claude-opus-5-5"  # draft: formal/specs/Drafts/Auth.lean (S25)
 spec_reviews:
   - {tool: "Claude Code mcp-review", model: claude-opus-5-5, round: 1, reviewer: a, verdict: no blocking findings, evidence: formal/docs/STATUS.md (S25 spec cycle)}

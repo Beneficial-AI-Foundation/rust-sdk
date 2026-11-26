@@ -55,6 +55,7 @@ on:
       - 'scripts/apply-patches.sh'
       - 'scripts/llbc-dir-guard.sh'
       - 'scripts/check-original-linkage.sh'
+      - 'scripts/linkage/**'
       - '.github/workflows/aeneas-translation.yml'
   pull_request:
     paths:
@@ -77,6 +78,7 @@ on:
       - 'scripts/apply-patches.sh'
       - 'scripts/llbc-dir-guard.sh'
       - 'scripts/check-original-linkage.sh'
+      - 'scripts/linkage/**'
       - '.github/workflows/aeneas-translation.yml'
   workflow_dispatch:
 
@@ -171,5 +173,27 @@ jobs:
       # patch), every Phase 2 block must equal a committed one up to the Source field (file and
       # lines); otherwise the records' `linkage: ORIGINAL` does not hold. Runs after the
       # stale-translation check, so the committed translation it compares with is the current one.
+      # Step 5 of the linkage check builds the unmodified-source and the committed translation as
+      # Lean environments and compares what they elaborate to (human decision 2026-11-26); it
+      # reuses the Lake packages of formal/ (packagesDir): Mathlib from its cache, Aeneas built
+      # here. Runs after the stale-translation check, so formal/.lake is not part of that check.
+      # Residual risk (review a6-6): the restored package cache (shared key with lean-build.yml's
+      # build job) is code this job runs (Lake builds, Dump.lean with initializers). Both
+      # environments use the same packages, so the cache cannot create a difference between them,
+      # but a poisoned cache could make the comparison meaningless; lean-build.yml's `check` job,
+      # which uses no cache, is the clean build of these packages.
+      - name: Cache Lake packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: formal/.lake/packages
+          key: lean-packages-${{ runner.os }}-${{ hashFiles('formal/lean-toolchain', 'formal/lake-manifest.json') }}
+
+      - name: Fetch the Lean packages for the elaborated comparison
+        working-directory: formal
+        run: |
+          set -euo pipefail
+          lake exe cache get
+          lake build Aeneas
+
       - name: Check the Phase 2 linkage (unmodified source)
         run: scripts/check-original-linkage.sh "$RUNNER_TEMP/linkage"

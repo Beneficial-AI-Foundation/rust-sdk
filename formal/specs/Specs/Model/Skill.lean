@@ -153,7 +153,7 @@ a restated theorem. The model consequences (`model` rows) are about the definiti
   that panics is not translated.
 * **(S)** SHA-256: the model of `prim::sha256` always succeeds, while the `u64` bit counter of
   `sha2` overflows (a panic under `overflow-checks`) for an input of at least `2^61` bytes
-  (`sha2-0.11.1/src/block_api.rs` line 66), outside the size convention of
+  (`sha2-0.11.2/src/block_api.rs` line 66), outside the size convention of
   `trusted/Rmcp/FunsExternal.lean`. It concerns the statements that hash: K05 and K07 (always),
   K06 (only when the length matches, as the size is checked first), and the compositions built
   on them: `SkillResource.verify_from_bytes_self`, `SkillResource.verify_from_bytes`,

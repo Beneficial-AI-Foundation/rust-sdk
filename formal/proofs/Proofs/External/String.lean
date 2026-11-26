@@ -20,12 +20,18 @@ Lemmas about `ExtModel.utf8` (the bytes of a Lean `String`) and `ExtModel.strOfB
 (`formal/trusted/Rmcp/FunsExternal.lean`): they are inverse to each other, `utf8` is additive and
 counts `utf8ByteSize` bytes, ASCII text has one byte per character, and the Aeneas `toStr` of a
 literal has the bytes `utf8` gives. `utf8Bytes_eq_utf8` identifies `Defs.utf8Bytes` (the encoding
-the Phase 2 definitions use) with `utf8`.
+the Phase 2 definitions use) with `utf8`. The character-level facts `utf8_ofList`,
+`utf8_ofList_cons`, `le_toNat_of_mem_utf8EncodeChar` and `le_val_of_mem_utf8_ofList_singleton`
+(with `toNat_le_toNat_or`) are generic; they moved here from `Proofs.External.Skill` on
+2026-11-25 (translation patch 05), so that `Proofs.External.MetadataResolver` does not import the
+skills file.
 
 Section "Phase 2: strings and `Arc`" proves the signed-off laws of plan steps S26/S27 for
 `<str as PartialEq>::eq` (with the equation `eq_eq` derived from it), `<String as Deref>::deref`
 and `Arc` (`deref`, `eq`), and `alloc.sync.Arc.data_val_inj` (an `Arc<str>` is determined by the
-bytes it shares). It needs `Rmcp.Funs` for the instance `Str.Insts.CoreCmpPartialEqStr`.
+bytes it shares). The spec theorems `alloc.string.String.Insts.CoreCmpPartialEqStr.eq_spec` and
+`alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_spec` (for every instance) were added on 2026-11-25
+(human decision: every external reached by the translation has a `_spec` theorem). It needs `Rmcp.Funs` for the instance `Str.Insts.CoreCmpPartialEqStr`.
 -/
 
 open Aeneas Aeneas.Std
@@ -179,6 +185,63 @@ theorem utf8_ofList_singleton_ascii (ch : Char) (h : ch.toNat < 128) :
   rw [List.mem_singleton] at hb
   subst hb; rw [byte_val]; omega
 
+/-- A byte `x ||| k` is at least `k`. -/
+theorem toNat_le_toNat_or (x k : UInt8) : k.toNat ≤ (x ||| k).toNat := by
+  rw [UInt8.toNat_or]; exact Nat.right_le_or
+
+/-- Every byte of the UTF-8 encoding of a non-ASCII character is at least 128. -/
+theorem le_toNat_of_mem_utf8EncodeChar {c : Char} (hc : 128 ≤ c.toNat) :
+    ∀ b ∈ String.utf8EncodeChar c, 128 ≤ b.toNat := by
+  have h1 : c.utf8Size ≠ 1 := by
+    intro h
+    have h' := UInt32.le_iff_toNat_le.1 (Char.utf8Size_eq_one_iff.1 h)
+    have : c.toNat = c.val.toNat := rfl
+    have : (127 : UInt32).toNat = 127 := rfl
+    omega
+  have hpos := Char.utf8Size_pos c
+  have hle := Char.utf8Size_le_four c
+  have h2 : ∀ x : UInt8, 128 ≤ (x ||| 0x80).toNat := fun x => toNat_le_toNat_or x 0x80
+  have h3 : ∀ x : UInt8, 128 ≤ (x ||| 0xc0).toNat :=
+    fun x => le_trans (by decide) (toNat_le_toNat_or x 0xc0)
+  have h4 : ∀ x : UInt8, 128 ≤ (x ||| 0xe0).toNat :=
+    fun x => le_trans (by decide) (toNat_le_toNat_or x 0xe0)
+  have h5 : ∀ x : UInt8, 128 ≤ (x ||| 0xf0).toNat :=
+    fun x => le_trans (by decide) (toNat_le_toNat_or x 0xf0)
+  intro b hb
+  rcases (by omega : c.utf8Size = 2 ∨ c.utf8Size = 3 ∨ c.utf8Size = 4) with h | h | h
+  · rw [String.utf8EncodeChar_eq_cons_cons h] at hb
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+    rcases hb with rfl | rfl <;> simp only [h2, h3]
+  · rw [String.utf8EncodeChar_eq_cons_cons_cons h] at hb
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+    rcases hb with rfl | rfl | rfl <;> simp only [h2, h4]
+  · rw [String.utf8EncodeChar_eq_cons_cons_cons_cons h] at hb
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+    rcases hb with rfl | rfl | rfl | rfl <;> simp only [h2, h5]
+
+/-- The UTF-8 bytes of a string of characters: the encodings of the characters, in order. -/
+theorem utf8_ofList (cs : List Char) :
+    utf8 (String.ofList cs) =
+      cs.flatMap (fun c => (String.utf8EncodeChar c).map (fun x => byte x.toNat)) := by
+  rw [utf8_eq, String.toByteArray_ofList, List.utf8Encode, List.toList_data_toByteArray,
+    List.map_flatMap]
+
+/-- The UTF-8 bytes of `c :: cs` are those of `c` followed by those of `cs`. -/
+theorem utf8_ofList_cons (c : Char) (cs : List Char) :
+    utf8 (String.ofList (c :: cs)) = utf8 (String.ofList [c]) ++ utf8 (String.ofList cs) := by
+  rw [utf8_ofList, utf8_ofList, utf8_ofList, List.flatMap_cons, List.flatMap_cons,
+    List.flatMap_nil, List.append_nil]
+
+/-- Every UTF-8 byte of a non-ASCII character is at least 128. -/
+theorem le_val_of_mem_utf8_ofList_singleton {c : Char} (hc : 128 ≤ c.toNat) :
+    ∀ b ∈ utf8 (String.ofList [c]), 128 ≤ b.val := by
+  intro b hb
+  rw [utf8_ofList, List.flatMap_cons, List.flatMap_nil, List.append_nil, List.mem_map] at hb
+  obtain ⟨x, hx, rfl⟩ := hb
+  have := le_toNat_of_mem_utf8EncodeChar hc x hx
+  rw [byte_val, Nat.mod_eq_of_lt x.toNat_lt]
+  exact this
+
 /-- The bytes of the Aeneas `toStr` of a literal are its `utf8` bytes. -/
 theorem toStr_val (s : String) (h : s.toByteArray.size ≤ U32.max) :
     (toStr s h).val = utf8 s := by
@@ -224,6 +287,14 @@ theorem Str.Insts.CoreCmpPartialEqStr.eq_eq (self : Str) (other : Str) :
     Proofs.External.WP.exists_ok_of_spec (Str.Insts.CoreCmpPartialEqStr.eq_spec self other)
   rw [hb, Bool.eq_iff_iff.2 (hbv.trans decide_eq_true_iff.symm)]
 
+/-- **Spec theorem for `<String as PartialEq<str>>::eq`**: the UTF-8 bytes of the string are the
+bytes of the `str`, for every `String` and `Str`; never fails. -/
+@[step]
+theorem alloc.string.String.Insts.CoreCmpPartialEqStr.eq_spec (self : String) (other : Str) :
+    alloc.string.String.Insts.CoreCmpPartialEqStr.eq self other ⦃ (result : Bool) =>
+      (result = true ↔ utf8 self = other.val) ⦄ := by
+  simp only [alloc.string.String.Insts.CoreCmpPartialEqStr.eq, WP.spec_ok, decide_eq_true_eq]
+
 /-- **Spec theorem for `<String as Deref<Target = str>>::deref`**: the UTF-8 bytes of the
 string. The precondition holds for every Rust `String` (at most `isize::MAX` bytes); see
 `deref_fail`. -/
@@ -264,6 +335,17 @@ theorem alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq {T : Type} (A : Type)
     alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq A corecmpPartialEqInst self other =
       corecmpPartialEqInst.eq self.data other.data := by
   rfl
+
+/-- **Spec theorem for `<Arc<T> as PartialEq>::eq`**, for every `T`, allocator type `A` and
+instance: the result meets every postcondition that the instance's `eq` on the shared values
+meets (from `eq_eq`); `eq_str_spec` is the instance of the translation. -/
+theorem alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_spec {T : Type} (A : Type)
+    (corecmpPartialEqInst : core.cmp.PartialEq T T) (self : alloc.sync.Arc T)
+    (other : alloc.sync.Arc T) (P : Bool → Prop)
+    (h : corecmpPartialEqInst.eq self.data other.data ⦃ P ⦄) :
+    alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq A corecmpPartialEqInst self other ⦃ P ⦄ := by
+  rw [alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq_eq]
+  exact h
 
 /-- **Spec theorem for `<Arc<str> as PartialEq>::eq`** at the instance of the translation:
 equality of the bytes of the shared strings. -/

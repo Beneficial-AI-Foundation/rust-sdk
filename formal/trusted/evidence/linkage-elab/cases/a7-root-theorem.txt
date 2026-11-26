@@ -1,0 +1,3 @@
+EXPECT: differs
+ANCHOR: END
+theorem _root_.Theorems.evilLemma : True := trivial

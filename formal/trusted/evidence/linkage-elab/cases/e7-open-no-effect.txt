@@ -1,0 +1,6 @@
+EXPECT: pass
+ANCHOR: /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]
+namespace evil.core.net.ip_addr.Ipv4Addr
+def is_private (a : core.net.ip_addr.Ipv4Addr) : Result Bool := ok false
+end evil.core.net.ip_addr.Ipv4Addr
+open evil

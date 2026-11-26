@@ -36,7 +36,7 @@ Source paths: `rust-src` is
 `library/` of the pinned toolchain `nightly-2026-09-17` (since the Aeneas upgrade of 2026-11-24;
 the runs recorded below used `nightly-2026-06-01`); crate paths are in
 `~/.cargo/registry/src/index.crates.io-*/`, at the versions pinned by
-`scripts/aeneas-translate.sh` (`hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`, `digest 0.11.3`,
+`scripts/aeneas-translate.sh` (`hmac 0.13.0`, `sha2 0.11.2`, `base64 0.23.1`, `digest 0.11.3`,
 `zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154`; plan Section 4), and std's
 `hashbrown 0.17.1` per the toolchain's `library/Cargo.lock`. Test files: `wire` = `crates/rmcp/src/model/
 request_state_wire.rs`, `codec` = `crates/rmcp/src/model/request_state.rs`, both in the patched
@@ -62,7 +62,7 @@ only there, so run the command above in `.llbc/work/crates/rmcp` after
   7 only the exact tag is accepted; prefixes, an extension, flipped bytes and the other
   cases' tags are rejected).
 - **Stated exception (not modelled).** SHA-256 finalisation computes the bit length as a `u64`
-  (`sha2-0.11.1/src/block_api.rs` line 66), which overflows (a panic under `overflow-checks`)
+  (`sha2-0.11.2/src/block_api.rs` line 66), which overflows (a panic under `overflow-checks`)
   when the hashed input reaches `2^61` bytes: for a message of at least `2^61 − 64` bytes (inner
   hash of the 64-byte key block and the message) and for a key of at least `2^61` bytes
   (`get_der_key`, `hmac-0.13.0/src/utils.rs` lines 9–32, hashes a key longer than 64 bytes).
@@ -105,6 +105,8 @@ only there, so run the command above in `.llbc/work/crates/rmcp` after
 
 ## Differential check (Base64url and UTF-8)
 
+(The subdirectory `differential/metadata-resolver/` is a different check, Rust against Rust:
+translation patch 05 against the original code; see "Address-policy externals".)
 `differential/` compares the Lean models with the Rust crates line by line, outside any build or
 CI job: `Diff.lean.in` (run with `lake env lean --run`; the extension keeps it out of the
 `formal/` source checks, since it needs a root-level `main`) prints the results of
@@ -259,8 +261,10 @@ Tests: every keyring test of `codec` goes through `Zeroizing::deref` (`two_key_r
   and `sealAt … ExtModel.nowMs.val = some (ExtModel.utf8 result)` (`seal`/`seal_with`; `sealAt`
   is the `Defs.CodecState` model of the private `seal_at`, human decision 2026-11-25, replacing
   the earlier wording "the result of the translated `seal_at` at `ExtModel.nowMs`"); their
-  docstrings state the one-reading caveat and the inherited exceptions; no other statement names
-  `ExtModel.nowMs`, and no statement relates two readings. The internal statements of `seal_at`
+  docstrings state the one-reading caveat and the inherited exceptions. Besides these, only the
+  model's own spec theorem `model.request_state.RequestStateCodec.now_ms_spec` (postcondition
+  `result = ExtModel.nowMs`; human decision 2026-11-25) names `now_ms` and `ExtModel.nowMs`; no
+  other statement names `ExtModel.nowMs`, and no statement relates two readings. The internal statements of `seal_at`
   (R10a) and of its round trip with `open_at` (R10b) use explicit times.
 - **Tests.** `codec::within_ttl_opens`, `codec::past_ttl_is_expired` (through `open`).
 
@@ -512,7 +516,7 @@ same shape as the listed literal (named).
 Paths are relative to `crates/rmcp/`; the number in parentheses is the line of the test function
 in the repository's files (upstream `7caec76`; in the patched copy, `model.rs` lines after 19 are
 2 higher). Lean regression checks (`decide`, kernel-checked when the module builds):
-`Net` = `formal/proofs/Proofs/Defs/Net.lean` lines 187–296; `Sse` =
+`Net` = `formal/proofs/Proofs/Defs/Net.lean` lines 221–330 (since 2026-11-26; before the additive change below, 190–299); `Sse` =
 `formal/proofs/Proofs/Defs/Sse.lean` lines 272–416; `Methods` =
 `formal/proofs/Proofs/Defs/Methods.lean` lines 194–262 (list contents only). No `Defs` regression
 check evaluates M01–M14, T04 or T07/T08; `Defs.parseI64` (`formal/specs/Defs/IntParse.lean`
@@ -826,7 +830,7 @@ and `src/transport/auth.rs` `tests::metadata_url_allows_private_literals_only_wh
 | `100.64/10`: `100.64.0.0`, `100.127.255.255`; `100.63.255.255`, `100.128.0.0` | none (interior `100.64.0.1`) | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
 | `198.18/15`: `198.18.0.0`, `198.19.255.255`; `198.17.255.255`, `198.20.0.0` | none | — | patch 02 `s34_a02_range_boundaries`: pass (4) |
 
-Every A02 case uncovered upstream is evaluated by `Net` (A02 lists, lines 219–232) and, with the
+Every A02 case uncovered upstream is evaluated by `Net` (A02 lists, lines 253–266) and, with the
 same two lists (19 inside; 18 outside plus the public `8.8.8.8`), by patch 02
 `s34_a02_range_boundaries` (direct; `240.0.0.0` is not blocked: the bug recorded under H8).
 
@@ -835,7 +839,7 @@ same two lists (19 inside; 18 outside plus the public `8.8.8.8`), by patch 02
 Callers: `is_allowed_metadata_url` (`auth.rs` 1412) through `is_disallowed_metadata_host`, and
 `AddressClass::of` on its IPv6 path, which it takes only when A01 gives `none`: for an address
 that embeds IPv4, `AddressClass::of` calls A01 and A02 directly and never A03. The prefix
-boundaries are the 12 inside and 10 outside addresses of `Net`'s two A03 lists (lines 240–263):
+boundaries are the 12 inside and 10 outside addresses of `Net`'s two A03 lists (lines 274–297):
 22 cases, plus 4 embedded forms and a public address: 27 cases.
 
 | Case | Upstream test(s) | How | Status |
@@ -853,7 +857,18 @@ boundaries are the 12 inside and 10 outside addresses of `Net`'s two A03 lists (
 | embedded blocked IPv4, 6to4 | `classifies_addresses` (294) | `2002:a9fe:a9fe::`, as above | partial upstream; A03 and C04 patch 02 `s34_a03_c04_embedded_forms`: pass |
 | a public IPv6 address | `classifies_addresses` (294) | via caller: `2606:4700::1111` → `Public` (A01 `none`, A03 `false`) | pass |
 
-Every A03/C04 case uncovered upstream is evaluated by `Net` (A03/C04 lists, lines 240–275).
+Every A03/C04 case uncovered upstream is evaluated by `Net` (A03/C04 lists, lines 274–309).
+
+**`Defs/Net.lean` additive change (2026-11-26, accepted by the human A01–A03 spec owner).**
+`formal/proofs/Proofs/Defs/Net.lean` gained `public import Rmcp.Types` and a section "Decidable
+equality of addresses" (`DecidableEq` instances for `core.net.ip_addr.Ipv4Addr` and `Ipv6Addr`,
+decided on the octet and segment lists, and `deriving instance DecidableEq` for
+`rmcp.core.net.ip_addr.IpAddr`), moved there in the `metadata_resolver.rs` spec round 2 so that
+every statement comparing IP addresses shares one equality. No A01–A03 definition, check or
+statement changed; the regression checks only moved (31 lines; citations above updated). The
+A01–A03 `#print axioms` lists (`propext`, `Classical.choice`, `Quot.sound`) are unchanged: `lake
+build --wfail` passes with the `#guard_msgs` axiom checks, and `scripts/lean-guard.sh axioms`
+passes (2026-11-26).
 Patch 02 calls A03 directly on the 12 inside and 11 outside addresses of `Net`'s boundary lists
 (`s34_a03_prefix_boundaries`, with the public `2606:4700::1111`) and on 8 blocked and 4 public
 embedded forms (`s34_a03_c04_embedded_forms`: `Net`'s two embedded-form lists plus
@@ -903,7 +918,7 @@ are taken as hypotheses by the statements that need them (human decision 2026-11
 
 | Opaque constant | Stands for | Why it is not computed |
 |---|---|---|
-| `ExtModel.sha256 : List U8 → Array U8 32` | SHA-256 (FIPS 180-4) of `sha2 0.11.1` | correctness of the `sha2` crate is out of scope (plan Section 4), as for `hmacSha256` |
+| `ExtModel.sha256 : List U8 → Array U8 32` | SHA-256 (FIPS 180-4) of `sha2 0.11.2` | correctness of the `sha2` crate is out of scope (plan Section 4), as for `hmacSha256` |
 | `ExtModel.nfkc : List Char → List Char` | NFKC of `unicode-normalization 0.1.26` | the normalization tables are not modelled |
 | `ExtModel.generalCategory : Char → GeneralCategory` | the General_Category tables of `unicode-general-category 1.1.0` | the tables are not modelled |
 
@@ -1083,3 +1098,359 @@ fn main() {
 }
 ```
 Output: `max per-char nfkc 18 nfkd 18 at U+FDFA`, `pool 14670`, `violations 0 worst ratio 18` (lead re-run 2026-11-25).
+
+## Address-policy externals (translation patch 05, targets N01, N03–N11)
+
+Translation patch 05 (`formal/trusted/patches/05-metadata-resolver.patch`; human decisions
+2026-11-25) lets the pure functions of `crates/rmcp/src/transport/auth/metadata_resolver.rs`
+translate (N02 `SystemResolver::resolve` is not a target; the async shells of `resolve` and
+`with_lookup` stay unverified glue). It adds the module `metadata_resolver::prim` (five
+functions, opaque in the translation) and the newtype `Lookup` (opaque), and makes the remaining
+code call only the standard-library and `url` functions below. Every model is a definition or a
+`structure` in `formal/trusted/Rmcp/{Types,Funs}External.lean` (section "`metadata_resolver.rs`
+address policy"), with its source cited in its docstring; `axioms.lock` stays empty. Since
+patch 05 only the type `url::Url` of the `url` crate is opaque in the Charon settings (was the
+whole crate), so `url::host::Host` and `url::parser::ParseError` are translated from the source
+of the pinned `url 2.5.9` (`Rmcp.Types`). Seven new `opaque` constants, which add no axiom;
+their laws are not stated and are taken as hypotheses by the statements that need them (human
+decision 2026-11-25):
+
+| Opaque constant | Stands for | Why it is not computed |
+|---|---|---|
+| `ExtModel.UrlCarrier : Type` (carrier of `url.Url`) | a parsed `url::Url` (`url-2.5.9/src/lib.rs` lines 226–249) | the URL parser is not modelled (human decision 2026-11-25) |
+| `ExtModel.urlParse : List U8 → Result Url ParseError` | `Url::parse` (lines 340–342) | as above |
+| `ExtModel.urlHost : Url → Option (Host Str)` | `Url::host` (lines 1200–1207) | `Url` is abstract |
+| `ExtModel.urlHostStr : Url → Option Str` | `Url::host_str` (lines 1161–1167) | `Url` is abstract; its agreement with `urlHost` is not stated |
+| `ExtModel.LookupCarrier : NonemptyType` (carrier of `Lookup`) | the newtype `Lookup(Arc<dyn Resolve>)` of hunk H1 | trait objects are not translated (Aeneas: "Dynamic trait types are not supported yet") |
+| `ExtModel.systemLookup : Lookup` (noncomputable) | `Lookup(Arc::new(SystemResolver))` (`prim::system_lookup`) | `Lookup` is abstract; only the untranslated async `resolve` calls it |
+| `ExtModel.proxyEnvValues : Vec String` | the proxy environment variables that are set (`prim::proxy_env_values`) | an environment reading; one constant, under the clock rule (below) |
+
+**Opaque-constant rule for the environment** (human decision 2026-11-25: the rule of
+`ExtModel.nowMs` extended to the environment). `proxyEnvValues` is one constant, so a model of
+`MetadataAddressResolver::new` (N03), the only caller of `prim::proxy_env_values`, is pure,
+whereas in Rust two calls may read different environments. Review rule (also at
+`ExtModel.proxyEnvValues` and in `formal/README.md` and `formal/docs/STATUS.md`, "Trusted base"):
+no statement has a premise or conclusion about the value of `proxyEnvValues` or relates two
+readings; a statement may name `proxyEnvValues`, `…prim.proxy_env_values` or
+`…MetadataAddressResolver.new` only to say that `new` passes the values read to
+`with_proxy_hosts` (so that it holds for every environment), besides the model's own spec
+`prim.proxy_env_values_spec` (`result = proxyEnvValues`). Human decision 2026-11-26: a statement
+may also state a fact about `MetadataAddressResolver::new` that does not depend on the proxy
+environment, such as that the fields of the result not set from the proxy values (`base_ip`,
+`base_classes`, `lookup`) equal those of `with_base_url u` with the lookup
+`ExtModel.systemLookup`, proved from the body for every value of `proxyEnvValues`; nothing is
+assumed about `proxyEnvValues` itself beyond its own spec.
+Human decision 2026-11-26 (spec round 1, finding P1; an extension of this rule): for `new u = ok r`,
+and with no premise on the value of `ExtModel.proxyEnvValues`, a statement may also conclude (1)
+that `r.unfiltered_hosts` (as bytes) equals `ExtModel.proxyEnvValues.val.filterMap (fun p =>
+Defs.MetadataResolver.proxyHost (Defs.utf8Bytes p))` (`Defs.MetadataResolver.proxyHost` is defined in `formal/proofs/Proofs/Defs/MetadataResolver.lean`), naming `proxyEnvValues` only as the values `new` reads and passes to
+`with_proxy_hosts`; (2) the invariant that every unfiltered host of `new`'s result is a normalized
+host; (3) production security theorems about resolvers built by `new` (e.g. a filtered host's
+returned addresses are Public for a non-localhost domain base). Still no premise on, and no other
+statement about, the value of `proxyEnvValues`.
+Human decision 2026-11-26 (spec round 3, R1): for `new u = ok r`, statements of the form `host ∈
+r.unfiltered_hosts ↔ Defs.utf8Bytes host ∈ ExtModel.proxyEnvValues.val.filterMap
+(Defs.MetadataResolver.proxyHost ∘ Defs.utf8Bytes)` and premises `host ∉ r.unfiltered_hosts` in
+production theorems count as restatements of items (1) and (3).
+Human decision 2026-11-26 (spec sign-off, T1): premises of the form `Defs.utf8Bytes host ∈
+ExtModel.proxyEnvValues.val.filterMap (Defs.MetadataResolver.proxyHost ∘ Defs.utf8Bytes)` (the host
+is a configured proxy host; used by
+`MetadataAddressResolver.allowed_addresses_eq_ok_some_of_new_eq_ok_of_mem_proxyHosts`) also count as
+restatements of P1.
+The reading itself does not panic:
+`std::env::var` returns `Err` for an unset or non-Unicode variable (`std/src/env.rs` lines
+228–236) and the six names of `PROXY_ENV_VARS` are fixed, non-empty and contain no `=` or NUL.
+
+Exact models (computable, so they can be evaluated; examples in
+`formal/proofs/Proofs/External/MetadataResolver.lean`), with their Rust source (`nightly-2026-09-17`
+`rust-src` unless stated):
+
+| Model | Source |
+|---|---|
+| `prim::trim_end_dots`: drop the trailing bytes 46 (`ExtModel.dropTrailingDots`) | `core/src/str/mod.rs` lines 2643–2654 (`trim_end_matches`), `core/src/str/pattern.rs` lines 330–338 (`next_reject_back` of the `CharSearcher`); `'.'` is the single UTF-8 byte 46 |
+| `prim::ends_with`: byte suffix (`<:+`) | `core/src/str/mod.rs` lines 1445–1450, `core/src/str/pattern.rs` lines 1030–1035 (`haystack.as_bytes().ends_with(self.as_bytes())`) |
+| `prim::contains`: byte infix (`<:+:`), `true` for `""` | `core/src/str/mod.rs` lines 1382–1384, `core/src/str/pattern.rs` lines 987–1015 (`is_contained_in` for `&str`) |
+| `<IpAddr as PartialEq>::eq`: same variant, equal octets / segments | `core/src/net/ip_addr.rs` lines 29–37 (derived), 71–76 and 165–170 (derived on the octets) |
+| `IpAddr::V4` as a function, and its `FnOnce::call_once` | `core/src/net/ip_addr.rs` line 33; the compiler's `FnOnce` impl of a function item |
+| `SocketAddr::ip` | `core/src/net/socket_addr.rs` lines 193–198, 394–396, 492–494 |
+| `Option::map_or` | `core/src/option.rs` lines 1224–1233 |
+| `str::to_ascii_lowercase` (`ExtModel.asciiLowercase`) | `alloc/src/str.rs` lines 889–894, `alloc/src/slice.rs` lines 678–680, `core/src/num/mod.rs` lines 710–713 and 584 |
+| `<String as PartialEq<&str>>::eq`: byte equality | `alloc/src/string.rs` lines 2740–2742 (`impl_eq! { String, &str }`, line 2764) |
+| `<Arc<[T]> as From<Vec<T>>>::from` | `alloc/src/sync.rs` lines 4212–4226, 2467–2476, 416–426 |
+| structures `SocketAddrV4 { addrIp, addrPort }`, `SocketAddrV6 { addrIp, addrPort, addrFlowinfo, addrScopeId }` | `core/src/net/socket_addr.rs` lines 79–84 and 145–152 |
+
+The `FnOnce::call_once` model has the type of its use in `Rmcp.Funs`
+(`(Ipv4Addr → Result IpAddr) → Ipv4Addr → Result IpAddr`); the Aeneas template prints the
+first parameter without parentheses (`Ipv4Addr → Result IpAddr → Ipv4Addr → Result IpAddr`),
+which does not build (measured 2026-11-25: "Type mismatch" at the instance in `Funs.lean`). New
+trusted helpers (namespace `ExtModel`): `dropTrailingDots` with the length lemma
+`length_dropTrailingDots_le_max`, and `asciiLowercase`. Each external has a proved spec
+theorem `<generated name>_spec` in `Proofs.External.MetadataResolver` (no `sorry`; each depends
+on at most `propext`, `Classical.choice`, `Quot.sound`), plus `call_once_ip_addr_v4_spec` and
+`map_or_ip_addr_v4_spec` for the one instance of the translation,
+`to_ascii_lowercase_spec_of_eq_utf8` for every Rust `&str`, `to_ascii_lowercase_spec_of_isUtf8`
+for the same under the premise `ExtModel.IsUtf8` (below), and `to_ascii_lowercase_eq_fail` for
+the model's other branch (bytes whose lowercase mapping is not UTF-8); `call_once_spec` is the
+equation `call_once f a = f a`, so it covers the failure of `f` too. `isUtf8_dropTrailingDots` and
+`isUtf8_map_asciiLowercase` prove that `dropTrailingDots` and the lowercase mapping keep the
+UTF-8 premise.
+
+**UTF-8 premise** (review rule, translation patch 05, human decisions 2026-11-25/2026-11-26: rule
+(ii) 2026-11-26, nested `&str` 2026-11-26; the same statement is in the docstring of
+`ExtModel.IsUtf8`, in `formal/README.md` and in `formal/docs/STATUS.md`, "Trusted base").
+`Url::host` returns a `Host<&str>` and `Url::host_str` an `Option<&str>`, and every Rust `&str` is
+valid UTF-8, but the Aeneas `Str` is not constrained: a statement may assume that a `Str` is valid
+UTF-8 (the Rust `&str` invariant) (i) only as the premise `ExtModel.IsUtf8 s.val`
+(`ExtModel.IsUtf8 l := ∃ t : String, l = ExtModel.utf8 t`, a definition in
+`formal/trusted/Rmcp/FunsExternal.lean`; no axiom or model asserts it), and (ii) only for (a) a
+`&str` argument of the function the statement is about, or a `&str` carried by an argument (such
+as the domain `d` of the argument `host : Host<&str>` of
+`AuthorizationManager::is_loopback_metadata_host`, `host = url.host.Host.Domain d`), and (b) the
+hosts that the opaque `url` functions return: `ExtModel.IsUtf8 d.val` for
+`ExtModel.urlHost u = some (url.host.Host.Domain d)` and `ExtModel.IsUtf8 h.val` for
+`ExtModel.urlHostStr u = some h`. That a `Str` computed from such values is UTF-8 is proved, not
+assumed (`isUtf8_dropTrailingDots`, `isUtf8_map_asciiLowercase` in
+`Proofs.External.MetadataResolver`; `to_ascii_lowercase_spec_of_isUtf8` takes the premise).
+
+**Differential tests of patch 05.** `formal/trusted/evidence/differential/metadata-resolver/`
+(`README.md` there; `run.sh <scratch>` applies the patches with `scripts/apply-patches.sh` into
+the scratch directory, appends the original code of `7caec76` as a module `old` and the
+reviewers' seven tests, and runs them): the patched `normalize_host`, `is_loopback_metadata_host`
+and `prim` string wrappers on 1,953 hosts; the resolver state after `with_lookup`,
+`with_proxy_hosts`, `allowing_private_addresses`, `allows_url`, and `resolve` on 327,504 cases
+(48 base URLs, 463 proxy lists, 212 lookup answers including an empty answer for an unfiltered
+host, which both give as `Ok([])`, and a lookup error, which both propagate); `new` and
+`prim::proxy_env_values` with a non-Unicode variable (dropped by both); and the four tests of
+reviewer a (18 hosts, 29 proxies, 18 base URLs, every subset of 13 addresses for 4 base URLs,
+private addresses allowed or not, unfiltered and filtered host). Result (re-run 2026-11-25): 7
+passed, 0 differences. Round-3 fixes (2026-11-26): `run.sh` checks `old_body.rs` and
+`old_wrappers.rs` against `7caec76` (failing on drift) and refuses, before creating anything, a
+scratch directory inside the repository, a symlink, `/`, `$HOME` or an ancestor of either, and an
+existing non-empty directory; `diff_new_reads_env` sets the proxy variables only in a child
+process (setting them in the test process made two upstream `metadata_resolver` tests fail when
+run alongside, because `reqwest` clients read them). Re-run: 7 passed (1 ignored, the child
+helper); `run.sh --full`, the whole patched library suite and the differential modules in one
+process: 854 passed, 0 failed.
+
+Tests (all in `crates/rmcp/src/transport/auth/metadata_resolver.rs`, `mod tests`, unchanged by
+patch 05; they pass on the patched copy, 847 library tests in the translated feature
+configuration plus `macros`, `cargo test --locked -p rmcp --lib --features
+request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth,macros`
+in a copy of `.llbc/work/` after `scripts/apply-patches.sh`, 2026-11-25; all 16
+`metadata_resolver` tests pass):
+
+| Models | Exercised by |
+|---|---|
+| `IpAddr::V4` / `call_once`, `Option::map_or` (`AddressClass::of` on IPv4-mapped addresses) | `classifies_addresses` |
+| `Url::parse`, `Url::host`, `prim::trim_end_dots`, `str::to_ascii_lowercase`, `String == &str`, `prim::ends_with` (`with_base_url`, `literal_ip`, `is_loopback_metadata_host`) | `loopback_resource_allows_loopback_but_not_private`, `loopback_resource_reaches_loopback_authorization_server_by_hostname`, `ip_literal_urls_follow_the_policy` |
+| `<IpAddr as PartialEq>::eq` (through `Option` equality in `allows_url`) | `ip_literal_urls_follow_the_policy`, `public_resource_cannot_post_to_internal_ip_literal`, `public_resource_cannot_be_redirected_to_internal_ip_literal` |
+| `Arc<[T]>::from(Vec)` (`with_base_url`, `with_proxy_hosts`, `allowing_private_addresses`) | every test that builds a resolver (all but `classifies_addresses`); `allowing_private_addresses_keeps_the_rest_of_the_policy` |
+| `prim::contains`, `Url::host_str` (`proxy_host`, with and without a scheme) | `proxy_hosts_are_not_filtered`, `public_resource_cannot_reach_internal_service_by_{literal_address,hostname}` |
+| `SocketAddr::ip` (`allowed_addresses`) | `public_resource_rejects_hosts_resolving_to_internal_addresses`, `mixed_answers_keep_only_allowed_addresses`, `every_resolution_is_filtered`, `base_host_*` (2 tests), `private_resource_allows_private_but_not_link_local_or_loopback` |
+
+Not exercised by a `metadata_resolver` test: `prim::system_lookup` and `prim::proxy_env_values`
+(N03 `new`), which the tests replace by `with_lookup` and `with_proxy_hosts`; they run in the 24
+library-test calls of `AuthorizationManager::new`/`new_allowing_private_addresses`
+(`crates/rmcp/src/transport/auth.rs`), whose results do not depend on the environment read.
+`url::Url::parse`, `host` and `host_str` are opaque, so no test checks a model value; the tests
+above exercise the Rust functions on the paths the targets take.
+
+**Linkage of the address-policy targets** (plan Section 19). N01 `AddressClass::of` and N08
+`MetadataAddressResolver::is_allowed` are ORIGINAL; the others and the helpers `with_base_url`,
+`allowed_addresses`, `proxy_host`, `is_loopback_metadata_host` are `PATCH05_TARGETS`. For the
+linkage run `scripts/check-original-linkage.sh` drops the nine patch-05 start points and the
+opaque entries `…::metadata_resolver::Lookup` and `…::metadata_resolver::prim` from the copy's
+Charon settings. Runs (2026-11-25, Aeneas `nightly-2026.11.24-fb44cb4`, Charon `0.1.324`, Rust
+`nightly-2026-09-17`), in a scratch clone of the repository at `8b21c5e` with the working tree
+of this change and the regenerated translation committed on top (scratch commit
+`6f63761c96c78e717eff1482665f45e1efb688aa`; the scratch commit also bumps the `PINNED_DEPS` entry
+`sha2 0.11.1` to `0.11.2`, because `sha2 0.11.2` was published on 2026-11-25 and a fresh
+resolution picks it; `sha2` is opaque, so no generated file depends on it; evidence for the
+bump in "`sha2 0.11.2`" below):
+
+- `scripts/check-original-linkage.sh <scratch>/scr` on `6f63761`: **exit 0**. Source is upstream
+  `7caec76`; 35 Phase 2 `start_from` entries, `exclude` `['serde']`, 33 opaque entries; 31 `_`
+  globs match their expected items; all 40 ORIGINAL targets defined, no `sorry`; blocks identical
+  up to `Source:`: `Funs.lean` 65/65, `Types.lean` 42/42, `FunsExternal_Template.lean` 37/37,
+  `TypesExternal_Template.lean` 10/10.
+- Run with the final text scan (2026-11-26, same toolchain): a scratch clone of `8b21c5e` with
+  the working tree committed on top (scratch commit `64cb2fc`), then scratch commit `005e743` on
+  it with the text scan's final form and `linkage-scan/` (step 5 was added later, on `2172dd3`,
+  `960d6ce`, `c400112` and `5bb9384`, below). The External templates are git-ignored (untracked), so a clone has none
+  until it is translated: first `scripts/aeneas-translate.sh` on `64cb2fc`: **exit 0**, `git
+  status` clean apart from the `.aeneas` symlink (the committed translation reproduces); then
+  `scripts/check-original-linkage.sh <scratch>/r5link2` on `005e743`: **exit 0**. Source is
+  upstream `7caec76` (src tree `4efe696a…`, digests pinned), working tree clean; 35 Phase 2
+  `start_from` entries, `exclude` `['serde']`, 33 opaque entries, `hide_marker_traits = true`;
+  137 translated items, 35 patterns, 31 `_` globs match their expected items, all 40 ORIGINAL
+  targets defined, no `sorry`; blocks identical up to `Source:`: `Funs.lean` 65/65, `Types.lean`
+  42/42, `FunsExternal_Template.lean` 37/37, `TypesExternal_Template.lean` 10/10; "OK: the
+  Phase 2 translation does not depend on any translation patch" (nothing refused as "cannot be
+  scanned"). This run predates step 5 (below).
+- Elaborated comparison, step 5 of `scripts/check-original-linkage.sh`, which decides `ORIGINAL`
+  since 2026-11-26 (plan Section 19, amendment 2026-11-26 "elaborated comparison"; human
+  decisions 2026-11-26 after the round-5 review a5: "compare elaborated Lean" and "refuse
+  committed-only instances"). The unmodified-source translation (env0) and the committed one
+  (env1) are built as Lean environments the same way (`scripts/linkage/make_env.py`, reusing
+  `formal/.lake/packages` through Lake's `packagesDir`), each with its own generated External
+  templates as externals (`scripts/linkage/repair_template.py` repairs the one known template
+  printing bug, a fn item as `FnOnce` printed `A → R → A → R`, with the same rewrite on both
+  sides; it keeps distinct types distinct, a wrong rewrite stops the build, and it reports
+  "template repair: N of M candidate(s) rewritten"; `make_env.py` fails unless
+  `formal/.lake/packages` has `Aeneas.olean` and `Mathlib.olean` built, so Lake never builds
+  inside the repository). `scripts/linkage/Dump.lean` and `compare_env.py` require every
+  non-auxiliary constant of `Rmcp.Types`/`Rmcp.Funs` of env0 in env1 with the same module, kind,
+  universe parameters, canonical type and canonical body (binder names, hygiene and metadata
+  dropped; auxiliary `_proof_N`/`_sizeOf_N`, matchers `match_N` and theorems replaced by their
+  content, a theorem by its statement), every external of env0 with the same universe parameters
+  and type in env1, and (extended after the round-6 review a6) what `Rmcp.Types`/`Rmcp.Funs`
+  export besides constants to differ only as new declarations make it differ: instance entries
+  (name, priority, scoped/global, class, head of the first argument) of env0 unchanged, a new
+  entry only if default priority, global, in `Rmcp.Types`, and class `SizeOf` named
+  `<T>._sizeOf_inst` or class `Aeneas.Std.Discriminant` named `instDiscriminant…`, with T a
+  committed-only inductive; reducibility entries of env0's non-auxiliary constants unchanged, new
+  ones only for new constants of the same module; the module-entry count of every persistent
+  environment extension unchanged except the extensions measured on the real translations to
+  grow with new declarations (`GROW_OK` in `compare_env.py`: compiler data, declaration ranges,
+  docstrings, namespaces, structure/projection/recursor data, simp/grind/inline/implemented_by/
+  elab_as_elim sets, Aeneas trait/loop tables, and instance and reducibility, whose content is
+  checked), per module since round 7 (e.g. the instance extension only in `Rmcp.Types`);
+  notation, macros, syntax, `export`, unification hints and unknown extensions may not grow; a
+  dump with no export section is refused; and (round 7) every constant that only env1's translation modules declare, auxiliary ones included, must be under `rmcp.` (after Lean's private prefix `_private.Rmcp.{Types,Funs}.0.`) or be a generated root `instDiscriminant…` instance that passed the instance rule. Step 5 first runs `scripts/lean-guard.sh sources` and stops if it fails: it runs Lean on committed code, so its result means something only for code that cannot act at build time; the CI stale-translation check (the committed translation is exactly Aeneas output) is its other gate. Committed-only code of any form changes an
+  unmodified block only by changing what it elaborates to, and importing code only through what
+  the modules export or the names they add, so the type-directed forms (`linkage-scan/limits/l1`,
+  `l2`) and the a5, a6 and a7 forms are covered here. Stated limits: (1) the hand-written `formal/trusted/Rmcp/*.lean`
+  (the trusted base): both environments use the templates, because the trusted models use
+  `Type` where the templates use `Type _`; (2) entries of the growing extensions that committed
+  code attaches to existing constants (`attribute [simp]`, `[inline]`, `[implemented_by]`,
+  `[elab_as_elim]` …), which change proof automation, compilation or elaboration hints, not what
+  any constant is. Lean itself refuses a global reducibility change of a constant from another
+  module (so that case was dropped). Limit (2) is narrowed in practice by `scripts/lean-guard.sh sources`: `implemented_by` is a banned word in every Lean file; `simp`, `inline`, `grind` and `elab_as_elim` are in `ATTR_ALLOWED` and remain within the limit. It also covers the reducibility hints of auxiliary constants, which step 5 ignores (the kernel ignores reducibility). Round-5 findings: a5-1 (code
+  after a head line: indented or same-line `def`, `local notation`, `open`), a5-2 (`_root_`
+  names, instances with unread names), a5-3 (instance resolution) covered by step 5, committed-only
+  instances refused; a5-4 (`s! "…"` with a space) fixed in the pre-check; a5-5 (expected outcome
+  per text case of `linkage-scan/run.sh`) deferred; a5-6 (records overclaim and one list incomplete: the records said the text scan reads "exactly one declaration whose head it reads" and refuses "a declaration other than an instance whose name is not read", which the code did not deliver, see a5-1 and a5-2; and formal/README.md and STATUS.md listed the header commands without `noncomputable section` and `public import`, which the code and the plan accept and the real `Funs.lean` uses) fixed in the records: the claims are now those of a pre-check, step 5 decides, and the lists are complete. Round-6 findings (review a6, one reviewer, 2026-11-26), fixed by
+  the lead under the same human decisions: a6-1 (blocking: the generated-instance allowlist
+  matched names only; a hand-written instance named `EvilP._sizeOf_inst` or
+  `instDiscriminantEvil` passed steps 4 and 5 end to end) fixed by the per-entry instance check;
+  a6-2 (blocking: scoped instances, `attribute [instance]` on imported constants, priority
+  changes, `macro_rules` and other exported non-constant state invisible to step 5) fixed by the
+  export comparison; a6-3 (`repair_template.py` rationale) corrected and its message counts
+  rewrites; a6-4 (Lake could build inside the repository) fixed by the fail-fast check of
+  `make_env.py`; a6-5 (`linkage-elab/run.sh` outcomes) classified by kind, `differs`,
+  `instance`, `exports`, `reducibility` joined by `+`, `END` anchor added; a6-6 (the restored
+  package cache, shared key with `lean-build.yml`, is code the job runs; both environments use
+  it, so it cannot create a difference, but a poisoned cache could make the comparison
+  meaningless) stated as a residual risk in `aeneas-translation.yml`, with the cache-free `check`
+  job of `lean-build.yml` as the clean build. Round-7 findings (review a7, one reviewer, 2026-11-26; human decision 2026-11-26: "enforce in script, then sign off (no further review round)"), fixed by the lead: a7-1 (judgment, blocking: step 5 runs Lean on committed code, so code acting at build time, an `initialize` forging the dump or a `run_cmd` spoofing an instance entry, could beat it; such code was already stopped by `scripts/lean-guard.sh sources` and the CI stale-translation check, but this was not stated) fixed: step 5 first runs `scripts/lean-guard.sh sources` and stops if it fails, and its comment names the two gates it relies on, lean-guard sources (`initialize`, `run_cmd`, `#eval`, `IO`, `macro_rules` and `implemented_by` banned, attributes outside `ATTR_ALLOWED` refused in generated modules beyond the pinned lines) and the CI stale-translation check (the committed translation is exactly Aeneas output); the reviewer's build-time attacks x1 (`initialize`) and x3 (`run_cmd`) are refused by that gate and are not suite cases, because `linkage-elab/run.sh` bypasses lean-guard; a7-2 (a committed-only constant outside `rmcp.`, such as `_root_.Theorems.…`, could capture names in downstream specs) fixed: the dump also lists auxiliary constants, and every constant that only env1's translation modules declare, auxiliary ones included, must be under `rmcp.` (after Lean's private prefix `_private.Rmcp.{Types,Funs}.0.`) or be a generated root `instDiscriminant…` instance that passed the instance rule; a7-3 (`GROW_OK` was one list for both modules) fixed: it is per module, the growth measured for `Rmcp.Types` and for `Rmcp.Funs` (e.g. the instance extension may grow only in `Rmcp.Types`); a7-4 (the script header did not match the step-5 comment) aligned; a7-5 (`linkage-elab/run.sh` classified by loose patterns) fixed: exact `compare_env.py` message prefixes; a7-6 (`make_env.py` checks only that the oleans exist, not that they are current) recorded as a note, not changed; a7-7 (efficiency, about 20 s; the canonical form printed as trees, fine today) recorded. Negative controls:
+  `formal/trusted/evidence/linkage-elab/` (20 cases: e1–e6, e8, e9, a6-x1, a6-x2, a6-x2b,
+  a6-x2c, a6-x3, a6-x4, a6-x5, a6-x7, a7-x4-root-name-capture and a7-root-theorem attacks
+  refused, e0 and e7 controls pass; table in its README). Runs (2026-11-26, same toolchain): scratch commit `2172dd3`, exit 0, text comparison
+  65/65, 42/42, 37/37, 10/10, elaborated 520 constants and 41 externals identical, 40 generated
+  instances of committed-only types. Run before round 6: a scratch clone of `8b21c5e` with the working
+  tree (scratch commits `64cb2fc`, `005e743`, `2172dd3`, then `960d6ce` with the final
+  `scripts/check-original-linkage.sh`, `scripts/linkage/*`, `linkage-elab/` and the CI
+  workflow; `formal/.lake` of the clone linked to the repository's built packages, git-ignored):
+  `scripts/check-original-linkage.sh <scratch>/r7link` on `960d6ce`: **exit 0**, source upstream
+  `7caec76` (src tree `4efe696a…`, digests pinned), working tree clean; text comparison OK
+  (`Funs.lean` 65/65, `Types.lean` 42/42, `FunsExternal_Template.lean` 37/37,
+  `TypesExternal_Template.lean` 10/10); elaborated: 520 constants and 41 externals of the
+  unmodified-source translation compared with the committed translation, all identical; 40
+  generated instances of committed-only types; "OK: the Phase 2 translation does not depend on
+  any translation patch". Then `linkage-elab/run.sh <scratch>/r7link <scratch>/elab3`: 8 cases,
+  8 as expected (e0 pass, e1–e3 differs, e4 differs+instance, e5 instance, e6 differs, e7 pass).
+  Run after round 6: scratch commit `c400112` on `960d6ce` with the round-6 fixes:
+  `scripts/check-original-linkage.sh` **exit 0**; text comparison OK (65/65, 42/42, 37/37,
+  10/10); template repair 1 of 1 candidate rewritten on each side; elaborated: 520 constants and
+  41 externals compared, identical; 40 generated instances; "OK: the Phase 2 translation does not
+  depend on any translation patch". `linkage-elab/run.sh` against it: 18 cases, all as expected;
+  `linkage-scan/run.sh`: 57 cases rejected.
+  **Final run** after round 7: scratch commit `5bb9384` on `c400112` with the round-7 fixes:
+  `scripts/check-original-linkage.sh` **exit 0** (`scripts/lean-guard.sh sources` passed inside
+  it); text comparison OK (65/65, 42/42, 37/37, 10/10); elaborated: 520 constants and 41
+  externals identical; 40 generated instances; "OK: the Phase 2 translation does not depend on
+  any translation patch". `linkage-elab/run.sh` against it: 20 cases, all as expected;
+  `linkage-scan/run.sh`: 57 cases rejected.
+- Text pre-check, step 4 (the shadow scan; plan Section 19, amendment 2026-11-25, patch 05; human decisions 2026-11-25, and
+  2026-11-26 twice: "fix + one extra review round" after reviews a3-1 and b3-1, "fail closed +
+  one fresh reviewer" after reviews a4-1, b4-1 and b4-2; since 2026-11-26 a fail-closed
+  pre-check, not the guarantee). The comparison also fails if an
+  identifier of an unpatched block could resolve, from the block's namespaces or the root, to a
+  name of `EXTRA`: the names declared only in the committed (patched) translation, and for a
+  committed-only structure, inductive or class `T` the generated `T.mk`, `T.mk.injEq`,
+  `T.mk.inj`, `T.rec`, `T.recOn`, `T.casesOn`, `T.noConfusion`, `T.noConfusionType`, `T.below`,
+  `T.brecOn`, `T.ctorIdx`, `T.toCtorIdx`, and per member line the projection `T.f` or the
+  constructor `T.C` with `T.C.injEq`/`T.C.inj`. The scan reads the layout Aeneas emits (line by line; it does not read code after a head line, so these are the rules of a pre-check, reviews a5-1, a5-2, a5-6; step 5 decides) and, on
+  both sides, stops with "cannot be scanned" (exit 1) on: a block that is neither a header block
+  (every code line, comments and docstrings blanked, exactly one header command: `module`,
+  `import M`, `public import M`, `@[expose] public section`, `open` of plain names without
+  `in`, `renaming` or `hiding`, `set_option o v`, `namespace N`, `end [N]`, `section`,
+  `noncomputable section`) nor exactly one declaration whose head it reads, preceded only by
+  docstrings or comments (attributes; only the modifiers `noncomputable`, `private`, `partial`,
+  `unsafe`; the keyword; the full name, `«…»` segments with spaces included, possibly on the next
+  line), so also on two declarations in a block, on `protected`, `scoped`, `nonrec`, `public`,
+  `irreducible_def`, `notation`, …, and on a command before a head or after a comment on its
+  line (`/-- … -/ def …`, `open X in def …`, `open a.b.c` above `def …`); a committed header
+  block that is not a header block of the matching unmodified-source file (`open a.b.c`); a non-instance
+  declaration whose name it does not read; a `def`/`theorem`/`abbrev`/`opaque`/`impl_def`
+  containing `where` or `let rec` (auxiliary declarations); a structure, class or inductive whose
+  head contains `extends` or whose head `where` does not end a line, or whose member line is
+  not `  f g : T` or `  C ::`
+  (structure, class) or `| C : T` or `| C` (inductive; deeper lines continue a member), so on
+  one-line forms and fields with binders; an interpolated string (a `!` directly before a
+  string, `s!"…"`, `m!"…"`); a non-ASCII letter or digit Lean does not read as an identifier
+  character. One lexer pass drops string literals (also raw `r#"…"#`), char literals, `--` and
+  nested `/- … -/` comments; identifiers follow Lean's `isIdFirst`/`isIdRest`/`isLetterLike`/
+  `isSubScriptAlnum` (Greek except `λ`, `Π`, `Σ`, Coptic, polytonic Greek, the Letterlike Symbols
+  block, mathematical alphanumerics; subscripts after the first character; `«…»` segments) and
+  are compared without guillemets. Exempt from the lookup check: the block's own declared name,
+  the binding occurrences of the declaration's signature parameters, and an identifier whose
+  first segment is such a parameter after its binder group has closed (binder groups at bracket
+  depth 0 before the type colon, only when a depth-0 `:=` follows; not in earlier binders, its
+  own type or its default value). Identifiers bound by `fun`, `let`, `match` or patterns are
+  checked like free ones. Not read by the pre-check, and covered by step 5: names resolved
+  through the type of a term (generalized field notation `t.a`, `(e).a`, `e |>.a`, the
+  leading-dot `.a`), generated names beyond those listed (e.g. anonymous instance names), the a5
+  forms. Negative controls: `formal/trusted/evidence/linkage-scan/`
+  (`run.sh <scratch-dir>`; 57 synthetic cases that must be rejected, as shadowing or as "cannot
+  be scanned", and `limits/l1`, `limits/l2`, not read by the pre-check and covered by step 5,
+  reported as accepted without affecting the exit status). Reviews a2-1 and b2-1 (2026-11-25) found 8 false negatives of a
+  first version (cases a1, b1–b7, b7b; b0 a control); reviews a3-1 and b3-1 (2026-11-26) 10 of
+  the second (cases c1–c10); reviews a4-1, b4-1 and b4-2 (2026-11-26) 26 of the third (cases
+  a4-d1–a4-d4, a4-d6–a4-d8, a4-e1–a4-e9, a4-e16, a4-e17, b4-d01, b4-d02, b4-d04–b4-d07, b4-d17,
+  b4-d21; table in the linkage-scan README); the records fix of round 4 (2026-11-26) found 9
+  more in the fourth, fail-closed version (header-like blocks with code, committed-only `open`
+  blocks, a command above a head, `extends`; cases r4-p1–r4-p5, r4-p11–r4-p13, r4-p21, r4-p31,
+  with r4-p4 and r4-p22, already rejected, as regression controls), fixed by lead decision under
+  the human decision "fail closed". The committed translation was affected by none of them. Run
+  2026-11-26 (final scan): 57/57 rejected (29 as shadowing, 28 as "cannot be scanned"), l1 and
+  l2 accepted, exit 0; the parameter exemption is still needed (the parameters
+  of `is_allowed` are `base_classes` and `class`; `base_classes` would otherwise match the
+  committed-only projection `MetadataAddressResolver.base_classes`).
+- Negative test, scratch commit `3d75574a70447240533be13ef30fbf03455b0e12` (on `6f63761`, only
+  `transport.auth.metadata_resolver.AddressClass.of`, the ORIGINAL target N01, added to
+  `PATCH05_TARGETS`): **exit 1** with `[aeneas-translate] error: patch-04/05 target
+  transport.auth.metadata_resolver.AddressClass.of is translated from the unmodified source;
+  update PATCH04_TARGETS/PATCH05_TARGETS and check-original-linkage.sh` and `[linkage] error:
+  translation of the unmodified source failed`.
+
+**`sha2 0.11.2`** (`PINNED_DEPS` bump from `0.11.1`, 2026-11-25). Source comparison of the two
+crates as published on crates.io (`diff -r` of `sha2-0.11.1` and `sha2-0.11.2` in the cargo
+registry): `src/block_api.rs`, which holds the bit-length computation the HMAC exception cites
+(line 66, `let bit_len = 8 * (buffer.get_pos() as u64 + bs * self.block_len);`), is
+byte-identical. The other changes, per the 0.11.2 changelog, are backend selection and
+refactoring: the `cfg` precedence of `sha2_backend` over `sha2_256_backend`/`sha2_512_backend`
+(`src/sha256.rs`, `src/sha512.rs`; `src/lib.rs` fixes the SHA-512 `riscv-zknh` selection), refactored `soft` and `riscv_zknh` backends, a
+faster SHA-512 `x86-avx2` backend, the round constants documented and renamed in
+`src/consts.rs` (values unchanged; e.g. `K32` to `SHA256_RK`) and their uses in the `aarch64`, `loongarch64`, `wasm32` and `x86` backends, and
+the manifest, README and changelog. Tests with `sha2 0.11.2` resolved (`cargo tree --prefix
+depth` of `rmcp` in the translated configuration: `1sha2 v0.11.2`; `sha2 0.10.9` only through
+`oauth2`), `cargo test -p rmcp --lib` with the features of the translated configuration plus
+`macros` on the patched copy (patches 01–05), 2026-11-25: 847 passed, 0 failed, among them the
+six HMAC-SHA256 tests `model::request_state_wire::tests::{rfc4231_hmac_sha256_vectors,
+hmac_sha256_verify_rejects_wrong_length_tags, transcripts_match_incremental_hmac,
+s16_prim_rfc4231_verify_accepts_only_the_exact_tag}` and
+`model::request_state::tests::key_rotation::{rs1_known_answer_is_unchanged,
+rs2_known_answer_matches_wire_specification}` (RFC 4231 cases 1–7 and the codec known answers)
+and the five SHA-256 tests `model::skill::tests::sha256_digest::matches_the_digest_in_the_spec_example`
+and `model::skill::tests::skill_resource_verify::*` (4).

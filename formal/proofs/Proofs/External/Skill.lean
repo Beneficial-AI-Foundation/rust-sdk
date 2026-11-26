@@ -26,8 +26,10 @@ opaque values (`ExtModel.sha256`, `ExtModel.nfkc`, `ExtModel.generalCategory`) a
 postconditions unopened: their laws are hypotheses of the statements that need them (human
 decision 2026-11-25), under the review rule of `formal/docs/STATUS.md`, "Trusted base".
 
-Section "UTF-8 facts" proves the facts that every Rust `&str` gives for free: the parts of the
-UTF-8 bytes of a string split at an ASCII byte are UTF-8 (`exists_eq_utf8_of_mem_splitBytes_utf8`),
+Section "UTF-8 facts" (with the character-level facts of `Proofs.External.String`, such as
+`utf8_ofList` and `le_val_of_mem_utf8_ofList_singleton`) proves the facts that every Rust `&str`
+gives for free: the parts of the UTF-8 bytes of a string split at an ASCII byte are UTF-8
+(`exists_eq_utf8_of_mem_splitBytes_utf8`),
 and so are its bytes with ASCII lowercase letters mapped to uppercase
 (`exists_map_asciiUppercase_utf8_eq_utf8`); the `_of_eq_utf8` variants of the split and
 uppercase specs use them. Section "`serde_json::Map`" proves that the `BTreeMap` model keeps its
@@ -187,63 +189,6 @@ theorem u8FromAscii_le {radix : Nat} {l : List U8} {v : Nat} (h : u8FromAscii ra
     · exact u8DigitLoop_le radix 0 _ v (by omega) h
 
 /-! ### UTF-8 facts -/
-
-/-- A byte `x ||| k` is at least `k`. -/
-theorem toNat_le_toNat_or (x k : UInt8) : k.toNat ≤ (x ||| k).toNat := by
-  rw [UInt8.toNat_or]; exact Nat.right_le_or
-
-/-- Every byte of the UTF-8 encoding of a non-ASCII character is at least 128. -/
-theorem le_toNat_of_mem_utf8EncodeChar {c : Char} (hc : 128 ≤ c.toNat) :
-    ∀ b ∈ String.utf8EncodeChar c, 128 ≤ b.toNat := by
-  have h1 : c.utf8Size ≠ 1 := by
-    intro h
-    have h' := UInt32.le_iff_toNat_le.1 (Char.utf8Size_eq_one_iff.1 h)
-    have : c.toNat = c.val.toNat := rfl
-    have : (127 : UInt32).toNat = 127 := rfl
-    omega
-  have hpos := Char.utf8Size_pos c
-  have hle := Char.utf8Size_le_four c
-  have h2 : ∀ x : UInt8, 128 ≤ (x ||| 0x80).toNat := fun x => toNat_le_toNat_or x 0x80
-  have h3 : ∀ x : UInt8, 128 ≤ (x ||| 0xc0).toNat :=
-    fun x => le_trans (by decide) (toNat_le_toNat_or x 0xc0)
-  have h4 : ∀ x : UInt8, 128 ≤ (x ||| 0xe0).toNat :=
-    fun x => le_trans (by decide) (toNat_le_toNat_or x 0xe0)
-  have h5 : ∀ x : UInt8, 128 ≤ (x ||| 0xf0).toNat :=
-    fun x => le_trans (by decide) (toNat_le_toNat_or x 0xf0)
-  intro b hb
-  rcases (by omega : c.utf8Size = 2 ∨ c.utf8Size = 3 ∨ c.utf8Size = 4) with h | h | h
-  · rw [String.utf8EncodeChar_eq_cons_cons h] at hb
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
-    rcases hb with rfl | rfl <;> simp only [h2, h3]
-  · rw [String.utf8EncodeChar_eq_cons_cons_cons h] at hb
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
-    rcases hb with rfl | rfl | rfl <;> simp only [h2, h4]
-  · rw [String.utf8EncodeChar_eq_cons_cons_cons_cons h] at hb
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
-    rcases hb with rfl | rfl | rfl | rfl <;> simp only [h2, h5]
-
-/-- The UTF-8 bytes of a string of characters: the encodings of the characters, in order. -/
-theorem utf8_ofList (cs : List Char) :
-    utf8 (String.ofList cs) =
-      cs.flatMap (fun c => (String.utf8EncodeChar c).map (fun x => byte x.toNat)) := by
-  rw [utf8_eq, String.toByteArray_ofList, List.utf8Encode, List.toList_data_toByteArray,
-    List.map_flatMap]
-
-/-- The UTF-8 bytes of `c :: cs` are those of `c` followed by those of `cs`. -/
-theorem utf8_ofList_cons (c : Char) (cs : List Char) :
-    utf8 (String.ofList (c :: cs)) = utf8 (String.ofList [c]) ++ utf8 (String.ofList cs) := by
-  rw [utf8_ofList, utf8_ofList, utf8_ofList, List.flatMap_cons, List.flatMap_cons,
-    List.flatMap_nil, List.append_nil]
-
-/-- Every UTF-8 byte of a non-ASCII character is at least 128. -/
-theorem le_val_of_mem_utf8_ofList_singleton {c : Char} (hc : 128 ≤ c.toNat) :
-    ∀ b ∈ utf8 (String.ofList [c]), 128 ≤ b.val := by
-  intro b hb
-  rw [utf8_ofList, List.flatMap_cons, List.flatMap_nil, List.append_nil, List.mem_map] at hb
-  obtain ⟨x, hx, rfl⟩ := hb
-  have := le_toNat_of_mem_utf8EncodeChar hc x hx
-  rw [byte_val, Nat.mod_eq_of_lt x.toNat_lt]
-  exact this
 
 /-- Bytes without `sep` in front of `rest` extend the first part of the split of `rest`. -/
 theorem splitBytes_append_of_forall_ne (sep : U8) : ∀ (bs rest : List U8), (∀ b ∈ bs, b ≠ sep) →

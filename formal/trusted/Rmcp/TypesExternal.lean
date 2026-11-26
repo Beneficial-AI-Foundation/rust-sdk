@@ -27,8 +27,11 @@ section, plan Section 18): `MaybeUninit` is an inductive type of its two union f
 stated change of representation), `ParseIntError` a structure of its error kind, and `Arc` a
 structure holding its value; `serde_json::Value`, whose values the translated code only moves,
 is a definition over the `opaque` carrier `ExtModel.SerdeJsonValue`. Translation patch 04
-(targets K01–K20 of `skill.rs`) added four structures (last section): `array::IntoIter`,
-`str::Bytes`, `HashSet` and `serde_json::Map`. This module declares no axiom.
+(targets K01–K20 of `skill.rs`) added four structures: `array::IntoIter`,
+`str::Bytes`, `HashSet` and `serde_json::Map`. Translation patch 05 (targets N01, N03–N11 of
+`metadata_resolver.rs`) added two structures, `SocketAddrV4` and `SocketAddrV6`, and two
+abstract types over `opaque` carriers, `url::Url` (`ExtModel.UrlCarrier`) and the `rmcp`
+newtype `Lookup` (`ExtModel.LookupCarrier`) (last section). This module declares no axiom.
 
 The `@[rust_type]` names and the source lines in the docstrings are those Aeneas generated.
 Source paths: `/rustc/library/…` is the `rust-src` of the pinned toolchain `nightly-2026-09-17`
@@ -414,3 +417,85 @@ position) keep it, so every map built by them satisfies it (proved in
 structure serde_json.map.Map (K : Type) (V : Type) : Type where
   /-- The key-value pairs, ascending by key. -/
   entries : List (K × V)
+
+/-! ## Types of the `metadata_resolver.rs` address policy (N01, N03–N11, translation patch 05)
+
+The external types that the address-policy targets reach (human decisions 2026-11-25). The two
+socket-address types are structures of the fields of the Rust types; `url::Url` and the
+`rmcp` newtype `Lookup` (created by translation patch 05, opaque in the Charon settings) are
+abstract types over `opaque` carriers, which add no axiom. The enums `url::host::Host` and
+`url::parser::ParseError` are translated from the source of `url 2.5.9` (`Rmcp.Types`). -/
+
+/-- [core::net::socket_addr::SocketAddrV4]
+    Source: '/rustc/library/core/src/net/socket_addr.rs', lines 81:0-81:23
+
+**Model: the two fields of the Rust struct** `pub struct SocketAddrV4 { ip: Ipv4Addr, port: u16
+}` (`socket_addr.rs` lines 79–84). The fields are named `addrIp` and `addrPort` because the
+generated names of the methods `SocketAddrV4::ip` and `SocketAddrV4::port` would be
+`core.net.socket_addr.SocketAddrV4.ip` and `….port` (as for `Ipv4Addr.addrOctets`). -/
+@[rust_type "core::net::socket_addr::SocketAddrV4"]
+structure core.net.socket_addr.SocketAddrV4 : Type where
+  /-- The IPv4 address (`ip`). -/
+  addrIp : core.net.ip_addr.Ipv4Addr
+  /-- The port (`port`). -/
+  addrPort : Std.U16
+
+/-- [core::net::socket_addr::SocketAddrV6]
+    Source: '/rustc/library/core/src/net/socket_addr.rs', lines 147:0-147:23
+
+**Model: the four fields of the Rust struct** `pub struct SocketAddrV6 { ip: Ipv6Addr, port:
+u16, flowinfo: u32, scope_id: u32 }` (`socket_addr.rs` lines 145–152), named with the prefix
+`addr` as for `SocketAddrV4`. -/
+@[rust_type "core::net::socket_addr::SocketAddrV6"]
+structure core.net.socket_addr.SocketAddrV6 : Type where
+  /-- The IPv6 address (`ip`). -/
+  addrIp : core.net.ip_addr.Ipv6Addr
+  /-- The port (`port`). -/
+  addrPort : Std.U16
+  /-- The flow label (`flowinfo`). -/
+  addrFlowinfo : Std.U32
+  /-- The scope identifier (`scope_id`). -/
+  addrScopeId : Std.U32
+
+/-- The carrier of `url.Url`: a parsed URL (`url-2.5.9/src/lib.rs`, `pub struct Url`, lines
+226–249: the serialization and the offsets and kinds of its components). **Opaque** (human
+decision 2026-11-25): the URL parser is not modelled; the translated code reads a `Url` only
+through `Url::host` and `Url::host_str`, whose models (`Rmcp.FunsExternal`) are opaque functions
+of it. -/
+opaque ExtModel.UrlCarrier : Type
+
+/-- [url::Url]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 227:0-227:14
+
+**Model: an abstract type** (plan Section 18, "Opaque values"), the `opaque` carrier
+`ExtModel.UrlCarrier`. Since translation patch 05 only this type of the `url` crate is opaque in
+the Charon settings (`"url::Url"` instead of `"url"`), so that `url::host::Host` and
+`url::parser::ParseError` are translated. A statement can relate the results of `Url::parse`,
+`Url::host` and `Url::host_str` only through hypotheses about the opaque functions
+`ExtModel.urlParse`, `ExtModel.urlHost` and `ExtModel.urlHostStr` (human decision 2026-11-25:
+laws as premises of the specs that need them). The `@[rust_type]` attribute needs a definition,
+not an `opaque` constant, hence the `def` over the carrier. -/
+@[rust_type "url::Url"]
+def url.Url : Type := ExtModel.UrlCarrier
+
+/-- The carrier of `transport.auth.metadata_resolver.Lookup`: an opaque type together with the
+fact that it has an element (`NonemptyType`; `prim::system_lookup` returns one). Opaque, adds no
+axiom. -/
+opaque ExtModel.LookupCarrier : NonemptyType
+
+/-- [rmcp::transport::auth::metadata_resolver::Lookup]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 102:0-102:32
+
+**Model: an abstract type.** The Rust type is the newtype `struct Lookup(Arc<dyn Resolve>)` that
+translation patch 05 adds (hunk H1; Aeneas cannot translate the trait object `dyn Resolve`), the
+DNS resolver that `MetadataAddressResolver` filters; it is opaque in the Charon settings. The
+translated targets only store and move a `Lookup` (the field `lookup` of
+`MetadataAddressResolver`); it is called only by the async `resolve`, which is not translated
+(unverified glue). Nonempty because `prim::system_lookup` returns one
+(`ExtModel.systemLookup`, `Rmcp.FunsExternal`). -/
+def transport.auth.metadata_resolver.Lookup : Type := ExtModel.LookupCarrier.type
+
+/-- A `Lookup` exists (the carrier's property). -/
+instance transport.auth.metadata_resolver.instNonemptyLookup :
+    Nonempty transport.auth.metadata_resolver.Lookup :=
+  ExtModel.LookupCarrier.property

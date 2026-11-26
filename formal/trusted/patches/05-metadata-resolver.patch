@@ -1,0 +1,377 @@
+Translation patch: the OAuth metadata address policy of
+crates/rmcp/src/transport/auth/metadata_resolver.rs, so that its pure functions translate (plan
+Section 2.3, amendment 2026-11-25: targets N01 and N03-N11; Sections 4, 15, 19 and 23, amendments
+2026-11-25; human decisions 2026-11-25: patch 05 with hunks H1-H9 and the module prim, N02
+SystemResolver::resolve not a target)
+
+Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
+01-request-state-wire.patch, 02-phase2-tests.patch, 03-request-state-public.patch and
+04-skill-public.patch (scripts/apply-patches.sh applies formal/trusted/patches/*.patch in
+file-name order, patch -p1 -F 0, only to the copy in .llbc/work/; the real source is never
+patched). Files: crates/rmcp/src/transport/auth/metadata_resolver.rs (blob 03435a2, which
+patches 01-04 do not touch) and crates/rmcp/src/transport/auth.rs (blob f677981 after patch 02,
+which adds only #[cfg(test)] code there). Generated with git diff from the patch-01..04 copy.
+The patch body below is the authoritative content. Toolchain measured: Aeneas
+nightly-2026.11.24-fb44cb4, Charon 0.1.324, Rust nightly-2026-09-17.
+
+Not part of this patch (they stay in the repository): the Charon settings in
+crates/rmcp/Cargo.toml (eleven start_from entries for N01, N03-N11 and the helpers
+with_base_url, allowed_addresses and proxy_host; the opaque entry "url" narrowed to "url::Url";
+rmcp::transport::auth::metadata_resolver::Lookup and ::prim added to opaque), the PINNED_DEPS
+entry url 2.5.9, TARGETS and PATCH05_TARGETS of scripts/aeneas-translate.sh, the patch05 set of
+scripts/check-original-linkage.sh, and the external models of formal/trusted/Rmcp/ (section
+"metadata_resolver.rs address policy"). Without this patch N01 AddressClass::of and N08
+MetadataAddressResolver::is_allowed translate unmodified (ORIGINAL linkage); N03-N07 and
+N09-N11 need it (linkage patch-05).
+
+Stays unverified (not translated, or translated only as an opaque model): N02
+SystemResolver::resolve (async OS DNS, not a target); the async shells of
+`<MetadataAddressResolver as Resolve>::resolve` (normalize_host, the lookup, `warn!`, the error
+message and the Some/None to Ok/Err mapping) and the public with_lookup (one call of
+with_base_url); the bodies of prim::system_lookup (opaque value) and prim::proxy_env_values
+(the environment read; an opaque constant, as the clock of request_state.rs); the derived Clone
+of MetadataAddressResolver and Lookup; URL parsing (url::Url::parse, host, host_str: opaque
+functions of the opaque type url::Url, no axiom).
+
+Change (non-test lines only; no test is added or changed). Every hunk replaces code that the
+translation cannot handle by calls to the new module `prim`, by a newtype, or by loops and
+nested matches, and keeps the computed values:
+ prim  New module `prim` at the end of metadata_resolver.rs (before `mod tests`), visible in
+       crate::transport::auth, opaque in the translation and modelled in Lean, each the original
+       expression: trim_end_dots (`s.trim_end_matches('.')`), ends_with
+       (`s.ends_with(suffix)`), contains (`s.contains(pat)`), system_lookup
+       (`Lookup(Arc::new(SystemResolver))`), proxy_env_values (the original
+       `PROXY_ENV_VARS.iter().filter_map(|var| std::env::var(var).ok())`, collected into a
+       Vec). Used by H3, H4, H8 and H9.
+ H1  Field `lookup: Arc<dyn Resolve>` becomes `lookup: Lookup`, a new private
+     `#[derive(Clone)]` newtype `struct Lookup(Arc<dyn Resolve>)`; resolve calls
+     `this.lookup.0.resolve(name)`.
+ H2  with_lookup keeps its signature and becomes `Self::with_base_url(base_url, Lookup(lookup))`;
+     its body moves to the new private `with_base_url(base_url, lookup: Lookup)`, with the
+     guarded arm `Some(Host::Domain(domain)) if ..` written as a nested `match host` with an
+     `if`, and `Arc::new([])` written as `Vec::new().into()`.
+ H3  new: `Self::with_base_url(base_url, prim::system_lookup())
+     .with_proxy_hosts(prim::proxy_env_values())`.
+ H4  with_proxy_hosts: the hosts are pushed onto `self.unfiltered_hosts.to_vec()` in a `for`
+     loop over `proxies` (instead of `iter().cloned().chain(..).collect()`); the filter_map
+     closure moves verbatim to the new private fn `proxy_host`, with `prim::contains` for
+     `str::contains`, `"http://".to_owned()` + `push_str` for `format!("http://{proxy}")`, and
+     the closure `|host| normalize_host(host)` for the fn item `normalize_host`.
+ H5  allowing_private_addresses: `to_vec()`, `push(AddressClass::Private)`, `into()` instead of
+     `iter().copied().chain([..]).collect()`.
+ H6  resolve (async): the unfiltered-host check and the filter move to the new private
+     `allowed_addresses(&self, host: &String, resolved) -> Option<Vec<SocketAddr>>` (`None` iff
+     the policy allows no address; the filter as a `for` loop pushing the allowed addresses);
+     the async shell keeps `normalize_host`, the lookup, `warn!` and the error message, and
+     maps `Some`/`None` to `Ok`/`Err`.
+ H7  literal_ip and allows_url: parameter `url` renamed `target`.
+ H8  normalize_host: `prim::trim_end_dots(host)` instead of `host.trim_end_matches('.')`.
+ H9  auth.rs AuthorizationManager::is_loopback_metadata_host: `metadata_resolver::prim::
+     trim_end_dots` and `metadata_resolver::prim::ends_with` instead of `trim_end_matches('.')`
+     and `ends_with`.
+
+Why each hunk is needed (measured 2026-11-25 in a scratch copy, cumulatively: each error below
+is the first one Aeneas or Charon reports once the hunks before it are applied, with the Charon
+settings and scripts above; the hunks were not each reverted alone):
+ H1  "[Error] Dynamic trait types are not supported yet" on MetadataAddressResolver
+     (metadata_resolver.rs lines 93-98) and on reqwest dns/resolve.rs line 21 (`Resolving`);
+     Aeneas fails (CFailure, exit 2). Charon itself accepts the field.
+ H2  The signature of with_lookup has `Arc<dyn Resolve>` (the H1 error); the match guard gives
+     "[Error] Internal error" (interp/Interp.ml line 686) on lines 111-120; `Arc::new([])` gives
+     "Invalid inputs for unsized cast: Arc<[String; 0]> -> Arc<[String]>".
+ H3  `Arc::new(SystemResolver)` coerces to `Arc<dyn Resolve>` (the H1 error) and std::env::var
+     is I/O. Not needed for the other targets: without H3, N03 is not a target (kept by human
+     decision 2026-11-25).
+ H4  "[Error] Internal error" on the Iterator trait (core iterator.rs line 42) from
+     `Iterator::chain` (present with only with_proxy_hosts, or only allowing_private_addresses,
+     as start point); "[Error] Unimplemented" on the signature of `str::contains` (the
+     `core::str::pattern::Pattern` trait has a generic associated type); "Unimplemented" on
+     `FnOnce for normalize_host` (a fn item used as a closure). `format!` translates (measured
+     alone) but needs models of alloc::fmt::format over core::fmt::Arguments, String's
+     Display::fmt and core::hint::must_use; it is replaced to keep the external models small.
+ H5  The `Iterator::chain` internal error (as H4).
+ H6  The async block and `Resolving` (the H1 error) cannot be translated; the
+     filter/collect form translates but needs Iterator::filter (no Aeneas model: the external
+     function `filter` and the external type core::iter::adapters::filter::Filter), so it is a
+     loop.
+ H7  Not a translation error: the Lean build fails ("Invalid field `Url`: the environment does
+     not contain `url.Url.Url`"), since Aeneas emits `url.Url.host url` with a local variable
+     named `url` that shadows the namespace. Remove H7 when Aeneas qualifies the name
+     (`_root_.url...`). Kept without an upstream report (lead decision 2026-11-25).
+ H8  "[Error] Unimplemented" on the signature of `str::trim_end_matches` (Pattern).
+ H9  "[Error] Unimplemented" on `str::trim_end_matches` and `str::ends_with` (Pattern).
+No upstream Charon or Aeneas issue has been filed (as of 2026-11-25); the variants are kept
+outside the repository.
+
+Why the behaviour is unchanged: every value computed is the same and in the same order. Lookup
+is a newtype whose derived Clone clones the Arc (as before) and `.0.resolve` is the same call;
+the nested match takes the same arm for each host; an empty `Arc<[String]>` from `Vec::new()`
+equals `Arc::new([])`; `to_vec` + `push`/loop + `Arc::from(Vec)` yields the elements of the old
+`chain(..).collect()` in the same order; `"http://".to_owned()` + `push_str(&proxy)` is the
+string `format!("http://{proxy}")` (String's Display writes the str); the closure calls
+normalize_host as the fn item did; allowed_addresses returns Some(resolved) for an unfiltered
+host (also if empty), else the allowed addresses in order, or None if there is none, and the
+shell maps these to exactly the old Ok/Err values, warning only on Err as before; the
+environment is read in PROXY_ENV_VARS order, after with_base_url (which reads no environment)
+and before the hosts are added, as the old lazy iterator did inside with_proxy_hosts; renaming a
+parameter changes nothing.
+Warnings: cargo clippy --lib on the patched copy (translated feature configuration, 2026-11-25)
+reports two new ones, and the crate does not deny warnings: dead_code on with_lookup (in the
+non-test lib build it is now used only by tests) and clippy::redundant_closure on
+`|host| normalize_host(host)` in proxy_host. The closure is deliberate: with the fn item
+`.map(normalize_host)` of the original (only that line reverted, every other hunk applied,
+measured 2026-11-25) Aeneas reports "[Error] Unimplemented" on the signature of the compiler's
+`FnOnce` impl for the fn item (`for<'_0_1> normalize_host<'_0_1>`, a higher-ranked lifetime),
+cannot translate the body of proxy_host and exits 1.
+Tests: cargo test --lib (features request-state, server, client, client-side-sse,
+transport-streamable-http-server, transport-streamable-http-client, auth, macros) on the patched
+copy: all pass, including the 16 metadata_resolver tests (counts in
+formal/trusted/evidence/README.md).
+diff --git a/crates/rmcp/src/transport/auth.rs b/crates/rmcp/src/transport/auth.rs
+index f677981..51eb57d 100644
+--- a/crates/rmcp/src/transport/auth.rs
++++ b/crates/rmcp/src/transport/auth.rs
+@@ -1401,8 +1401,8 @@ impl AuthorizationManager {
+     fn is_loopback_metadata_host(host: Host<&str>) -> bool {
+         match host {
+             Host::Domain(domain) => {
+-                let domain = domain.trim_end_matches('.').to_ascii_lowercase();
+-                domain == "localhost" || domain.ends_with(".localhost")
++                let domain = metadata_resolver::prim::trim_end_dots(domain).to_ascii_lowercase();
++                domain == "localhost" || metadata_resolver::prim::ends_with(&domain, ".localhost")
+             }
+             Host::Ipv4(addr) => addr.is_loopback(),
+             Host::Ipv6(addr) => addr.is_loopback(),
+diff --git a/crates/rmcp/src/transport/auth/metadata_resolver.rs b/crates/rmcp/src/transport/auth/metadata_resolver.rs
+index 03435a2..74c334c 100644
+--- a/crates/rmcp/src/transport/auth/metadata_resolver.rs
++++ b/crates/rmcp/src/transport/auth/metadata_resolver.rs
+@@ -94,33 +94,42 @@ pub(super) struct MetadataAddressResolver {
+     base_ip: Option<IpAddr>,
+     unfiltered_hosts: Arc<[String]>,
+     base_classes: Arc<[AddressClass]>,
+-    lookup: Arc<dyn Resolve>,
++    lookup: Lookup,
+ }
+ 
++/// The resolver that `MetadataAddressResolver` filters.
++#[derive(Clone)]
++struct Lookup(Arc<dyn Resolve>);
++
+ impl MetadataAddressResolver {
+     pub(super) fn new(base_url: &Url) -> Self {
+-        Self::with_lookup(base_url, Arc::new(SystemResolver)).with_proxy_hosts(
+-            PROXY_ENV_VARS
+-                .iter()
+-                .filter_map(|var| std::env::var(var).ok()),
+-        )
++        Self::with_base_url(base_url, prim::system_lookup())
++            .with_proxy_hosts(prim::proxy_env_values())
+     }
+ 
+     pub(super) fn with_lookup(base_url: &Url, lookup: Arc<dyn Resolve>) -> Self {
++        Self::with_base_url(base_url, Lookup(lookup))
++    }
++
++    fn with_base_url(base_url: &Url, lookup: Lookup) -> Self {
+         let base_ip = literal_ip(base_url);
+         let base_classes = match base_url.host() {
+-            Some(Host::Ipv4(v4)) => vec![AddressClass::of(IpAddr::V4(v4))],
+-            Some(Host::Ipv6(v6)) => vec![AddressClass::of(IpAddr::V6(v6))],
+-            Some(Host::Domain(domain))
+-                if AuthorizationManager::is_loopback_metadata_host(Host::Domain(domain)) =>
+-            {
+-                vec![AddressClass::Loopback]
+-            }
+-            _ => Vec::new(),
++            Some(host) => match host {
++                Host::Ipv4(v4) => vec![AddressClass::of(IpAddr::V4(v4))],
++                Host::Ipv6(v6) => vec![AddressClass::of(IpAddr::V6(v6))],
++                Host::Domain(domain) => {
++                    if AuthorizationManager::is_loopback_metadata_host(Host::Domain(domain)) {
++                        vec![AddressClass::Loopback]
++                    } else {
++                        Vec::new()
++                    }
++                }
++            },
++            None => Vec::new(),
+         };
+         Self {
+             base_ip,
+-            unfiltered_hosts: Arc::new([]),
++            unfiltered_hosts: Vec::new().into(),
+             base_classes: base_classes.into(),
+             lookup,
+         }
+@@ -129,40 +138,30 @@ impl MetadataAddressResolver {
+     /// Exempts the hosts of proxy URLs, since a proxied request resolves only
+     /// the proxy's name and the proxy resolves the target.
+     pub(super) fn with_proxy_hosts(mut self, proxies: impl IntoIterator<Item = String>) -> Self {
+-        let proxy_hosts = proxies.into_iter().filter_map(|proxy| {
+-            let proxy = if proxy.contains("://") {
+-                proxy
+-            } else {
+-                format!("http://{proxy}")
+-            };
+-            Url::parse(&proxy).ok()?.host_str().map(normalize_host)
+-        });
+-        self.unfiltered_hosts = self
+-            .unfiltered_hosts
+-            .iter()
+-            .cloned()
+-            .chain(proxy_hosts)
+-            .collect();
++        let mut unfiltered_hosts = self.unfiltered_hosts.to_vec();
++        for proxy in proxies {
++            if let Some(host) = proxy_host(proxy) {
++                unfiltered_hosts.push(host);
++            }
++        }
++        self.unfiltered_hosts = unfiltered_hosts.into();
+         self
+     }
+ 
+     /// Also allows private addresses, whatever the base URL names.
+     pub(super) fn allowing_private_addresses(mut self) -> Self {
+         if !self.base_classes.contains(&AddressClass::Private) {
+-            self.base_classes = self
+-                .base_classes
+-                .iter()
+-                .copied()
+-                .chain([AddressClass::Private])
+-                .collect();
++            let mut base_classes = self.base_classes.to_vec();
++            base_classes.push(AddressClass::Private);
++            self.base_classes = base_classes.into();
+         }
+         self
+     }
+ 
+     /// Applies the policy to an IP-literal host, which reqwest connects to
+     /// without resolving. The base URL's own literal is always allowed.
+-    pub(super) fn allows_url(&self, url: &Url) -> bool {
+-        match literal_ip(url) {
++    pub(super) fn allows_url(&self, target: &Url) -> bool {
++        match literal_ip(target) {
+             Some(ip) => {
+                 self.base_ip == Some(ip)
+                     || Self::is_allowed(AddressClass::of(ip), &self.base_classes)
+@@ -191,29 +190,62 @@ impl Resolve for MetadataAddressResolver {
+         let this = self.clone();
+         Box::pin(async move {
+             let host = normalize_host(name.as_str());
+-            let resolved: Vec<SocketAddr> = this.lookup.resolve(name).await?.collect();
+-            if this.unfiltered_hosts.contains(&host) {
+-                return Ok(Box::new(resolved.into_iter()) as Addrs);
++            let resolved: Vec<SocketAddr> = this.lookup.0.resolve(name).await?.collect();
++            match this.allowed_addresses(&host, resolved) {
++                Some(allowed) => Ok(Box::new(allowed.into_iter()) as Addrs),
++                None => {
++                    warn!("rejecting every resolved address of `{host}` for OAuth requests");
++                    Err(format!(
++                        "no address of `{host}` is allowed for OAuth requests from this resource"
++                    )
++                    .into())
++                }
+             }
++        })
++    }
++}
+ 
+-            let allowed: Vec<SocketAddr> = resolved
+-                .into_iter()
+-                .filter(|addr| Self::is_allowed(AddressClass::of(addr.ip()), &this.base_classes))
+-                .collect();
+-            if allowed.is_empty() {
+-                warn!("rejecting every resolved address of `{host}` for OAuth requests");
+-                return Err(format!(
+-                    "no address of `{host}` is allowed for OAuth requests from this resource"
+-                )
+-                .into());
++impl MetadataAddressResolver {
++    /// The addresses of `host` that the policy allows, or `None` if it allows none of them.
++    fn allowed_addresses(
++        &self,
++        host: &String,
++        resolved: Vec<SocketAddr>,
++    ) -> Option<Vec<SocketAddr>> {
++        if self.unfiltered_hosts.contains(host) {
++            return Some(resolved);
++        }
++
++        let mut allowed: Vec<SocketAddr> = Vec::new();
++        for addr in resolved {
++            if Self::is_allowed(AddressClass::of(addr.ip()), &self.base_classes) {
++                allowed.push(addr);
+             }
+-            Ok(Box::new(allowed.into_iter()) as Addrs)
+-        })
++        }
++        if allowed.is_empty() {
++            return None;
++        }
++        Some(allowed)
+     }
+ }
+ 
+-fn literal_ip(url: &Url) -> Option<IpAddr> {
+-    match url.host()? {
++/// The normalized host of a proxy URL, read as `http://{proxy}` if it has no scheme.
++fn proxy_host(proxy: String) -> Option<String> {
++    let proxy = if prim::contains(&proxy, "://") {
++        proxy
++    } else {
++        let mut with_scheme = "http://".to_owned();
++        with_scheme.push_str(&proxy);
++        with_scheme
++    };
++    Url::parse(&proxy)
++        .ok()?
++        .host_str()
++        .map(|host| normalize_host(host))
++}
++
++fn literal_ip(target: &Url) -> Option<IpAddr> {
++    match target.host()? {
+         Host::Ipv4(v4) => Some(IpAddr::V4(v4)),
+         Host::Ipv6(v6) => Some(IpAddr::V6(v6)),
+         Host::Domain(_) => None,
+@@ -221,7 +253,36 @@ fn literal_ip(url: &Url) -> Option<IpAddr> {
+ }
+ 
+ fn normalize_host(host: &str) -> String {
+-    host.trim_end_matches('.').to_ascii_lowercase()
++    prim::trim_end_dots(host).to_ascii_lowercase()
++}
++
++/// Wrappers that the verification translation keeps opaque, each the original expression:
++/// `str` pattern APIs, the OS resolver `system_lookup` and the proxy env `proxy_env_values`.
++pub(super) mod prim {
++    pub(in crate::transport::auth) fn trim_end_dots(s: &str) -> &str {
++        s.trim_end_matches('.')
++    }
++
++    pub(in crate::transport::auth) fn ends_with(s: &str, suffix: &str) -> bool {
++        s.ends_with(suffix)
++    }
++
++    pub(in crate::transport::auth) fn contains(s: &str, pat: &str) -> bool {
++        s.contains(pat)
++    }
++
++    /// The operating system resolver.
++    pub(super) fn system_lookup() -> super::Lookup {
++        super::Lookup(std::sync::Arc::new(super::SystemResolver))
++    }
++
++    /// The values of the set proxy variables, in the order of `PROXY_ENV_VARS`.
++    pub(super) fn proxy_env_values() -> Vec<String> {
++        super::PROXY_ENV_VARS
++            .iter()
++            .filter_map(|var| std::env::var(var).ok())
++            .collect()
++    }
+ }
+ 
+ #[cfg(test)]

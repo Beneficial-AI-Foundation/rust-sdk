@@ -127,7 +127,7 @@ patches 01–03, "upstream" is `7caec76`, "patch-01 copy" is the copy with patch
   (patched line 442, upstream 452).
 * **(H)** HMAC: the model of HMAC SHA-256 always succeeds, while the `u64` bit counter of SHA-256
   overflows (a panic under `overflow-checks`) for a transcript of at least `2^61 − 64` bytes or a
-  key of at least `2^61` bytes (`sha2-0.11.1/src/block_api.rs` line 66, recorded at the model of
+  key of at least `2^61` bytes (`sha2-0.11.2/src/block_api.rs` line 66, recorded at the model of
   `prim::hmac_sha256`). In opening it is the tag check (the exception stated for E09 and E11); in
   sealing, the tag of `seal_rs1` or `seal_rs2` (patched lines 577 and 590–593; the exception
   stated for E07, E08 and R10a in `formal/proofs/Proofs/Internal/Model/RequestState.lean`).

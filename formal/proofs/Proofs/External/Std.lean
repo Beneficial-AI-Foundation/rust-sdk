@@ -32,6 +32,13 @@ a `do` block).
 Section "Phase 2: slices and ranges" proves the signed-off laws of plan steps S26/S27 for
 `slice::first`, `<[T; N] as SlicePattern>::as_slice`, `[T] == [U; N]`, `slice::strip_suffix`
 and `RangeInclusive::contains`.
+
+Added 2026-11-25 (human decision: every external reached by the translation has a model and a
+spec theorem `<generated name>_spec`): the `_spec` theorems of `<String as Hash>::hash`,
+`<str as Hash>::hash`, `HashMap::{get, clone}`, the `zeroize` externals, `now_ms` (the one
+exception to the clock rule for the model's own spec), `RangeInclusive::contains` for every
+instance, and section "Public `request_state.rs` API (R09–R15)". Each is general over the type
+parameters; the behaviour of a trait instance or closure is a hypothesis.
 -/
 
 open Aeneas Aeneas.Std Result
@@ -260,6 +267,34 @@ theorem alloc.string.String.Insts.CoreHashHash.hash_eq {H : Type}
   simp only [alloc.string.String.Insts.CoreHashHash.hash, alloc.string.String.as_bytes, h',
     ↓reduceDIte, bind_ok]
 
+/-- **Spec theorem for `<String as Hash>::hash`**, for every hasher instance whose `write`
+appends by a function `w` of the state and the bytes: `w` applied to the UTF-8 bytes and then
+to `[0xff]`, for a string of at most `Usize.max` bytes (every Rust `String`; from `hash_eq`). -/
+theorem alloc.string.String.Insts.CoreHashHash.hash_spec {H : Type}
+    (inst : core.hash.Hasher H) (w : H → List U8 → H)
+    (hw : ∀ s m, inst.write s m ⦃ (r : H) => r = w s m.val ⦄)
+    (self : String) (state : H) (h : self.utf8ByteSize ≤ Usize.max) :
+    alloc.string.String.Insts.CoreHashHash.hash inst self state ⦃ (result : H) =>
+      result = w (w state (utf8 self)) [byte 255] ⦄ := by
+  rw [alloc.string.String.Insts.CoreHashHash.hash_eq inst self state h]
+  obtain ⟨s1, hs1, hs1v⟩ := Proofs.External.WP.exists_ok_of_spec (hw state
+    (Slice.from (utf8 self) (by rw [length_utf8]; exact h)))
+  rw [hs1, bind_ok, hs1v, Slice.from_val]
+  exact WP.spec_mono (hw _ _) (fun r hr => by rw [hr, Slice.from_val])
+
+/-- **Spec theorem for `<str as Hash>::hash`**, for every hasher instance whose `write` appends
+by a function `w` of the state and the bytes: `w` applied to the bytes of the `str` and then to
+`[0xff]`; for every `Str`. -/
+theorem Str.Insts.CoreHashHash.hash_spec {H : Type}
+    (inst : core.hash.Hasher H) (w : H → List U8 → H)
+    (hw : ∀ s m, inst.write s m ⦃ (r : H) => r = w s m.val ⦄)
+    (self : Str) (state : H) :
+    Str.Insts.CoreHashHash.hash inst self state ⦃ (result : H) =>
+      result = w (w state self.val) [byte 255] ⦄ := by
+  obtain ⟨s1, hs1, hs1v⟩ := Proofs.External.WP.exists_ok_of_spec (hw state self)
+  simp only [Str.Insts.CoreHashHash.hash, hs1, bind_ok, hs1v]
+  exact WP.spec_mono (hw _ _) (fun r hr => by rw [hr, Slice.from_val])
+
 /-! ## `Vec`, hashing, `HashMap` -/
 
 /-- **Spec theorem for `Vec::is_empty`**: `true` exactly for the empty vector (the Aeneas library's
@@ -436,7 +471,80 @@ theorem lookupEntry_string_eq {V : Type} (q : String) :
     · simp only [h, decide_false, Bool.false_eq_true, ↓reduceIte]
       exact lookupEntry_string_eq q rest
 
+/-- `ExtModel.HashMap.find` for instances given by functions on the entries: `borrow` returns
+`bor key` and `k == ·` returns `eqk` on it. The lookup is `List.find?` by `eqk ∘ bor`. -/
+theorem find_eq {K V Q : Type} (borrow : Aeneas.Std.core.borrow.Borrow K Q)
+    (eqQ : core.cmp.Eq Q) (k : Q) (bor : K → Q) (eqk : Q → Bool) :
+    ∀ entries : List (K × V),
+      (∀ e ∈ entries, borrow.borrow e.1 ⦃ (r : Q) => r = bor e.1 ⦄) →
+      (∀ e ∈ entries, eqQ.partialEqInst.eq k (bor e.1) ⦃ (r : Bool) => r = eqk (bor e.1) ⦄) →
+      ExtModel.HashMap.find borrow eqQ k entries =
+        ok ((entries.find? (fun e => eqk (bor e.1))).map Prod.snd)
+  | [], _, _ => rfl
+  | (key, v) :: rest, hb, he => by
+    obtain ⟨kb, hkb, rfl⟩ := Proofs.External.WP.exists_ok_of_spec (hb (key, v) List.mem_cons_self)
+    obtain ⟨c, hc, hcv⟩ := Proofs.External.WP.exists_ok_of_spec (he (key, v) List.mem_cons_self)
+    have ih := find_eq borrow eqQ k bor eqk rest (fun e h => hb e (List.mem_cons_of_mem _ h))
+      (fun e h => he e (List.mem_cons_of_mem _ h))
+    rw [ExtModel.HashMap.find, hkb, bind_ok, hc, bind_ok, List.find?_cons]
+    dsimp only at hcv
+    rw [← hcv]
+    cases c
+    · simp only [Bool.false_eq_true, ↓reduceIte, ih]
+    · simp only [↓reduceIte, Option.map_some]
+
+/-- `ExtModel.HashMap.lookupEntry` for an `Eq` instance given by a function on the entries:
+`· == key` returns `eqk`. The slot lookup is `List.find?` by `eqk`. -/
+theorem lookupEntry_eq {K V : Type} (eqK : core.cmp.Eq K) (key : K) (eqk : K → Bool) :
+    ∀ entries : List (K × V),
+      (∀ e ∈ entries, eqK.partialEqInst.eq e.1 key ⦃ (r : Bool) => r = eqk e.1 ⦄) →
+      ExtModel.HashMap.lookupEntry eqK key entries = ok (entries.find? (fun e => eqk e.1))
+  | [], _ => rfl
+  | (k, v) :: rest, he => by
+    obtain ⟨c, hc, hcv⟩ := Proofs.External.WP.exists_ok_of_spec (he (k, v) List.mem_cons_self)
+    have ih := lookupEntry_eq eqK key eqk rest (fun e h => he e (List.mem_cons_of_mem _ h))
+    rw [ExtModel.HashMap.lookupEntry, hc, bind_ok, List.find?_cons]
+    dsimp only at hcv
+    rw [← hcv]
+    cases c
+    · simp only [Bool.false_eq_true, ↓reduceIte, ih]
+    · simp only [↓reduceIte]
+
 end Proofs.External.HashMap
+
+namespace Proofs.External.List
+
+/-- `List.mapM` in `Result` of a function that returns `r x` on every element: `ok` of
+`List.map r`. -/
+theorem mapM_eq_ok {α β : Type} (g : α → Result β) (r : α → β) :
+    ∀ l : List α, (∀ x ∈ l, g x ⦃ (y : β) => y = r x ⦄) → l.mapM g = ok (l.map r)
+  | [], _ => rfl
+  | x :: rest, h => by
+    obtain ⟨y, hy, hyv⟩ := Proofs.External.WP.exists_ok_of_spec (h x List.mem_cons_self)
+    rw [List.mapM_cons, hy, bind_tc_ok,
+      mapM_eq_ok g r rest (fun z hz => h z (List.mem_cons_of_mem _ hz)), bind_tc_ok, hyv,
+      pure_tc_eq, List.map_cons]
+
+end Proofs.External.List
+
+/-- **Spec theorem for `HashMap::get`**, for every key, value, hasher and allocator type and
+every instance: if `borrow` returns `bor key` on the stored keys and `k == bor key` returns
+`eqk (bor key)`, the value of the first entry whose key matches (`ExtModel.HashMap.find`). With
+pairwise distinct keys (the Rust invariant) and an `Eq` that agrees with `Hash`, it is the value
+stored under `k`; `get_string_spec` is the instance of the translation. -/
+theorem std.collections.hash.map.HashMap.get_spec
+    {K V S A Q Clause2_Hasher : Type} (eqK : core.cmp.Eq K) (hashK : core.hash.Hash K)
+    (bh : rmcp.core.hash.BuildHasher S Clause2_Hasher) (borrow : Aeneas.Std.core.borrow.Borrow K Q)
+    (hashQ : core.hash.Hash Q) (eqQ : core.cmp.Eq Q)
+    (self : std.collections.hash.map.HashMap K V S A) (k : Q) (bor : K → Q) (eqk : Q → Bool)
+    (hb : ∀ e ∈ self.entries, borrow.borrow e.1 ⦃ (r : Q) => r = bor e.1 ⦄)
+    (he : ∀ e ∈ self.entries,
+      eqQ.partialEqInst.eq k (bor e.1) ⦃ (r : Bool) => r = eqk (bor e.1) ⦄) :
+    std.collections.hash.map.HashMap.get eqK hashK bh borrow hashQ eqQ self k
+      ⦃ (result : Option V) =>
+        result = (self.entries.find? (fun e => eqk (bor e.1))).map Prod.snd ⦄ := by
+  rw [std.collections.hash.map.HashMap.get_eq,
+    Proofs.External.HashMap.find_eq borrow eqQ k bor eqk self.entries hb he, WP.spec_ok]
 
 /-- `HashMap::clone`: clones the hash builder, the allocator and every key and value. -/
 theorem std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_eq
@@ -452,6 +560,35 @@ theorem std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_eq
           let v ← cV.clone e.2
           ok (k, v))
         ok { hash_builder, alloc, entries }) := rfl
+
+/-- **Spec theorem for `<HashMap<K, V, S, A> as Clone>::clone`**, for every instance whose
+`clone` returns `ck`, `cv`, `cs`, `ca` of the value (on the stored keys and values, the hash
+builder and the allocator): the map of the clones, entries in the same order (from
+`clone_eq`). -/
+theorem std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_spec
+    {K V S A : Type} (cK : core.clone.Clone K) (cV : core.clone.Clone V)
+    (cS : core.clone.Clone S) (cA : core.clone.Clone A)
+    (self : std.collections.hash.map.HashMap K V S A)
+    (ck : K → K) (cv : V → V) (cs : S → S) (ca : A → A)
+    (hK : ∀ e ∈ self.entries, cK.clone e.1 ⦃ (r : K) => r = ck e.1 ⦄)
+    (hV : ∀ e ∈ self.entries, cV.clone e.2 ⦃ (r : V) => r = cv e.2 ⦄)
+    (hS : cS.clone self.hash_builder ⦃ (r : S) => r = cs self.hash_builder ⦄)
+    (hA : cA.clone self.alloc ⦃ (r : A) => r = ca self.alloc ⦄) :
+    std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone cK cV cS cA self
+      ⦃ (result : std.collections.hash.map.HashMap K V S A) =>
+        result = std.collections.hash.map.HashMap.mk (cs self.hash_builder) (ca self.alloc)
+          (self.entries.map (fun e => (ck e.1, cv e.2))) ⦄ := by
+  obtain ⟨s, hs, hsv⟩ := Proofs.External.WP.exists_ok_of_spec hS
+  obtain ⟨a, ha, hav⟩ := Proofs.External.WP.exists_ok_of_spec hA
+  have he := Proofs.External.List.mapM_eq_ok (fun (e : K × V) => do
+      let k ← cK.clone e.1
+      let v ← cV.clone e.2
+      ok (k, v)) (fun e => (ck e.1, cv e.2)) self.entries (fun e he => by
+    obtain ⟨k, hk, hkv⟩ := Proofs.External.WP.exists_ok_of_spec (hK e he)
+    obtain ⟨v, hv, hvv⟩ := Proofs.External.WP.exists_ok_of_spec (hV e he)
+    simp only [hk, hv, bind_ok, WP.spec_ok, hkv, hvv])
+  rw [std.collections.hash.map.HashMap.Insts.CoreCloneClone.clone_eq, hs, bind_ok, ha, bind_ok,
+    he, bind_ok, hsv, hav, WP.spec_ok]
 
 /-! ## `zeroize` -/
 
@@ -476,10 +613,29 @@ theorem zeroize.Zeroizing.Insts.CoreCloneClone.clone_eq {Z : Type} (inst : rmcp.
     zeroize.Zeroizing.Insts.CoreCloneClone.clone inst cZ self =
       (do let v ← cZ.clone self.inner; ok { inner := v }) := rfl
 
+/-- **Spec theorem for `<Zeroizing<Z> as Clone>::clone`**, for every `Clone` instance: the
+wrapped value meets every postcondition that the instance's `clone` of the value meets. -/
+theorem zeroize.Zeroizing.Insts.CoreCloneClone.clone_spec {Z : Type}
+    (inst : rmcp.zeroize.Zeroize Z) (cZ : core.clone.Clone Z) (self : zeroize.Zeroizing Z)
+    (P : Z → Prop) (h : cZ.clone self.inner ⦃ P ⦄) :
+    zeroize.Zeroizing.Insts.CoreCloneClone.clone inst cZ self
+      ⦃ (result : zeroize.Zeroizing Z) => P result.inner ⦄ := by
+  obtain ⟨v, hv, hP⟩ := Proofs.External.WP.exists_ok_of_spec h
+  simp only [zeroize.Zeroizing.Insts.CoreCloneClone.clone, hv, bind_ok, WP.spec_ok]
+  exact hP
+
 /-- `<Z as Zeroize>::zeroize` for `Z: DefaultIsZeroes` is `Z::default()`. -/
 theorem zeroize.Zeroize.Blanket.zeroize_eq {Z : Type} (inst : rmcp.zeroize.DefaultIsZeroes Z)
     (self : Z) :
     zeroize.Zeroize.Blanket.zeroize inst self = inst.coredefaultDefaultInst.default := rfl
+
+/-- **Spec theorem for `<Z as Zeroize>::zeroize` for `Z: DefaultIsZeroes`**, for every instance:
+the result meets every postcondition that `Z::default()` meets. -/
+theorem zeroize.Zeroize.Blanket.zeroize_spec {Z : Type} (inst : rmcp.zeroize.DefaultIsZeroes Z)
+    (self : Z) (P : Z → Prop) (h : inst.coredefaultDefaultInst.default ⦃ P ⦄) :
+    zeroize.Zeroize.Blanket.zeroize inst self ⦃ P ⦄ := by
+  rw [zeroize.Zeroize.Blanket.zeroize_eq]
+  exact h
 
 /-- `<Vec<Z> as Zeroize>::zeroize` zeroizes each element and returns the empty vector. -/
 theorem alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq {Z : Type} (inst : rmcp.zeroize.Zeroize Z)
@@ -487,9 +643,28 @@ theorem alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_eq {Z : Type} (inst : rmcp.ze
     alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize inst self =
       (do let _ ← self.val.mapM inst.zeroize; ok (alloc.vec.Vec.new Z)) := rfl
 
+/-- **Spec theorem for `<Vec<Z> as Zeroize>::zeroize`**, for every instance whose `zeroize`
+succeeds on each element: the empty vector. -/
+theorem alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize_spec {Z : Type} (inst : rmcp.zeroize.Zeroize Z)
+    (self : alloc.vec.Vec Z) (hz : ∀ x ∈ self.val, inst.zeroize x ⦃ (_ : Z) => True ⦄) :
+    alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize inst self ⦃ (result : alloc.vec.Vec Z) =>
+      result = alloc.vec.Vec.new Z ⦄ := by
+  have hm : ∀ l : List Z, (∀ x ∈ l, inst.zeroize x ⦃ (_ : Z) => True ⦄) →
+      ∃ l', l.mapM inst.zeroize = ok l' := by
+    intro l
+    induction l with
+    | nil => intro _; exact ⟨[], rfl⟩
+    | cons x rest ih =>
+      intro h
+      obtain ⟨y, hy, -⟩ := Proofs.External.WP.exists_ok_of_spec (h x List.mem_cons_self)
+      obtain ⟨l', hl'⟩ := ih (fun z hz => h z (List.mem_cons_of_mem _ hz))
+      exact ⟨y :: l', by rw [List.mapM_cons, hy, bind_tc_ok, hl', bind_tc_ok, pure_tc_eq]⟩
+  obtain ⟨l', hl'⟩ := hm self.val hz
+  simp only [alloc.vec.Vec.Insts.ZeroizeZeroize.zeroize, hl', bind_ok, WP.spec_ok]
+
 /-! ## Clock
 
-No statement about the function `RequestStateCodec::now_ms` (nor the functions `open`,
+No statement about the function `RequestStateCodec::now_ms` other than its spec theorem (nor the functions `open`,
 `open_with`, `open_json`, `open_json_with`, `seal`, `seal_with`; Lean
 `rmcp.model.request_state.RequestStateCodec.{now_ms, open, open_with, open_json,
 open_json_with, seal, seal_with}`; a variable named `now_ms` is not covered): the clock is one
@@ -503,7 +678,17 @@ outcome of the opened payload with `Err` mapped to `Deserialization`) and `seal`
 (`sealAt … ExtModel.nowMs.val = some (ExtModel.utf8 result)`), their restatements and the
 corollaries `open_with_spec_of_length_le`, `seal_with_spec_of_length_le` and
 `seal_spec_of_length_le` (human decisions 2026-11-24, extended 2026-11-25; wording in
-`formal/README.md`, "Trusted base"). -/
+`formal/README.md`, "Trusted base"), and the model's own spec theorem
+`model.request_state.RequestStateCodec.now_ms_spec` below (`result = ExtModel.nowMs`, nothing
+else; human decision 2026-11-25). -/
+
+/-- **Spec theorem for `RequestStateCodec::now_ms`**: the one clock reading `ExtModel.nowMs`
+(an opaque constant). The only statement besides the listed exceptions that names `now_ms` or
+`nowMs` (human decision 2026-11-25); it says nothing about the value and relates no two
+readings. -/
+theorem model.request_state.RequestStateCodec.now_ms_spec :
+    model.request_state.RequestStateCodec.now_ms ⦃ (result : I64) => result = nowMs ⦄ := by
+  simp only [model.request_state.RequestStateCodec.now_ms, WP.spec_ok]
 
 /-! ## Phase 2: slices and ranges -/
 
@@ -768,3 +953,254 @@ theorem core.ops.range.RangeInclusive.contains_eq_match_le {Idx : Type} {U : Typ
   refine ⟨fun e h => ?_, fun h => ?_, fun h => ?_, fun h => ?_⟩ <;>
     simp only [core.ops.range.RangeInclusive.contains, h, bind_fail, bind_div, bind_ok,
       Bool.false_eq_true, ↓reduceIte]
+
+/-- **Spec theorem for `RangeInclusive::contains`**, for every index type and every instance:
+if `start <= item` returns `lo` and, when `lo` is `true`, the second comparison (`item < start`
+for an exhausted range, `item <= end` otherwise) returns `hi`, the result is `lo && hi` (the
+second comparison is not made when `lo` is `false`; `contains_eq_match_le` gives the failing
+cases, `contains_u8_spec` the instance of the translation). -/
+theorem core.ops.range.RangeInclusive.contains_spec {Idx : Type} {U : Type}
+    (cmpPartialOrdInst : core.cmp.PartialOrd Idx Idx)
+    (cmpPartialOrdInst1 : core.cmp.PartialOrd Idx U)
+    (cmpPartialOrdInst2 : core.cmp.PartialOrd U Idx)
+    (self : core.ops.range.RangeInclusive Idx) (item : U) (lo hi : Bool)
+    (hlo : cmpPartialOrdInst1.le self.start item ⦃ (r : Bool) => r = lo ⦄)
+    (hhi : lo = true →
+      (if self.exhausted then cmpPartialOrdInst2.lt item self.start
+       else cmpPartialOrdInst2.le item self.«end») ⦃ (r : Bool) => r = hi ⦄) :
+    core.ops.range.RangeInclusive.contains cmpPartialOrdInst cmpPartialOrdInst1
+      cmpPartialOrdInst2 self item ⦃ (result : Bool) => result = (lo && hi) ⦄ := by
+  obtain ⟨b, hb, rfl⟩ := Proofs.External.WP.exists_ok_of_spec hlo
+  cases b with
+  | false =>
+    simp only [core.ops.range.RangeInclusive.contains, hb, bind_ok, Bool.false_eq_true,
+      ↓reduceIte, WP.spec_ok, Bool.false_and]
+  | true =>
+    have h := hhi rfl
+    simp only [core.ops.range.RangeInclusive.contains, hb, bind_ok, ↓reduceIte, Bool.true_and]
+    exact h
+
+/-! ## Public `request_state.rs` API (R09–R15)
+
+Spec theorems for the externals of the section of the same name in
+`formal/trusted/Rmcp/FunsExternal.lean` that had none (added 2026-11-25, human decision: every
+external reached by the translation has a `_spec` theorem). Where the external takes a closure or
+a trait instance whose behaviour is not fixed, the theorem takes that behaviour as a hypothesis
+and is not a `step` lemma. `HashMapKVRandomStateGlobal.new_spec` states only the entries: the
+review rule at `ExtModel.randomState` forbids a statement about the `hash_builder` of a map built
+by `HashMap::new`. `serde_json.de.from_slice_spec` states the opaque outcome
+`ExtModel.serdeJsonFromSlice` and nothing about it. -/
+
+/-- **Spec theorem for `Duration::as_millis`**: the whole milliseconds,
+`secs * 1000 + nanos / 1_000_000`, exactly (it is below `2^128`); never fails. -/
+@[step]
+theorem core.time.Duration.as_millis_spec (self : core.time.Duration) :
+    core.time.Duration.as_millis self ⦃ (result : U128) =>
+      result.val = self.secs.val * 1000 + self.nanos.val / 1000000 ⦄ := by
+  simp only [core.time.Duration.as_millis, WP.spec_ok]
+  have h1 := self.secs.hBounds
+  have h2 := self.nanos_lt
+  show (BitVec.ofNat 128 _).toNat = _
+  rw [BitVec.toNat_ofNat]
+  apply Nat.mod_eq_of_lt
+  simp only [UScalarTy.U64_numBits_eq] at h1
+  omega
+
+/-- **Spec theorem for `HashMap::contains_key`**, for the instances of `get_spec`: whether an
+entry's key matches (`k == key.borrow()`). -/
+theorem std.collections.hash.map.HashMap.contains_key_spec
+    {K V S A Q Clause2_Hasher : Type} (eqK : core.cmp.Eq K) (hashK : core.hash.Hash K)
+    (bh : core.hash.BuildHasher S Clause2_Hasher) (borrow : Aeneas.Std.core.borrow.Borrow K Q)
+    (hashQ : core.hash.Hash Q) (eqQ : core.cmp.Eq Q)
+    (self : std.collections.hash.map.HashMap K V S A) (k : Q) (bor : K → Q) (eqk : Q → Bool)
+    (hb : ∀ e ∈ self.entries, borrow.borrow e.1 ⦃ (r : Q) => r = bor e.1 ⦄)
+    (he : ∀ e ∈ self.entries,
+      eqQ.partialEqInst.eq k (bor e.1) ⦃ (r : Bool) => r = eqk (bor e.1) ⦄) :
+    std.collections.hash.map.HashMap.contains_key eqK hashK bh borrow hashQ eqQ self k
+      ⦃ (result : Bool) => result = self.entries.any (fun e => eqk (bor e.1)) ⦄ := by
+  simp only [std.collections.hash.map.HashMap.contains_key,
+    Proofs.External.HashMap.find_eq borrow eqQ k bor eqk self.entries hb he, bind_ok, WP.spec_ok,
+    Option.isSome_map]
+  exact Bool.eq_iff_iff.2 (by rw [List.find?_isSome, List.any_eq_true])
+
+/-- **Spec theorem for `HashMap::is_empty`**: `true` exactly for no entries; never fails. -/
+@[step]
+theorem std.collections.hash.map.HashMap.is_empty_spec {K V S A : Type}
+    (self : std.collections.hash.map.HashMap K V S A) :
+    std.collections.hash.map.HashMap.is_empty self ⦃ (result : Bool) =>
+      (result = true ↔ self.entries = []) ⦄ := by
+  simp only [std.collections.hash.map.HashMap.is_empty, WP.spec_ok, List.isEmpty_iff]
+
+/-- **Spec theorem for `HashMap::new`**: a map with no entries; never fails. Its `hash_builder`
+(`ExtModel.randomState`) is not stated (review rule at `ExtModel.randomState`). -/
+@[step]
+theorem std.collections.hash.map.HashMapKVRandomStateGlobal.new_spec (K V : Type) :
+    std.collections.hash.map.HashMapKVRandomStateGlobal.new K V
+      ⦃ (result : std.collections.hash.map.HashMap K V std.hash.random.RandomState
+          alloc.alloc.Global) => result.entries = [] ⦄ := by
+  simp only [std.collections.hash.map.HashMapKVRandomStateGlobal.new, WP.spec_ok]
+
+/-- **Spec theorem for `HashMap::entry`**, for every `Eq` instance on the keys whose
+`stored == key` returns `eqk stored` on the stored keys: the first entry whose key matches as
+an `Occupied` entry (the write-back leaves the map unchanged); otherwise a `Vacant` entry for
+`key`, whose write-back appends `(key, v)` once `VacantEntry::insert` has stored `v`. -/
+theorem std.collections.hash.map.HashMap.entry_spec
+    {K V S A Clause2_Hasher : Type} (eqK : core.cmp.Eq K) (hashK : core.hash.Hash K)
+    (bh : core.hash.BuildHasher S Clause2_Hasher)
+    (self : std.collections.hash.map.HashMap K V S A) (key : K) (eqk : K → Bool)
+    (he : ∀ e ∈ self.entries, eqK.partialEqInst.eq e.1 key ⦃ (r : Bool) => r = eqk e.1 ⦄) :
+    std.collections.hash.map.HashMap.entry eqK hashK bh self key
+      ⦃ (result : (std.collections.hash.map.Entry K V A) ×
+          (std.collections.hash.map.Entry K V A → std.collections.hash.map.HashMap K V S A)) =>
+        result = match self.entries.find? (fun e => eqk e.1) with
+          | some (k, v) =>
+            (std.collections.hash.map.Entry.Occupied { key := k, value := v }, fun _ => self)
+          | none =>
+            (std.collections.hash.map.Entry.Vacant { key := key, inserted := none },
+              fun e => match e with
+                | std.collections.hash.map.Entry.Vacant { key := k, inserted := some v } =>
+                  { self with entries := self.entries ++ [(k, v)] }
+                | _ => self) ⦄ := by
+  simp only [std.collections.hash.map.HashMap.entry,
+    Proofs.External.HashMap.lookupEntry_eq eqK key eqk self.entries he, bind_ok]
+  generalize self.entries.find? (fun e => eqk e.1) = o
+  rcases o with _ | ⟨k, v⟩ <;> exact (WP.spec_ok _).2 rfl
+
+/-- **Spec theorem for `VacantEntry::insert`**: returns the value, and the entry's write-back
+stores the final value in `inserted`; never fails. -/
+@[step]
+theorem std.collections.hash.map.VacantEntry.insert_spec {K V A : Type}
+    (self : std.collections.hash.map.VacantEntry K V A) (value : V) :
+    std.collections.hash.map.VacantEntry.insert self value
+      ⦃ (result : V × (V → std.collections.hash.map.VacantEntry K V A)) =>
+        result.1 = value ∧ ∀ v, result.2 v = { self with inserted := some v } ⦄ := by
+  simp only [std.collections.hash.map.VacantEntry.insert, WP.spec_ok, implies_true, and_self]
+
+/-- **Spec theorem for `serde_json::from_slice`**: the opaque outcome
+`ExtModel.serdeJsonFromSlice` of the instance on the bytes; never fails (a panicking or
+non-terminating `Deserialize` impl is not modelled). Nothing about the outcome is stated. -/
+@[step]
+theorem serde_json.de.from_slice_spec {T : Type}
+    (serde_coredeDeserializeInst : serde_core.de.Deserialize T) (v : Slice U8) :
+    serde_json.de.from_slice serde_coredeDeserializeInst v
+      ⦃ (result : core.result.Result T serde_json.error.Error) =>
+        result = serdeJsonFromSlice serde_coredeDeserializeInst v.val ⦄ := by
+  simp only [serde_json.de.from_slice, WP.spec_ok]
+
+/-- **Spec theorem for the default `Error::source`**: `None`, for every error type; never
+fails. -/
+@[step]
+theorem core.error.Error.source.default_spec {Self : Type} (ErrorInst : core.error.Error Self)
+    (self : Self) :
+    core.error.Error.source.default ErrorInst self
+      ⦃ (result : Option (Dyn (fun _dyn => core.error.Error _dyn))) => result = none ⦄ := by
+  simp only [core.error.Error.source.default, WP.spec_ok]
+
+namespace Proofs.External.SliceIter
+
+/-- `ExtModel.sliceIterAny` with a closure that computes `p` without changing its state:
+`List.any`, after `findIdx p + 1` elements if an element satisfies `p`, otherwise after the
+whole list. -/
+theorem sliceIterAny_eq {T F : Type} (inst : core.ops.function.FnMut F T Bool) (p : T → Bool)
+    (f : F) (hp : ∀ x, inst.call_mut f x = ok (p x, f)) :
+    ∀ l : List T, sliceIterAny inst l f =
+      ok (l.any p, if l.any p then l.findIdx p + 1 else l.length)
+  | [] => rfl
+  | x :: rest => by
+    have ih := sliceIterAny_eq inst p f hp rest
+    simp only [sliceIterAny, hp, bind_ok, uncurry_apply_pair, List.any_cons, List.findIdx_cons,
+      List.length_cons]
+    cases hpx : p x
+    · simp only [Bool.false_eq_true, ↓reduceIte, ih, bind_ok, Bool.false_or]
+      split <;> rfl
+    · simp only [↓reduceIte, Bool.true_or]
+
+end Proofs.External.SliceIter
+
+/-- **Spec theorem for `<slice::Iter<'_, T> as Iterator>::any`**, for every closure instance that
+computes `p` without changing its state: whether `p` holds for a remaining element, and the
+iterator moved past the first such element (or to the end). -/
+theorem core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any_spec
+    {T : Type} {F : Type} (opsfunctionFnMutFTupleSharedATBoolInst : core.ops.function.FnMut F T Bool)
+    (p : T → Bool) (self : core.slice.iter.Iter T) (f : F)
+    (hf : ∀ x, opsfunctionFnMutFTupleSharedATBoolInst.call_mut f x = ok (p x, f)) :
+    core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any
+      opsfunctionFnMutFTupleSharedATBoolInst self f
+      ⦃ (result : Bool × core.slice.iter.Iter T) =>
+        result.1 = (self.slice.val.drop self.i).any p ∧
+        result.2 = { self with i := self.i +
+          if (self.slice.val.drop self.i).any p then (self.slice.val.drop self.i).findIdx p + 1
+          else (self.slice.val.drop self.i).length } ⦄ := by
+  simp only [core.slice.iter.Iter.Insts.CoreIterTraitsIteratorIteratorSharedAT.any,
+    Proofs.External.SliceIter.sliceIterAny_eq opsfunctionFnMutFTupleSharedATBoolInst p f hf,
+    bind_ok]
+  exact (WP.spec_ok _).2 ⟨rfl, rfl⟩
+
+/-- **Spec theorem for the default `Iterator::any`**
+
+For an iterator state `self` satisfying a state invariant `inv` whose `next`, on every state
+satisfying `inv`, yields the elements of `rest it` in order, keeps `inv`, and on an empty
+`rest it` yields no element and a state with no remaining element, and a closure that computes
+`p` without changing its state: the result is whether `p` holds for some remaining element, and
+the final iterator state satisfies `inv` and has moved past the first element satisfying `p` (or
+to the end). (`inv` restricts the hypothesis on `next` to the states the loop reaches; take
+`fun _ => True` for an iterator whose `next` behaves so on every state.) -/
+theorem core.iter.traits.iterator.Iterator.any.default_spec {Self : Type} {F : Type}
+    {Item : Type} (IteratorInst : core.iter.traits.iterator.Iterator Self Item)
+    (FnMutInst : core.ops.function.FnMut F Item Bool) (inv : Self → Prop)
+    (rest : Self → List Item) (p : Item → Bool) (self : Self) (f : F) (hself : inv self)
+    (hnext : ∀ it, inv it → IteratorInst.next it ⦃ (r : Option Item × Self) =>
+      inv r.2 ∧ match r.1 with
+      | none => rest it = [] ∧ rest r.2 = []
+      | some x => rest it = x :: rest r.2 ⦄)
+    (hf : ∀ x, FnMutInst.call_mut f x = ok (p x, f)) :
+    core.iter.traits.iterator.Iterator.any.default IteratorInst FnMutInst self f
+      ⦃ (result : Bool × Self) =>
+        result.1 = (rest self).any p ∧ inv result.2 ∧
+        rest result.2 = (rest self).drop
+          (if (rest self).any p then (rest self).findIdx p + 1 else (rest self).length) ⦄ := by
+  unfold core.iter.traits.iterator.Iterator.any.default
+  apply loop.spec_decr_nat (fun st : Self × F => (rest st.1).length)
+    (fun st => st.2 = f ∧ inv st.1 ∧
+      ∃ pre : List Item, pre.any p = false ∧ rest self = pre ++ rest st.1)
+  · rintro ⟨it, g⟩ ⟨hg, hinv, pre, hpre, hsplit⟩
+    dsimp only at hg hinv hsplit
+    subst hg
+    obtain ⟨⟨o, it'⟩, hr, hinv', hpost⟩ := Proofs.External.WP.exists_ok_of_spec (hnext it hinv)
+    dsimp only
+    rw [hr, bind_ok]
+    cases o with
+    | none =>
+      refine (WP.spec_ok _).2 ?_
+      dsimp only at hpost hinv' ⊢
+      obtain ⟨hnil, hnil'⟩ := hpost
+      rw [hnil, List.append_nil] at hsplit
+      subst hsplit
+      refine ⟨hpre.symm, hinv', ?_⟩
+      rw [hnil']
+      simp only [hpre, Bool.false_eq_true, ↓reduceIte, List.drop_length]
+    | some x =>
+      dsimp only at hpost hinv'
+      simp only [hf, bind_ok, uncurry_apply_pair]
+      cases hpx : p x
+      · simp only [Bool.false_eq_true, ↓reduceIte, WP.spec_ok]
+        refine ⟨⟨trivial, hinv', pre ++ [x], ?_, ?_⟩, ?_⟩
+        · rw [List.any_append, hpre, List.any_cons, List.any_nil, hpx]; rfl
+        · rw [hsplit, hpost, List.append_assoc, List.singleton_append]
+        · rw [hpost, List.length_cons]; omega
+      · simp only [↓reduceIte, WP.spec_ok]
+        have hany : (rest self).any p = true := by
+          rw [hsplit, hpost, List.any_append, List.any_cons, hpx, Bool.true_or, Bool.or_true]
+        have hidx : (rest self).findIdx p = pre.length := by
+          rw [hsplit, hpost]
+          clear hsplit hpost hinv
+          induction pre with
+          | nil => rw [List.nil_append, List.findIdx_cons, hpx]; rfl
+          | cons y ys ih =>
+            rw [List.any_cons, Bool.or_eq_false_iff] at hpre
+            rw [List.cons_append, List.findIdx_cons, hpre.1, ih hpre.2, List.length_cons]; rfl
+        refine ⟨hany.symm, hinv', ?_⟩
+        simp only [hany, ↓reduceIte]
+        rw [hidx, hsplit, hpost, List.drop_append, List.drop_eq_nil_of_le (by omega),
+          List.nil_append, Nat.add_sub_cancel_left, List.drop_one, List.tail_cons]
+  · exact ⟨rfl, hself, [], rfl, rfl⟩

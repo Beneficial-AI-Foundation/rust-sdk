@@ -103,6 +103,21 @@ start_from = [
   "rmcp::model::skill::validate_skills",  # K16
   "rmcp::model::skill::_::with_ttl_ms",  # K18
   "rmcp::model::skill::_::with_cache_scope",  # K19
+  # OAuth metadata address policy, metadata_resolver.rs (human decisions 2026-11-25): N01 and N08
+  # translate unmodified (ORIGINAL linkage); the others need translation patch 05
+  # (formal/trusted/patches/05-metadata-resolver.patch). N02 SystemResolver::resolve (async OS DNS)
+  # is not a target; the async shells of resolve and with_lookup are unverified glue.
+  "rmcp::transport::auth::metadata_resolver::_::of",  # N01
+  "rmcp::transport::auth::metadata_resolver::_::new",  # N03 (patch 05)
+  "rmcp::transport::auth::metadata_resolver::_::with_base_url",  # N04 (patch 05)
+  "rmcp::transport::auth::metadata_resolver::_::allowed_addresses",  # N09 (patch 05)
+  "rmcp::transport::auth::metadata_resolver::_::with_proxy_hosts",  # N05
+  "rmcp::transport::auth::metadata_resolver::_::allowing_private_addresses",  # N06
+  "rmcp::transport::auth::metadata_resolver::_::allows_url",  # N07
+  "rmcp::transport::auth::metadata_resolver::_::is_allowed",  # N08
+  "rmcp::transport::auth::metadata_resolver::literal_ip",  # N10
+  "rmcp::transport::auth::metadata_resolver::proxy_host",  # N05 helper (patch 05)
+  "rmcp::transport::auth::metadata_resolver::normalize_host",  # N11
 ]
 hide_marker_traits = true
 exclude = [
@@ -144,7 +159,14 @@ opaque = [
   "http", "tokio", "tokio_util", "tracing", "tracing_core", "futures", "futures_util",
   "futures_core", "bytes", "sse_stream", "hyper", "tower_service", "uuid", "schemars",
   "pin_project_lite", "tokio_stream", "http_body", "http_body_util", "rand", "async_trait",
-  "pastey", "oauth2", "reqwest", "url",
+  "pastey", "oauth2", "reqwest",
+  # url: only the type Url is opaque; Host<S> and ParseError are translated from url's source.
+  "url::Url",
+  # Created by translation patch 05: Lookup wraps the Arc<dyn Resolve> of MetadataAddressResolver
+  # (Aeneas: dynamic trait types); prim wraps the OS resolver, the proxy env reads (opaque constant,
+  # clock rule) and the str Pattern APIs (B2); Lean models: formal/trusted/Rmcp/FunsExternal.lean.
+  "rmcp::transport::auth::metadata_resolver::Lookup",
+  "rmcp::transport::auth::metadata_resolver::prim",
   # Created by translation patch 04: one-line wrappers of the str Pattern APIs (B2), SHA-256
   # (B1), NFKC and percent-encoding; Lean models: formal/trusted/Rmcp/FunsExternal.lean.
   "rmcp::model::skill::prim",

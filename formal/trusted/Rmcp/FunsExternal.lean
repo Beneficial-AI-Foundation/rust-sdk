@@ -39,6 +39,12 @@ Translation patch 04 (human decisions 2026-11-25, targets K01–K20 of `skill.rs
 of the section "Public `skill.rs` API": the twelve `skill::prim` wrappers and 28 functions of
 `core`, `alloc`, `std`, `serde_json` and `unicode-general-category`, with three more `opaque`
 constants (no axiom): `ExtModel.sha256`, `ExtModel.nfkc` and `ExtModel.generalCategory`.
+Translation patch 05 (human decisions 2026-11-25, targets N01, N03–N11 of `metadata_resolver.rs`)
+added the models of the section "`metadata_resolver.rs` address policy": the five
+`metadata_resolver::prim` functions, three functions of `url` and eight of `core` and `alloc`,
+with five more `opaque` constants (no axiom): `ExtModel.urlParse`, `ExtModel.urlHost`,
+`ExtModel.urlHostStr`, `ExtModel.systemLookup` and `ExtModel.proxyEnvValues` (an environment
+reading, under the review rule of `ExtModel.nowMs`).
 The conventions below apply to all models.
 
 Ordering note (S21): the generated external `core.result.Result.ok` shadows Aeneas' `ok` for
@@ -80,10 +86,10 @@ change of behaviour: `RawVec::finish_grow` uses `map_err` instead of a `match`,
 `SlicePartialEq::equal_same_length` a `for` instead of a `while` loop, `i64::from_ascii_radix`
 is now `from_ascii_bytes_radix_impl` (same body, renamed panic helper), and comments);
 `/cargo/registry/…` is the crate at the version in the path. `scripts/aeneas-translate.sh`
-pins every crate cited here (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.1`, `base64 0.23.1`,
+pins every crate cited here (`PINNED_DEPS`): `hmac 0.13.0`, `sha2 0.11.2`, `base64 0.23.1`,
 `digest 0.11.3`, `zeroize 1.9.2`, `chrono 0.4.45`, `serde_json 1.0.154` (plan Section 4) and, since
 translation patch 04, `percent-encoding 2.3.2`, `unicode-normalization 0.1.26` and
-`unicode-general-category 1.1.0`. The
+`unicode-general-category 1.1.0`, and since translation patch 05 `url 2.5.9`. The
 Rust tests that check the models are listed in `formal/trusted/evidence/README.md`.
 -/
 @[expose] public section
@@ -104,6 +110,21 @@ def byte (n : Nat) : Std.U8 := ⟨BitVec.ofNat _ n⟩
 as the Aeneas `toStr` for literals). A Lean `String` is always valid UTF-8, as is a Rust
 `String`. -/
 def utf8 (s : String) : List Std.U8 := s.toByteArray.toList.map (fun x => byte x.toNat)
+
+/-- **UTF-8 premise** (the Rust `&str` invariant as a proposition): the bytes `l` are the UTF-8
+encoding of a string. Every Rust `&str` is valid UTF-8; an Aeneas `Str` need not be (the `Str`
+convention above). Review rule (translation patch 05, human decisions 2026-11-25/2026-11-26:
+rule (ii) 2026-11-26, nested `&str` 2026-11-26; the same statement is in `formal/README.md`,
+`formal/docs/STATUS.md` and `formal/trusted/evidence/README.md`): a statement may assume that a
+`Str` is valid UTF-8 (i) only as the premise `IsUtf8 s.val`, and (ii) only for (a) a `&str`
+argument of the function the statement is about, or a `&str` carried by an argument (such as the
+domain `d` of the argument `host : Host<&str>` of `AuthorizationManager::is_loopback_metadata_host`,
+`host = url.host.Host.Domain d`), and (b) the hosts that the opaque `url` functions return:
+`IsUtf8 d.val` for `urlHost u = some (url.host.Host.Domain d)` and `IsUtf8 h.val` for
+`urlHostStr u = some h`. That a `Str` computed from such values is UTF-8 is proved, not assumed
+(`isUtf8_dropTrailingDots`, `isUtf8_map_asciiLowercase` in `Proofs.External.MetadataResolver`).
+No axiom or model asserts it. -/
+def IsUtf8 (l : List Std.U8) : Prop := ∃ t : String, l = utf8 t
 
 /-- The `String` whose UTF-8 encoding is `l`, or `none` if `l` is not valid UTF-8 (Lean's
 `String.fromUTF8?`, which accepts exactly the encodings of lists of Unicode scalar values: no
@@ -249,8 +270,10 @@ payload with `Err` mapped to `Deserialization`; `seal`/`seal_with`,
 `sealAt … nowMs.val = some (utf8 result)`, with `sealAt` the `Defs.CodecState` model of the
 private `seal_at` (human decision 2026-11-25; it replaces the earlier wording "the result of the
 translated `seal_at` at `nowMs`"). Their docstrings state the one-reading caveat and the
-inherited exceptions. No other statement names `nowMs`, no statement has a premise or conclusion
-about its value or relates two clock readings, and `now_ms` itself stays unmentioned; the
+inherited exceptions. Besides these, only the model's own spec theorem
+`model.request_state.RequestStateCodec.now_ms_spec` (postcondition `result = nowMs`; human
+decision 2026-11-25) names `now_ms` and `nowMs`. No other statement names `nowMs`, and no
+statement has a premise or conclusion about its value or relates two clock readings; the
 internal statements of `seal_at` (R10a) and of its round trip with `open_at` (R10b) use explicit
 times. -/
 opaque nowMs : Std.I64
@@ -269,7 +292,7 @@ hashed or padded to the block size by `get_der_key`, `src/utils.rs` lines 9–32
 so the `expect` never panics; `update` and `finalize` do not fail within the size convention of
 this module (module docstring).
 Exception (not modelled): SHA-256 finalisation computes the length of the hashed input in bits
-as a `u64` (`sha2-0.11.1/src/block_api.rs` line 66, `8 * (buffer.get_pos() as u64 + bs *
+as a `u64` (`sha2-0.11.2/src/block_api.rs` line 66, `8 * (buffer.get_pos() as u64 + bs *
 self.block_len)`), which overflows, and panics under `overflow-checks`, when the hashed input
 reaches `2^61` bytes. This happens for a **message** of at least `2^61 − 64` bytes (the inner
 hash covers the 64-byte key block and the message) and for a **key** of at least `2^61` bytes
@@ -707,6 +730,7 @@ mention the functions `rmcp.model.request_state.RequestStateCodec.now_ms`,
 `open_authenticated_body`, is not covered), except as stated at `ExtModel.nowMs` (the spec
 theorems of `open`/`open_with`, `open_json`/`open_json_with` and `seal`/`seal_with`, their
 restatements and the listed `_of_length_le` corollaries; human decisions 2026-11-24, extended
+2026-11-25), and the model's own spec theorem `now_ms_spec` (`result = nowMs`; human decision
 2026-11-25). -/
 def model.request_state.RequestStateCodec.now_ms : Result Std.I64 :=
   ok ExtModel.nowMs
@@ -1548,7 +1572,7 @@ needs one takes it as a hypothesis (human decision 2026-11-25). Every other mode
 computable by structural recursion, so it can be evaluated on small inputs (examples in
 `Proofs.External.Skill`).
 
-Crates cited (pinned in `scripts/aeneas-translate.sh`, `PINNED_DEPS`): `sha2 0.11.1`,
+Crates cited (pinned in `scripts/aeneas-translate.sh`, `PINNED_DEPS`): `sha2 0.11.2`,
 `percent-encoding 2.3.2`, `unicode-normalization 0.1.26`, `unicode-general-category 1.1.0`,
 `serde_json 1.0.154`; std's `hashbrown 0.17.1` as for `HashMap`. -/
 
@@ -1828,10 +1852,10 @@ end ExtModel
     Visibility: public
 
 **Model:** `ok (sha256 bytes)`, an opaque value (`Sha256::digest(bytes).into()`:
-`sha2-0.11.1`, `Digest::digest`, `digest-0.11.3/src/digest.rs`; the `Array<u8, U32>` converts to
+`sha2-0.11.2`, `Digest::digest`, `digest-0.11.3/src/digest.rs`; the `Array<u8, U32>` converts to
 `[u8; 32]`). Never panics within the size convention (module docstring): SHA-256 finalisation
 overflows its `u64` bit length, and panics under `overflow-checks`, only for an input of at
-least `2^61` bytes (`sha2-0.11.1/src/block_api.rs` line 66), as stated for `hmac_sha256`. -/
+least `2^61` bytes (`sha2-0.11.2/src/block_api.rs` line 66), as stated for `hmac_sha256`. -/
 def model.skill.prim.sha256 (bytes : Slice Std.U8) : Result (Std.Array Std.U8 32#usize) :=
   ok (ExtModel.sha256 bytes.val)
 
@@ -2466,3 +2490,356 @@ def serde_json.map.MapStringValue.insert
       (serde_json.map.Map String serde_json.value.Value)) :=
   let r := ExtModel.mapInsert k v self.entries
   ok (r.1, { entries := r.2 })
+
+/-! ## `metadata_resolver.rs` address policy (N01, N03–N11, translation patch 05)
+
+External functions reached by the targets N01 and N03–N11 of
+`crates/rmcp/src/transport/auth/metadata_resolver.rs` and the helpers of translation patch 05
+(human decisions 2026-11-25). Translation patch 05 adds the module `metadata_resolver::prim`,
+whose five functions (`Source:` lines refer to the patched copy, patch 05 on top of patches
+01–04) are opaque in the translation and modelled here, and makes the remaining code use only
+standard-library functions and three functions of `url 2.5.9`, whose models follow. Every model
+is a definition. The values a model cannot compute are the `opaque` constants
+`ExtModel.urlParse`, `ExtModel.urlHost` and `ExtModel.urlHostStr` (the URL parser, of the
+abstract type `url.Url`), `ExtModel.systemLookup` (the operating-system resolver, of the
+abstract type `Lookup`) and `ExtModel.proxyEnvValues` (the proxy environment variables, an
+opaque constant under the review rule of `ExtModel.nowMs`), which add no axiom. No law is stated
+here: a statement that needs one, such as the agreement of `Url::host` and `Url::host_str`,
+takes it as a hypothesis (human decision 2026-11-25). Every other model is exact and computable,
+so it can be evaluated on small inputs (examples in `Proofs.External.MetadataResolver`).
+
+Crates cited (pinned in `scripts/aeneas-translate.sh`, `PINNED_DEPS`): `url 2.5.9`. -/
+
+namespace ExtModel
+
+/-- **URL parsing** (opaque): `urlParse input` is the value of `url::Url::parse` on the string
+with the UTF-8 bytes `input` (`url-2.5.9/src/lib.rs` lines 340–342: `Url::options().parse(input)`,
+the WHATWG URL parser of `src/parser.rs`, with IDNA processing of domains by `idna`). Opaque
+because the parser is not modelled (human decision 2026-11-25). The value given here only shows
+that the type is inhabited; an `opaque` constant does not unfold to it. Compiled evaluation (the
+compiled code of any definition that reaches it, run by Lean's evaluation command or an
+executable) returns this placeholder, `Err(EmptyHost)` for every input, so evaluating anything
+that reaches `urlParse`, or comparing it differentially with Rust, is meaningless (as for
+`ExtModel.sha256`; no compiled replacement is attached). -/
+opaque urlParse : List Std.U8 → core.result.Result url.Url url.parser.ParseError :=
+  fun _ => core.result.Result.Err url.parser.ParseError.EmptyHost
+
+/-- **Host of a URL** (opaque): `urlHost u` is the value of `url::Url::host` on `u`
+(`url-2.5.9/src/lib.rs` lines 1200–1207: `None` for `HostInternal::None`, otherwise the domain
+as the slice `host_start..host_end` of the serialization, or the parsed IPv4 or IPv6 address).
+Opaque because `url.Url` is abstract. Placeholder for compiled evaluation: `None` (see
+`urlParse`). Review rule (UTF-8 premise (ii)(b), translation patch 05; the full rule at
+`ExtModel.IsUtf8`): a statement may assume, as a
+premise, `ExtModel.IsUtf8 d.val` for the domain `d` of `urlHost u = some (url.host.Host.Domain d)`
+(the Rust `&str` invariant: `Url::host` returns a `Host<&str>`); no axiom states it, and a
+statement that needs it names this premise in this form. -/
+opaque urlHost : url.Url → Option (url.host.Host Str) :=
+  fun _ => none
+
+/-- **Host string of a URL** (opaque): `urlHostStr u` is the value of `url::Url::host_str` on `u`
+(`url-2.5.9/src/lib.rs` lines 1161–1167: the slice `host_start..host_end` of the serialization if
+the URL has a host, otherwise `None`; an IPv6 host keeps its brackets). Opaque because `url.Url`
+is abstract; its relation to `urlHost` is not stated (a statement that needs it takes it as a
+hypothesis). Placeholder for compiled evaluation: `None` (see `urlParse`). Review rule (UTF-8
+premise (ii)(b), as at `urlHost`): a statement may assume, as a premise, `ExtModel.IsUtf8 h.val` for
+`urlHostStr u = some h` (`Url::host_str` returns an `Option<&str>`); no axiom states it. -/
+opaque urlHostStr : url.Url → Option Str :=
+  fun _ => none
+
+/-- **The operating-system resolver** (opaque): the value `Lookup(Arc::new(SystemResolver))`
+that `metadata_resolver::prim::system_lookup` returns (`SystemResolver` resolves a name with
+`tokio::task::spawn_blocking(move || (host.as_str(), 0).to_socket_addrs())`, the blocking
+`std::net::ToSocketAddrs` lookup on a blocking thread; `metadata_resolver.rs` lines 78–89 at
+upstream `7caec76`). Opaque because `Lookup` is abstract (`Rmcp.TypesExternal`): the
+translated code only stores it; the async `resolve` that calls it is not translated. Unlike
+`nowMs` this is one fixed value in Rust as well (a unit struct behind a new `Arc`; the pointer
+identity of the `Arc` is not modelled, as for `alloc.sync.Arc`), so no review rule applies.
+Noncomputable: `Lookup` is only known to be nonempty, so there is no placeholder to compile. -/
+noncomputable opaque systemLookup : transport.auth.metadata_resolver.Lookup
+
+/-- **Proxy environment reading** (opaque): the value of
+`metadata_resolver::prim::proxy_env_values`, the values of the proxy environment variables
+`HTTP_PROXY`, `http_proxy`, `HTTPS_PROXY`, `https_proxy`, `ALL_PROXY`, `all_proxy` that are set
+and Unicode, in this order (`PROXY_ENV_VARS.iter().filter_map(|var| std::env::var(var).ok())`,
+collected). A single constant cannot model that two readings differ (the environment can change
+between them), and it makes `MetadataAddressResolver::new` (N03), the only function that calls
+`proxy_env_values`, pure. Review rule (human decision 2026-11-25: the rule of `nowMs` extended to
+the environment; `formal/README.md`, "Trusted base"): no statement has a premise or conclusion
+about the value of `proxyEnvValues` or relates two readings; a statement may name
+`proxyEnvValues`, `…prim.proxy_env_values` or `…MetadataAddressResolver.new` only to say that
+`new` passes the values read to `with_proxy_hosts`, so that it holds for every value of the
+environment, besides the model's own spec theorem `prim.proxy_env_values_spec`
+(`result = proxyEnvValues`; human decision 2026-11-25). Human decision 2026-11-26: a statement
+may also state a fact about `MetadataAddressResolver::new` that does not depend on the proxy
+environment, such as that the fields of the result not set from the proxy values (`base_ip`,
+`base_classes`, `lookup`) equal those of `with_base_url u` with the lookup `systemLookup`, proved
+from the body for every value of `proxyEnvValues`; nothing is assumed about `proxyEnvValues`
+itself beyond its own spec.
+Human decision 2026-11-26 (spec round 1, finding P1; an extension of this rule): for `new u = ok r`,
+and with no premise on the value of `ExtModel.proxyEnvValues`, a statement may also conclude (1)
+that `r.unfiltered_hosts` (as bytes) equals `ExtModel.proxyEnvValues.val.filterMap (fun p =>
+Defs.MetadataResolver.proxyHost (Defs.utf8Bytes p))` (`Defs.MetadataResolver.proxyHost` is defined
+in `formal/proofs/Proofs/Defs/MetadataResolver.lean`), naming `proxyEnvValues` only as the values
+`new` reads and passes to `with_proxy_hosts`; (2) the invariant that every unfiltered host of
+`new`'s result is a normalized host; (3) production security theorems about resolvers built by `new`
+(e.g. a filtered host's returned addresses are Public for a non-localhost domain base). Still no
+premise on, and no other statement about, the value of `proxyEnvValues`.
+Human decision 2026-11-26 (spec round 3, R1): for `new u = ok r`, statements of the form `host ∈
+r.unfiltered_hosts ↔ Defs.utf8Bytes host ∈ ExtModel.proxyEnvValues.val.filterMap
+(Defs.MetadataResolver.proxyHost ∘ Defs.utf8Bytes)` and premises `host ∉ r.unfiltered_hosts` in
+production theorems count as restatements of items (1) and (3).
+Human decision 2026-11-26 (spec sign-off, T1): premises of the form `Defs.utf8Bytes host ∈
+ExtModel.proxyEnvValues.val.filterMap (Defs.MetadataResolver.proxyHost ∘ Defs.utf8Bytes)` (the host
+is a configured proxy host; used by
+`MetadataAddressResolver.allowed_addresses_eq_ok_some_of_new_eq_ok_of_mem_proxyHosts`) also count as
+restatements of P1.
+The value given here (no variable set) only shows that the type is
+inhabited; an
+`opaque` constant does not unfold to it, and compiled evaluation returns it, not the
+environment. -/
+opaque proxyEnvValues : alloc.vec.Vec String :=
+  alloc.vec.Vec.new String
+
+/-- The bytes of `l` without its trailing `.` bytes (46): `str::trim_end_matches('.')` on the
+bytes (`'.'` is ASCII, and in UTF-8 the byte 46 occurs only as `'.'`). -/
+def dropTrailingDots (l : List Std.U8) : List Std.U8 :=
+  (l.reverse.dropWhile (fun b => decide (b.val = 46))).reverse
+
+/-- A slice without its trailing dots fits in a slice. -/
+theorem length_dropTrailingDots_le_max (s : Slice Std.U8) :
+    (dropTrailingDots s.val).length ≤ Usize.max := by
+  have hs := s.property
+  have hd := (List.dropWhile_sublist (l := s.val.reverse) (fun b => decide (b.val = 46))).length_le
+  rw [dropTrailingDots, List.length_reverse]
+  rw [List.length_reverse] at hd
+  omega
+
+/-- `u8::to_ascii_lowercase`: `A`–`Z` (65–90) to `a`–`z`, every other byte unchanged
+(`core/src/num/mod.rs` lines 710–713, `u8::to_ascii_lowercase`: `*self | (self.is_ascii_uppercase()
+as u8 * ASCII_CASE_MASK)`, with `ASCII_CASE_MASK = 0b0010_0000`, line 584; for `A`–`Z` bit 5 is
+clear, so the `|` adds 32). -/
+def asciiLowercase (b : Std.U8) : Std.U8 :=
+  if 65 ≤ b.val ∧ b.val ≤ 90 then byte (b.val + 32) else b
+
+end ExtModel
+
+/-- [core::net::ip_addr::{impl core::cmp::PartialEq<core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr}::eq]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 29:26-29:35
+    Name pattern: [core::net::ip_addr::{core::cmp::PartialEq<core::net::ip_addr::IpAddr, core::net::ip_addr::IpAddr>}::eq]
+    Visibility: public
+
+**Model:** the derived equality of `enum IpAddr { V4(Ipv4Addr), V6(Ipv6Addr) }` (`ip_addr.rs`
+lines 29–37: `#[derive(PartialEq)]`): equal variants with equal addresses. `Ipv4Addr` equality is
+the derived equality of its octets (lines 71–76), `Ipv6Addr` equality that of its sixteen
+octets (lines 165–170), which holds exactly when the eight segments of the model are equal (the
+segments are a bijective image of the octets, `Rmcp.TypesExternal`). -/
+@[rust_fun
+  "core::net::ip_addr::{core::cmp::PartialEq<core::net::ip_addr::IpAddr, core::net::ip_addr::IpAddr>}::eq"]
+def core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr.eq (self : core.net.ip_addr.IpAddr)
+    (other : core.net.ip_addr.IpAddr) : Result Bool :=
+  match self, other with
+  | core.net.ip_addr.IpAddr.V4 a, core.net.ip_addr.IpAddr.V4 b =>
+    ok (decide (a.addrOctets.val = b.addrOctets.val))
+  | core.net.ip_addr.IpAddr.V6 a, core.net.ip_addr.IpAddr.V6 b =>
+    ok (decide (a.addrSegments.val = b.addrSegments.val))
+  | core.net.ip_addr.IpAddr.V4 _, core.net.ip_addr.IpAddr.V6 _ => ok false
+  | core.net.ip_addr.IpAddr.V6 _, core.net.ip_addr.IpAddr.V4 _ => ok false
+
+/-- [core::net::ip_addr::IpAddr::V4]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 33:4-33:6
+    Name pattern: [core::net::ip_addr::IpAddr::V4]
+
+**Model:** the variant constructor `IpAddr::V4` used as a function (line 33), which builds the
+value and never fails. -/
+@[rust_fun "core::net::ip_addr::IpAddr::V4"]
+def core.net.ip_addr.IpAddr.V4.constructor (a : core.net.ip_addr.Ipv4Addr) :
+    Result core.net.ip_addr.IpAddr :=
+  ok (core.net.ip_addr.IpAddr.V4 a)
+
+/-- [core::net::ip_addr::IpAddr::{impl core::ops::function::FnOnce<(core::net::ip_addr::Ipv4Addr,), core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr::V4}::call_once]:
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 33:4-33:6
+    Name pattern: [core::net::ip_addr::IpAddr::{core::ops::function::FnOnce<@, (core::net::ip_addr::Ipv4Addr), core::net::ip_addr::IpAddr>}::call_once]
+
+**Model:** calls the function item on the argument (the compiler-provided `FnOnce` impl of a
+function item; here the item is the constructor `IpAddr::V4`, passed by `Option::map_or` in
+`AddressClass::of`). Signature: the template that Aeneas generates prints the first parameter
+without parentheses, `Ipv4Addr → Result IpAddr → Ipv4Addr → Result IpAddr`, which does not
+match the use in `Rmcp.Funs` (`FnOnce (Ipv4Addr → Result IpAddr) Ipv4Addr IpAddr`, whose
+`call_once` takes the function first); the definition has the type of that use. -/
+@[rust_fun
+  "core::net::ip_addr::IpAddr::{core::ops::function::FnOnce<@, (core::net::ip_addr::Ipv4Addr), core::net::ip_addr::IpAddr>}::call_once"]
+def P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr.call_once
+    (f : core.net.ip_addr.Ipv4Addr → Result core.net.ip_addr.IpAddr)
+    (a : core.net.ip_addr.Ipv4Addr) : Result core.net.ip_addr.IpAddr :=
+  f a
+
+/-- [core::net::socket_addr::{core::net::socket_addr::SocketAddr}::ip]:
+    Source: '/rustc/library/core/src/net/socket_addr.rs', lines 193:4-193:36
+    Name pattern: [core::net::socket_addr::{core::net::socket_addr::SocketAddr}::ip]
+    Visibility: public
+
+**Model:** the IP address of either variant (lines 193–198: `SocketAddr::V4(ref a) =>
+IpAddr::V4(*a.ip())`, `SocketAddr::V6(ref a) => IpAddr::V6(*a.ip())`; `ip()` returns the field
+`ip`, lines 394–396 and 492–494). -/
+@[rust_fun "core::net::socket_addr::{core::net::socket_addr::SocketAddr}::ip"]
+def core.net.socket_addr.SocketAddr.ip (self : core.net.socket_addr.SocketAddr) :
+    Result core.net.ip_addr.IpAddr :=
+  match self with
+  | core.net.socket_addr.SocketAddr.V4 a => ok (core.net.ip_addr.IpAddr.V4 a.addrIp)
+  | core.net.socket_addr.SocketAddr.V6 a => ok (core.net.ip_addr.IpAddr.V6 a.addrIp)
+
+/-- [core::option::{core::option::Option<T>}::map_or]:
+    Source: '/rustc/library/core/src/option.rs', lines 1224:4-1227:28
+    Name pattern: [core::option::{core::option::Option<@T>}::map_or]
+    Visibility: public
+
+**Model:** `Some(t) ↦ f(t)` through the `FnOnce` instance (its failure propagates), `None ↦
+default` (lines 1224–1233). -/
+@[rust_fun "core::option::{core::option::Option<@T>}::map_or"]
+def core.option.Option.map_or {T : Type} {U : Type} {F : Type}
+    (opsfunctionFnOnceFTupleTUInst : core.ops.function.FnOnce F T U) (self : Option T)
+    (default : U) (f : F) : Result U :=
+  match self with
+  | some t => opsfunctionFnOnceFTupleTUInst.call_once f t
+  | none => ok default
+
+/-- [alloc::str::{str}::to_ascii_lowercase]:
+    Source: '/rustc/library/alloc/src/str.rs', lines 889:4-889:46
+    Name pattern: [alloc::str::{str}::to_ascii_lowercase]
+    Visibility: public
+
+**Model:** the `String` of the bytes with `A`–`Z` mapped to `a`–`z` (`ExtModel.asciiLowercase`;
+lines 889–894: `self.as_bytes().to_ascii_lowercase()`, `alloc/src/slice.rs` lines 678–680, then
+`String::from_utf8_unchecked`). `fail undef` if the bytes are not UTF-8, which no Rust `&str` is
+(the `Str` convention; the mapping keeps UTF-8 validity in both directions). The copy has the
+length of an existing slice, so it never hits the capacity-overflow panic (as
+`to_ascii_uppercase`). -/
+@[rust_fun "alloc::str::{str}::to_ascii_lowercase"]
+def alloc.str.Str.to_ascii_lowercase (self : Str) : Result String :=
+  match ExtModel.strOfBytes? (self.val.map ExtModel.asciiLowercase) with
+  | some s => ok s
+  | none => fail undef
+
+/-- [alloc::string::{impl core::cmp::PartialEq<&'_0 str> for alloc::string::String}::eq]:
+    Source: '/rustc/library/alloc/src/string.rs', lines 2740:12-2740:46 (expanded at lines
+    2764:0-2764:25)
+    Name pattern: [alloc::string::{core::cmp::PartialEq<alloc::string::String, &'0 str>}::eq]
+    Visibility: public
+
+**Model:** byte equality of the string's UTF-8 bytes and `other`
+(`PartialEq::eq(&self[..], &other[..])`, lines 2740–2742, generated by `impl_eq! { String, &str
+}`, line 2764: `str` equality of the two byte sequences), for every `Str`; as the model of
+`String == str` (`alloc.string.String.Insts.CoreCmpPartialEqStr.eq`). -/
+@[rust_fun
+  "alloc::string::{core::cmp::PartialEq<alloc::string::String, &'0 str>}::eq"]
+def alloc.string.String.Insts.CoreCmpPartialEqShared0Str.eq (self : String) (other : Str) :
+    Result Bool :=
+  ok (decide (ExtModel.utf8 self = other.val))
+
+/-- [alloc::sync::{impl core::convert::From<alloc::vec::Vec<T>> for alloc::sync::Arc<[T]>}::from]:
+    Source: '/rustc/library/alloc/src/sync.rs', lines 4212:4-4212:40
+    Name pattern: [alloc::sync::{core::convert::From<alloc::sync::Arc<[@T]>, alloc::vec::Vec<@T>>}::from]
+    Visibility: public
+
+**Model:** an `Arc` holding the vector's elements as a slice (lines 4212–4226: allocate an
+`ArcInner<[T]>` for `len` elements, move the elements, free the vector's buffer). The allocator
+instance is not used (only `Global` occurs). Never panics within the size convention (module
+docstring): `Layout::array::<T>(len)` (line 2471) succeeds for the length of an existing `Vec`,
+and adding the two reference counts to the layout (`arcinner_layout_for_value_layout`, lines
+416–426, "capacity overflow") overflows only for a buffer within 16 bytes of `isize::MAX`, which
+is at least `2^61` bytes. Allocation failure is not modelled (memory convention). -/
+@[rust_fun
+  "alloc::sync::{core::convert::From<alloc::sync::Arc<[@T]>, alloc::vec::Vec<@T>>}::from"]
+def alloc.sync.ArcSlice.Insts.CoreConvertFromVec.from {T : Type} {A : Type}
+    (_coreallocAllocatorCloneInst : core.alloc.AllocatorClone A) (v : alloc.vec.Vec T) :
+    Result (alloc.sync.Arc (Slice T)) :=
+  ok { data := alloc.vec.Vec.deref v }
+
+/-- [url::{url::Url}::parse]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 340:4-340:64
+    Name pattern: [url::{url::Url}::parse]
+    Visibility: public
+
+**Model:** `ok (urlParse input)`, an opaque value (`Self::options().parse(input)`, lines
+340–342; human decision 2026-11-25: `url::Url` is opaque and the parser is not modelled, no
+axiom). Stated assumption (part of the trusted base, not established): `Url::parse` returns
+(`Ok` or `Err`) and does not panic; the crate documents no panic. -/
+@[rust_fun "url::{url::Url}::parse"]
+def url.Url.parse (input : Str) :
+    Result (core.result.Result url.Url url.parser.ParseError) :=
+  ok (ExtModel.urlParse input.val)
+
+/-- [url::{url::Url}::host_str]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 1161:4-1161:42
+
+**Model:** `ok (urlHostStr self)`, an opaque value (lines 1161–1167: a slice of the
+serialization or `None`; the slice is in bounds for every `Url` the parser builds, so the
+function does not panic). -/
+@[rust_fun "url::{url::Url}::host_str"]
+def url.Url.host_str (self : url.Url) : Result (Option Str) :=
+  ok (ExtModel.urlHostStr self)
+
+/-- [url::{url::Url}::host]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 1200:4-1200:44
+
+**Model:** `ok (urlHost self)`, an opaque value (lines 1200–1207: `None`, the domain slice of the
+serialization, or the parsed IPv4 or IPv6 address; no panic, as for `host_str`). -/
+@[rust_fun "url::{url::Url}::host"]
+def url.Url.host (self : url.Url) : Result (Option (url.host.Host Str)) :=
+  ok (ExtModel.urlHost self)
+
+/-- [rmcp::transport::auth::metadata_resolver::prim::proxy_env_values]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 280:4-285:5
+
+**Model:** `ok proxyEnvValues`, an opaque constant (`PROXY_ENV_VARS.iter().filter_map(|var|
+std::env::var(var).ok()).collect()`: `std::env::var` returns `Err` for an unset or non-Unicode
+variable and does not panic for these six fixed names, `std/src/env.rs` lines 228–236; collecting
+at most six `String`s cannot overflow). Review rule at `ExtModel.proxyEnvValues` (human decisions
+2026-11-25 and 2026-11-26: facts about `MetadataAddressResolver::new` that do not depend on the
+proxy environment may be stated, proved from its body; 2026-11-26, spec round 1, finding P1: also
+`new`'s unfiltered hosts as `filterMap` of `proxyHost` over the values read, their
+normalization, and security theorems about resolvers built by `new`, with no premise on the
+value of `proxyEnvValues`). -/
+def transport.auth.metadata_resolver.prim.proxy_env_values : Result (alloc.vec.Vec String) :=
+  ok ExtModel.proxyEnvValues
+
+/-- [rmcp::transport::auth::metadata_resolver::prim::system_lookup]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 275:4-277:5
+
+**Model:** `ok systemLookup`, an opaque value (`super::Lookup(std::sync::Arc::new(
+super::SystemResolver))`; allocation failure is not modelled). -/
+noncomputable def transport.auth.metadata_resolver.prim.system_lookup :
+    Result transport.auth.metadata_resolver.Lookup :=
+  ok ExtModel.systemLookup
+
+/-- [rmcp::transport::auth::metadata_resolver::prim::contains]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 270:4-272:5
+
+**Model:** whether the bytes of `pat` occur contiguously in the bytes of `s` (`s.contains(pat)`
+with a `&str` pattern: `core/src/str/mod.rs` lines 1382–1384, `pat.is_contained_in(self)`, and
+`core/src/str/pattern.rs` lines 987–1015, `impl Pattern for &str`: `true` for an empty pattern,
+otherwise a byte search, `memchr`, `simd_contains` or `StrSearcher`, or byte equality if the
+pattern is not shorter than the haystack). Defined on every `Str`. -/
+def transport.auth.metadata_resolver.prim.contains (s : Str) (pat : Str) : Result Bool :=
+  ok (decide (pat.val <:+: s.val))
+
+/-- [rmcp::transport::auth::metadata_resolver::prim::trim_end_dots]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 262:4-264:5
+
+**Model:** the bytes of `s` without its trailing `.` bytes (`ExtModel.dropTrailingDots`;
+`s.trim_end_matches('.')`: `core/src/str/mod.rs` lines 2643–2654, the prefix up to the end of
+the last char that the `CharSearcher` for `'.'` rejects from the back, `core/src/str/pattern.rs`
+lines 330–338; `'.'` is the single byte 46, which in UTF-8 occurs only as that char). Defined on
+every `Str`. -/
+def transport.auth.metadata_resolver.prim.trim_end_dots (s : Str) : Result Str :=
+  ok (Slice.from (ExtModel.dropTrailingDots s.val) (ExtModel.length_dropTrailingDots_le_max s))
+
+/-- [rmcp::transport::auth::metadata_resolver::prim::ends_with]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 266:4-268:5
+
+**Model:** whether the bytes of `suffix` are a suffix of the bytes of `s` (`s.ends_with(suffix)`
+with a `&str` pattern: `core/src/str/mod.rs` lines 1445–1450, `pat.is_suffix_of(self)`, and
+`core/src/str/pattern.rs` lines 1030–1035: `haystack.as_bytes().ends_with(self.as_bytes())`).
+Defined on every `Str`. -/
+def transport.auth.metadata_resolver.prim.ends_with (s : Str) (suffix : Str) : Result Bool :=
+  ok (decide (suffix.val <:+ s.val))

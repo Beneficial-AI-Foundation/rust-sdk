@@ -42,6 +42,27 @@ def Str.Insts.CoreHashHash : core.hash.Hash Str := {
     Str.Insts.CoreHashHash.hash HasherInst
 }
 
+/-- Trait implementation: [core::net::ip_addr::{impl core::cmp::PartialEq<core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr}]
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 29:26-29:35
+    Name pattern: [core::cmp::PartialEq<core::net::ip_addr::IpAddr, core::net::ip_addr::IpAddr>] -/
+@[reducible, rust_trait_impl
+  "core::cmp::PartialEq<core::net::ip_addr::IpAddr, core::net::ip_addr::IpAddr>"]
+def core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr : core.cmp.PartialEq
+  core.net.ip_addr.IpAddr core.net.ip_addr.IpAddr := {
+  eq := core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr.eq
+}
+
+/-- Trait implementation: [core::net::ip_addr::IpAddr::{impl core::ops::function::FnOnce<(core::net::ip_addr::Ipv4Addr,), core::net::ip_addr::IpAddr> for core::net::ip_addr::IpAddr::V4}]
+    Source: '/rustc/library/core/src/net/ip_addr.rs', lines 33:4-33:6
+    Name pattern: [core::ops::function::FnOnce<@, (core::net::ip_addr::Ipv4Addr), core::net::ip_addr::IpAddr>] -/
+@[reducible, rust_trait_impl
+  "core::ops::function::FnOnce<@, (core::net::ip_addr::Ipv4Addr), core::net::ip_addr::IpAddr>"]
+def P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr : core.ops.function.FnOnce
+  (core.net.ip_addr.Ipv4Addr → Result core.net.ip_addr.IpAddr)
+  core.net.ip_addr.Ipv4Addr core.net.ip_addr.IpAddr := {
+  call_once := P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr.call_once
+}
+
 /-- Trait implementation: [core::num::error::{impl core::fmt::Debug for core::num::error::ParseIntError}]
     Source: '/rustc/library/core/src/num/error.rs', lines 67:9-67:14
     Name pattern: [core::fmt::Debug<core::num::error::ParseIntError>] -/
@@ -133,6 +154,16 @@ def std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher :
     std.hash.random.RandomState.Insts.CoreHashBuildHasherDefaultHasher.build_hasher
 }
 
+/-- Trait implementation: [alloc::alloc::{impl core::alloc::AllocatorClone for alloc::alloc::Global}]
+    Source: '/rustc/library/alloc/src/alloc.rs', lines 62:0-62:50
+    Name pattern: [core::alloc::AllocatorClone<alloc::alloc::Global>] -/
+@[reducible, rust_trait_impl
+  "core::alloc::AllocatorClone<alloc::alloc::Global>"]
+def alloc.alloc.Global.Insts.CoreAllocAllocatorClone :
+  core.alloc.AllocatorClone alloc.alloc.Global := {
+  cloneCloneInst := core.clone.CloneGlobal
+}
+
 /-- Trait implementation: [alloc::str::{impl core::borrow::Borrow<str> for alloc::string::String}]
     Source: '/rustc/library/alloc/src/str.rs', lines 231:0-231:27
     Name pattern: [core::borrow::Borrow<alloc::string::String, str>] -/
@@ -219,6 +250,18 @@ def alloc.sync.Arc.Insts.CoreCmpPartialEqArc {T : Type _} (A : Type _)
   (corecmpPartialEqInst : core.cmp.PartialEq T T) : core.cmp.PartialEq
   (alloc.sync.Arc T) (alloc.sync.Arc T) := {
   eq := alloc.sync.Arc.Insts.CoreCmpPartialEqArc.eq A corecmpPartialEqInst
+}
+
+/-- Trait implementation: [alloc::sync::{impl core::convert::From<alloc::vec::Vec<T>> for alloc::sync::Arc<[T]>}]
+    Source: '/rustc/library/alloc/src/sync.rs', lines 4200:0-4200:58
+    Name pattern: [core::convert::From<alloc::sync::Arc<[@T]>, alloc::vec::Vec<@T>>] -/
+@[reducible, rust_trait_impl
+  "core::convert::From<alloc::sync::Arc<[@T]>, alloc::vec::Vec<@T>>"]
+def alloc.sync.ArcSlice.Insts.CoreConvertFromVec (T : Type _) {A : Type _}
+  (coreallocAllocatorCloneInst : core.alloc.AllocatorClone A) :
+  core.convert.From (alloc.sync.Arc (Slice T)) (alloc.vec.Vec T) := {
+  «from» := alloc.sync.ArcSlice.Insts.CoreConvertFromVec.from
+    coreallocAllocatorCloneInst
 }
 
 /-- Trait implementation: [zeroize::{impl zeroize::Zeroize for Z}]
@@ -3843,66 +3886,47 @@ def transport.async_rw.is_standard_method (method : Str) : Result Bool := do
   then ok true
   else transport.async_rw.is_standard_notification method
 
-/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]:
-    Source: 'crates/rmcp/src/transport/auth.rs', lines 1343:4-1354:5 -/
-def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4
-  (addr : core.net.ip_addr.Ipv4Addr) : Result Bool := do
-  let octets ← core.net.ip_addr.Ipv4Addr.octets addr
-  let b ← core.net.ip_addr.Ipv4Addr.is_private addr
-  if b
-  then ok true
-  else
-    let b1 ← core.net.ip_addr.Ipv4Addr.is_loopback addr
-    if b1
-    then ok true
-    else
-      let b2 ← core.net.ip_addr.Ipv4Addr.is_link_local addr
-      if b2
-      then ok true
-      else
-        let b3 ← core.net.ip_addr.Ipv4Addr.is_broadcast addr
-        if b3
-        then ok true
-        else
-          let b4 ← core.net.ip_addr.Ipv4Addr.is_unspecified addr
-          if b4
-          then ok true
-          else
-            let b5 ← core.net.ip_addr.Ipv4Addr.is_multicast addr
-            if b5
-            then ok true
-            else
-              let i ← Array.index_usize octets 0#usize
-              if i = 0#u8
-              then ok true
-              else
-                if i = 100#u8
-                then
-                  let ri ← core.ops.range.RangeInclusive.new 64#u8 127#u8
-                  let i1 ← Array.index_usize octets 1#usize
-                  let b6 ←
-                    core.ops.range.RangeInclusive.contains
-                      core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
-                      core.cmp.PartialOrdU8 ri i1
-                  if b6
-                  then ok true
-                  else
-                    if i = 198#u8
-                    then
-                      match i1 with
-                      | 18#uscalar => ok true
-                      | 19#uscalar => ok true
-                      | _ => ok false
-                    else ok false
-                else
-                  if i = 198#u8
-                  then
-                    let i1 ← Array.index_usize octets 1#usize
-                    match i1 with
-                    | 18#uscalar => ok true
-                    | 19#uscalar => ok true
-                    | _ => ok false
-                  else ok false
+/-- [rmcp::transport::auth::metadata_resolver::{impl core::clone::Clone for rmcp::transport::auth::metadata_resolver::AddressClass}::clone]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 33:16-33:21
+    Visibility: public -/
+def transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone.clone
+  (self : transport.auth.metadata_resolver.AddressClass) :
+  Result transport.auth.metadata_resolver.AddressClass
+  := do
+  ok self
+
+/-- Trait implementation: [rmcp::transport::auth::metadata_resolver::{impl core::clone::Clone for rmcp::transport::auth::metadata_resolver::AddressClass}]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 33:16-33:21 -/
+@[reducible]
+def transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone :
+  core.clone.Clone transport.auth.metadata_resolver.AddressClass := {
+  clone :=
+    transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone.clone
+}
+
+/-- [rmcp::transport::auth::metadata_resolver::{impl core::cmp::PartialEq<rmcp::transport::auth::metadata_resolver::AddressClass> for rmcp::transport::auth::metadata_resolver::AddressClass}::eq]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 33:29-33:38
+    Visibility: public -/
+def
+  transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass.eq
+  (self : transport.auth.metadata_resolver.AddressClass)
+  (other : transport.auth.metadata_resolver.AddressClass) :
+  Result Bool
+  := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  ok (self1 = other1)
+
+/-- Trait implementation: [rmcp::transport::auth::metadata_resolver::{impl core::cmp::PartialEq<rmcp::transport::auth::metadata_resolver::AddressClass> for rmcp::transport::auth::metadata_resolver::AddressClass}]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 33:29-33:38 -/
+@[reducible]
+def
+  transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+  : core.cmp.PartialEq transport.auth.metadata_resolver.AddressClass
+  transport.auth.metadata_resolver.AddressClass := {
+  eq :=
+    transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass.eq
+}
 
 /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::embedded_ipv4]:
     Source: 'crates/rmcp/src/transport/auth.rs', lines 1359:4-1368:5 -/
@@ -4001,6 +4025,67 @@ def transport.auth.AuthorizationManager.embedded_ipv4
     ok (some ia)
   | _ => ok none
 
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1343:4-1354:5 -/
+def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4
+  (addr : core.net.ip_addr.Ipv4Addr) : Result Bool := do
+  let octets ← core.net.ip_addr.Ipv4Addr.octets addr
+  let b ← core.net.ip_addr.Ipv4Addr.is_private addr
+  if b
+  then ok true
+  else
+    let b1 ← core.net.ip_addr.Ipv4Addr.is_loopback addr
+    if b1
+    then ok true
+    else
+      let b2 ← core.net.ip_addr.Ipv4Addr.is_link_local addr
+      if b2
+      then ok true
+      else
+        let b3 ← core.net.ip_addr.Ipv4Addr.is_broadcast addr
+        if b3
+        then ok true
+        else
+          let b4 ← core.net.ip_addr.Ipv4Addr.is_unspecified addr
+          if b4
+          then ok true
+          else
+            let b5 ← core.net.ip_addr.Ipv4Addr.is_multicast addr
+            if b5
+            then ok true
+            else
+              let i ← Array.index_usize octets 0#usize
+              if i = 0#u8
+              then ok true
+              else
+                if i = 100#u8
+                then
+                  let ri ← core.ops.range.RangeInclusive.new 64#u8 127#u8
+                  let i1 ← Array.index_usize octets 1#usize
+                  let b6 ←
+                    core.ops.range.RangeInclusive.contains
+                      core.cmp.PartialOrdU8 core.cmp.PartialOrdU8
+                      core.cmp.PartialOrdU8 ri i1
+                  if b6
+                  then ok true
+                  else
+                    if i = 198#u8
+                    then
+                      match i1 with
+                      | 18#uscalar => ok true
+                      | 19#uscalar => ok true
+                      | _ => ok false
+                    else ok false
+                else
+                  if i = 198#u8
+                  then
+                    let i1 ← Array.index_usize octets 1#usize
+                    match i1 with
+                    | 18#uscalar => ok true
+                    | 19#uscalar => ok true
+                    | _ => ok false
+                  else ok false
+
 /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv6]:
     Source: 'crates/rmcp/src/transport/auth.rs', lines 1370:4-1383:5 -/
 def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6
@@ -4048,6 +4133,440 @@ def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6
                   (Array.make 3#usize [ 100#u16, 65435#u16, 1#u16 ])
   | some embedded =>
     transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4 embedded
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::AddressClass}::of]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 42:4-74:5 -/
+def transport.auth.metadata_resolver.AddressClass.of
+  (addr : core.net.ip_addr.IpAddr) :
+  Result transport.auth.metadata_resolver.AddressClass
+  := do
+  let addr1 ←
+    match addr with
+    | core.net.ip_addr.IpAddr.V4 _ => ok addr
+    | core.net.ip_addr.IpAddr.V6 v6 =>
+      do
+      let o ← transport.auth.AuthorizationManager.embedded_ipv4 v6
+      core.option.Option.map_or
+        P.Insts.CoreOpsFunctionFnOnceTupleIpv4AddrIpAddr o addr
+        (core.net.ip_addr.IpAddr.V4.constructor)
+  match addr1 with
+  | core.net.ip_addr.IpAddr.V4 v4 =>
+    let octets ← core.net.ip_addr.Ipv4Addr.octets v4
+    let b ←
+      transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4 v4
+    if b
+    then
+      let b1 ← core.net.ip_addr.Ipv4Addr.is_loopback v4
+      if b1
+      then ok transport.auth.metadata_resolver.AddressClass.Loopback
+      else
+        let b2 ← core.net.ip_addr.Ipv4Addr.is_private v4
+        if b2
+        then ok transport.auth.metadata_resolver.AddressClass.Private
+        else
+          let i ← Array.index_usize octets 0#usize
+          if i = 100#u8
+          then
+            let ri ← core.ops.range.RangeInclusive.new 64#u8 127#u8
+            let i1 ← Array.index_usize octets 1#usize
+            let b3 ←
+              core.ops.range.RangeInclusive.contains core.cmp.PartialOrdU8
+                core.cmp.PartialOrdU8 core.cmp.PartialOrdU8 ri i1
+            if b3
+            then ok transport.auth.metadata_resolver.AddressClass.Private
+            else ok transport.auth.metadata_resolver.AddressClass.Blocked
+          else ok transport.auth.metadata_resolver.AddressClass.Blocked
+    else ok transport.auth.metadata_resolver.AddressClass.Public
+  | core.net.ip_addr.IpAddr.V6 v6 =>
+    let b ←
+      transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6 v6
+    if b
+    then
+      let b1 ← core.net.ip_addr.Ipv6Addr.is_loopback v6
+      if b1
+      then ok transport.auth.metadata_resolver.AddressClass.Loopback
+      else
+        let a ← core.net.ip_addr.Ipv6Addr.segments v6
+        let i ← Array.index_usize a 0#usize
+        let i1 ← lift (i &&& 65024#u16)
+        if i1 = 64512#u16
+        then ok transport.auth.metadata_resolver.AddressClass.Private
+        else ok transport.auth.metadata_resolver.AddressClass.Blocked
+    else ok transport.auth.metadata_resolver.AddressClass.Public
+
+/-- [rmcp::transport::auth::metadata_resolver::normalize_host]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 255:0-257:1 -/
+def transport.auth.metadata_resolver.normalize_host
+  (host : Str) : Result String := do
+  let s ← transport.auth.metadata_resolver.prim.trim_end_dots host
+  alloc.str.Str.to_ascii_lowercase s
+
+/-- [rmcp::transport::auth::metadata_resolver::proxy_host::{impl core::ops::function::FnOnce<(&'_0 str,), alloc::string::String> for rmcp::transport::auth::metadata_resolver::proxy_host::{closure}<'_0>}::call_once]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 244:13-244:40 -/
+def
+  transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString.call_once
+  (c : transport.auth.metadata_resolver.proxy_host.closure) (tupled_args : Str)
+  :
+  Result String
+  := do
+  transport.auth.metadata_resolver.normalize_host tupled_args
+
+/-- Trait implementation: [rmcp::transport::auth::metadata_resolver::proxy_host::{impl core::ops::function::FnOnce<(&'_0 str,), alloc::string::String> for rmcp::transport::auth::metadata_resolver::proxy_host::{closure}<'_0>}]
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 244:13-244:40 -/
+@[reducible]
+def
+  transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString
+  : core.ops.function.FnOnce
+  transport.auth.metadata_resolver.proxy_host.closure Str String := {
+  call_once :=
+    transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString.call_once
+}
+
+/-- [rmcp::transport::auth::metadata_resolver::proxy_host]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 233:0-245:1 -/
+def transport.auth.metadata_resolver.proxy_host
+  (proxy : String) : Result (Option String) := do
+  let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref proxy
+  let b ← transport.auth.metadata_resolver.prim.contains s (toStr "://")
+  let proxy1 ←
+    if b
+    then ok proxy
+    else
+      do
+      let with_scheme ←
+        Str.Insts.AllocBorrowToOwnedString.to_owned (toStr "http://")
+      alloc.string.String.push_str with_scheme s
+  let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref proxy1
+  let r ← url.Url.parse s1
+  let o ← core.result.Result.ok r
+  let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    let o1 ← url.Url.host_str val
+    core.option.Option.map
+      transport.auth.metadata_resolver.proxy_host.closure.Insts.CoreOpsFunctionFnOnceTupleShared0StrString
+      o1 ()
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+      String residual
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts]: loop body 0:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 142:8-146:9 -/
+@[rust_loop_body]
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop.body
+  {T0 : Type _} {Clause0_IntoIter : Type _}
+  (coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T0 String Clause0_IntoIter)
+  (iter : Clause0_IntoIter) (unfiltered_hosts : alloc.vec.Vec String) :
+  Result (ControlFlow (Clause0_IntoIter × (alloc.vec.Vec String))
+    (alloc.vec.Vec String))
+  := do
+  let (o, iter1) ←
+    coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst.iteratorInst.next
+      iter
+  match o with
+  | none => ok (done unfiltered_hosts)
+  | some proxy =>
+    let o1 ← transport.auth.metadata_resolver.proxy_host proxy
+    match o1 with
+    | none => ok (cont (iter1, unfiltered_hosts))
+    | some host =>
+      let unfiltered_hosts1 ← alloc.vec.Vec.push unfiltered_hosts host
+      ok (cont (iter1, unfiltered_hosts1))
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts]: loop 0:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 142:8-146:9 -/
+@[rust_loop]
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop
+  {T0 : Type _} {Clause0_IntoIter : Type _}
+  (coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T0 String Clause0_IntoIter)
+  (iter : Clause0_IntoIter) (unfiltered_hosts : alloc.vec.Vec String) :
+  Result (alloc.vec.Vec String)
+  := do
+  loop
+    (fun (iter1, unfiltered_hosts1) =>
+      transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop.body
+      coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst iter1
+      unfiltered_hosts1)
+    (iter, unfiltered_hosts)
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_proxy_hosts]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 140:4-149:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts
+  {T0 : Type _} {Clause0_IntoIter : Type _}
+  (coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst :
+  core.iter.traits.collect.IntoIterator T0 String Clause0_IntoIter)
+  (self : transport.auth.metadata_resolver.MetadataAddressResolver)
+  (proxies : T0) :
+  Result transport.auth.metadata_resolver.MetadataAddressResolver
+  := do
+  let s ←
+    alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global
+      self.unfiltered_hosts
+  let unfiltered_hosts ←
+    alloc.slice.Slice.to_vec alloc.string.String.Insts.CoreCloneClone s
+  let iter ←
+    coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst.into_iter
+      proxies
+  let unfiltered_hosts1 ←
+    transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts_loop
+      coreitertraitscollectIntoIteratorT0StringClause0_IntoIterInst iter
+      unfiltered_hosts
+  let a ←
+    core.convert.IntoFrom.into (alloc.sync.ArcSlice.Insts.CoreConvertFromVec
+      String alloc.alloc.Global.Insts.CoreAllocAllocatorClone)
+      unfiltered_hosts1
+  ok { self with unfiltered_hosts := a }
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_loopback_metadata_host]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1401:4-1410:5 -/
+def transport.auth.AuthorizationManager.is_loopback_metadata_host
+  (host : url.host.Host Str) : Result Bool := do
+  match host with
+  | url.host.Host.Domain domain =>
+    let s ← transport.auth.metadata_resolver.prim.trim_end_dots domain
+    let domain1 ← alloc.str.Str.to_ascii_lowercase s
+    let b ←
+      alloc.string.String.Insts.CoreCmpPartialEqShared0Str.eq domain1 (toStr
+        "localhost")
+    if b
+    then ok true
+    else
+      let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref domain1
+      transport.auth.metadata_resolver.prim.ends_with s1 (toStr ".localhost")
+  | url.host.Host.Ipv4 addr => core.net.ip_addr.Ipv4Addr.is_loopback addr
+  | url.host.Host.Ipv6 addr => core.net.ip_addr.Ipv6Addr.is_loopback addr
+
+/-- [rmcp::transport::auth::metadata_resolver::literal_ip]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 247:0-253:1 -/
+def transport.auth.metadata_resolver.literal_ip
+  (target : url.Url) : Result (Option core.net.ip_addr.IpAddr) := do
+  let o ← url.Url.host target
+  let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o
+  match cf with
+  | core.ops.control_flow.ControlFlow.Continue val =>
+    match val with
+    | url.host.Host.Domain _ => ok none
+    | url.host.Host.Ipv4 v4 => ok (some (core.net.ip_addr.IpAddr.V4 v4))
+    | url.host.Host.Ipv6 v6 => ok (some (core.net.ip_addr.IpAddr.V6 v6))
+  | core.ops.control_flow.ControlFlow.Break residual =>
+    core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+      core.net.ip_addr.IpAddr residual
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::with_base_url]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 114:4-136:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.with_base_url
+  (base_url : url.Url) (lookup : transport.auth.metadata_resolver.Lookup) :
+  Result transport.auth.metadata_resolver.MetadataAddressResolver
+  := do
+  let base_ip ← transport.auth.metadata_resolver.literal_ip base_url
+  let o ← url.Url.host base_url
+  let base_classes ←
+    match o with
+    | none =>
+      ok (alloc.vec.Vec.new transport.auth.metadata_resolver.AddressClass)
+    | some host =>
+      match host with
+      | url.host.Host.Domain _ =>
+        do
+        let b ←
+          transport.auth.AuthorizationManager.is_loopback_metadata_host host
+        if b
+        then
+          let y ←
+            lift (Std.Array.to_slice
+              (Array.make 1#usize [
+                 transport.auth.metadata_resolver.AddressClass.Loopback
+                 ] : Array transport.auth.metadata_resolver.AddressClass
+              1#usize))
+          ok (alloc.slice.Slice.into_vec y)
+        else
+          ok (alloc.vec.Vec.new transport.auth.metadata_resolver.AddressClass)
+      | url.host.Host.Ipv4 v4 =>
+        do
+        let ac ←
+          transport.auth.metadata_resolver.AddressClass.of
+            (core.net.ip_addr.IpAddr.V4 v4)
+        let y ←
+          lift (Std.Array.to_slice (Array.make 1#usize [ ac ] : Array
+            transport.auth.metadata_resolver.AddressClass 1#usize))
+        ok (alloc.slice.Slice.into_vec y)
+      | url.host.Host.Ipv6 v6 =>
+        do
+        let ac ←
+          transport.auth.metadata_resolver.AddressClass.of
+            (core.net.ip_addr.IpAddr.V6 v6)
+        let y ←
+          lift (Std.Array.to_slice (Array.make 1#usize [ ac ] : Array
+            transport.auth.metadata_resolver.AddressClass 1#usize))
+        ok (alloc.slice.Slice.into_vec y)
+  let a ←
+    core.convert.IntoFrom.into (alloc.sync.ArcSlice.Insts.CoreConvertFromVec
+      String alloc.alloc.Global.Insts.CoreAllocAllocatorClone)
+      (alloc.vec.Vec.new String)
+  let a1 ←
+    core.convert.IntoFrom.into (alloc.sync.ArcSlice.Insts.CoreConvertFromVec
+      transport.auth.metadata_resolver.AddressClass
+      alloc.alloc.Global.Insts.CoreAllocAllocatorClone) base_classes
+  ok { base_ip, unfiltered_hosts := a, base_classes := a1, lookup }
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::new]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 105:4-108:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.new
+  (base_url : url.Url) :
+  Result transport.auth.metadata_resolver.MetadataAddressResolver
+  := do
+  let l ← transport.auth.metadata_resolver.prim.system_lookup
+  let mar ←
+    transport.auth.metadata_resolver.MetadataAddressResolver.with_base_url
+      base_url l
+  let v ← transport.auth.metadata_resolver.prim.proxy_env_values
+  transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts
+    (core.iter.traits.collect.IntoIteratorVec String) mar v
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowing_private_addresses]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 152:4-159:5 -/
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowing_private_addresses
+  (self : transport.auth.metadata_resolver.MetadataAddressResolver) :
+  Result transport.auth.metadata_resolver.MetadataAddressResolver
+  := do
+  let s ←
+    alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global
+      self.base_classes
+  let b ←
+    core.slice.Slice.contains
+      transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+      s transport.auth.metadata_resolver.AddressClass.Private
+  if b
+  then ok self
+  else
+    let base_classes ←
+      alloc.slice.Slice.to_vec
+        transport.auth.metadata_resolver.AddressClass.Insts.CoreCloneClone s
+    let base_classes1 ←
+      alloc.vec.Vec.push base_classes
+        transport.auth.metadata_resolver.AddressClass.Private
+    let a ←
+      core.convert.IntoFrom.into (alloc.sync.ArcSlice.Insts.CoreConvertFromVec
+        transport.auth.metadata_resolver.AddressClass
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone) base_classes1
+    ok { self with base_classes := a }
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::is_allowed]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 179:4-185:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.is_allowed
+  («class» : transport.auth.metadata_resolver.AddressClass)
+  (base_classes : Slice transport.auth.metadata_resolver.AddressClass) :
+  Result Bool
+  := do
+  match «class» with
+  | transport.auth.metadata_resolver.AddressClass.Public => ok true
+  | transport.auth.metadata_resolver.AddressClass.Loopback =>
+    core.slice.Slice.contains
+      transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+      base_classes transport.auth.metadata_resolver.AddressClass.Loopback
+  | transport.auth.metadata_resolver.AddressClass.Private =>
+    core.slice.Slice.contains
+      transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+      base_classes transport.auth.metadata_resolver.AddressClass.Private
+  | transport.auth.metadata_resolver.AddressClass.Blocked => ok false
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allows_url]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 163:4-171:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.allows_url
+  (self : transport.auth.metadata_resolver.MetadataAddressResolver)
+  (target : url.Url) :
+  Result Bool
+  := do
+  let o ← transport.auth.metadata_resolver.literal_ip target
+  match o with
+  | none => ok true
+  | some ip =>
+    let b ←
+      core.option.Option.Insts.CoreCmpPartialEqOption.eq
+        core.net.ip_addr.IpAddr.Insts.CoreCmpPartialEqIpAddr self.base_ip o
+    if b
+    then ok true
+    else
+      let ac ← transport.auth.metadata_resolver.AddressClass.of ip
+      let s ←
+        alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global
+          self.base_classes
+      transport.auth.metadata_resolver.MetadataAddressResolver.is_allowed ac s
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses]: loop body 0:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 220:8-224:9 -/
+@[rust_loop_body]
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop.body
+  (a : alloc.sync.Arc (Slice transport.auth.metadata_resolver.AddressClass))
+  (iter : alloc.vec.into_iter.IntoIter core.net.socket_addr.SocketAddr)
+  (allowed : alloc.vec.Vec core.net.socket_addr.SocketAddr) :
+  Result (ControlFlow ((alloc.vec.into_iter.IntoIter
+    core.net.socket_addr.SocketAddr) × (alloc.vec.Vec
+    core.net.socket_addr.SocketAddr)) (alloc.vec.Vec
+    core.net.socket_addr.SocketAddr))
+  := do
+  let (o, iter1) ← alloc.vec.into_iter.IteratorIntoIter.next iter
+  match o with
+  | none => ok (done allowed)
+  | some addr =>
+    let ia ← core.net.socket_addr.SocketAddr.ip addr
+    let ac ← transport.auth.metadata_resolver.AddressClass.of ia
+    let s ← alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global a
+    let b ←
+      transport.auth.metadata_resolver.MetadataAddressResolver.is_allowed ac s
+    if b
+    then
+      let allowed1 ← alloc.vec.Vec.push allowed addr
+      ok (cont (iter1, allowed1))
+    else ok (cont (iter1, allowed))
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses]: loop 0:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 220:8-224:9 -/
+@[rust_loop]
+def
+  transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop
+  (iter : alloc.vec.into_iter.IntoIter core.net.socket_addr.SocketAddr)
+  (a : alloc.sync.Arc (Slice transport.auth.metadata_resolver.AddressClass))
+  (allowed : alloc.vec.Vec core.net.socket_addr.SocketAddr) :
+  Result (alloc.vec.Vec core.net.socket_addr.SocketAddr)
+  := do
+  loop
+    (fun (iter1, allowed1) =>
+      transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop.body
+      a iter1 allowed1)
+    (iter, allowed)
+
+/-- [rmcp::transport::auth::metadata_resolver::{rmcp::transport::auth::metadata_resolver::MetadataAddressResolver}::allowed_addresses]:
+    Source: 'crates/rmcp/src/transport/auth/metadata_resolver.rs', lines 210:4-229:5 -/
+def transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses
+  (self : transport.auth.metadata_resolver.MetadataAddressResolver)
+  (host : String) (resolved : alloc.vec.Vec core.net.socket_addr.SocketAddr) :
+  Result (Option (alloc.vec.Vec core.net.socket_addr.SocketAddr))
+  := do
+  let s ←
+    alloc.sync.Arc.Insts.CoreOpsDerefDeref.deref alloc.alloc.Global
+      self.unfiltered_hosts
+  let b ←
+    core.slice.Slice.contains alloc.string.String.Insts.CoreCmpPartialEqString
+      s host
+  if b
+  then ok (some resolved)
+  else
+    let iter ← alloc.vec.IntoIteratorVec.into_iter resolved
+    let allowed ←
+      transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses_loop
+        iter self.base_classes (alloc.vec.Vec.new
+        core.net.socket_addr.SocketAddr)
+    let b1 ← alloc.vec.Vec.is_empty allowed
+    if b1
+    then ok none
+    else ok (some allowed)
 
 /-- [rmcp::transport::common::client_side_sse::{rmcp::transport::common::client_side_sse::SseEventSizeLimiter}::check_limit]:
     Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 90:4-96:5 -/
