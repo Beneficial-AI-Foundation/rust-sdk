@@ -53,8 +53,8 @@ Statements of the public Phase 2 targets of `model.rs` (plan Section 16.1), each
 theorem `Theorems.model.<Type>.<function>` proved by the spec theorem in `Proofs/Model/<Type>.lean`
 and followed by the assumptions its proof depends on, checked by `#print axioms` under
 `#guard_msgs`. M08 (`model/task.rs`) is in `Specs/Model/Task.lean`. Signed off by the spec owner
-on 2026-11-24 (S24/S25 spec cycle, `STATUS.md` at 9047c72); the signed-off text was in
-`specs/Drafts/Model.lean`, removed at incorporation.
+on 2026-11-24 (S24/S25 spec cycle, `STATUS.md` at 9047c72); the signed-off statements are the ones
+in this project file.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,

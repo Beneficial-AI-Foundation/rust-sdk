@@ -456,7 +456,7 @@ def key32 : alloc.vec.Vec Std.U8 :=
 /-- Non-vacuity of R15 (round 2, reviewer proposal checked): the premises of
 `new_with_keyring_spec` hold together for one entry `("a", key32)` and active id `"a"`, and its
 conclusion forces the `Ok` branch. The proof of this `example` has no placeholder; it depends on
-`new_with_keyring_spec`, which is a placeholder in this draft. -/
+`new_with_keyring_spec`, which is proved above. -/
 example : rmcp.model.request_state.RequestStateCodec.new_with_keyring intoString intoVec
     intoString listIntoIter "a" [("a", key32)] ⦃ (r :
       core.result.Result RequestStateCodec RequestStateError) => ∃ codec, r = .Ok codec ⦄ := by

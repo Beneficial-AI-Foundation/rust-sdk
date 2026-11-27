@@ -190,7 +190,7 @@ descriptive name of their proof), proved by its spec theorem in
 (function names written in full).
 
 *Sign-off.* The 51 statements: signed off by the spec owner (Hoang Le Truong) on 2026-11-25
-(the signed-off text was in `specs/Drafts/Skill.lean`, removed at incorporation). Translation
+(the signed-off statements are the ones in this project file). Translation
 stage (patch 04 and its external models): signed off on 2026-11-25. Incorporation approved by the
 human on 2026-11-25.
 

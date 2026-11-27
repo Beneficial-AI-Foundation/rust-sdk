@@ -308,8 +308,8 @@ check of the DNS-rebinding protection of `StreamableHttpService` (`allowed_origi
 
 **SSRF address guard** — [`Internal/Transport/Auth.lean`](../proofs/Proofs/Internal/Transport/Auth.lean)
 (private associated functions of `AuthorizationManager`). Used by (all rows): the OAuth
-metadata-URL SSRF check `is_allowed_metadata_url` (discovery in `AuthorizationManager`) and the
-resolved-address filter `AddressClass::of` (`auth/metadata_resolver.rs`); neither is translated.
+metadata-URL SSRF check `is_allowed_metadata_url` (A06 below) and the resolved-address filter
+`AddressClass::of` (`auth/metadata_resolver.rs`, N01).
 
 | ID | Rust function | Guarantee | Assumptions | Lean theorem |
 | --- | --- | --- | --- | --- |
@@ -318,6 +318,27 @@ resolved-address filter `AddressClass::of` (`auth/metadata_resolver.rs`); neithe
 | A03 | `is_disallowed_metadata_ipv6` | A02's verdict on the carried IPv4 address if A01 finds one; otherwise `true` exactly for `::1`, `::`, `ff00::/8`, `fe80::/10`, `fc00::/7`, `2001::/32`, `64:ff9b:1::/48`. | none | [`…AuthorizationManager.is_disallowed_metadata_ipv6`](../proofs/Proofs/Internal/Transport/Auth.lean) |
 | C04 | A01, A03, A02 | `is_disallowed_metadata_ipv6(a)` is the same computation as `is_disallowed_metadata_ipv4(v)`. | `embedded_ipv4(a)` returned `Some(v)` | [`…is_disallowed_metadata_ipv6_eq_of_embedded_ipv4_eq_ok_some`](../proofs/Proofs/Internal/Transport/Auth.lean) |
 | C04 | A03 (corollary) | An IPv6 address that writes a blocked IPv4 address in mapped, NAT64, compatible or 6to4 form is blocked. | the IPv4 address is blocked (A02 list); the form | [`…is_disallowed_metadata_ipv6_of_ipv4Disallowed`](../proofs/Proofs/Internal/Transport/Auth.lean) |
+
+**OAuth metadata-URL and issuer checks (patch 06)** —
+[`Internal/Transport/Auth/AuthMetadata.lean`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean)
+(private functions of `AuthorizationManager`; 81 statements, signed off and proved 2026-11-27;
+readable model `Defs.AuthMetadata`). The main guarantee per target is below; the file also has the
+failure companions (showing where each premise is needed), the laws of the model and the compositions
+(e.g. every URL `resolve_resource_metadata_url` returns is HTTP(S) and same-origin or allowed by
+A06, and never an `https` downgrade). Assumption keys as in the file: **(U)** string arguments are
+UTF-8, **(B)/(T)/(C)** URL hosts are UTF-8, **(S)/(D)** strings fit in memory, **(R)** a received issuer is UTF-8 when one was recorded, **(H)** an
+`http`/`https` base URL (decision AD8, no-failure statements only), **(AD7)** a discovery URL of
+at most `u32::MAX` bytes (no-failure statements only). Bugs H9–H16: formal/README.md "Bugs found".
+
+| ID | Rust function | Guarantee | Assumptions | Lean theorem |
+| --- | --- | --- | --- | --- |
+| A04 | `is_http_url` | `true` exactly for an `http`/`https` URL with a host. | none | [`…AuthorizationManager.is_http_url`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
+| A05 | `is_disallowed_metadata_host` | `true` exactly for a cloud-metadata name (three names, H16), a `localhost` name, or an IP literal whose class (N01) is not `Public` (H11). | (U) | [`…AuthorizationManager.is_disallowed_metadata_host`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
+| A06 | `is_allowed_metadata_url` | `false` unless HTTP(S) with a host; a disallowed host (A05) is allowed only if it is a `Private` literal with `allow_private` (H10) or a loopback host from a loopback base; any other host is allowed (H12: refuses some IP-literal targets, and a `localhost` name from an IPv6-embedded `127/8` base, that the resolver accepts; never looser for IP literals). | (T), (B) | [`…AuthorizationManager.is_allowed_metadata_url`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
+| A07 | `resolve_resource_metadata_url` | `Some u` exactly for the trimmed value parsed (or joined to the base) to an HTTP(S) URL that is same-origin, or not an `https` downgrade and allowed by A06; else `None`. | (H), (B), (C) | [`…AuthorizationManager.resolve_resource_metadata_url`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
+| A08 | `check_authorization_response_issuer` | The RFC 9207 check: `AuthorizationFailed` if no issuer was recorded but one is required or received; `MissingIssuer` if required and absent; `Mismatch` with both strings unless byte-identical. | (S), (R) | [`…AuthorizationManager.check_authorization_response_issuer`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
+| A09 | `check_authorization_metadata_issuer` | Compares the metadata issuer with the explicit or derived (RFC 8414 / OIDC form) expected issuer up to a root `/` (H15): `MissingIssuer` if the metadata has none (unless `allow_missing_issuer`), `Mismatch` with both strings if they differ (H9: recorded issue under private disclosure). | (U), (S), (D), (AD7) | [`…AuthorizationManager.check_authorization_metadata_issuer`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
+| A10 | `check_resource_metadata_resource` | `MissingResource`, `ResourceNotAUrl`, `ResourceHasFragment`, `ResourceMismatch` in that order; `Ok` iff it parses as a URL without fragment that is valid for the base (H13). | (S) | [`…AuthorizationManager.check_resource_metadata_resource`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
 
 **Request-state codec, Phase 1 (patched copy)** —
 [`Internal/Model/RequestState.lean`](../proofs/Proofs/Internal/Model/RequestState.lean)

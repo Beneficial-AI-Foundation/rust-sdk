@@ -67,8 +67,8 @@ last. Each is restated as a theorem `Theorems.request_state_wire.<function>`, pr
 theorem (for `frame_roundtrip`, the lemma of that name) in `Proofs/Model/RequestStateWire/`, and
 followed by the assumptions its proof depends on, checked by
 `#print axioms` under `#guard_msgs`. The statements were signed off by the spec owner on
-2026-11-23 (the S05 evidence, git history at 223ff12); their signed-off text is in
-`specs/Drafts/RequestStateWire.lean` at commit `9bd8144`, removed when they were incorporated
+2026-11-23 (the S05 evidence, git history at 223ff12); their signed-off text is the one
+restated in this project file (git history at `9bd8144`), incorporated
 (the W-batch incorporation procedure, git history at 223ff12).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,

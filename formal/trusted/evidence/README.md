@@ -896,14 +896,14 @@ Phase 1: the facts later proofs needed (72 statements, success and failure cases
 `formal/proofs/Proofs/External/` (`Base64.lean`, `String.lean`, `Prim.lean`, `Std.lean`);
 `formal/specs/Specs/External.lean` restates them as theorems `Theorems.External.*` and checks
 their axioms with `#print axioms` (each at most `propext`, `Classical.choice`, `Quot.sound`).
-Their draft file (`formal/specs/Drafts/External.lean` at the time) was never committed: the
-statements entered git already incorporated, in commit `af41799` (`git show
-af41799:formal/specs/Specs/External.lean`).
+The statements entered git already incorporated, in commit `af41799` (`git show
+af41799:formal/specs/Specs/External.lean`); they are now restated in
+`formal/proofs/Proofs/Internal/External.lean`.
 
 Phase 2: 43 statements, drafted by an AI agent (Claude Code `mcp-spec`, `claude-opus-5-5`), reviewed
 (round 1: two agents, no blocking finding), signed off by the spec owner on 2026-11-23, proved by
-separate `mcp-lean` agents and restated in `formal/specs/Specs/External.lean`; the draft file
-(uncommitted) was removed at incorporation. Each law depends on at most `propext`,
+separate `mcp-lean` agents and restated in the project file (now
+`formal/proofs/Proofs/Internal/External.lean`). Each law depends on at most `propext`,
 `Classical.choice` and `Quot.sound`.
 
 ## Skills externals (translation patch 04, targets K01–K20)

@@ -86,7 +86,7 @@ order, each restated as a theorem `Theorems.request_state.RequestStateCodec.<fun
 the spec theorem in `Proofs/Model/RequestState/` and followed by
 the assumptions its proof depends on, checked by `#print axioms` under `#guard_msgs`. The
 statements were signed off by the spec owner on 2026-11-23 (the S05 evidence, git history at
-223ff12); their signed-off text is in `specs/Drafts/RequestState.lean` at commit `9bd8144`.
+223ff12); their signed-off text is the one restated here (git history at `9bd8144`).
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,
@@ -135,7 +135,7 @@ Statements here, in Rust source order: E11 (line 559), E07 (572), E08 (585), E09
 E09a (644), E10 (659) (S11, S13, S14), then E01 (695), E03 (704), E04 (714), E02 (725) (S07).
 The E07–E11 and E09a statements were signed off by the spec owner on 2026-11-23 after three
 review rounds (the S05 evidence, git history at 223ff12, "E batch part 2"); their signed-off
-text was in `specs/Drafts/RequestState.lean`, removed at incorporation.
+statements are the ones in this project file.
 
 Composition theorems last (S15, proofs in `Proofs/Model/RequestState/Roundtrip.lean`):
 `rs1_roundtrip`, `rs2_roundtrip`, `open_at_roundtrip_rs1`, `open_at_roundtrip_rs2`. Each says that

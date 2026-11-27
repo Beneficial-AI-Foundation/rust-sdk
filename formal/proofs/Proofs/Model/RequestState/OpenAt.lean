@@ -68,8 +68,8 @@ theorem count_dot_lt_of_head (l : List U8) (hl : l.length ≤ Usize.max) (v : Li
 `resultBytes result = openAt …`: the result is exactly the expected result of
 `Defs.CodecState.openAt`, which dispatches on the first `.`-component of the token. The
 premises are those of E09 (`h_len1`, and `h_fallbacks` for an `rs1` token) and E10 (`h_len2`);
-the `.`-count premise of E09 and E10 follows from `count_dot_lt_of_head`. The statement is that
-of the draft spec file `formal/specs/Drafts/RequestState.lean`. -/
+the `.`-count premise of E09 and E10 follows from `count_dot_lt_of_head`. The statement is restated
+in `formal/proofs/Proofs/Internal/Model/RequestState.lean`. -/
 @[step]
 theorem open_at_spec (self : RequestStateCodec) (sealed : Str) (associated_data : Slice Std.U8)
     (now_ms : Std.I64)

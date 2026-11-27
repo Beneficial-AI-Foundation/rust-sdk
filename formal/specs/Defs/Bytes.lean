@@ -12,7 +12,7 @@ public import Aeneas
 # UTF-8 bytes of a Lean string
 
 `Defs.utf8Bytes`, the one encoding of a Lean string as a byte list that the Phase 2 definitions
-and drafts share (`Defs.Methods`, `Defs.Tower`, `Drafts/Model.lean`, `Drafts/Transport.lean`;
+and statements share (`Defs.Methods`, `Defs.Tower`, `Specs.Model`, `Proofs.Internal.Transport`;
 lead decision 2026-11-24, S24 fix round 1). Imported from the `Defs` root since incorporation of
 S24. It imports only `Aeneas`; its link with the trusted model is a lemma in `Proofs`.
 -/

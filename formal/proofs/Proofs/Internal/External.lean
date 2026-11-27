@@ -13,6 +13,7 @@ public import Proofs.External.Std
 public import Proofs.External.Option
 public import Proofs.External.IntParse
 public import Proofs.External.Net
+public import Proofs.External.Auth
 
 @[expose] public section
 
@@ -37,12 +38,13 @@ spec proofs use them. Index of all guarantees: `formal/specs/README.md`.
 | Std, Phase 2 (10) | `slice::first`, slice-array equality, `strip_suffix`, `RangeInclusive` |
 | IntParse, Phase 2 (7) | `i64::from_str`: errors, round trips, equal to `Defs.parseI64` |
 | Net, Phase 2 (15) | `Ipv4Addr`/`Ipv6Addr` octets, segments and range predicates |
+| Auth, A04–A10 (1) | `str::trim` on UTF-8 bytes is the char-level trim |
 
 Premises: many laws have none; others name the parts of a value (the octets of an address), require
 that a Lean `String` or `Vec` is no larger than a Rust one can be (`Usize.max` or `isize::MAX`
 bytes), or that an instance decides equality; the `_fail` laws state where the model fails (where
 Rust panics, or for Lean values that no Rust value has). Counts are of the theorems in each section
-below (116 in all).
+below (117 in all).
 
 Statements about the Lean models of the externals in `trusted/Rmcp/{Types,Funs}External.lean`
 (plan Section 4), restated as theorems `Theorems.External.<original name>` proved by the laws in
@@ -53,17 +55,17 @@ Statements about the Lean models of the externals in `trusted/Rmcp/{Types,Funs}E
 `ExtModel.SerdeJsonErrorImpl`, `ExtModel.SerdeJsonValue`), and add no assumption (`#print axioms`
 does not list `opaque` constants, so changes to the models are caught only by review of
 `trusted/`). Approved by the spec owner on 2026-11-23 (S08/S09 evidence, git history at 223ff12);
-the draft text was not committed: the statements entered git already incorporated, in af41799.
+the statements entered git already incorporated, in af41799.
 
 Phase 2 (plan steps S26/S27, plan Section 18): the laws of the models of the Phase 2 externals
 (`trusted/Rmcp/{Types,Funs}External.lean`, sections "Phase 2"), restated in the last part of
 this file as `Theorems.External.<original name>` and proved at stage 6 in
 `Proofs/External/{String,Option,Std,IntParse,Net}.lean`. Signed off by the spec owner on
-2026-11-23; the draft text was in `formal/specs/Drafts/External.lean`, removed at
-incorporation. Each depends on at most `propext`, `Classical.choice` and `Quot.sound`. The S27
+2026-11-23; the statements are the ones restated in this
+project file. Each depends on at most `propext`, `Classical.choice` and `Quot.sound`. The S27
 deferred law `I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64` was signed off
 separately, on 2026-11-24 (S24 sign-off, S24/S25 spec cycle in `STATUS.md` at 9047c72); its
-signed-off text was in `formal/specs/Drafts/Model.lean`, removed at incorporation. Moved here
+signed-off statements are the ones in this project file. Moved here
 from `formal/specs/Specs/External.lean` on 2026-11-24 (statements unchanged). Definitions from
 the moved `Defs` modules keep their Lean names (`Defs.Wire.dot`, `Defs.Wire.b64Len` are in module
 `Defs.Wire`, back in `formal/specs/Defs/` since the request-state public specifications).
@@ -77,6 +79,13 @@ of `alloc.vec.Vec.is_empty_spec` and the `Slice.from` form in `hash_eq`. The mod
 `item < start`; human decision 2026-11-24); `new_contains_u8_spec` is unchanged. 46
 `#print axioms` lists below changed in that upgrade (standard axioms added); every list is within
 `propext`, `Classical.choice`, `Quot.sound`.
+
+A04–A10 (2026-11-27): the law `trimWhitespace_utf8Bytes` of the model of `str::trim` (section
+"`auth.rs` OAuth metadata URL and issuer checks" of `trusted/Rmcp/FunsExternal.lean`), signed
+off by the human spec owner on 2026-11-27 with the statements of
+`Proofs.Internal.Transport.Auth.AuthMetadata`, restated in the last part of this file and proved
+in `Proofs/External/Auth.lean`. The signed-off statements are the ones in this project file. It
+depends on `propext`, `Classical.choice` and `Quot.sound`.
 -/
 
 /-! ## `Proofs/External/Base64.lean` -/
@@ -1629,8 +1638,8 @@ info: 'Theorems.External.core.str.Str.parse_eq' depends on axioms: [propext, Quo
 #guard_msgs in
 #print axioms Theorems.External.core.str.Str.parse_eq
 
-/-- **S27 deferred law** (signed off 2026-11-24, S24/S25 spec cycle; signed-off text was in
-`specs/Drafts/Model.lean`, removed at incorporation): `i64::from_str` never fails, and returns
+/-- **S27 deferred law** (signed off 2026-11-24, S24/S25 spec cycle; signed-off statements are the
+ones in this project file): `i64::from_str` never fails, and returns
 `Ok n` exactly when `Defs.parseI64` accepts the bytes of `src`, with `n.val` its value;
 otherwise `Err _` (error kind unconstrained). M06 uses it. -/
 theorem Theorems.External.I64.Insts.CoreStrTraitsFromStrParseIntError.from_str_eq_parseI64
@@ -1892,3 +1901,25 @@ info: 'Theorems.External.core.net.ip_addr.Ipv6Addr.is_multicast_spec' depends on
 -/
 #guard_msgs in
 #print axioms Theorems.External.core.net.ip_addr.Ipv6Addr.is_multicast_spec
+
+/-! ## `Proofs/External/Auth.lean`: `str::trim` on UTF-8 bytes (A04–A10) -/
+
+section Trim
+
+open Defs (utf8Bytes)
+open Defs.AuthMetadata
+
+/-- **A07, the byte model of `str::trim` is the char-level trim**: on the UTF-8 bytes of a string,
+`ExtModel.trimWhitespace` gives the bytes of `trimUnicodeWhitespace` (Unicode `White_Space`
+removed at both ends). No premise. -/
+theorem Theorems.External.trimWhitespace_utf8Bytes (s : String) :
+    ExtModel.trimWhitespace (utf8Bytes s) = utf8Bytes (trimUnicodeWhitespace s) :=
+  Proofs.External.Auth.trimWhitespace_utf8Bytes s
+
+/--
+info: 'Theorems.External.trimWhitespace_utf8Bytes' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.External.trimWhitespace_utf8Bytes
+
+end Trim

@@ -200,9 +200,9 @@ and in R15 `kidInto`, `keyInto`, `activeKidInto`, `entriesIntoIter` ↦
 `h_fits`; `h_kids_fit`, `h_active_fits` (R15) ↦ `h_fit`, `h_fit_active`; the bound key table
 `ring` of R11, R12 ↦ `keys`.
 
-*Sign-off.* R01–R08: signed off by the spec owner on 2026-11-24 (the signed-off text was in
-`specs/Drafts/RequestState.lean`, removed at incorporation). R09–R15: signed off on 2026-11-25
-(draft outside the repository; `seal`, `seal_with` at `ExtModel.nowMs` by spec-owner decision
+*Sign-off.* R01–R08: signed off by the spec owner on 2026-11-24 (the signed-off statements are the
+ones in this project file). R09–R15: signed off on 2026-11-25
+(`seal`, `seal_with` at `ExtModel.nowMs` by spec-owner decision
 of that day). **Readability rewrite of 2026-11-25: signed off by the spec owner on 2026-11-25**
 after a spec cycle of 5 review rounds. It changes the text (binder and hypothesis names,
 docstrings, abbreviations of `Defs.CodecState`), not the meaning: each type is definitionally
