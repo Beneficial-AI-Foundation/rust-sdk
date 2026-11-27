@@ -215,6 +215,22 @@ TARGETS=(
   transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses  # N09 (patch 05 helper)
   transport.auth.metadata_resolver.literal_ip               # N10
   transport.auth.metadata_resolver.normalize_host           # N11
+  # auth.rs OAuth metadata URL and issuer checks, translation patch 06.
+  transport.auth.AuthorizationManager.is_http_url           # A04
+  transport.auth.AuthorizationManager.is_disallowed_metadata_host  # A05
+  transport.auth.AuthorizationManager.is_disallowed_metadata_hostname  # A05 (callee)
+  transport.auth.AuthorizationManager.is_allowed_metadata_url  # A06
+  transport.auth.AuthorizationManager.is_allowed_disallowed_host  # A06 (patch 06 helper)
+  transport.auth.AuthorizationManager.resolve_resource_metadata_url  # A07
+  transport.auth.AuthorizationManager.is_same_origin        # A07 (callee)
+  transport.auth.AuthorizationManager.check_authorization_response_issuer  # A08 (patch 06 helper)
+  transport.auth.AuthorizationManager.check_authorization_metadata_issuer  # A09 (patch 06 helper)
+  transport.auth.AuthorizationManager.expected_issuer_for_authorization_metadata_url  # A09 (callee)
+  transport.auth.AuthorizationManager.issuer_identifiers_match  # A09 (callee)
+  transport.auth.AuthorizationManager.trim_root_slash       # A09 (patch 06 helper)
+  transport.auth.AuthorizationManager.is_root_url           # A09 (patch 06 helper)
+  transport.auth.AuthorizationManager.check_resource_metadata_resource  # A10 (patch 06 helper)
+  transport.auth.AuthorizationManager.is_resource_identifier_valid  # A10 (callee)
 )
 
 
@@ -237,12 +253,28 @@ PATCH05_TARGETS=" transport.auth.metadata_resolver.MetadataAddressResolver.new
   transport.auth.metadata_resolver.MetadataAddressResolver.allows_url
   transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses
   transport.auth.metadata_resolver.literal_ip transport.auth.metadata_resolver.normalize_host "
+# Likewise the auth.rs targets and helpers of translation patch 06 (all of A04-A10; is_same_origin
+# translates unmodified but is reached only from A07).
+PATCH06_TARGETS=" transport.auth.AuthorizationManager.is_http_url
+  transport.auth.AuthorizationManager.is_disallowed_metadata_host
+  transport.auth.AuthorizationManager.is_disallowed_metadata_hostname
+  transport.auth.AuthorizationManager.is_allowed_metadata_url
+  transport.auth.AuthorizationManager.is_allowed_disallowed_host
+  transport.auth.AuthorizationManager.resolve_resource_metadata_url
+  transport.auth.AuthorizationManager.is_same_origin
+  transport.auth.AuthorizationManager.check_authorization_response_issuer
+  transport.auth.AuthorizationManager.check_authorization_metadata_issuer
+  transport.auth.AuthorizationManager.expected_issuer_for_authorization_metadata_url
+  transport.auth.AuthorizationManager.issuer_identifiers_match
+  transport.auth.AuthorizationManager.trim_root_slash transport.auth.AuthorizationManager.is_root_url
+  transport.auth.AuthorizationManager.check_resource_metadata_resource
+  transport.auth.AuthorizationManager.is_resource_identifier_valid "
 case "${RMCP_TARGET_SET:-all}" in
   all) ;;
   phase2)
     phase2=()
     for t in "${TARGETS[@]}"; do
-      [[ "$t" == model.request_state* || "$(printf '%s' "$PATCH04_TARGETS$PATCH05_TARGETS" | tr '\n' ' ')" == *" $t "* ]] \
+      [[ "$t" == model.request_state* || "$(printf '%s' "$PATCH04_TARGETS$PATCH05_TARGETS$PATCH06_TARGETS" | tr '\n' ' ')" == *" $t "* ]] \
         || phase2+=("$t")
     done
     TARGETS=("${phase2[@]}")
@@ -274,9 +306,9 @@ check_output() {
   # target, i.e. PATCH04_TARGETS (here) and `patch04` (scripts/check-original-linkage.sh) disagree
   # with the call graph, and the ORIGINAL claim would silently skip checking it.
   if [[ "${RMCP_TARGET_SET:-all}" == phase2 ]]; then
-    for t in $PATCH04_TARGETS $PATCH05_TARGETS; do
+    for t in $PATCH04_TARGETS $PATCH05_TARGETS $PATCH06_TARGETS; do
       pat="^(noncomputable )?(private )?def ${t//./\\.}([[:space:]]|$)"
-      ! grep -Eq "$pat" <<<"$defs" || die "patch-04/05 target $t is translated from the unmodified source; update PATCH04_TARGETS/PATCH05_TARGETS and check-original-linkage.sh"
+      ! grep -Eq "$pat" <<<"$defs" || die "patch-04/05/06 target $t is translated from the unmodified source; update PATCH04_TARGETS/PATCH05_TARGETS/PATCH06_TARGETS and check-original-linkage.sh"
     done
   fi
   # Each `_` glob in [package.metadata.charon].start_from matches exactly one Rust item (plan

@@ -9,7 +9,7 @@ Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8b
 04-skill-public.patch (scripts/apply-patches.sh applies formal/trusted/patches/*.patch in
 file-name order, patch -p1 -F 0, only to the copy in .llbc/work/; the real source is never
 patched). Files: crates/rmcp/src/transport/auth/metadata_resolver.rs (blob 03435a2, which
-patches 01-04 do not touch) and crates/rmcp/src/transport/auth.rs (blob f677981 after patch 02,
+patches 01-04 do not touch) and crates/rmcp/src/transport/auth.rs (blob e434558 after patch 02,
 which adds only #[cfg(test)] code there). Generated with git diff from the patch-01..04 copy.
 The patch body below is the authoritative content. Toolchain measured: Aeneas
 nightly-2026.11.24-fb44cb4, Charon 0.1.324, Rust nightly-2026-09-17.
@@ -128,7 +128,7 @@ transport-streamable-http-server, transport-streamable-http-client, auth, macros
 copy: all pass, including the 16 metadata_resolver tests (counts in
 formal/trusted/evidence/README.md).
 diff --git a/crates/rmcp/src/transport/auth.rs b/crates/rmcp/src/transport/auth.rs
-index f677981..51eb57d 100644
+index e434558..83bcae7 100644
 --- a/crates/rmcp/src/transport/auth.rs
 +++ b/crates/rmcp/src/transport/auth.rs
 @@ -1401,8 +1401,8 @@ impl AuthorizationManager {
@@ -143,7 +143,7 @@ index f677981..51eb57d 100644
              Host::Ipv4(addr) => addr.is_loopback(),
              Host::Ipv6(addr) => addr.is_loopback(),
 diff --git a/crates/rmcp/src/transport/auth/metadata_resolver.rs b/crates/rmcp/src/transport/auth/metadata_resolver.rs
-index 03435a2..74c334c 100644
+index 03435a2..9ddab19 100644
 --- a/crates/rmcp/src/transport/auth/metadata_resolver.rs
 +++ b/crates/rmcp/src/transport/auth/metadata_resolver.rs
 @@ -94,33 +94,42 @@ pub(super) struct MetadataAddressResolver {

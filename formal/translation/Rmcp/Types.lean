@@ -724,6 +724,80 @@ structure transport.auth.metadata_resolver.MetadataAddressResolver where
 @[reducible]
 def transport.auth.metadata_resolver.proxy_host.closure := Unit
 
+/-- [rmcp::transport::auth::StoredAuthorizationState]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 414:0-426:1
+    Visibility: public -/
+structure transport.auth.StoredAuthorizationState where
+  pkce_verifier : String
+  csrf_token : String
+  expected_issuer : Option String
+  require_issuer : Bool
+  created_at : Std.U64
+  requested_scopes : alloc.vec.Vec String
+
+/-- [rmcp::transport::auth::ProtectedResourceMetadataInvalidReason]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 711:0-735:1
+    Visibility: public -/
+@[discriminant isize]
+inductive transport.auth.ProtectedResourceMetadataInvalidReason where
+| MissingResource : transport.auth.ProtectedResourceMetadataInvalidReason
+| ResourceNotAUrl :
+  String →
+  transport.auth.ProtectedResourceMetadataInvalidReason
+| ResourceHasFragment :
+  url.Url →
+  transport.auth.ProtectedResourceMetadataInvalidReason
+| ResourceMismatch :
+  url.Url →
+  url.Url →
+  transport.auth.ProtectedResourceMetadataInvalidReason
+| NotAMetadataDocument : transport.auth.ProtectedResourceMetadataInvalidReason
+
+/-- [rmcp::transport::auth::AuthorizationMetadata]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 740:0-752:1
+    Visibility: public -/
+structure transport.auth.AuthorizationMetadata where
+  authorization_endpoint : String
+  token_endpoint : String
+  registration_endpoint : Option String
+  issuer : Option String
+  jwks_uri : Option String
+  scopes_supported : Option (alloc.vec.Vec String)
+  response_types_supported : Option (alloc.vec.Vec String)
+  code_challenge_methods_supported : Option (alloc.vec.Vec String)
+  additional_fields : std.collections.hash.map.HashMap String
+    serde_json.value.Value std.hash.random.RandomState alloc.alloc.Global
+
+/-- [rmcp::transport::auth::ResourceServerMetadata]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 792:0-797:1 -/
+structure transport.auth.ResourceServerMetadata where
+  resource : Option String
+  authorization_server : Option String
+  authorization_servers : Option (alloc.vec.Vec String)
+  scopes_supported : Option (alloc.vec.Vec String)
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_same_origin::{closure}]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1334:29-1334:85 -/
+@[reducible]
+def transport.auth.AuthorizationManager.is_same_origin.closure := Unit
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_allowed_disallowed_host::{closure}]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1445:25-1445:79 -/
+@[reducible]
+def transport.auth.AuthorizationManager.is_allowed_disallowed_host.closure :=
+Unit
+
+/-- [rmcp::transport::auth::IssuerError]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4510:0-4519:1 -/
+@[discriminant isize]
+inductive transport.auth.IssuerError where
+| AuthorizationFailed : String → transport.auth.IssuerError
+| AuthorizationServerMissingIssuer : String → transport.auth.IssuerError
+| AuthorizationServerMismatch :
+  String →
+  String →
+  transport.auth.IssuerError
+
 /-- [rmcp::transport::common::client_side_sse::SseEventSizeLimiter]
     Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 29:0-35:1 -/
 structure transport.common.client_side_sse.SseEventSizeLimiter where

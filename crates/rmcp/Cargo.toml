@@ -118,6 +118,16 @@ start_from = [
   "rmcp::transport::auth::metadata_resolver::literal_ip",  # N10
   "rmcp::transport::auth::metadata_resolver::proxy_host",  # N05 helper (patch 05)
   "rmcp::transport::auth::metadata_resolver::normalize_host",  # N11
+  # OAuth metadata URL and issuer checks of auth.rs (A04-A10): all need translation patch 06
+  # (formal/trusted/patches/06-auth-metadata.patch). A08-A10 start from the patch-06 helpers
+  # check_*; their AuthError/&self wrappers (validate_*) are unverified glue.
+  "rmcp::transport::auth::_::is_http_url",  # A04 (patch 06)
+  "rmcp::transport::auth::_::is_disallowed_metadata_host",  # A05 (patch 06)
+  "rmcp::transport::auth::_::is_allowed_metadata_url",  # A06 (patch 06)
+  "rmcp::transport::auth::_::resolve_resource_metadata_url",  # A07 (patch 06)
+  "rmcp::transport::auth::_::check_authorization_response_issuer",  # A08 (patch 06)
+  "rmcp::transport::auth::_::check_authorization_metadata_issuer",  # A09 (patch 06)
+  "rmcp::transport::auth::_::check_resource_metadata_resource",  # A10 (patch 06)
 ]
 hide_marker_traits = true
 exclude = [
@@ -170,6 +180,10 @@ opaque = [
   # Created by translation patch 04: one-line wrappers of the str Pattern APIs (B2), SHA-256
   # (B1), NFKC and percent-encoding; Lean models: formal/trusted/Rmcp/FunsExternal.lean.
   "rmcp::model::skill::prim",
+  # Created by translation patch 06: one-line wrappers of the str Pattern APIs (B2) and of
+  # str::trim, the url rewriting of an issuer (Url::set_query/set_fragment/set_path/to_string) and
+  # the four tracing events of resolve_resource_metadata_url; Lean models: FunsExternal.lean.
+  "rmcp::transport::auth::prim",
   # Phase 2, human decision H4: the type only. A01-A03 are associated functions of
   # AuthorizationManager that never use `self`; translating the type makes Charon fail (a hax
   # panic on the fields `Arc<dyn CredentialStore>` and `Arc<dyn StateStore>`, auth.rs:1252-1253;

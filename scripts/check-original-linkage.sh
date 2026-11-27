@@ -67,6 +67,8 @@
 # ...::request_state::_::now_ms and ...::skill::prim (patch 04); drop the patch-05 start points of
 # metadata_resolver.rs (N03-N07, N09-N11 and the helpers with_base_url, proxy_host,
 # allowed_addresses; N01 and N08 stay) and the opaque entries ...::metadata_resolver::{Lookup, prim};
+# drop the seven patch-06 start points of auth.rs (A04-A10, none ORIGINAL) and the opaque entry
+# ...::auth::prim;
 # keep the other exclude entries outside
 # rmcp::model::request_state*; keep hide_marker_traits), then run scripts/aeneas-translate.sh on
 # that copy with RMCP_NO_PATCHES=1 and RMCP_TARGET_SET=phase2 into <scratch-dir>/out, so every
@@ -188,13 +190,22 @@ patch05 = {mr + "_::new", mr + "_::with_base_url", mr + "_::allowed_addresses",
            mr + "literal_ip", mr + "proxy_host", mr + "normalize_host"}
 if not patch05 <= set(meta["start_from"]):
     sys.exit(f"start_from lacks the patch-05 start points {sorted(patch05 - set(meta['start_from']))}")
-start = [s for s in meta["start_from"] if s not in phase1 and s not in patch04 and s not in patch05]
+# auth.rs start points of translation patch 06 (A04-A10); none is ORIGINAL.
+au = "rmcp::transport::auth::_::"
+patch06 = {au + n for n in (
+    "is_http_url", "is_disallowed_metadata_host", "is_allowed_metadata_url",
+    "resolve_resource_metadata_url", "check_authorization_response_issuer",
+    "check_authorization_metadata_issuer", "check_resource_metadata_resource")}
+if not patch06 <= set(meta["start_from"]):
+    sys.exit(f"start_from lacks the patch-06 start points {sorted(patch06 - set(meta['start_from']))}")
+start = [s for s in meta["start_from"]
+         if s not in phase1 and s not in patch04 and s not in patch05 and s not in patch06]
 if not start:
     sys.exit("start_from has no Phase 2 entries")
 opaque = [o for o in meta["opaque"] if o not in (
     "rmcp::model::request_state_wire::prim", "rmcp::model::request_state::_::now_ms",
     "rmcp::model::skill::prim", "rmcp::transport::auth::metadata_resolver::Lookup",
-    "rmcp::transport::auth::metadata_resolver::prim")]
+    "rmcp::transport::auth::metadata_resolver::prim", "rmcp::transport::auth::prim")]
 exclude = [e for e in meta["exclude"] if not e.startswith("rmcp::model::request_state")]
 hide = meta.get("hide_marker_traits", False)
 def arr(xs):

@@ -1,0 +1,689 @@
+Translation patch: the OAuth metadata URL and issuer checks of
+crates/rmcp/src/transport/auth.rs, so that targets A04-A10 translate (A04 is_http_url, A05
+is_disallowed_metadata_host, A06 is_allowed_metadata_url, A07 resolve_resource_metadata_url, A08
+validate_authorization_response_issuer, A09 validate_authorization_metadata_issuer, A10
+validate_resource_metadata_resource; human decisions 2026-11-26 and 2026-11-27, recorded as
+AD1-AD8 in formal/README.md: AD1 patch 06 with the mirror enum IssuerError, the check_* helpers as the
+verified targets of A08-A10 and the validate_* wrappers as unverified glue, A04 linkage
+patch-06; AD2 the tracing events keep the target rmcp::transport::auth; AD3
+#[allow(clippy::nonminimal_bool)] on the three functions that use `!(a == b)`; AD4 the opaque
+constants of the external models and the exact model of trim; AD5 the boundary tests of these
+targets go into 02-phase2-tests.patch, not into this patch; AD6
+#[allow(clippy::enum_variant_names)] on IssuerError; AD7 and AD8 two of the three stated
+exceptions below)
+
+Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
+01-request-state-wire.patch, 02-phase2-tests.patch, 03-request-state-public.patch,
+04-skill-public.patch and 05-metadata-resolver.patch (scripts/apply-patches.sh applies
+formal/trusted/patches/*.patch in file-name order, patch -p1 -F 0, only to the copy in
+.llbc/work/; the real source is never patched). File: crates/rmcp/src/transport/auth.rs only
+(blob 3d7816b upstream, 83bcae7 after patches 02 and 05, dad471b after this patch). Generated
+with git diff from the patch-01..05 copy. The patch body below is the authoritative content. Toolchain measured: Aeneas
+nightly-2026.11.24-fb44cb4, Charon 0.1.324, Rust nightly-2026-09-17.
+
+Not part of this patch (they stay in the repository): the Charon settings in
+crates/rmcp/Cargo.toml (seven start_from entries rmcp::transport::auth::_::{is_http_url,
+is_disallowed_metadata_host, is_allowed_metadata_url, resolve_resource_metadata_url,
+check_authorization_response_issuer, check_authorization_metadata_issuer,
+check_resource_metadata_resource}; the opaque entry rmcp::transport::auth::prim), TARGETS and
+PATCH06_TARGETS of scripts/aeneas-translate.sh, the patch06 set of
+scripts/check-original-linkage.sh, the translation pin, and the external models of
+formal/trusted/Rmcp/FunsExternal.lean (section "auth.rs OAuth metadata URL and issuer checks").
+All seven targets and their helpers need this patch (linkage patch-06): A04 translates
+unmodified but its Lean does not build (H3); is_same_origin translates unmodified and is reached
+only from A07.
+
+Stays unverified (not translated, or translated only as an opaque model): the wrappers
+validate_authorization_response_issuer, validate_authorization_metadata_issuer (which reads
+self.allow_missing_issuer) and validate_resource_metadata_resource (which reads self.base_url),
+and IssuerError::into_auth_error (H6, H10); the bodies of the ten prim functions (opaque, modelled
+in Lean); URL parsing, resolution and rewriting (url::Url::parse, join and the setters behind
+prim::issuer_url: opaque values of the opaque type url::Url, no axiom).
+Stated exceptions (the same three in the header of patch 06, the section docstring of
+FunsExternal.lean and the module docstring of Proofs.External.Auth): (1) AD7: the `issuer_url`
+setters can panic for a discovery URL longer than `u32::MAX` bytes; the model returns `ok`. (2) AD8:
+the `debug_assert!` of `Url::join` (url-2.5.9 `src/parser.rs` line 1304) can panic for a `file:`
+base whose last path segment is a normalized Windows drive letter; the model returns `ok`. (3)
+The `tracing` side effect of the four log functions is not modelled; they return `()`. Details:
+ AD7  model of prim::issuer_url: for a discovery URL with neither query nor fragment whose
+      serialization is longer than u32::MAX bytes (which Url::parse and Url::join accept, since
+      they check only the start offsets of the components), set_path panics at
+      `to_u32(self.serialization.len()).unwrap()` (url-2.5.9 src/lib.rs line 1768); the model
+      returns `ok`; A09 statements take a premise bounding the URL
+      (formal/trusted/Rmcp/FunsExternal.lean, transport.auth.prim.issuer_url).
+ AD8  model of url::Url::join (decision 2026-11-27): with debug assertions on (the translated
+      configuration), for a file: base whose last path segment is a normalized Windows drive
+      letter (pop_path does not pop it) joined with a leading `..` or percent-encoded double-dot
+      segment, Url::join can panic at
+      `debug_assert!(self.serialization.as_bytes()[segment_start - 1] == b'/')` (url-2.5.9
+      src/parser.rs line 1304), e.g. Url::parse("file://h/x/C:").unwrap().join("..")
+      (reproduced 2026-11-27; a reviewer's fuzzing found 595 such panics, all file: bases, all at
+      line 1304, none for other schemes; the condition is a superset description:
+      Url::parse("file:///C:").unwrap().join("..") does not panic); the model returns `ok`; A07 statements assume the
+      base URL's scheme is http or https (formal/trusted/Rmcp/FunsExternal.lean, url.Url.join).
+
+Change (non-test lines only; no test is added or changed). Every hunk replaces code that the
+translation cannot handle by calls to the new module `prim`, by a helper function or by an
+explicit match, and keeps the computed values:
+ prim  New private module `prim` at the end of auth.rs (before `mod tests`), opaque in the
+       translation and modelled in Lean, each the original expression: trim (`s.trim()`),
+       starts_with (`s.starts_with(prefix)`), strip_suffix (`s.strip_suffix(suffix)`, &str
+       pattern), strip_dir_prefix (`path.strip_prefix(&format!("{prefix}/"))`),
+       trim_start_slashes (`s.trim_start_matches('/')`), issuer_url (the original
+       clone/set_query/set_fragment/set_path/to_string lines of
+       expected_issuer_for_authorization_metadata_url, verbatim), and the four tracing events
+       of resolve_resource_metadata_url (debug!/warn! with the original messages and
+       `target: "rmcp::transport::auth"`, AD2). Used by H5, H7 and H10.
+ H1  The constant CLOUD_METADATA_HOSTS (a `&[&str]`) is removed and its one use,
+     `CLOUD_METADATA_HOSTS.contains(&host)` in is_disallowed_metadata_hostname, becomes
+     `matches!(host, "metadata" | "metadata.google.internal" | "metadata.azure.internal")`.
+ H2  A05 is_disallowed_metadata_hostname / is_disallowed_metadata_host:
+     `metadata_resolver::prim::ends_with(host, ".localhost")` and
+     `metadata_resolver::prim::trim_end_dots(domain)` for `host.ends_with(".localhost")` and
+     `domain.trim_end_matches('.')` (the patch-05 wrappers).
+ H3  A04 is_http_url, A06 is_allowed_metadata_url: the parameter `url` is renamed `target`; A07
+     resolve_resource_metadata_url: the local `url` is renamed `metadata_url` (and the closure
+     argument of is_root_url, H8, is `parsed`).
+ H4  A06 is_allowed_metadata_url: `Self::is_disallowed_metadata_host(host)` without
+     `host.clone()` (Host<&str> is Copy); the rest of the body moves to the new private
+     `is_allowed_disallowed_host(base_url, host, allow_private)`, called with the host read
+     again by `match target.host() { Some(host) => .., None => false }` (a comment in the code
+     says that the `None` arm is unreachable, the host having been `Some` just above, and is
+     there only to make the match total); there
+     `IpAddr::V4(addr)`/`IpAddr::V6(addr)` for `addr.into()`, and the closure
+     `|base_host| Self::is_loopback_metadata_host(base_host)` for the fn item in `is_some_and`.
+ H5  A07 resolve_resource_metadata_url: `prim::trim(value)` for `value.trim()`;
+     `Url::parse(value).or_else(|_| base_url.join(value))` becomes a nested match; the four
+     debug!/warn! calls become the prim functions; `url.scheme() != "https"` becomes
+     `!(metadata_url.scheme() == "https")` (H9).
+ H6  A08/A09: the bodies of validate_authorization_response_issuer and
+     validate_authorization_metadata_issuer move to the new private
+     check_authorization_response_issuer(stored_state, received_issuer) and
+     check_authorization_metadata_issuer(allow_missing_issuer, discovery_url, expected_issuer,
+     metadata), which return the new private enum IssuerError (variants AuthorizationFailed,
+     AuthorizationServerMissingIssuer, AuthorizationServerMismatch, with the names and fields
+     of the AuthError variants they stand for); each validate_* is
+     `Self::check_*(..).map_err(IssuerError::into_auth_error)`, passing
+     `self.allow_missing_issuer` for A09. In check_authorization_metadata_issuer
+     `expected_issuer.map(str::to_owned).or_else(|| ..)` becomes a match.
+ H7  expected_issuer_for_authorization_metadata_url (A09 callee):
+     `prim::strip_dir_prefix(path, oauth_prefix)` (and for oidc_prefix) for
+     `path.strip_prefix(&format!("{prefix}/"))`, `prim::strip_suffix` and
+     `prim::trim_start_slashes` for `strip_suffix` and `trim_start_matches('/')`, and
+     `prim::issuer_url(discovery_url, issuer_path)` for the URL rewriting.
+ H8  issuer_identifiers_match (A09 callee): the local closure trim_root_slash becomes the
+     private associated fn trim_root_slash (an if-let chain over `prim::strip_suffix(issuer,
+     "/")` and the new private is_root_url, which parses with Url::parse and tests the path).
+ H9  `.to_string()` on a &str becomes `.to_owned()` (A08, A09), and `a != b` becomes `!(a == b)`
+     (A07, A08, A10). AD3: `#[allow(clippy::nonminimal_bool)]` on the three functions with
+     `!(a == b)` (resolve_resource_metadata_url, check_authorization_response_issuer,
+     is_resource_identifier_valid).
+ H10 A10: the body of validate_resource_metadata_resource moves to the new private
+     check_resource_metadata_resource(base_url, metadata), with `base_url` for `self.base_url`;
+     validate_resource_metadata_resource is `Self::check_resource_metadata_resource(&self.base_url,
+     metadata)`. In is_resource_identifier_valid `prim::starts_with` and
+     `metadata_resolver::prim::ends_with(actual_path, "/")` for `starts_with` and
+     `ends_with('/')`, and `!=` as in H9.
+ IpAddr is added to the `std::net` import (H4).
+
+Why each hunk is needed (measured 2026-11-26 in a scratch copy with the Charon settings and
+scripts above; each error is what Aeneas, Charon or the Lean build reports without the hunk):
+ prim, H5, H7, H10  "[Error] Unimplemented" on the signatures of str::trim, starts_with,
+     strip_prefix, strip_suffix, trim_start_matches, ends_with (the core::str::pattern::Pattern
+     trait has a generic associated type, as patches 04 and 05); the tracing macros expand to
+     callsite statics ("Mixed declaration groups" and internal errors); `format!` and the url
+     setters would need models of alloc::fmt::format, core::fmt::Arguments and the url parser.
+ H1  "[Error] Unimplemented" at every use of a constant of type &[&str] or [&str; N]; a local
+     array translates but needs a model of slice::contains.
+ H2  The Pattern error of prim.
+ H3  Not a translation error: the Lean build fails ("Invalid field `Url`: the environment does
+     not contain `url.Url.Url`"), since Aeneas emits `url.Url.scheme url` with a local variable
+     named `url` that shadows the namespace (as patch 05 H7). Remove H3 when Aeneas qualifies
+     the name.
+ H4  `Host<&str>::clone` gives "Found a case of unsupported nested borrows"; a `match` on a host
+     bound by let-else that binds its fields gives "[Error] Internal error" (interp/Interp.ml
+     line 686); `addr.into()` gives an internal error; `is_some_and` with the fn item gives
+     "[Error] Unimplemented" (the FnOnce impl of a fn item with a higher-ranked lifetime, as
+     patch 05).
+ H5  `or_else` with a closure: the same fn-item/closure limitation; see also prim.
+ H6  AuthError cannot be translated: "Dynamic trait types are not supported yet" on the field
+     `source: Box<dyn Error + Send + Sync>` of AuthError::DiscoveryRequestFailed, and with
+     AuthError opaque Aeneas fails "Can't get the list of fields of this adt" at the variant
+     constructors. Reading a field of `&self` (the opaque AuthorizationManager, human decision
+     H4) gives "Unexpected error". `.map(str::to_owned)`: "Unimplemented" (fn item as closure).
+ H8  The closure with `filter`/`map`/`unwrap_or` gives "Nested borrows are not supported yet".
+ H9  `str::to_string` goes through the blanket alloc::string::ToString over Display/Formatter,
+     which has no exact model (`str::to_owned` has one). With `!=` Aeneas adds the default
+     method `ne` to every PartialEq instance record of the crate, which changes the blocks of
+     ORIGINAL items (such as the instance of NumberOrString) that
+     scripts/check-original-linkage.sh compares. AD3: without the allow, cargo clippy reports five
+     clippy::nonminimal_bool warnings on these expressions.
+ H10 "Unexpected error" on the field access `self.base_url` of the opaque AuthorizationManager.
+No upstream Charon or Aeneas issue has been filed (as of 2026-11-26); the reproducers are kept
+outside the repository.
+
+Why the behaviour is unchanged: every value computed is the same and in the same order. The
+prim functions are the original expressions with the same arguments; a char pattern '/' and the
+&str pattern "/" match the same single byte; `matches!` on the three literals is
+`CLOUD_METADATA_HOSTS.contains`; Url::host is a pure accessor, so reading it again yields the
+host that was cloned; `IpAddr::V4(a)` is `<IpAddr as From<Ipv4Addr>>::from(a)`; the closures
+call the functions the fn items named; the nested match tries Url::parse first and joins only on
+its error, as or_else; `!(a == b)` is the default `ne`; str::to_string and str::to_owned both
+return String::from(s); IssuerError::into_auth_error maps each variant to the AuthError variant
+of the same name with the same fields, so each validate_* returns what its old body returned;
+the fields self.allow_missing_issuer and self.base_url are read once, before the body, and
+nothing in the body changes them; trim_root_slash returns `without_slash` exactly when the old
+filter kept it. The tracing events keep their level, message and target
+(`target: "rmcp::transport::auth"`, the module path the macros used before, AD2); only their
+callsite metadata (module_path rmcp::transport::auth::prim, file line) differs, which no target
+or level filter reads.
+Warnings: the property that matters is that patch 06 adds no warning: cargo clippy -p rmcp --lib
+--no-default-features --features request-state,server,client,client-side-sse,
+transport-streamable-http-server,transport-streamable-http-client,auth (the translated feature
+configuration), with and without the feature macros, reports the same set of warnings (same
+lint, file and message; only the line numbers in auth.rs move) on the patch-01..05 copy and on
+the patch-01..06 copy, and none of them is clippy::nonminimal_bool or
+clippy::enum_variant_names (measured 2026-11-26). The totals depend on the toolchain, not on
+macros: 10 with the repository toolchain 1.96 (clippy 0.1.96: nine dead-code warnings and the
+patch-05 redundant_closure), 29 with the pinned nightly-2026-09-17 (the same ten plus 18
+clippy::result_large_err and one clippy::question_mark, the last on the `else if let ... else
+{ return None; }` chain of expected_issuer_for_authorization_metadata_url, which H7 keeps), each
+on both copies and with or without macros. Two lints are allowed on items this patch adds:
+AD3 #[allow(clippy::nonminimal_bool)] (above, H9); AD6 #[allow(clippy::enum_variant_names)] on
+IssuerError, whose three variants all begin with `Authorization` because they copy the names of
+the AuthError variants they stand for exactly (AuthorizationFailed,
+AuthorizationServerMissingIssuer, AuthorizationServerMismatch), so that into_auth_error maps
+each variant to the one of the same name; without the allow clippy reports "all variants have
+the same prefix: `Authorization`". The crate does not deny warnings.
+Tests: cargo test --lib (features request-state, server, client, client-side-sse,
+transport-streamable-http-server, transport-streamable-http-client, auth, macros) on the patched
+copy: 860 passed, 0 failed, among them the thirteen AD5 boundary tests d5_* of patch 02 (counts in
+formal/trusted/evidence/README.md).
+
+diff --git a/crates/rmcp/src/transport/auth.rs b/crates/rmcp/src/transport/auth.rs
+index 83bcae7..dad471b 100644
+--- a/crates/rmcp/src/transport/auth.rs
++++ b/crates/rmcp/src/transport/auth.rs
+@@ -1,7 +1,7 @@
+ use std::{
+     collections::{HashMap, HashSet},
+     future::Future,
+-    net::{Ipv4Addr, Ipv6Addr},
++    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+     pin::Pin,
+     sync::Arc,
+     time::{Duration, SystemTime, UNIX_EPOCH},
+@@ -36,11 +36,6 @@ mod metadata_resolver;
+ const DEFAULT_HTTP_TIMEOUT: Duration = Duration::from_secs(30);
+ const MAX_OAUTH_HTTP_RESPONSE_BODY_BYTES: usize = 1024 * 1024;
+ const MAX_OAUTH_REDIRECTS: usize = 10;
+-const CLOUD_METADATA_HOSTS: &[&str] = &[
+-    "metadata",
+-    "metadata.google.internal",
+-    "metadata.azure.internal",
+-];
+ 
+ /// Redirect handling requested for an outbound OAuth HTTP operation.
+ #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+@@ -1327,8 +1322,8 @@ fn is_allowed_client_credentials_endpoint(resource: &Url, token_endpoint: &Url)
+ }
+ 
+ impl AuthorizationManager {
+-    fn is_http_url(url: &Url) -> bool {
+-        matches!(url.scheme(), "http" | "https") && url.host_str().is_some()
++    fn is_http_url(target: &Url) -> bool {
++        matches!(target.scheme(), "http" | "https") && target.host_str().is_some()
+     }
+ 
+     fn is_same_origin(base: &Url, candidate: &Url) -> bool {
+@@ -1384,14 +1379,17 @@ impl AuthorizationManager {
+ 
+     fn is_disallowed_metadata_hostname(host: &str) -> bool {
+         matches!(host, "localhost")
+-            || host.ends_with(".localhost")
+-            || CLOUD_METADATA_HOSTS.contains(&host)
++            || metadata_resolver::prim::ends_with(host, ".localhost")
++            || matches!(
++                host,
++                "metadata" | "metadata.google.internal" | "metadata.azure.internal"
++            )
+     }
+ 
+     fn is_disallowed_metadata_host(host: Host<&str>) -> bool {
+         match host {
+             Host::Domain(domain) => Self::is_disallowed_metadata_hostname(
+-                &domain.trim_end_matches('.').to_ascii_lowercase(),
++                &metadata_resolver::prim::trim_end_dots(domain).to_ascii_lowercase(),
+             ),
+             Host::Ipv4(addr) => Self::is_disallowed_metadata_ipv4(addr),
+             Host::Ipv6(addr) => Self::is_disallowed_metadata_ipv6(addr),
+@@ -1409,65 +1407,80 @@ impl AuthorizationManager {
+         }
+     }
+ 
+-    fn is_allowed_metadata_url(base_url: &Url, url: &Url, allow_private: bool) -> bool {
+-        if !Self::is_http_url(url) {
++    fn is_allowed_metadata_url(base_url: &Url, target: &Url, allow_private: bool) -> bool {
++        if !Self::is_http_url(target) {
+             return false;
+         }
+ 
+-        let Some(host) = url.host() else {
++        let Some(host) = target.host() else {
+             return false;
+         };
+ 
+-        if !Self::is_disallowed_metadata_host(host.clone()) {
++        if !Self::is_disallowed_metadata_host(host) {
+             return true;
+         }
+ 
++        // The host is read again because the translation fails on the `match` below with the
++        // let-else binding `host`. `None => false` is unreachable: `target.host()` was `Some`
++        // above, and `Url::host` only reads `target`; the arm is there to make the match total.
++        match target.host() {
++            Some(host) => Self::is_allowed_disallowed_host(base_url, host, allow_private),
++            None => false,
++        }
++    }
++
++    /// Whether a host that `is_disallowed_metadata_host` rejects is allowed all the same.
++    fn is_allowed_disallowed_host(base_url: &Url, host: Host<&str>, allow_private: bool) -> bool {
+         let class = match host {
+-            Host::Ipv4(addr) => Some(metadata_resolver::AddressClass::of(addr.into())),
+-            Host::Ipv6(addr) => Some(metadata_resolver::AddressClass::of(addr.into())),
++            Host::Ipv4(addr) => Some(metadata_resolver::AddressClass::of(IpAddr::V4(addr))),
++            Host::Ipv6(addr) => Some(metadata_resolver::AddressClass::of(IpAddr::V6(addr))),
+             Host::Domain(_) => None,
+         };
+         if allow_private && class == Some(metadata_resolver::AddressClass::Private) {
+             return true;
+         }
+ 
+-        base_url.host().is_some_and(Self::is_loopback_metadata_host)
++        base_url
++            .host()
++            .is_some_and(|base_host| Self::is_loopback_metadata_host(base_host))
+             && Self::is_loopback_metadata_host(host)
+     }
+ 
+     /// Accepts the resource's own origin, or any URL the metadata host policy allows.
++    #[allow(clippy::nonminimal_bool)]
+     fn resolve_resource_metadata_url(
+         value: &str,
+         base_url: &Url,
+         allow_private: bool,
+     ) -> Option<Url> {
+-        let value = value.trim();
++        let value = prim::trim(value);
+         if value.is_empty() {
+-            debug!("ignoring empty resource_metadata value");
++            prim::debug_empty_resource_metadata();
+             return None;
+         }
+ 
+-        let url = match Url::parse(value).or_else(|_| base_url.join(value)) {
+-            Ok(url) => url,
+-            Err(error) => {
+-                debug!("failed to parse resource metadata value `{value}` as URL: {error}");
+-                return None;
+-            }
++        let metadata_url = match Url::parse(value) {
++            Ok(metadata_url) => metadata_url,
++            Err(_) => match base_url.join(value) {
++                Ok(metadata_url) => metadata_url,
++                Err(error) => {
++                    prim::debug_unparsable_resource_metadata(value, &error);
++                    return None;
++                }
++            },
+         };
+ 
+-        if Self::is_http_url(&url) && Self::is_same_origin(base_url, &url) {
+-            return Some(url);
++        if Self::is_http_url(&metadata_url) && Self::is_same_origin(base_url, &metadata_url) {
++            return Some(metadata_url);
+         }
+-        if base_url.scheme() == "https" && url.scheme() != "https" {
+-            warn!("rejecting resource metadata URL `{url}`: downgrades `{base_url}` from https");
++        if base_url.scheme() == "https" && !(metadata_url.scheme() == "https") {
++            prim::warn_downgraded_resource_metadata(&metadata_url, base_url);
+             return None;
+         }
+-        if Self::is_allowed_metadata_url(base_url, &url, allow_private) {
+-            Some(url)
++        if Self::is_allowed_metadata_url(base_url, &metadata_url, allow_private) {
++            Some(metadata_url)
+         } else {
+-            warn!(
+-                "rejecting resource metadata URL `{url}`: not same-origin with `{base_url}` and not an allowed metadata host"
+-            );
++            prim::warn_disallowed_resource_metadata(&metadata_url, base_url);
+             None
+         }
+     }
+@@ -2321,11 +2334,20 @@ impl AuthorizationManager {
+         stored_state: &StoredAuthorizationState,
+         received_issuer: Option<&str>,
+     ) -> Result<(), AuthError> {
++        Self::check_authorization_response_issuer(stored_state, received_issuer)
++            .map_err(IssuerError::into_auth_error)
++    }
++
++    #[allow(clippy::nonminimal_bool)]
++    fn check_authorization_response_issuer(
++        stored_state: &StoredAuthorizationState,
++        received_issuer: Option<&str>,
++    ) -> Result<(), IssuerError> {
+         let Some(expected_issuer) = stored_state.expected_issuer.as_deref() else {
+             if received_issuer.is_some() || stored_state.require_issuer {
+-                return Err(AuthError::AuthorizationFailed(
++                return Err(IssuerError::AuthorizationFailed(
+                     "Authorization callback issuer cannot be validated because expected issuer was not recorded"
+-                        .to_string(),
++                        .to_owned(),
+                 ));
+             }
+             // Without issuer metadata from discovery and without an issuer-bearing
+@@ -2335,18 +2357,18 @@ impl AuthorizationManager {
+         };
+         let Some(received_issuer) = received_issuer else {
+             if stored_state.require_issuer {
+-                return Err(AuthError::AuthorizationServerMissingIssuer {
+-                    expected_issuer: expected_issuer.to_string(),
++                return Err(IssuerError::AuthorizationServerMissingIssuer {
++                    expected_issuer: expected_issuer.to_owned(),
+                 });
+             }
+             // SEP-2468 recommends RFC 9207 `iss`, but tolerate older authorization
+             // servers that do not advertise support for backwards compatibility.
+             return Ok(());
+         };
+-        if received_issuer != expected_issuer {
+-            return Err(AuthError::AuthorizationServerMismatch {
+-                expected_issuer: expected_issuer.to_string(),
+-                received_issuer: received_issuer.to_string(),
++        if !(received_issuer == expected_issuer) {
++            return Err(IssuerError::AuthorizationServerMismatch {
++                expected_issuer: expected_issuer.to_owned(),
++                received_issuer: received_issuer.to_owned(),
+             });
+         }
+         Ok(())
+@@ -2749,28 +2771,20 @@ impl AuthorizationManager {
+ 
+         let issuer_path = if path == oauth_prefix || path == oidc_prefix {
+             ""
+-        } else if let Some(suffix) = path.strip_prefix(&format!("{oauth_prefix}/")) {
++        } else if let Some(suffix) = prim::strip_dir_prefix(path, oauth_prefix) {
+             // RFC 8414 path-insertion form
+             suffix
+-        } else if let Some(suffix) = path.strip_prefix(&format!("{oidc_prefix}/")) {
++        } else if let Some(suffix) = prim::strip_dir_prefix(path, oidc_prefix) {
+             // MCP-required OpenID Connect path-insertion compatibility form
+             suffix
+-        } else if let Some(prefix) = path.strip_suffix(oidc_prefix) {
++        } else if let Some(prefix) = prim::strip_suffix(path, oidc_prefix) {
+             // OpenID Connect path-appended form
+-            prefix.trim_start_matches('/')
++            prim::trim_start_slashes(prefix)
+         } else {
+             return None;
+         };
+ 
+-        let mut issuer = discovery_url.clone();
+-        issuer.set_query(None);
+-        issuer.set_fragment(None);
+-        if issuer_path.is_empty() {
+-            issuer.set_path("");
+-        } else {
+-            issuer.set_path(&format!("/{issuer_path}"));
+-        }
+-        Some(issuer.to_string())
++        Some(prim::issuer_url(discovery_url, issuer_path))
+     }
+ 
+     fn issuer_identifiers_match(received_issuer: &str, expected_issuer: &str) -> bool {
+@@ -2778,19 +2792,23 @@ impl AuthorizationManager {
+             return true;
+         }
+ 
+-        let trim_root_slash = |issuer: &str| -> String {
+-            issuer
+-                .strip_suffix('/')
+-                .filter(|without_slash| {
+-                    Url::parse(without_slash)
+-                        .map(|url| url.path().is_empty() || url.path() == "/")
+-                        .unwrap_or(false)
+-                })
+-                .unwrap_or(issuer)
+-                .to_string()
+-        };
++        Self::trim_root_slash(received_issuer) == Self::trim_root_slash(expected_issuer)
++    }
++
++    fn trim_root_slash(issuer: &str) -> String {
++        if let Some(without_slash) = prim::strip_suffix(issuer, "/")
++            && Self::is_root_url(without_slash)
++        {
++            return without_slash.to_owned();
++        }
++        issuer.to_owned()
++    }
+ 
+-        trim_root_slash(received_issuer) == trim_root_slash(expected_issuer)
++    fn is_root_url(value: &str) -> bool {
++        match Url::parse(value) {
++            Ok(parsed) => parsed.path().is_empty() || parsed.path() == "/",
++            Err(_) => false,
++        }
+     }
+ 
+     fn validate_authorization_metadata_issuer(
+@@ -2799,22 +2817,38 @@ impl AuthorizationManager {
+         expected_issuer: Option<&str>,
+         metadata: &AuthorizationMetadata,
+     ) -> Result<(), AuthError> {
+-        let expected_issuer = expected_issuer
+-            .map(str::to_owned)
+-            .or_else(|| Self::expected_issuer_for_authorization_metadata_url(discovery_url));
++        Self::check_authorization_metadata_issuer(
++            self.allow_missing_issuer,
++            discovery_url,
++            expected_issuer,
++            metadata,
++        )
++        .map_err(IssuerError::into_auth_error)
++    }
++
++    fn check_authorization_metadata_issuer(
++        allow_missing_issuer: bool,
++        discovery_url: &Url,
++        expected_issuer: Option<&str>,
++        metadata: &AuthorizationMetadata,
++    ) -> Result<(), IssuerError> {
++        let expected_issuer = match expected_issuer {
++            Some(expected_issuer) => Some(expected_issuer.to_owned()),
++            None => Self::expected_issuer_for_authorization_metadata_url(discovery_url),
++        };
+         let Some(expected_issuer) = expected_issuer else {
+             return Ok(());
+         };
+         let Some(received_issuer) = metadata.issuer.as_deref() else {
+-            if self.allow_missing_issuer {
++            if allow_missing_issuer {
+                 return Ok(());
+             }
+-            return Err(AuthError::AuthorizationServerMissingIssuer { expected_issuer });
++            return Err(IssuerError::AuthorizationServerMissingIssuer { expected_issuer });
+         };
+         if !Self::issuer_identifiers_match(received_issuer, &expected_issuer) {
+-            return Err(AuthError::AuthorizationServerMismatch {
++            return Err(IssuerError::AuthorizationServerMismatch {
+                 expected_issuer,
+-                received_issuer: received_issuer.to_string(),
++                received_issuer: received_issuer.to_owned(),
+             });
+         }
+         Ok(())
+@@ -2960,6 +2994,13 @@ impl AuthorizationManager {
+     fn validate_resource_metadata_resource(
+         &self,
+         metadata: &ResourceServerMetadata,
++    ) -> Result<(), Box<ProtectedResourceMetadataInvalidReason>> {
++        Self::check_resource_metadata_resource(&self.base_url, metadata)
++    }
++
++    fn check_resource_metadata_resource(
++        base_url: &Url,
++        metadata: &ResourceServerMetadata,
+     ) -> Result<(), Box<ProtectedResourceMetadataInvalidReason>> {
+         let Some(resource) = metadata.resource.as_deref() else {
+             return Err(Box::new(
+@@ -2983,10 +3024,10 @@ impl AuthorizationManager {
+             ));
+         }
+ 
+-        if !Self::is_resource_identifier_valid(&self.base_url, &resource_url) {
++        if !Self::is_resource_identifier_valid(base_url, &resource_url) {
+             return Err(Box::new(
+                 ProtectedResourceMetadataInvalidReason::ResourceMismatch {
+-                    reference: self.base_url.clone(),
++                    reference: base_url.clone(),
+                     permitted: resource_url,
+                 },
+             ));
+@@ -2995,14 +3036,15 @@ impl AuthorizationManager {
+         Ok(())
+     }
+ 
++    #[allow(clippy::nonminimal_bool)]
+     fn is_resource_identifier_valid(expected: &Url, actual: &Url) -> bool {
+         if expected == actual {
+             return true;
+         }
+ 
+-        if expected.scheme() != actual.scheme()
+-            || expected.host_str() != actual.host_str()
+-            || expected.port_or_known_default() != actual.port_or_known_default()
++        if !(expected.scheme() == actual.scheme())
++            || !(expected.host_str() == actual.host_str())
++            || !(expected.port_or_known_default() == actual.port_or_known_default())
+         {
+             return false;
+         }
+@@ -3015,8 +3057,8 @@ impl AuthorizationManager {
+             return true;
+         }
+ 
+-        expected_path.starts_with(actual_path)
+-            && (actual_path.ends_with('/')
++        prim::starts_with(expected_path, actual_path)
++            && (metadata_resolver::prim::ends_with(actual_path, "/")
+                 || expected_path.as_bytes().get(actual_path.len()) == Some(&b'/'))
+     }
+ 
+@@ -4463,6 +4505,103 @@ impl OAuthState {
+     }
+ }
+ 
++/// The failures of the issuer checks, each the `AuthError` variant of the same name and payload.
++#[allow(clippy::enum_variant_names)]
++enum IssuerError {
++    AuthorizationFailed(String),
++    AuthorizationServerMissingIssuer {
++        expected_issuer: String,
++    },
++    AuthorizationServerMismatch {
++        expected_issuer: String,
++        received_issuer: String,
++    },
++}
++
++impl IssuerError {
++    fn into_auth_error(self) -> AuthError {
++        match self {
++            IssuerError::AuthorizationFailed(message) => AuthError::AuthorizationFailed(message),
++            IssuerError::AuthorizationServerMissingIssuer { expected_issuer } => {
++                AuthError::AuthorizationServerMissingIssuer { expected_issuer }
++            }
++            IssuerError::AuthorizationServerMismatch {
++                expected_issuer,
++                received_issuer,
++            } => AuthError::AuthorizationServerMismatch {
++                expected_issuer,
++                received_issuer,
++            },
++        }
++    }
++}
++
++/// Wrappers that the verification translation keeps opaque, each the original expression:
++/// `str` pattern APIs, the `url` rewriting of an issuer and the `tracing` events.
++mod prim {
++    use reqwest::Url;
++    use tracing::{debug, warn};
++
++    pub(super) fn trim(s: &str) -> &str {
++        s.trim()
++    }
++
++    pub(super) fn starts_with(s: &str, prefix: &str) -> bool {
++        s.starts_with(prefix)
++    }
++
++    pub(super) fn strip_suffix<'a>(s: &'a str, suffix: &str) -> Option<&'a str> {
++        s.strip_suffix(suffix)
++    }
++
++    /// `path` after the directory `prefix` and its `/`.
++    pub(super) fn strip_dir_prefix<'a>(path: &'a str, prefix: &str) -> Option<&'a str> {
++        path.strip_prefix(&format!("{prefix}/"))
++    }
++
++    pub(super) fn trim_start_slashes(s: &str) -> &str {
++        s.trim_start_matches('/')
++    }
++
++    /// `discovery_url` without query and fragment, with the path `/{issuer_path}` (none if empty).
++    pub(super) fn issuer_url(discovery_url: &Url, issuer_path: &str) -> String {
++        let mut issuer = discovery_url.clone();
++        issuer.set_query(None);
++        issuer.set_fragment(None);
++        if issuer_path.is_empty() {
++            issuer.set_path("");
++        } else {
++            issuer.set_path(&format!("/{issuer_path}"));
++        }
++        issuer.to_string()
++    }
++
++    pub(super) fn debug_empty_resource_metadata() {
++        debug!(target: "rmcp::transport::auth", "ignoring empty resource_metadata value");
++    }
++
++    pub(super) fn debug_unparsable_resource_metadata(value: &str, error: &url::ParseError) {
++        debug!(
++            target: "rmcp::transport::auth",
++            "failed to parse resource metadata value `{value}` as URL: {error}"
++        );
++    }
++
++    pub(super) fn warn_downgraded_resource_metadata(url: &Url, base_url: &Url) {
++        warn!(
++            target: "rmcp::transport::auth",
++            "rejecting resource metadata URL `{url}`: downgrades `{base_url}` from https"
++        );
++    }
++
++    pub(super) fn warn_disallowed_resource_metadata(url: &Url, base_url: &Url) {
++        warn!(
++            target: "rmcp::transport::auth",
++            "rejecting resource metadata URL `{url}`: not same-origin with `{base_url}` and not an allowed metadata host"
++        );
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use std::{

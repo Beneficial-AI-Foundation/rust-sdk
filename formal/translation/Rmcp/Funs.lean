@@ -264,6 +264,14 @@ def alloc.sync.ArcSlice.Insts.CoreConvertFromVec (T : Type _) {A : Type _}
     coreallocAllocatorCloneInst
 }
 
+/-- Trait implementation: [url::{impl core::cmp::PartialEq<url::Url> for url::Url}]
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 2831:0-2831:22
+    Name pattern: [core::cmp::PartialEq<url::Url, url::Url>] -/
+@[reducible, rust_trait_impl "core::cmp::PartialEq<url::Url, url::Url>"]
+def url.Url.Insts.CoreCmpPartialEqUrl : core.cmp.PartialEq url.Url url.Url := {
+  eq := url.Url.Insts.CoreCmpPartialEqUrl.eq
+}
+
 /-- Trait implementation: [zeroize::{impl zeroize::Zeroize for Z}]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.2/src/lib.rs', lines 278:0-280:23
     Name pattern: [zeroize::Zeroize<@Z>] -/
@@ -3929,7 +3937,7 @@ def
 }
 
 /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::embedded_ipv4]:
-    Source: 'crates/rmcp/src/transport/auth.rs', lines 1359:4-1368:5 -/
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1354:4-1363:5 -/
 def transport.auth.AuthorizationManager.embedded_ipv4
   (addr : core.net.ip_addr.Ipv6Addr) :
   Result (Option core.net.ip_addr.Ipv4Addr)
@@ -4026,7 +4034,7 @@ def transport.auth.AuthorizationManager.embedded_ipv4
   | _ => ok none
 
 /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv4]:
-    Source: 'crates/rmcp/src/transport/auth.rs', lines 1343:4-1354:5 -/
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1338:4-1349:5 -/
 def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4
   (addr : core.net.ip_addr.Ipv4Addr) : Result Bool := do
   let octets ← core.net.ip_addr.Ipv4Addr.octets addr
@@ -4087,7 +4095,7 @@ def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4
                   else ok false
 
 /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_ipv6]:
-    Source: 'crates/rmcp/src/transport/auth.rs', lines 1370:4-1383:5 -/
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1365:4-1378:5 -/
 def transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6
   (addr : core.net.ip_addr.Ipv6Addr) : Result Bool := do
   let o ← transport.auth.AuthorizationManager.embedded_ipv4 addr
@@ -4322,7 +4330,7 @@ def transport.auth.metadata_resolver.MetadataAddressResolver.with_proxy_hosts
   ok { self with unfiltered_hosts := a }
 
 /-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_loopback_metadata_host]:
-    Source: 'crates/rmcp/src/transport/auth.rs', lines 1401:4-1410:5 -/
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1399:4-1408:5 -/
 def transport.auth.AuthorizationManager.is_loopback_metadata_host
   (host : url.host.Host Str) : Result Bool := do
   match host with
@@ -4567,6 +4575,666 @@ def transport.auth.metadata_resolver.MetadataAddressResolver.allowed_addresses
     if b1
     then ok none
     else ok (some allowed)
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_http_url]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1325:4-1327:5 -/
+def transport.auth.AuthorizationManager.is_http_url
+  (target : url.Url) : Result Bool := do
+  let s ← url.Url.scheme target
+  let b ← Str.Insts.CoreCmpPartialEqStr.eq s (toStr "http")
+  let b1 ←
+    if b
+    then ok true
+    else
+      do
+      let b2 ← Str.Insts.CoreCmpPartialEqStr.eq s (toStr "https")
+      if b2
+      then ok true
+      else ok false
+  if b1
+  then let o ← url.Url.host_str target
+       ok (core.option.Option.is_some o)
+  else ok false
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_same_origin::{impl core::ops::function::FnOnce<((&'_0 str, &'_1 str),), bool> for rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_same_origin::{closure}<'_0, '_1>}::call_once]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1334:29-1334:85 -/
+def
+  transport.auth.AuthorizationManager.is_same_origin.closure.Insts.CoreOpsFunctionFnOnceTuplePairShared0StrShared1StrBool.call_once
+  (c : transport.auth.AuthorizationManager.is_same_origin.closure)
+  (tupled_args : (Str × Str)) :
+  Result Bool
+  := do
+  let (base, candidate) := tupled_args
+  core.str.Str.eq_ignore_ascii_case base candidate
+
+/-- Trait implementation: [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_same_origin::{impl core::ops::function::FnOnce<((&'_0 str, &'_1 str),), bool> for rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_same_origin::{closure}<'_0, '_1>}]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1334:29-1334:85 -/
+@[reducible]
+def
+  transport.auth.AuthorizationManager.is_same_origin.closure.Insts.CoreOpsFunctionFnOnceTuplePairShared0StrShared1StrBool
+  : core.ops.function.FnOnce
+  transport.auth.AuthorizationManager.is_same_origin.closure (Str × Str) Bool
+  := {
+  call_once :=
+    transport.auth.AuthorizationManager.is_same_origin.closure.Insts.CoreOpsFunctionFnOnceTuplePairShared0StrShared1StrBool.call_once
+}
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_same_origin]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1329:4-1336:5 -/
+def transport.auth.AuthorizationManager.is_same_origin
+  (base : url.Url) (candidate : url.Url) : Result Bool := do
+  let s ← url.Url.scheme base
+  let s1 ← url.Url.scheme candidate
+  let b ← Str.Insts.CoreCmpPartialEqStr.eq s s1
+  if b
+  then
+    let o ← url.Url.host_str base
+    let o1 ← url.Url.host_str candidate
+    let o2 ← core.option.Option.zip o o1
+    let b1 ←
+      core.option.Option.is_some_and
+        transport.auth.AuthorizationManager.is_same_origin.closure.Insts.CoreOpsFunctionFnOnceTuplePairShared0StrShared1StrBool
+        o2 ()
+    if b1
+    then
+      let o3 ← url.Url.port_or_known_default base
+      let o4 ← url.Url.port_or_known_default candidate
+      core.option.Option.Insts.CoreCmpPartialEqOption.eq core.cmp.PartialEqU16
+        o3 o4
+    else ok false
+  else ok false
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_hostname]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1380:4-1387:5 -/
+def transport.auth.AuthorizationManager.is_disallowed_metadata_hostname
+  (host : Str) : Result Bool := do
+  let b ← Str.Insts.CoreCmpPartialEqStr.eq host (toStr "localhost")
+  let b1 ← if b
+             then ok true
+             else ok false
+  if b1
+  then ok true
+  else
+    let b2 ←
+      transport.auth.metadata_resolver.prim.ends_with host (toStr ".localhost")
+    if b2
+    then ok true
+    else
+      let b3 ← Str.Insts.CoreCmpPartialEqStr.eq host (toStr "metadata")
+      if b3
+      then ok true
+      else
+        let b4 ←
+          Str.Insts.CoreCmpPartialEqStr.eq host (toStr
+            "metadata.google.internal")
+        if b4
+        then ok true
+        else
+          let b5 ←
+            Str.Insts.CoreCmpPartialEqStr.eq host (toStr
+              "metadata.azure.internal")
+          if b5
+          then ok true
+          else ok false
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_disallowed_metadata_host]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1389:4-1397:5 -/
+def transport.auth.AuthorizationManager.is_disallowed_metadata_host
+  (host : url.host.Host Str) : Result Bool := do
+  match host with
+  | url.host.Host.Domain domain =>
+    let s ← transport.auth.metadata_resolver.prim.trim_end_dots domain
+    let s1 ← alloc.str.Str.to_ascii_lowercase s
+    let s2 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref s1
+    transport.auth.AuthorizationManager.is_disallowed_metadata_hostname s2
+  | url.host.Host.Ipv4 addr =>
+    transport.auth.AuthorizationManager.is_disallowed_metadata_ipv4 addr
+  | url.host.Host.Ipv6 addr =>
+    transport.auth.AuthorizationManager.is_disallowed_metadata_ipv6 addr
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_allowed_disallowed_host::{impl core::ops::function::FnOnce<(url::host::Host<&'_0 str>,), bool> for rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_allowed_disallowed_host::{closure}<'_0>}::call_once]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1445:25-1445:79 -/
+def
+  transport.auth.AuthorizationManager.is_allowed_disallowed_host.closure.Insts.CoreOpsFunctionFnOnceTupleHostShared0StrBool.call_once
+  (c : transport.auth.AuthorizationManager.is_allowed_disallowed_host.closure)
+  (tupled_args : url.host.Host Str) :
+  Result Bool
+  := do
+  transport.auth.AuthorizationManager.is_loopback_metadata_host tupled_args
+
+/-- Trait implementation: [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_allowed_disallowed_host::{impl core::ops::function::FnOnce<(url::host::Host<&'_0 str>,), bool> for rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_allowed_disallowed_host::{closure}<'_0>}]
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1445:25-1445:79 -/
+@[reducible]
+def
+  transport.auth.AuthorizationManager.is_allowed_disallowed_host.closure.Insts.CoreOpsFunctionFnOnceTupleHostShared0StrBool
+  : core.ops.function.FnOnce
+  transport.auth.AuthorizationManager.is_allowed_disallowed_host.closure
+  (url.host.Host Str) Bool := {
+  call_once :=
+    transport.auth.AuthorizationManager.is_allowed_disallowed_host.closure.Insts.CoreOpsFunctionFnOnceTupleHostShared0StrBool.call_once
+}
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_allowed_disallowed_host]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1433:4-1447:5 -/
+def transport.auth.AuthorizationManager.is_allowed_disallowed_host
+  (base_url : url.Url) (host : url.host.Host Str) (allow_private : Bool) :
+  Result Bool
+  := do
+  let «class» ←
+    match host with
+    | url.host.Host.Domain _ => ok none
+    | url.host.Host.Ipv4 addr =>
+      do
+      let ac ←
+        transport.auth.metadata_resolver.AddressClass.of
+          (core.net.ip_addr.IpAddr.V4 addr)
+      ok (some ac)
+    | url.host.Host.Ipv6 addr =>
+      do
+      let ac ←
+        transport.auth.metadata_resolver.AddressClass.of
+          (core.net.ip_addr.IpAddr.V6 addr)
+      ok (some ac)
+  if allow_private
+  then
+    let b ←
+      core.option.Option.Insts.CoreCmpPartialEqOption.eq
+        transport.auth.metadata_resolver.AddressClass.Insts.CoreCmpPartialEqAddressClass
+        «class» (some transport.auth.metadata_resolver.AddressClass.Private)
+    if b
+    then ok true
+    else
+      let o ← url.Url.host base_url
+      let b1 ←
+        core.option.Option.is_some_and
+          transport.auth.AuthorizationManager.is_allowed_disallowed_host.closure.Insts.CoreOpsFunctionFnOnceTupleHostShared0StrBool
+          o ()
+      if b1
+      then transport.auth.AuthorizationManager.is_loopback_metadata_host host
+      else ok false
+  else
+    let o ← url.Url.host base_url
+    let b ←
+      core.option.Option.is_some_and
+        transport.auth.AuthorizationManager.is_allowed_disallowed_host.closure.Insts.CoreOpsFunctionFnOnceTupleHostShared0StrBool
+        o ()
+    if b
+    then transport.auth.AuthorizationManager.is_loopback_metadata_host host
+    else ok false
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_allowed_metadata_url]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1410:4-1430:5 -/
+def transport.auth.AuthorizationManager.is_allowed_metadata_url
+  (base_url : url.Url) (target : url.Url) (allow_private : Bool) :
+  Result Bool
+  := do
+  let b ← transport.auth.AuthorizationManager.is_http_url target
+  if b
+  then
+    let o ← url.Url.host target
+    match o with
+    | none => ok false
+    | some host =>
+      let b1 ←
+        transport.auth.AuthorizationManager.is_disallowed_metadata_host host
+      if b1
+      then
+        match o with
+        | none => ok false
+        | some host1 =>
+          transport.auth.AuthorizationManager.is_allowed_disallowed_host
+            base_url host1 allow_private
+      else ok true
+  else ok false
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::resolve_resource_metadata_url]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 1451:4-1486:5 -/
+def transport.auth.AuthorizationManager.resolve_resource_metadata_url
+  (value : Str) (base_url : url.Url) (allow_private : Bool) :
+  Result (Option url.Url)
+  := do
+  let value1 ← transport.auth.prim.trim value
+  let b ← core.str.Str.is_empty value1
+  if b
+  then transport.auth.prim.debug_empty_resource_metadata
+       ok none
+  else
+    let r ← url.Url.parse value1
+    match r with
+    | core.result.Result.Ok metadata_url =>
+      let b1 ← transport.auth.AuthorizationManager.is_http_url metadata_url
+      if b1
+      then
+        let b2 ←
+          transport.auth.AuthorizationManager.is_same_origin base_url
+            metadata_url
+        if b2
+        then ok (some metadata_url)
+        else
+          let s ← url.Url.scheme base_url
+          let b3 ← Str.Insts.CoreCmpPartialEqStr.eq s (toStr "https")
+          if b3
+          then
+            let s1 ← url.Url.scheme metadata_url
+            let b4 ← Str.Insts.CoreCmpPartialEqStr.eq s1 (toStr "https")
+            if b4
+            then
+              let b5 ←
+                transport.auth.AuthorizationManager.is_allowed_metadata_url
+                  base_url metadata_url allow_private
+              if b5
+              then ok (some metadata_url)
+              else
+                transport.auth.prim.warn_disallowed_resource_metadata
+                  metadata_url base_url
+                ok none
+            else
+              transport.auth.prim.warn_downgraded_resource_metadata
+                metadata_url base_url
+              ok none
+          else
+            let b4 ←
+              transport.auth.AuthorizationManager.is_allowed_metadata_url
+                base_url metadata_url allow_private
+            if b4
+            then ok (some metadata_url)
+            else
+              transport.auth.prim.warn_disallowed_resource_metadata
+                metadata_url base_url
+              ok none
+      else
+        let s ← url.Url.scheme base_url
+        let b2 ← Str.Insts.CoreCmpPartialEqStr.eq s (toStr "https")
+        if b2
+        then
+          let s1 ← url.Url.scheme metadata_url
+          let b3 ← Str.Insts.CoreCmpPartialEqStr.eq s1 (toStr "https")
+          if b3
+          then
+            let b4 ←
+              transport.auth.AuthorizationManager.is_allowed_metadata_url
+                base_url metadata_url allow_private
+            if b4
+            then ok (some metadata_url)
+            else
+              transport.auth.prim.warn_disallowed_resource_metadata
+                metadata_url base_url
+              ok none
+          else
+            transport.auth.prim.warn_downgraded_resource_metadata metadata_url
+              base_url
+            ok none
+        else
+          let b3 ←
+            transport.auth.AuthorizationManager.is_allowed_metadata_url
+              base_url metadata_url allow_private
+          if b3
+          then ok (some metadata_url)
+          else
+            transport.auth.prim.warn_disallowed_resource_metadata metadata_url
+              base_url
+            ok none
+    | core.result.Result.Err _ =>
+      let r1 ← url.Url.join base_url value1
+      match r1 with
+      | core.result.Result.Ok metadata_url =>
+        let b1 ← transport.auth.AuthorizationManager.is_http_url metadata_url
+        if b1
+        then
+          let b2 ←
+            transport.auth.AuthorizationManager.is_same_origin base_url
+              metadata_url
+          if b2
+          then ok (some metadata_url)
+          else
+            let s ← url.Url.scheme base_url
+            let b3 ← Str.Insts.CoreCmpPartialEqStr.eq s (toStr "https")
+            if b3
+            then
+              let s1 ← url.Url.scheme metadata_url
+              let b4 ← Str.Insts.CoreCmpPartialEqStr.eq s1 (toStr "https")
+              if b4
+              then
+                let b5 ←
+                  transport.auth.AuthorizationManager.is_allowed_metadata_url
+                    base_url metadata_url allow_private
+                if b5
+                then ok (some metadata_url)
+                else
+                  transport.auth.prim.warn_disallowed_resource_metadata
+                    metadata_url base_url
+                  ok none
+              else
+                transport.auth.prim.warn_downgraded_resource_metadata
+                  metadata_url base_url
+                ok none
+            else
+              let b4 ←
+                transport.auth.AuthorizationManager.is_allowed_metadata_url
+                  base_url metadata_url allow_private
+              if b4
+              then ok (some metadata_url)
+              else
+                transport.auth.prim.warn_disallowed_resource_metadata
+                  metadata_url base_url
+                ok none
+        else
+          let s ← url.Url.scheme base_url
+          let b2 ← Str.Insts.CoreCmpPartialEqStr.eq s (toStr "https")
+          if b2
+          then
+            let s1 ← url.Url.scheme metadata_url
+            let b3 ← Str.Insts.CoreCmpPartialEqStr.eq s1 (toStr "https")
+            if b3
+            then
+              let b4 ←
+                transport.auth.AuthorizationManager.is_allowed_metadata_url
+                  base_url metadata_url allow_private
+              if b4
+              then ok (some metadata_url)
+              else
+                transport.auth.prim.warn_disallowed_resource_metadata
+                  metadata_url base_url
+                ok none
+            else
+              transport.auth.prim.warn_downgraded_resource_metadata
+                metadata_url base_url
+              ok none
+          else
+            let b3 ←
+              transport.auth.AuthorizationManager.is_allowed_metadata_url
+                base_url metadata_url allow_private
+            if b3
+            then ok (some metadata_url)
+            else
+              transport.auth.prim.warn_disallowed_resource_metadata
+                metadata_url base_url
+              ok none
+      | core.result.Result.Err error =>
+        transport.auth.prim.debug_unparsable_resource_metadata value1 error
+        ok none
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::check_authorization_response_issuer]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 2342:4-2375:5 -/
+def transport.auth.AuthorizationManager.check_authorization_response_issuer
+  (stored_state : transport.auth.StoredAuthorizationState)
+  (received_issuer : Option Str) :
+  Result (core.result.Result Unit transport.auth.IssuerError)
+  := do
+  let o ←
+    core.option.Option.as_deref alloc.string.String.Insts.CoreOpsDerefDerefStr
+      stored_state.expected_issuer
+  match o with
+  | none =>
+    let b := core.option.Option.is_some received_issuer
+    if b
+    then
+      let s ←
+        Str.Insts.AllocBorrowToOwnedString.to_owned (toStr
+          "Authorization callback issuer cannot be validated because expected issuer was not recorded")
+      ok (core.result.Result.Err
+        (transport.auth.IssuerError.AuthorizationFailed s))
+    else
+      if stored_state.require_issuer
+      then
+        let s ←
+          Str.Insts.AllocBorrowToOwnedString.to_owned (toStr
+            "Authorization callback issuer cannot be validated because expected issuer was not recorded")
+        ok (core.result.Result.Err
+          (transport.auth.IssuerError.AuthorizationFailed s))
+      else ok (core.result.Result.Ok ())
+  | some expected_issuer =>
+    match received_issuer with
+    | none =>
+      if stored_state.require_issuer
+      then
+        let s ← Str.Insts.AllocBorrowToOwnedString.to_owned expected_issuer
+        ok (core.result.Result.Err
+          (transport.auth.IssuerError.AuthorizationServerMissingIssuer s))
+      else ok (core.result.Result.Ok ())
+    | some received_issuer1 =>
+      let b ←
+        Str.Insts.CoreCmpPartialEqStr.eq received_issuer1 expected_issuer
+      if b
+      then ok (core.result.Result.Ok ())
+      else
+        let s ← Str.Insts.AllocBorrowToOwnedString.to_owned expected_issuer
+        let s1 ← Str.Insts.AllocBorrowToOwnedString.to_owned received_issuer1
+        ok (core.result.Result.Err
+          (transport.auth.IssuerError.AuthorizationServerMismatch s s1))
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::expected_issuer_for_authorization_metadata_url]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 2767:4-2788:5 -/
+def
+  transport.auth.AuthorizationManager.expected_issuer_for_authorization_metadata_url
+  (discovery_url : url.Url) : Result (Option String) := do
+  let path ← url.Url.path discovery_url
+  let b ←
+    Str.Insts.CoreCmpPartialEqStr.eq path (toStr
+      "/.well-known/oauth-authorization-server")
+  if b
+  then
+    let s ← transport.auth.prim.issuer_url discovery_url (toStr "")
+    ok (some s)
+  else
+    let b1 ←
+      Str.Insts.CoreCmpPartialEqStr.eq path (toStr
+        "/.well-known/openid-configuration")
+    if b1
+    then
+      let s ← transport.auth.prim.issuer_url discovery_url (toStr "")
+      ok (some s)
+    else
+      let o ←
+        transport.auth.prim.strip_dir_prefix path (toStr
+          "/.well-known/oauth-authorization-server")
+      match o with
+      | none =>
+        let o1 ←
+          transport.auth.prim.strip_dir_prefix path (toStr
+            "/.well-known/openid-configuration")
+        match o1 with
+        | none =>
+          let o2 ←
+            transport.auth.prim.strip_suffix path (toStr
+              "/.well-known/openid-configuration")
+          match o2 with
+          | none => ok none
+          | some «prefix» =>
+            let issuer_path ←
+              transport.auth.prim.trim_start_slashes «prefix»
+            let s ← transport.auth.prim.issuer_url discovery_url issuer_path
+            ok (some s)
+        | some suffix =>
+          let s ← transport.auth.prim.issuer_url discovery_url suffix
+          ok (some s)
+      | some suffix =>
+        let s ← transport.auth.prim.issuer_url discovery_url suffix
+        ok (some s)
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_root_url]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 2807:4-2812:5 -/
+def transport.auth.AuthorizationManager.is_root_url
+  (value : Str) : Result Bool := do
+  let r ← url.Url.parse value
+  match r with
+  | core.result.Result.Ok parsed =>
+    let s ← url.Url.path parsed
+    let b ← core.str.Str.is_empty s
+    if b
+    then ok true
+    else Str.Insts.CoreCmpPartialEqStr.eq s (toStr "/")
+  | core.result.Result.Err _ => ok false
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::trim_root_slash]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 2798:4-2805:5 -/
+def transport.auth.AuthorizationManager.trim_root_slash
+  (issuer : Str) : Result String := do
+  let o ← transport.auth.prim.strip_suffix issuer (toStr "/")
+  match o with
+  | none => Str.Insts.AllocBorrowToOwnedString.to_owned issuer
+  | some without_slash =>
+    let b ← transport.auth.AuthorizationManager.is_root_url without_slash
+    if b
+    then Str.Insts.AllocBorrowToOwnedString.to_owned without_slash
+    else Str.Insts.AllocBorrowToOwnedString.to_owned issuer
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::issuer_identifiers_match]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 2790:4-2796:5 -/
+def transport.auth.AuthorizationManager.issuer_identifiers_match
+  (received_issuer : Str) (expected_issuer : Str) : Result Bool := do
+  let b ← Str.Insts.CoreCmpPartialEqStr.eq received_issuer expected_issuer
+  if b
+  then ok true
+  else
+    let s ←
+      transport.auth.AuthorizationManager.trim_root_slash received_issuer
+    let s1 ←
+      transport.auth.AuthorizationManager.trim_root_slash expected_issuer
+    alloc.string.String.Insts.CoreCmpPartialEqString.eq s s1
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::check_authorization_metadata_issuer]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 2829:4-2855:5 -/
+def transport.auth.AuthorizationManager.check_authorization_metadata_issuer
+  (allow_missing_issuer : Bool) (discovery_url : url.Url)
+  (expected_issuer : Option Str)
+  (metadata : transport.auth.AuthorizationMetadata) :
+  Result (core.result.Result Unit transport.auth.IssuerError)
+  := do
+  let expected_issuer1 ←
+    match expected_issuer with
+    | none =>
+      transport.auth.AuthorizationManager.expected_issuer_for_authorization_metadata_url
+        discovery_url
+    | some expected_issuer2 =>
+      do
+      let s ← Str.Insts.AllocBorrowToOwnedString.to_owned expected_issuer2
+      ok (some s)
+  match expected_issuer1 with
+  | none => ok (core.result.Result.Ok ())
+  | some expected_issuer2 =>
+    let o ←
+      core.option.Option.as_deref
+        alloc.string.String.Insts.CoreOpsDerefDerefStr metadata.issuer
+    match o with
+    | none =>
+      if allow_missing_issuer
+      then ok (core.result.Result.Ok ())
+      else
+        ok (core.result.Result.Err
+          (transport.auth.IssuerError.AuthorizationServerMissingIssuer
+          expected_issuer2))
+    | some received_issuer =>
+      let s ←
+        alloc.string.String.Insts.CoreOpsDerefDerefStr.deref expected_issuer2
+      let b ←
+        transport.auth.AuthorizationManager.issuer_identifiers_match
+          received_issuer s
+      if b
+      then ok (core.result.Result.Ok ())
+      else
+        let s1 ← Str.Insts.AllocBorrowToOwnedString.to_owned received_issuer
+        ok (core.result.Result.Err
+          (transport.auth.IssuerError.AuthorizationServerMismatch
+          expected_issuer2 s1))
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::is_resource_identifier_valid]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 3040:4-3063:5 -/
+def transport.auth.AuthorizationManager.is_resource_identifier_valid
+  (expected : url.Url) (actual : url.Url) : Result Bool := do
+  let b ← url.Url.Insts.CoreCmpPartialEqUrl.eq expected actual
+  if b
+  then ok true
+  else
+    let s ← url.Url.scheme expected
+    let s1 ← url.Url.scheme actual
+    let b1 ← Str.Insts.CoreCmpPartialEqStr.eq s s1
+    if b1
+    then
+      let o ← url.Url.host_str expected
+      let o1 ← url.Url.host_str actual
+      let b2 ←
+        core.option.Option.Insts.CoreCmpPartialEqOption.eq
+          (core.cmp.PartialEqShared Str.Insts.CoreCmpPartialEqStr) o o1
+      if b2
+      then
+        let o2 ← url.Url.port_or_known_default expected
+        let o3 ← url.Url.port_or_known_default actual
+        let b3 ←
+          core.option.Option.Insts.CoreCmpPartialEqOption.eq
+            core.cmp.PartialEqU16 o2 o3
+        if b3
+        then
+          let expected_path ← url.Url.path expected
+          let actual_path ← url.Url.path actual
+          let b4 ← Str.Insts.CoreCmpPartialEqStr.eq expected_path actual_path
+          if b4
+          then ok true
+          else
+            let b5 ←
+              transport.auth.prim.starts_with expected_path actual_path
+            if b5
+            then
+              let b6 ←
+                transport.auth.metadata_resolver.prim.ends_with actual_path
+                  (toStr "/")
+              if b6
+              then ok true
+              else
+                let s2 ← core.str.Str.as_bytes expected_path
+                let i ← core.str.Str.len actual_path
+                let o4 ←
+                  core.slice.Slice.get (core.slice.index.SliceIndexUsizeSlice
+                    Std.U8) s2 i
+                core.option.Option.Insts.CoreCmpPartialEqOption.eq
+                  (core.cmp.PartialEqShared core.cmp.PartialEqU8) o4 (some
+                  47#u8)
+            else ok false
+        else ok false
+      else ok false
+    else ok false
+
+/-- [rmcp::transport::auth::{rmcp::transport::auth::AuthorizationManager}::check_resource_metadata_resource]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 3001:4-3037:5 -/
+def transport.auth.AuthorizationManager.check_resource_metadata_resource
+  (base_url : url.Url) (metadata : transport.auth.ResourceServerMetadata) :
+  Result (core.result.Result Unit
+    transport.auth.ProtectedResourceMetadataInvalidReason)
+  := do
+  let o ←
+    core.option.Option.as_deref alloc.string.String.Insts.CoreOpsDerefDerefStr
+      metadata.resource
+  match o with
+  | none =>
+    ok (core.result.Result.Err
+      transport.auth.ProtectedResourceMetadataInvalidReason.MissingResource)
+  | some resource =>
+    let r ← url.Url.parse resource
+    match r with
+    | core.result.Result.Ok resource_url =>
+      let o1 ← url.Url.fragment resource_url
+      let b := core.option.Option.is_some o1
+      if b
+      then
+        ok (core.result.Result.Err
+          (transport.auth.ProtectedResourceMetadataInvalidReason.ResourceHasFragment
+          resource_url))
+      else
+        let b1 ←
+          transport.auth.AuthorizationManager.is_resource_identifier_valid
+            base_url resource_url
+        if b1
+        then ok (core.result.Result.Ok ())
+        else
+          let u ← url.Url.Insts.CoreCloneClone.clone base_url
+          ok (core.result.Result.Err
+            (transport.auth.ProtectedResourceMetadataInvalidReason.ResourceMismatch
+            u resource_url))
+    | core.result.Result.Err _ =>
+      let s ← Str.Insts.AllocBorrowToOwnedString.to_owned resource
+      ok (core.result.Result.Err
+        (transport.auth.ProtectedResourceMetadataInvalidReason.ResourceNotAUrl
+        s))
 
 /-- [rmcp::transport::common::client_side_sse::{rmcp::transport::common::client_side_sse::SseEventSizeLimiter}::check_limit]:
     Source: 'crates/rmcp/src/transport/common/client_side_sse.rs', lines 90:4-96:5 -/

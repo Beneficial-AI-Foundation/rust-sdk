@@ -1,7 +1,8 @@
 Test-only patch: plan Section 22 boundary cases of the Phase 2 targets that no upstream test
 covers (plan step S34; human decision H3, follow-up of 2026-11-24), and boundary cases of the
 public request_state.rs API R09-R12 and R15 (human decision 2026-11-25, spec-cycle review
-findings sR2-a-2, sR2-b-4 and sR3-a-3)
+findings sR2-a-2, sR2-b-4 and sR3-a-3), and boundary cases of the auth.rs paths that
+06-auth-metadata.patch rewrites (human decision AD5, 2026-11-26, extended 2026-11-27)
 
 Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
 01-request-state-wire.patch (scripts/apply-patches.sh applies formal/trusted/patches/*.patch in
@@ -60,6 +61,52 @@ id wins) through the Debug output. open_json and open_json_with (R13, R14) get n
 pass on the copy with patches 01 and 02 and with 01, 02 and 03 (patch 03 is behaviour-preserving
 and changes only the bodies of seal_at and open_json_with).
 
+AD5 tests (13, auth.rs, after the S34 tests, with two helpers d5_stored_state and
+d5_issuer_error): named d5_<target>_<case>; they back 06-auth-metadata.patch (human decision
+AD5, 2026-11-26; extended 2026-11-27 by d5_a09_expected_issuer_forms, d5_a06_private_ip_targets,
+d5_a10_resource_identifier_port, d5_a06_non_http_target, d5_a06_loopback_base_target,
+d5_a07_resolve_parse_before_join, d5_a10_resource_identifier_scheme and the a.localhost.example
+and path-appended cases of d5_a05_metadata_host_names and d5_a09_metadata_issuer_paths, which
+kill the non-equivalent mutants of patch 06 that review mutation runs found surviving) by
+pinning the paths it rewrites that no other test reaches. Their expected values are computed
+from the upstream source at 7caec76 (CLOUD_METADATA_HOSTS, is_disallowed_metadata_hostname,
+is_disallowed_metadata_host, is_disallowed_metadata_ipv4/ipv6, is_http_url,
+is_loopback_metadata_host, is_allowed_metadata_url, AddressClass::of,
+resolve_resource_metadata_url, is_same_origin, validate_authorization_response_issuer,
+validate_authorization_metadata_issuer, expected_issuer_for_authorization_metadata_url,
+issuer_identifiers_match, validate_resource_metadata_resource, is_resource_identifier_valid),
+not from the Lean model. They call only functions with the same name and signature before and
+after patch 06: d5_a05_metadata_host_names (A05, patch 06 H1/H2: the three cloud-metadata names
+exactly, in mixed case and with trailing dots, `localhost`, `localhost.`, the `.localhost`
+suffix in mixed case, and near misses such as notlocalhost, localhost.example,
+a.localhost.example (a suffix, not a substring) and metadata.azure; also through
+is_allowed_metadata_url), d5_a06_private_ip_targets (A06, H4: an IPv6 and an IPv4 private
+literal are allowed exactly with allow_private, loopback literals never, for a non-loopback
+base), d5_a07_resolve_trim_empty_unparsable (A07, H5: surrounding ASCII
+white space, U+00A0, U+0085 and U+3000 are trimmed, U+FEFF is kept (percent-encoded into the
+URL), an all-white-space value gives None, a value that neither parses nor joins gives None),
+d5_a07_same_origin (is_same_origin: ASCII case of the host ignored, also for an opaque host of
+a non-special scheme; a non-ASCII letter not; default port against explicit default port),
+d5_a09_issuer_root_slash (H8: only a root URL may differ by one trailing slash, including a
+URL whose query ends in `/`), d5_a08_response_issuer_paths (A08, H6: every path, with the
+exact AuthError variant and payload, and an exact, not slash-tolerant, comparison) and
+d5_a09_metadata_issuer_paths (A09, H6/H7: with and without allow_missing_issuer, an explicit or
+a derived expected issuer (query and fragment dropped, root path, OpenID Connect path-appended
+form), none at all, and both mismatch payloads), d5_a09_expected_issuer_forms (H7: the issuer
+of each discovery URL form; the path-appended form strips every leading slash, `//t1` and
+`///t1` give `/t1`; no issuer for other paths) and d5_a10_resource_identifier_port (A10, H10:
+a differing explicit port is a mismatch, the known default port is not; through
+validate_resource_metadata_resource with the exact ResourceMismatch payload),
+d5_a06_non_http_target (A06, H4: an ftp URL with a public host is never allowed, with or
+without allow_private, and resolve_resource_metadata_url rejects it for an http base),
+d5_a06_loopback_base_target (A06, H4: a loopback base allows a disallowed target only if the
+target is loopback too; 169.254.169.254 and metadata.google.internal are refused, 127.0.0.1 is
+allowed), d5_a07_resolve_parse_before_join (A07, H5: `https:public.example/x` parses as the
+absolute https://public.example/x before any join with the base) and
+d5_a10_resource_identifier_scheme (A10, H9/H10: same host and explicit port, different scheme,
+is a mismatch). They pass on the copy with patches 01 and 02, with patches 01-05 and with
+patches 01-06.
+
 Why (plan Section 19, "Tests (human decision H3)"; Section 21, H3; human decision
 2026-11-25): new Rust tests of these functions must live in SDK *.rs files, which stay
 byte-identical to upstream. The S34 upstream-test map (formal/trusted/evidence/README.md) found
@@ -68,6 +115,15 @@ of R09-R15 (findings sR2-a-2, sR2-b-4, sR3-a-3) found the expiry edges of seal_a
 keyring round trip, and the exact messages and fault order of the keyring constructors pinned by
 no Rust test (the upstream test
 constructor_invariants_are_enforced matches InvalidKeyring(_) and KeyTooShort { .. } only).
+Patch 06 replaces auth.rs expressions by equivalent ones (H1-H10); decision AD5 asks for Rust
+tests that would catch a non-equivalent rewrite of the paths no upstream test pins (the inlined
+host names, the `.localhost` suffix, the trim, the unparsable value, the exact issuer errors).
+The 2026-11-27 extension adds a test for each surviving non-equivalent mutant that review
+mutation runs of patch 06 reported: H7's trim_start_slashes stripping one slash only, H2's
+ends_with replaced by contains, H4's IPv6 arm returning no address class, H10's port clause
+dropped, H7's path-appended branch dropped, A06's http(s) check of the target dropped, A06's
+loopback check of the target dropped (the SSRF guard of a loopback base), A07's
+Url::parse(value) replaced by base_url.join(value), and A10's scheme clause dropped.
 A test-only patch is a process exception (VERIFICATION.md Section 4 defines translation patches
 as behaviour-preserving edits that make an item translate); plan Section 21 (H3) asks for it to
 be recorded in formal/docs/STATUS.md, "Documents", as a further deviation from VERIFICATION.md.
@@ -75,7 +131,10 @@ be recorded in formal/docs/STATUS.md, "Documents", as a further deviation from V
 Effect on the translation: none. Charon does not compile #[cfg(test)] items, and every hunk is
 at the end of its file, so no translated item moves (the Source: lines of
 formal/translation/ are unchanged); checked by translating the copy with patches 01-03 and
-comparing it byte for byte with formal/translation/ (formal/trusted/evidence/README.md).
+comparing it byte for byte with formal/translation/ (formal/trusted/evidence/README.md). The
+AD5 tests too are added at the end of auth.rs, inside mod tests; with all thirteen of them the
+check was re-run on 2026-11-27 (scripts/aeneas-translate.sh on a scratch copy of the working
+tree with patches 01-06, exit 0): the output is byte-identical to formal/translation/.
 
 Evidence in CI: patched-tests.yml runs cargo test --locked --lib on the copy with all patches
 (translated features plus macros, overflow checks and debug assertions on), which runs these
@@ -835,10 +894,10 @@ index 47d0e05..de18c69 100644
 +    }
  }
 diff --git a/crates/rmcp/src/transport/auth.rs b/crates/rmcp/src/transport/auth.rs
-index 3d7816b..f677981 100644
+index 3d7816b..e434558 100644
 --- a/crates/rmcp/src/transport/auth.rs
 +++ b/crates/rmcp/src/transport/auth.rs
-@@ -10739,4 +10739,235 @@ mod tests {
+@@ -10739,4 +10739,727 @@ mod tests {
          );
          assert!(store.lock.try_lock().is_ok());
      }
@@ -1072,6 +1131,498 @@ index 3d7816b..f677981 100644
 +                s34_v6(s)
 +            );
 +        }
++    }
++
++    // ---- Patch 02 (human decision AD5, 2026-11-26, extended 2026-11-27): the auth.rs paths
++    // that 06-auth-metadata.patch rewrites (H1, H2, H4-H10) and no other test reaches. ----
++    // Expected values from the upstream source at 7caec76 (CLOUD_METADATA_HOSTS,
++    // is_disallowed_metadata_hostname/host, is_allowed_metadata_url,
++    // resolve_resource_metadata_url, is_same_origin, the issuer checks,
++    // is_resource_identifier_valid), not from the Lean model; the tests pass with and without
++    // patch 06.
++
++    // A05 (H1, H2): each cloud-metadata name and `.localhost`, after the trailing dots are
++    // trimmed and the name lowercased; near misses are allowed.
++    #[test]
++    fn d5_a05_metadata_host_names() {
++        use url::Host;
++        let blocked = [
++            "metadata",
++            "metadata.google.internal",
++            "metadata.azure.internal",
++            "METADATA.Azure.Internal.",
++            "Metadata.GOOGLE.internal..",
++            "metadata.",
++            "localhost",
++            "localhost.",
++            "foo.localhost",
++            "FOO.LOCALHOST.",
++            ".localhost",
++        ];
++        let allowed = [
++            "metadata2",
++            "xmetadata",
++            "metadata.google.internal.example",
++            "metadata.azure",
++            "metadata-azure-internal",
++            "notlocalhost",
++            "localhost.example",
++            "localhostx",
++            "a.localhost.example",
++        ];
++        for host in blocked {
++            assert!(
++                AuthorizationManager::is_disallowed_metadata_host(Host::Domain(host)),
++                "{host:?} must be blocked"
++            );
++        }
++        for host in allowed {
++            assert!(
++                !AuthorizationManager::is_disallowed_metadata_host(Host::Domain(host)),
++                "{host:?} must not be blocked"
++            );
++        }
++        // Through the URL parser (A06): the host is lowercased there already.
++        let base = Url::parse("https://mcp.example.com/").unwrap();
++        for (url, allowed) in [
++            ("https://METADATA.Azure.Internal./x", false),
++            ("http://Metadata/x", false),
++            ("https://foo.LocalHost./x", false),
++            ("https://metadata.azure.internal.example/x", true),
++        ] {
++            assert_eq!(
++                AuthorizationManager::is_allowed_metadata_url(
++                    &base,
++                    &Url::parse(url).unwrap(),
++                    true
++                ),
++                allowed,
++                "{url}"
++            );
++        }
++    }
++
++    // A07 (H5): the value is trimmed of White_Space (ASCII, U+00A0, U+0085, U+3000), not of
++    // U+FEFF; empty after the trim, or neither parsable nor joinable, gives None.
++    #[test]
++    fn d5_a07_resolve_trim_empty_unparsable() {
++        let base = Url::parse("https://mcp.example.com/mcp").unwrap();
++        let resolve = |value: &str| {
++            AuthorizationManager::resolve_resource_metadata_url(value, &base, false)
++                .map(|url| url.to_string())
++        };
++        let target = "https://mcp.example.com/.well-known/oauth-protected-resource";
++        for pad in [" \t\n", "\r\u{0b}\u{0c}", "\u{a0}", "\u{85}", "\u{3000}"] {
++            assert_eq!(
++                resolve(&format!("{pad}{target}{pad}")).as_deref(),
++                Some(target),
++                "padding {pad:?}"
++            );
++        }
++        // U+FEFF is kept: after the URL it is percent-encoded into the path, before it the
++        // value is not absolute and is joined to the base as a relative path.
++        assert_eq!(
++            resolve(&format!("{target}\u{feff}")).as_deref(),
++            Some("https://mcp.example.com/.well-known/oauth-protected-resource%EF%BB%BF")
++        );
++        assert_eq!(
++            resolve(&format!("\u{feff}{target}")).as_deref(),
++            Some(
++                "https://mcp.example.com/%EF%BB%BFhttps://mcp.example.com/.well-known/oauth-protected-resource"
++            )
++        );
++        assert_eq!(resolve("/x").as_deref(), Some("https://mcp.example.com/x"));
++        for value in ["", " \t\r\n", "\u{a0}\u{85}\u{3000}"] {
++            assert_eq!(resolve(value), None, "{value:?}");
++        }
++        for value in ["http://[::1", "https://ex ample.com/", " http://[::1 "] {
++            assert!(Url::parse(value.trim()).is_err() && base.join(value.trim()).is_err());
++            assert_eq!(resolve(value), None, "{value:?}");
++        }
++    }
++
++    // A07 callee is_same_origin: the host compared ignoring ASCII case only (opaque hosts of
++    // a non-special scheme keep their case), the port with its known default.
++    #[test]
++    fn d5_a07_same_origin() {
++        let same = |a: &str, b: &str| {
++            AuthorizationManager::is_same_origin(&Url::parse(a).unwrap(), &Url::parse(b).unwrap())
++        };
++        assert!(same(
++            "https://Auth.Example.COM/a",
++            "https://auth.example.com/b"
++        ));
++        assert!(same("foo://Auth.Example/a", "foo://auth.example/b"));
++        assert!(!same("foo://\u{c4}.example/", "foo://\u{e4}.example/"));
++        assert!(!same("https://\u{e9}.example/", "https://e.example/"));
++        assert!(same("https://a.example/", "https://a.example:443/"));
++        assert!(same("http://a.example:80/", "http://a.example/"));
++        assert!(!same("https://a.example/", "https://a.example:8443/"));
++        assert!(!same("http://a.example:443/", "https://a.example/"));
++        assert!(!same("foo://a.example:80/", "foo://a.example/"));
++    }
++
++    // A09 callee (H8): only a root URL may differ by one trailing slash.
++    #[test]
++    fn d5_a09_issuer_root_slash() {
++        let eq = AuthorizationManager::issuer_identifiers_match;
++        assert!(eq("https://auth.example.com", "https://auth.example.com/"));
++        assert!(eq(
++            "https://auth.example.com:8443/",
++            "https://auth.example.com:8443"
++        ));
++        assert!(eq("foo://auth/", "foo://auth"));
++        assert!(!eq(
++            "https://auth.example.com//",
++            "https://auth.example.com"
++        ));
++        assert!(!eq(
++            "https://auth.example.com/t/",
++            "https://auth.example.com/t"
++        ));
++        assert!(!eq("auth/", "auth"));
++        // A query ending in `/` counts too: the URL without it still has the root path.
++        assert!(eq(
++            "https://auth.example.com/?q/",
++            "https://auth.example.com/?q"
++        ));
++    }
++
++    fn d5_stored_state(
++        expected_issuer: Option<&str>,
++        require_issuer: bool,
++    ) -> StoredAuthorizationState {
++        StoredAuthorizationState::new_with_expected_issuer(
++            &PkceCodeVerifier::new("verifier".to_string()),
++            &CsrfToken::new("csrf".to_string()),
++            expected_issuer.map(str::to_owned),
++            require_issuer,
++        )
++    }
++
++    fn d5_issuer_error(error: AuthError) -> (&'static str, String, String) {
++        match error {
++            AuthError::AuthorizationFailed(message) => ("failed", message, String::new()),
++            AuthError::AuthorizationServerMissingIssuer { expected_issuer } => {
++                ("missing", expected_issuer, String::new())
++            }
++            AuthError::AuthorizationServerMismatch {
++                expected_issuer,
++                received_issuer,
++            } => ("mismatch", expected_issuer, received_issuer),
++            other => panic!("unexpected error {other:?}"),
++        }
++    }
++
++    // A08 (H6): every path of validate_authorization_response_issuer, with exact payloads; the
++    // comparison is exact (no trailing-slash equivalence).
++    #[test]
++    fn d5_a08_response_issuer_paths() {
++        const NOT_RECORDED: &str = "Authorization callback issuer cannot be validated because expected issuer was not recorded";
++        const ISS: &str = "https://auth.example.com";
++        let check = |expected: Option<&str>, require: bool, received: Option<&str>| {
++            AuthorizationManager::validate_authorization_response_issuer(
++                &d5_stored_state(expected, require),
++                received,
++            )
++            .map_err(d5_issuer_error)
++        };
++        let failed = Err(("failed", NOT_RECORDED.to_owned(), String::new()));
++        assert_eq!(check(None, false, None), Ok(()));
++        assert_eq!(check(None, false, Some(ISS)), failed);
++        assert_eq!(check(None, true, None), failed);
++        assert_eq!(check(None, true, Some(ISS)), failed);
++        assert_eq!(check(Some(ISS), false, None), Ok(()));
++        assert_eq!(
++            check(Some(ISS), true, None),
++            Err(("missing", ISS.to_owned(), String::new()))
++        );
++        assert_eq!(check(Some(ISS), true, Some(ISS)), Ok(()));
++        assert_eq!(
++            check(Some(ISS), false, Some("https://auth.example.com/")),
++            Err((
++                "mismatch",
++                ISS.to_owned(),
++                "https://auth.example.com/".to_owned()
++            ))
++        );
++    }
++
++    // A09 (H6, H7): validate_authorization_metadata_issuer with and without
++    // allow_missing_issuer, an explicit or a derived expected issuer, and none at all.
++    #[tokio::test]
++    async fn d5_a09_metadata_issuer_paths() {
++        let mut manager = AuthorizationManager::new("https://mcp.example.com/")
++            .await
++            .unwrap();
++        let metadata = |issuer: Option<&str>| AuthorizationMetadata {
++            issuer: issuer.map(str::to_owned),
++            ..Default::default()
++        };
++        let derived =
++            Url::parse("https://auth.example.com/.well-known/oauth-authorization-server/t1?q=1#f")
++                .unwrap();
++        let root = Url::parse("https://auth.example.com/.well-known/openid-configuration").unwrap();
++        let other = Url::parse("https://auth.example.com/metadata").unwrap();
++        let appended =
++            Url::parse("https://auth.example.com/t1/.well-known/openid-configuration").unwrap();
++        for allow in [false, true] {
++            manager.set_allow_missing_issuer(allow);
++            let check = |url: &Url, expected: Option<&str>, issuer: Option<&str>| {
++                manager
++                    .validate_authorization_metadata_issuer(url, expected, &metadata(issuer))
++                    .map_err(d5_issuer_error)
++            };
++            let missing = |iss: &str| {
++                if allow {
++                    Ok(())
++                } else {
++                    Err(("missing", iss.to_owned(), String::new()))
++                }
++            };
++            assert_eq!(
++                check(&derived, None, None),
++                missing("https://auth.example.com/t1")
++            );
++            assert_eq!(
++                check(&root, None, None),
++                missing("https://auth.example.com/")
++            );
++            assert_eq!(
++                check(&other, Some("https://x.example"), None),
++                missing("https://x.example")
++            );
++            assert_eq!(check(&other, None, None), Ok(()));
++            assert_eq!(check(&other, None, Some("https://evil.example")), Ok(()));
++            assert_eq!(check(&root, None, Some("https://auth.example.com")), Ok(()));
++            assert_eq!(
++                check(&derived, None, Some("https://auth.example.com/t1")),
++                Ok(())
++            );
++            assert_eq!(
++                check(&derived, None, Some("https://auth.example.com/t1/")),
++                Err((
++                    "mismatch",
++                    "https://auth.example.com/t1".to_owned(),
++                    "https://auth.example.com/t1/".to_owned()
++                ))
++            );
++            assert_eq!(
++                check(
++                    &root,
++                    Some("https://x.example"),
++                    Some("https://auth.example.com/")
++                ),
++                Err((
++                    "mismatch",
++                    "https://x.example".to_owned(),
++                    "https://auth.example.com/".to_owned()
++                ))
++            );
++            // The OpenID Connect path-appended form derives an expected issuer too.
++            assert_eq!(
++                check(&appended, None, Some("https://evil.example")),
++                Err((
++                    "mismatch",
++                    "https://auth.example.com/t1".to_owned(),
++                    "https://evil.example".to_owned()
++                ))
++            );
++            assert_eq!(
++                check(&appended, None, Some("https://auth.example.com/t1")),
++                Ok(())
++            );
++        }
++    }
++
++    // A09 callee (H7): the issuer derived from each discovery URL form; the path-appended
++    // form drops every leading slash of the issuer path, not only one.
++    #[test]
++    fn d5_a09_expected_issuer_forms() {
++        let expected = |url: &str| {
++            AuthorizationManager::expected_issuer_for_authorization_metadata_url(
++                &Url::parse(url).unwrap(),
++            )
++        };
++        for (url, issuer) in [
++            (
++                "https://auth.example.com/.well-known/oauth-authorization-server",
++                Some("https://auth.example.com/"),
++            ),
++            (
++                "https://auth.example.com/.well-known/openid-configuration?q=1#f",
++                Some("https://auth.example.com/"),
++            ),
++            (
++                "https://auth.example.com/.well-known/oauth-authorization-server/t1",
++                Some("https://auth.example.com/t1"),
++            ),
++            (
++                "https://auth.example.com/.well-known/openid-configuration/t1",
++                Some("https://auth.example.com/t1"),
++            ),
++            (
++                "https://auth.example.com/t1/.well-known/openid-configuration",
++                Some("https://auth.example.com/t1"),
++            ),
++            (
++                "https://auth.example.com//t1/.well-known/openid-configuration",
++                Some("https://auth.example.com/t1"),
++            ),
++            (
++                "https://auth.example.com///t1/.well-known/openid-configuration",
++                Some("https://auth.example.com/t1"),
++            ),
++            ("https://auth.example.com/metadata", None),
++            (
++                "https://auth.example.com/t1/.well-known/oauth-authorization-server",
++                None,
++            ),
++        ] {
++            assert_eq!(expected(url).as_deref(), issuer, "{url}");
++        }
++    }
++
++    // A06 (H4): a blocked IP literal is allowed with allow_private exactly when its address
++    // class is Private, for IPv6 as for IPv4; a loopback literal is not.
++    #[test]
++    fn d5_a06_private_ip_targets() {
++        let base = Url::parse("https://mcp.example.com/").unwrap();
++        for (url, private) in [
++            ("https://[fd00::1]/x", true),
++            ("https://10.0.0.1/x", true),
++            ("https://[::1]/x", false),
++            ("https://127.0.0.1/x", false),
++        ] {
++            let url = Url::parse(url).unwrap();
++            assert!(!AuthorizationManager::is_allowed_metadata_url(
++                &base, &url, false
++            ));
++            assert_eq!(
++                AuthorizationManager::is_allowed_metadata_url(&base, &url, true),
++                private,
++                "{url}"
++            );
++        }
++    }
++
++    // A10 (H10): the port is part of the resource identity (with its known default), on the
++    // function and through validate_resource_metadata_resource with the exact payload.
++    #[tokio::test]
++    async fn d5_a10_resource_identifier_port() {
++        let valid = |expected: &str, actual: &str| {
++            AuthorizationManager::is_resource_identifier_valid(
++                &Url::parse(expected).unwrap(),
++                &Url::parse(actual).unwrap(),
++            )
++        };
++        assert!(!valid(
++            "https://a.example/mcp",
++            "https://a.example:8443/mcp"
++        ));
++        assert!(!valid(
++            "https://a.example:8443/mcp",
++            "https://a.example/mcp"
++        ));
++        assert!(!valid("http://a.example/mcp", "http://a.example:8080/"));
++        assert!(valid("https://a.example/mcp", "https://a.example:443/mcp"));
++        assert!(valid(
++            "https://a.example:8443/mcp",
++            "https://a.example:8443/"
++        ));
++        let manager = AuthorizationManager::new("https://a.example/mcp")
++            .await
++            .unwrap();
++        let metadata = |resource: &str| super::ResourceServerMetadata {
++            resource: Some(resource.to_owned()),
++            authorization_server: None,
++            authorization_servers: None,
++            scopes_supported: None,
++        };
++        assert_eq!(
++            manager.validate_resource_metadata_resource(&metadata("https://a.example:8443/mcp")),
++            Err(Box::new(
++                ProtectedResourceMetadataInvalidReason::ResourceMismatch {
++                    reference: Url::parse("https://a.example/mcp").unwrap(),
++                    permitted: Url::parse("https://a.example:8443/mcp").unwrap(),
++                }
++            ))
++        );
++        assert_eq!(
++            manager.validate_resource_metadata_resource(&metadata("https://a.example:443/mcp")),
++            Ok(())
++        );
++    }
++
++    // A06 (H4): a target that is not http(s) is never an allowed metadata URL, even with a
++    // public host; through resolve_resource_metadata_url (http base, so no downgrade check) too.
++    #[test]
++    fn d5_a06_non_http_target() {
++        let base = Url::parse("http://example.com/").unwrap();
++        let ftp = Url::parse("ftp://metadata-host.example/x").unwrap();
++        for allow in [false, true] {
++            assert!(!AuthorizationManager::is_allowed_metadata_url(
++                &base, &ftp, allow
++            ));
++        }
++        assert_eq!(
++            AuthorizationManager::resolve_resource_metadata_url(
++                "ftp://public.example/x",
++                &Url::parse("http://example.com/mcp").unwrap(),
++                false
++            ),
++            None
++        );
++    }
++
++    // A06 (H4): a loopback base allows a disallowed target only when the target is loopback
++    // too (the SSRF guard); a link-local IP or a cloud-metadata name is never allowed.
++    #[test]
++    fn d5_a06_loopback_base_target() {
++        let allowed = |base: &str, target: &str| {
++            AuthorizationManager::is_allowed_metadata_url(
++                &Url::parse(base).unwrap(),
++                &Url::parse(target).unwrap(),
++                false,
++            )
++        };
++        assert!(!allowed(
++            "http://localhost:8080/mcp",
++            "http://169.254.169.254/latest"
++        ));
++        assert!(!allowed(
++            "http://127.0.0.1:8080/mcp",
++            "http://metadata.google.internal/x"
++        ));
++        assert!(allowed(
++            "http://localhost:8080/mcp",
++            "http://127.0.0.1:9000/x"
++        ));
++    }
++
++    // A07 (H5): a value that parses as an absolute URL is taken as is, not joined to the base:
++    // `https:public.example/x` is https://public.example/x, not a path below the base.
++    #[test]
++    fn d5_a07_resolve_parse_before_join() {
++        assert_eq!(
++            AuthorizationManager::resolve_resource_metadata_url(
++                "https:public.example/x",
++                &Url::parse("https://example.com/a/b").unwrap(),
++                false
++            )
++            .map(|url| url.to_string()),
++            Some("https://public.example/x".to_owned())
++        );
++    }
++
++    // A10 (H9, H10): the scheme is part of the resource identity, also with the same host and
++    // the same explicit port.
++    #[test]
++    fn d5_a10_resource_identifier_scheme() {
++        assert!(!AuthorizationManager::is_resource_identifier_valid(
++            &Url::parse("https://a.example:8443/mcp").unwrap(),
++            &Url::parse("http://a.example:8443/mcp").unwrap(),
++        ));
 +    }
  }
 diff --git a/crates/rmcp/src/transport/common/client_side_sse.rs b/crates/rmcp/src/transport/common/client_side_sse.rs

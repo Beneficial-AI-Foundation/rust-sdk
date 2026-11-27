@@ -415,12 +415,27 @@ Rust documentation. Used by: the proofs of all statements above.
 >   equivalent to the unpatched code. It adds one behavioural difference that the statements take
 >   as a premise (NFKC fits, above). K01–K04, K08–K12 and K17–K20 do not depend on it (linkage
 >   `ORIGINAL`, checked by `scripts/check-original-linkage.sh` locally, CI pending).
+> - **Translation patch 05** (N03–N07, N09–N11 of `metadata_resolver.rs`): a private opaque module
+>   `prim` and the opaque newtype `Lookup`; the pure parts of `with_lookup`, `with_proxy_hosts` and
+>   `resolve` split into helpers (`with_base_url`, `proxy_host`, `allowed_addresses`), which are
+>   what is verified; the async shells are not. Not proved equivalent to the unpatched code
+>   (differential tests). N01 and N08 do not depend on it (linkage `ORIGINAL`).
+> - **Translation patch 06** (A04–A10 of `auth.rs`): a private opaque module `prim` (string
+>   helpers, `str::trim`, the issuer-URL rewrite, the four tracing events with their original
+>   target) and rewrites that keep the computed values. `AuthError` cannot be translated (a
+>   `Box<dyn Error>` field), so the targets of A08/A09 are `check_*` helpers returning a private
+>   `IssuerError` with the same three variants and payloads, and that of A10 a `check_*` helper
+>   taking the base URL; the one-line `validate_*` wrappers (the map to `AuthError`, the `&self` reads)
+>   are unverified glue. The tracing events' callsite metadata (module path, line) differs. Not
+>   proved equivalent to the unpatched code: backed by the patch-02 boundary tests (decision AD5)
+>   and the review differentials. Every A04–A10 target is `patch-06` (none `ORIGINAL`).
 > - **The models in [`formal/trusted/`](../trusted/)** of the external functions (standard
 >   library, `core::net`, integer parsing, HMAC-SHA256, Base64url, `zeroize`, and for `skill.rs`
 >   the `prim` wrappers, `HashSet` and `serde_json::Map`, the latter as the `BTreeMap` it is):
->   definitions, structures and ten `opaque` constants (five until translation patch 03, seven
->   until patch 04, which adds SHA-256, NFKC and the Unicode General_Category, whose laws enter
->   statements only as premises), no trusted axiom (`axioms.lock` is empty). They do
+>   definitions, structures and 24 `opaque` constants (patch 04 adds SHA-256, NFKC and the
+>   Unicode General_Category, whose laws enter statements only as premises; patches 05 and 06 the
+>   abstract `url::Url` and its accessors, the DNS lookup, the proxy settings and the issuer-URL
+>   rewrite; list in [`../README.md`](../README.md), "Trusted base"), no trusted axiom (`axioms.lock` is empty). They do
 >   not appear in `#print axioms`; their fidelity rests on review and their cited sources.
 >   Stated exceptions (`formal/trusted/Rmcp/FunsExternal.lean`, module docstring, "Memory" and
 >   "Size convention"): the models make no claim about inputs of `2^61` bytes or more, which
