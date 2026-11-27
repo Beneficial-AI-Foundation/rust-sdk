@@ -340,6 +340,24 @@ at most `u32::MAX` bytes (no-failure statements only). Bugs H9–H16: formal/REA
 | A09 | `check_authorization_metadata_issuer` | Compares the metadata issuer with the explicit or derived (RFC 8414 / OIDC form) expected issuer up to a root `/` (H15): `MissingIssuer` if the metadata has none (unless `allow_missing_issuer`), `Mismatch` with both strings if they differ (H9: recorded issue under private disclosure). | (U), (S), (D), (AD7) | [`…AuthorizationManager.check_authorization_metadata_issuer`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
 | A10 | `check_resource_metadata_resource` | `MissingResource`, `ResourceNotAUrl`, `ResourceHasFragment`, `ResourceMismatch` in that order; `Ok` iff it parses as a URL without fragment that is valid for the base (H13). | (S) | [`…AuthorizationManager.check_resource_metadata_resource`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
 
+**SEP-2243 header-value encoding (patch 07)** —
+[`Internal/Transport/Common/McpHeaders.lean`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean)
+(private functions of `transport/common/mcp_headers.rs`; 39 statements, signed off and proved
+2026-11-28; readable model `Defs.McpHeaders`). The file also has the failure companions, the laws
+of the model and the compositions (round trip, header safety, unchanged exactly when not wrapped,
+the 77 `tchar`s, exactly which header values decode). Assumption keys as in the file: **(E)** the
+wrapped value fits in `isize::MAX` bytes (corollary (E'): length at most `isize::MAX / 2`),
+**(U)** a value that is not a Base64 sentinel is UTF-8 (approved conditional form; corollary
+(U*): UTF-8), **(D)** the decode buffer fits (corollary (D'): length at most `isize::MAX`). Bugs
+H17–H18: formal/README.md "Bugs found".
+
+| ID | Rust function | Guarantee | Assumptions | Lean theorem |
+| --- | --- | --- | --- | --- |
+| G01 | `requires_base64` | `true` exactly for a non-empty value with a leading or trailing SP/HTAB, a byte outside printable ASCII, or the sentinel shape `=?base64?`…`?=`. | none | [`Theorems.mcp_headers.requires_base64`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean) |
+| G02 | `is_tchar` | `true` exactly for the 77 RFC 9110 `tchar`s (VCHAR minus the 17 delimiters). | none | [`Theorems.mcp_headers.is_tchar`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean) |
+| G03 | `encode_header_value` | the value unchanged if G01 is `false`, else `=?base64?` + padded standard Base64 + `?=`; never rejected by `HeaderValue::from_str`; injective; panics exactly when the wrapped value exceeds `isize::MAX` bytes. | (E) | [`Theorems.mcp_headers.encode_header_value`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean) |
+| G04 | `decode_header_value` | for a sentinel, `Some` of the decoded value if it is strict padded standard Base64 of UTF-8, else `None`; any other value unchanged; decoding an encoded value gives it back (H17: accepts more than the encoder produces). | (U), (D) | [`Theorems.mcp_headers.decode_header_value`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean) |
+
 **Request-state codec, Phase 1 (patched copy)** —
 [`Internal/Model/RequestState.lean`](../proofs/Proofs/Internal/Model/RequestState.lean)
 (private associated functions of `RequestStateCodec`; E09a `rs1_fallbacks_verify` exists only in

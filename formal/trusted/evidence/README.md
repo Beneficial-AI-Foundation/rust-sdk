@@ -1212,6 +1212,9 @@ hosts that the opaque `url` functions return: `ExtModel.IsUtf8 d.val` for
 `ExtModel.urlHostStr u = some h`. That a `Str` computed from such values is UTF-8 is proved, not
 assumed (`isUtf8_dropTrailingDots`, `isUtf8_map_asciiLowercase` in
 `Proofs.External.MetadataResolver`; `to_ascii_lowercase_spec_of_isUtf8` takes the premise).
+Approved exception (spec owner, 2026-11-27): G04 `decode_header_value` assumes the conditional form
+`Defs.McpHeaders.sentinelInner? value.val = none → ExtModel.IsUtf8 value.val`, weaker than the plain
+premise and shown exact by `Theorems.mcp_headers.decode_header_value_fail_undef`.
 
 **Differential tests of patch 05.** `formal/trusted/evidence/differential/metadata-resolver/` (git history at 9047c72)
 (`README.md` there; `run.sh <scratch>` applies the patches with `scripts/apply-patches.sh` into

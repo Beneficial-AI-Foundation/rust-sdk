@@ -133,7 +133,10 @@ domain `d` of the argument `host : Host<&str>` of `AuthorizationManager::is_loop
 `IsUtf8 d.val` for `urlHost u = some (url.host.Host.Domain d)` and `IsUtf8 h.val` for
 `urlHostStr u = some h`. That a `Str` computed from such values is UTF-8 is proved, not assumed
 (`isUtf8_dropTrailingDots`, `isUtf8_map_asciiLowercase` in `Proofs.External.MetadataResolver`).
-No axiom or model asserts it. -/
+No axiom or model asserts it. Approved exception (spec owner, 2026-11-27): G04
+`decode_header_value` assumes the conditional form `Defs.McpHeaders.sentinelInner? value.val =
+none → IsUtf8 value.val`, weaker than `IsUtf8 value.val` and shown exact by
+`Theorems.mcp_headers.decode_header_value_fail_undef` (both in the `Proofs` library). -/
 def IsUtf8 (l : List Std.U8) : Prop := ∃ t : String, l = utf8 t
 
 /-- The `String` whose UTF-8 encoding is `l`, or `none` if `l` is not valid UTF-8 (Lean's
