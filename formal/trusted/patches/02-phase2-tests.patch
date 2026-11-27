@@ -2,7 +2,9 @@ Test-only patch: plan Section 22 boundary cases of the Phase 2 targets that no u
 covers (plan step S34; human decision H3, follow-up of 2026-11-24), and boundary cases of the
 public request_state.rs API R09-R12 and R15 (human decision 2026-11-25, spec-cycle review
 findings sR2-a-2, sR2-b-4 and sR3-a-3), and boundary cases of the auth.rs paths that
-06-auth-metadata.patch rewrites (human decision AD5, 2026-11-26, extended 2026-11-27)
+06-auth-metadata.patch rewrites (human decision AD5, 2026-11-26, extended 2026-11-27), and
+boundary cases of the mcp_headers.rs header-value encoding that 07-mcp-headers.patch rewrites
+(human decision GD3, 2026-11-27)
 
 Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
 01-request-state-wire.patch (scripts/apply-patches.sh applies formal/trusted/patches/*.patch in
@@ -10,15 +12,22 @@ file-name order, patch -p1 -F 0, only to the copy in .llbc/work/; the real sourc
 patched). Files: crates/rmcp/src/model.rs, crates/rmcp/src/model/request_state.rs,
 crates/rmcp/src/model/task.rs, crates/rmcp/src/transport/async_rw.rs,
 crates/rmcp/src/transport/auth.rs, crates/rmcp/src/transport/common/client_side_sse.rs,
+crates/rmcp/src/transport/common/mcp_headers.rs,
 crates/rmcp/src/transport/streamable_http_server/tower.rs. Generated with git diff in a scratch
-git repository holding the patch-01 copy (one hunk per file, at its end). The patch body below
-is the authoritative content. 03-request-state-public.patch applies after it; its hunks
-(request_state.rs lines 524-537 of the patch-01 copy) lie before the request_state.rs hunk of
-this patch, so they apply at their recorded lines.
+git repository holding the patch-01 copy (one hunk per file, at its end; the mcp_headers.rs hunk
+in one holding the patch-01..06 copy, where mcp_headers.rs is the upstream blob 9882884 as in
+the patch-01 copy). The patch body below is the authoritative content.
+03-request-state-public.patch applies after it; its hunks (request_state.rs lines 524-537 of the
+patch-01 copy) lie before the request_state.rs hunk of this patch, so they apply at their
+recorded lines. Likewise every hunk of 07-mcp-headers.patch lies before the mcp_headers.rs hunk
+of this patch (which starts at line 1138), so patch 07, which applies after this patch, applies
+at its recorded lines. mcp_headers.rs is blob 4ee60aa after this patch (patches 01-06) and blob
+a8f6185 after patch 07 (patches 01-07).
 
 Change: #[cfg(test)] code only. Every added line lies inside a #[cfg(test)] module: at the end
 of the existing test module of model.rs, model/request_state.rs (mod tests, after patch 01's
-tests), model/task.rs, async_rw.rs (mod test), auth.rs and client_side_sse.rs, and in a new
+tests), model/task.rs, async_rw.rs (mod test), auth.rs, client_side_sse.rs and mcp_headers.rs
+(mod tests), and in a new
 #[cfg(test)] mod phase2_boundary_tests at the end of tower.rs (its added lines are one blank
 separator line, the #[cfg(test)] and mod lines, and the module body, comments included).
 No non-test line, no dependency, no Cargo.toml change; no existing line is removed or changed.
@@ -107,6 +116,96 @@ d5_a10_resource_identifier_scheme (A10, H9/H10: same host and explicit port, dif
 is a mismatch). They pass on the copy with patches 01 and 02, with patches 01-05 and with
 patches 01-06.
 
+GD3 tests (5, mcp_headers.rs, at the end of mod tests, which is gated by client-side-sse and
+server-side-http): named g07_<target>_<case>; they back 07-mcp-headers.patch (human decision
+GD3, 2026-11-27, following the AD5 precedent) by pinning the paths it rewrites that no upstream
+test reaches. Their expected values are computed from the upstream source at 7caec76
+(requires_base64, is_tchar, encode_header_value, decode_header_value, BASE64_HEADER_PREFIX
+`=?base64?` and BASE64_HEADER_SUFFIX `?=` of http_header.rs, BASE64_STANDARD of base64 0.23:
+padded, canonical padding and zero trailing bits required), not from the Lean model. They call
+only G01-G04, whose name and signature patch 07 keeps: g07_requires_base64_boundaries (G01,
+M1: the empty string, a lone space or tab, an interior space (not wrapped) or tab (wrapped),
+U+001F alone and inside, DEL alone and inside (`"a\u{7f}b"`), U+0080 and a non-ASCII letter,
+`~` (0x7E, not wrapped), the sentinel exactly, with a payload, and with prefix and suffix
+overlapping (`=?base64?=`), prefix or suffix alone, a prefix not at the start
+(`"x=?base64?abc?="`, not wrapped), and a suffix followed by more text (`=?base64?=x`,
+`=?base64?a?=b`: the suffix must end the value)),
+g07_is_tchar_boundaries (G02, M2: each of the fifteen RFC 9110 punctuation token chars, the
+quote among them (patch 07 writes it `char::from(b'\'')`), the alphanumeric bounds, the
+delimiters `"(),/:;<=>?@[\]{}`, space, tab, NUL, DEL, a non-ASCII letter and U+FF07, and the
+count 77 of tchars among the 128 ASCII chars), g07_decode_header_value_boundaries (G04, M4:
+the prefix with no suffix after it, patch 07's inner None arm, returns the value unchanged, as
+does a value without the prefix; the empty sentinel decodes to the empty string; a sentinel
+over the bytes FF or C3 28 (not UTF-8), over invalid Base64 (`!!!!`, a length not a multiple
+of four, missing or extra padding, a space before or after the payload `YQ==`, which is not
+trimmed) or over non-zero trailing bits (`YR==`, `YWJ=`) gives None),
+g07_round_trip_and_header_safe (G03 with G04, M3: for the empty string, leading or
+trailing space, a tab, CR LF, an interior LF, a non-ASCII letter, four sentinel look-alikes,
+a quote, and a 1200-byte ASCII string, decoding the encoded value gives the value back, the
+encoded value has only bytes 0x20-0x7E, neither starts nor ends with space or tab, is a valid
+http::HeaderValue, and differs from the value exactly when requires_base64 holds) and
+g07_mutation_vectors (G01-G04, added on 2026-11-27 after a review mutation run; its expected
+values come from upstream Rust at 7caec76 and Python's base64 module: the standard Base64
+alphabet, `+` and `/`, in encoding (`é?`, `é>`, `\t~~`) and decoding (`Pz8/`, `fn5+`; the
+URL-safe `Pz8_`, `fn5-` give None), sentinel placement (`=?base64?a=`, `=?x?=`, `=?base64x?=`
+are not wrapped), the suffix stripped at the end only (`=?base64?YQ==?=x` and a trailing space
+are returned unchanged; `=?base64?YQ==?=?=` gives None) and the prefix once
+(`=?base64?=?base64?YQ==?=` gives None), a trailing NUL byte kept (`AA==`), the count 77
+of tchars among all chars, and, added in a further 2026-11-27 round, the control/non-ASCII
+test on every char (U+0141 `Ł`, whose low byte 0x41 is printable, U+1F600 outside the BMP,
+NUL, and a 257-char value whose only non-ASCII char comes after the first 256: all wrapped),
+the case-sensitive sentinel (`=?BASE64?x?=` is not wrapped and `=?BASE64?YQ==?=` decodes to
+itself) and a line break inside the payload (`=?base64?YQ\n==?=` gives None)). They pass on
+the copy with patches 01-06 (upstream mcp_headers.rs) and with patches 01-07; recorded run
+(2026-11-27): scripts/apply-patches.sh deletes Cargo.lock in the copy, so the workspace
+Cargo.lock is copied into it (or cargo generate-lockfile is run there) before cargo test
+--locked -p rmcp --no-default-features --features request-state,server,client,client-side-sse,
+transport-streamable-http-server,transport-streamable-http-client,auth,macros --lib, which
+reports 865 passed, 0 failed on both copies. Mutation check
+(re-run on 2026-11-27 after the last cases were added, scratch copy with patches 01-07, the
+same cargo test command filtered to transport::common::mcp_headers, 64 tests; each mutant
+alone; the failing tests are listed exactly). Kills of patch 07's rewrites: dropping the
+`c == char::from(b'\'')` disjunct of is_tchar fails g07_is_tchar_boundaries and
+g07_mutation_vectors; changing the inner None arm of decode_header_value to None fails
+g07_decode_header_value_boundaries, g07_round_trip_and_header_safe and g07_mutation_vectors
+(no upstream test); replacing prim::strip_suffix or prim::strip_prefix by Some(s) fails
+those three g07 tests and the upstream round_trips_with_encode; `> 0x7F` for `> 0x7E` in
+prim::has_control_or_non_ascii fails g07_requires_base64_boundaries alone; `||` for `&&` in
+the sentinel test of requires_base64 fails g07_requires_base64_boundaries and
+g07_mutation_vectors. Three mutants of the prim bodies that a review mutation run found
+surviving every mcp_headers test are killed by cases added on 2026-11-27 (each fails exactly
+one test): `< 0x1F` for `< 0x20` in prim::has_control_or_non_ascii and `s.contains(suffix)`
+for `s.ends_with(suffix)` in prim::ends_with fail g07_requires_base64_boundaries (on
+`"\u{1f}"` and `"=?base64?=x"`); `BASE64_STANDARD.decode(value.trim())` in prim::base64_decode
+fails g07_decode_header_value_boundaries (on `"=?base64? YQ==?="`). Five further mutants that a
+second review mutation run found surviving are killed by g07_mutation_vectors (each fails it
+alone): URL_SAFE imported as BASE64_STANDARD in prim (encode and decode; on `é?`),
+prim::strip_suffix as `s.rfind(suffix).map(|i| &s[..i])` or as `s.find(suffix).map(|i| &s[..i])`
+(both on `"=?base64?YQ==?=x"`), `ends_with(value, "=")` for the suffix in requires_base64 (on
+`"=?base64?a="`) and prim::base64_decode dropping trailing NUL bytes (on `AA==`). Seven further
+mutants are killed by the cases of the further round (each fails g07_mutation_vectors alone): in prim::has_control_or_non_ascii, `c as u8` for
+`c as u32` in the `> 0x7E` test or in both (truncating cast; on `Ł`; changing only the `< 0x20` cast is
+equivalent), the `> 0x7E` test limited to the BMP (`&& (c as u32) <=
+0xFFFF`; on U+1F600), `.chars().take(256).any(..)` (on the 257-char value) and NUL allowed
+(`(1..0x20)` for `< 0x20`; on `"\0"`); prim::starts_with and prim::strip_prefix comparing the
+prefix ASCII-case-insensitively (on `=?BASE64?x?=` and `=?BASE64?YQ==?=`); prim::base64_decode
+removing CR and LF before decoding (on `=?base64?YQ\n==?=`). Ten mutants survive every test and
+are equivalent: in prim::has_control_or_non_ascii, `c.is_control() || !c.is_ascii()` and
+`c.is_ascii_control() || !c.is_ascii()` (the same set: below 0x20, 0x7F, above 0x7F); trim_start
+before starts_with or trim_end before ends_with in prim (requires_base64 has returned true
+before on any value whose first or last char is white space: space and tab are checked, every
+other white space char is a control or non-ASCII char); dropping the tab from the first-byte
+test, from the last-byte test, or from both, in requires_base64 (a tab is below 0x20, so
+prim::has_control_or_non_ascii returns true on any value holding one); dropping the is_empty
+early return of requires_base64 (the empty value has no first or last byte, no char, and does
+not start with the prefix: false either way); stripping the suffix before the prefix in
+decode_header_value (both orders succeed exactly when the value is the 9-byte prefix, then any
+text, then the 2-byte suffix, the two not overlapping, and give the same inner part; otherwise
+both return the value unchanged); and `value.trim().to_owned()` in
+the else branch of encode_header_value (reached only when requires_base64 is false, so the
+value has no leading or trailing space or tab and no control or non-ASCII char, and trim, which
+removes Unicode White_Space chars, removes nothing).
+
 Why (plan Section 19, "Tests (human decision H3)"; Section 21, H3; human decision
 2026-11-25): new Rust tests of these functions must live in SDK *.rs files, which stay
 byte-identical to upstream. The S34 upstream-test map (formal/trusted/evidence/README.md) found
@@ -124,6 +223,9 @@ ends_with replaced by contains, H4's IPv6 arm returning no address class, H10's 
 dropped, H7's path-appended branch dropped, A06's http(s) check of the target dropped, A06's
 loopback check of the target dropped (the SSRF guard of a loopback base), A07's
 Url::parse(value) replaced by base_url.join(value), and A10's scheme clause dropped.
+Patch 07 likewise replaces mcp_headers.rs expressions by equivalent ones (M1-M4); decision GD3
+asks for the same kind of Rust tests for its paths (the quote of is_tchar, the duplicated None
+arm of decode_header_value, the DEL and sentinel edges of requires_base64).
 A test-only patch is a process exception (VERIFICATION.md Section 4 defines translation patches
 as behaviour-preserving edits that make an item translate); plan Section 21 (H3) asks for it to
 be recorded in formal/docs/STATUS.md, "Documents", as a further deviation from VERIFICATION.md.
@@ -134,7 +236,12 @@ formal/translation/ are unchanged); checked by translating the copy with patches
 comparing it byte for byte with formal/translation/ (formal/trusted/evidence/README.md). The
 AD5 tests too are added at the end of auth.rs, inside mod tests; with all thirteen of them the
 check was re-run on 2026-11-27 (scripts/aeneas-translate.sh on a scratch copy of the working
-tree with patches 01-06, exit 0): the output is byte-identical to formal/translation/.
+tree with patches 01-06, exit 0): the output is byte-identical to formal/translation/. The
+GD3 tests are added at the end of mcp_headers.rs, inside mod tests (after patch 07's new module
+prim, which patch 07 inserts before mod tests); with all five of them (including the cases
+added on 2026-11-27) the check was re-run on 2026-11-27 (scripts/aeneas-translate.sh on a
+scratch copy of the working tree with patches 01-07, exit 0): Funs.lean, Types.lean, the two
+External templates and translation.json are byte-identical to formal/translation/.
 
 Evidence in CI: patched-tests.yml runs cargo test --locked --lib on the copy with all patches
 (translated features plus macros, overflow checks and debug assertions on), which runs these
@@ -1778,6 +1885,240 @@ index 26d2f77..b1e3c2b 100644
 +        let mut l = s34_limiter((1, 0, 0, false, false));
 +        assert_eq!(l.observe(b"ab\n\n"), Err(()));
 +        assert_eq!(s34_state(&l), (1, 0, 2, false, false));
++    }
+ }
+diff --git a/crates/rmcp/src/transport/common/mcp_headers.rs b/crates/rmcp/src/transport/common/mcp_headers.rs
+index 9882884..4ee60aa 100644
+--- a/crates/rmcp/src/transport/common/mcp_headers.rs
++++ b/crates/rmcp/src/transport/common/mcp_headers.rs
+@@ -1138,4 +1138,229 @@ mod tests {
+             );
+         }
+     }
++
++    // ---- Patch 02 (human decision GD3, 2026-11-27): the mcp_headers.rs paths that
++    // 07-mcp-headers.patch rewrites (G01-G04) and that no upstream test pins. Expected values
++    // are computed from the upstream source at 7caec76 (requires_base64, is_tchar,
++    // encode_header_value, decode_header_value, BASE64_HEADER_PREFIX/SUFFIX of http_header.rs,
++    // the BASE64_STANDARD engine of base64 0.23), not from the Lean model.
++
++    // G01: the empty string, a lone space or tab, white space inside only, U+001F, DEL,
++    // non-ASCII, and the sentinel test (prefix at the start and suffix at the end both
++    // required, and they may overlap).
++    #[test]
++    fn g07_requires_base64_boundaries() {
++        for (value, expected) in [
++            ("", false),
++            (" ", true),
++            ("\t", true),
++            ("a b", false),
++            ("a\tb", true),
++            ("\u{1f}", true),
++            ("a\u{1f}b", true),
++            ("\u{7f}", true),
++            ("a\u{7f}b", true),
++            ("~", false),
++            ("\u{80}", true),
++            ("é", true),
++            ("=?base64??=", true),
++            ("=?base64?abc?=", true),
++            ("=?base64?=", true),
++            ("=?base64?abc", false),
++            ("=?base64?", false),
++            ("abc?=", false),
++            ("x=?base64?abc?=", false),
++            ("=?base64?=x", false),
++            ("=?base64?a?=b", false),
++        ] {
++            assert_eq!(
++                requires_base64(value),
++                expected,
++                "requires_base64({value:?})"
++            );
++        }
++    }
++
++    // G02: every RFC 9110 token punctuation char (the quote in particular: patch 07 writes it
++    // as `char::from(b'\'')`), the alphanumeric bounds, and the delimiters and other non-tchars.
++    #[test]
++    fn g07_is_tchar_boundaries() {
++        for c in [
++            '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~',
++        ] {
++            assert!(is_tchar(c), "{c:?} is a tchar");
++        }
++        assert!(is_tchar('\''));
++        for c in ['0', '9', 'a', 'z', 'A', 'Z'] {
++            assert!(is_tchar(c), "{c:?} is a tchar");
++        }
++        for c in [
++            '"', '(', ')', ',', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '{', '}',
++            ' ', '\t', '\0', '\u{7f}', 'é', '\u{ff07}',
++        ] {
++            assert!(!is_tchar(c), "{c:?} is not a tchar");
++        }
++        // Exactly 62 alphanumerics and 15 punctuation chars among the ASCII chars.
++        assert_eq!(
++            (0u8..=0x7F).filter(|b| is_tchar(char::from(*b))).count(),
++            77
++        );
++    }
++
++    // G04: a prefix without a suffix after it (patch 07's inner `None` arm), a value without the
++    // prefix, and sentinels that wrap non-UTF-8 bytes, invalid Base64 (also white space around
++    // the payload, which is not trimmed), or non-canonical padding or trailing bits.
++    #[test]
++    fn g07_decode_header_value_boundaries() {
++        for value in [
++            "=?base64?abc",
++            "=?base64?",
++            "=?base64?=",
++            "=?base64?/w==",
++            "us-west1",
++            "",
++            "abc?=",
++            " =?base64?YQ==?=",
++        ] {
++            assert_eq!(
++                decode_header_value(value).as_deref(),
++                Some(value),
++                "decode_header_value({value:?})"
++            );
++        }
++        assert_eq!(decode_header_value("=?base64??=").as_deref(), Some(""));
++        assert_eq!(decode_header_value("=?base64?YQ==?=").as_deref(), Some("a"));
++        for value in [
++            // 0xFF and 0xC3 0x28: not UTF-8.
++            "=?base64?/w==?=",
++            "=?base64?wyg=?=",
++            // Not Base64.
++            "=?base64?!!!!?=",
++            "=?base64?abc?=",
++            "=?base64?YQ=?=",
++            "=?base64?YQ===?=",
++            "=?base64?YQ?=",
++            // Non-zero trailing bits.
++            "=?base64?YR==?=",
++            "=?base64?YWJ=?=",
++            // White space around the payload: not trimmed before decoding.
++            "=?base64? YQ==?=",
++            "=?base64?YQ== ?=",
++        ] {
++            assert_eq!(
++                decode_header_value(value),
++                None,
++                "decode_header_value({value:?})"
++            );
++        }
++    }
++
++    // G03 and G04: decoding an encoded value gives the value back, and the encoded value is a
++    // valid header value (visible ASCII and space only, no space or tab at either end).
++    #[test]
++    fn g07_round_trip_and_header_safe() {
++        let long = "x-".repeat(600);
++        for value in [
++            "",
++            " a",
++            "a ",
++            "\t",
++            "\r\n",
++            "x\ny",
++            "é",
++            "=?base64?abc?=",
++            "=?base64??=",
++            "=?base64?=",
++            "=?base64?abc",
++            "a'b",
++            long.as_str(),
++        ] {
++            let encoded = encode_header_value(value);
++            assert_eq!(
++                decode_header_value(&encoded).as_deref(),
++                Some(value),
++                "round trip of {value:?} via {encoded:?}"
++            );
++            assert!(
++                encoded.bytes().all(|b| (0x20..0x7F).contains(&b)),
++                "{encoded:?} has a control or non-ASCII byte"
++            );
++            assert!(
++                !encoded.starts_with([' ', '\t']) && !encoded.ends_with([' ', '\t']),
++                "{encoded:?} starts or ends with white space"
++            );
++            assert!(HeaderValue::from_str(&encoded).is_ok(), "{encoded:?}");
++            assert_eq!(encoded != value, requires_base64(value), "{value:?}");
++        }
++    }
++
++    // Mutation vectors: they pin the standard Base64 alphabet (`+` and `/`), the sentinel
++    // placement (the whole prefix at the start, the whole suffix `?=` at the end), the
++    // stripping of the suffix (at the end only) and of the prefix (once, at the start), a
++    // trailing NUL byte, and the count 77 of tchars among all chars. Expected values come from
++    // upstream Rust (7caec76) and were cross-checked with Python's base64 module.
++    #[test]
++    fn g07_mutation_vectors() {
++        for (value, expected) in [
++            ("=?base64?a=", false),
++            ("=?x?=", false),
++            ("=?base64x?=", false),
++        ] {
++            assert_eq!(
++                requires_base64(value),
++                expected,
++                "requires_base64({value:?})"
++            );
++        }
++        assert_eq!(encode_header_value("é?"), "=?base64?w6k/?=");
++        assert_eq!(encode_header_value("é>"), "=?base64?w6k+?=");
++        assert_eq!(encode_header_value("\t~~"), "=?base64?CX5+?=");
++        assert_eq!(
++            decode_header_value("=?base64?Pz8/?=").as_deref(),
++            Some("???")
++        );
++        assert_eq!(
++            decode_header_value("=?base64?fn5+?=").as_deref(),
++            Some("~~~")
++        );
++        assert_eq!(
++            decode_header_value("=?base64?AA==?=").as_deref(),
++            Some("\0")
++        );
++        for value in ["=?base64?YQ==?=x", "=?base64?YQ==?= "] {
++            assert_eq!(
++                decode_header_value(value).as_deref(),
++                Some(value),
++                "{value:?}"
++            );
++        }
++        for value in [
++            "=?base64?YQ==?=?=",
++            "=?base64?=?base64?YQ==?=",
++            "=?base64?Pz8_?=",
++            "=?base64?fn5-?=",
++        ] {
++            assert_eq!(decode_header_value(value), None, "{value:?}");
++        }
++        assert_eq!(
++            (0..=0x10FFFFu32)
++                .filter_map(char::from_u32)
++                .filter(|c| is_tchar(*c))
++                .count(),
++            77
++        );
++        // A char whose low byte is printable (U+0141), a char outside the BMP, NUL, a
++        // non-ASCII char after the first 256 chars, the sentinel in upper case (the prefix is
++        // case-sensitive), and a line break inside the payload (not removed before decoding).
++        for v in ["Ł", "😀", "\0"] {
++            assert!(requires_base64(v), "{v:?}");
++        }
++        assert!(requires_base64(&format!("{}é", "a".repeat(256))));
++        assert!(!requires_base64("=?BASE64?x?="));
++        assert_eq!(
++            decode_header_value("=?BASE64?YQ==?=").as_deref(),
++            Some("=?BASE64?YQ==?=")
++        );
++        assert_eq!(decode_header_value("=?base64?YQ\n==?="), None);
 +    }
  }
 diff --git a/crates/rmcp/src/transport/streamable_http_server/tower.rs b/crates/rmcp/src/transport/streamable_http_server/tower.rs

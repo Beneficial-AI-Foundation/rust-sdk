@@ -30,6 +30,7 @@ public import Proofs.External.Prim
 public import Proofs.External.Skill
 public import Proofs.External.MetadataResolver
 public import Proofs.External.Auth
+public import Proofs.External.Base64Std
 public import Proofs.External.Std
 public import Proofs.External.Iter
 public import Proofs.External.Byte

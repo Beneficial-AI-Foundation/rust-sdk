@@ -231,6 +231,11 @@ TARGETS=(
   transport.auth.AuthorizationManager.is_root_url           # A09 (patch 06 helper)
   transport.auth.AuthorizationManager.check_resource_metadata_resource  # A10 (patch 06 helper)
   transport.auth.AuthorizationManager.is_resource_identifier_valid  # A10 (callee)
+  # mcp_headers.rs header-value encoding, translation patch 07.
+  transport.common.mcp_headers.requires_base64              # G01
+  transport.common.mcp_headers.is_tchar                     # G02
+  transport.common.mcp_headers.encode_header_value          # G03
+  transport.common.mcp_headers.decode_header_value          # G04
 )
 
 
@@ -269,12 +274,16 @@ PATCH06_TARGETS=" transport.auth.AuthorizationManager.is_http_url
   transport.auth.AuthorizationManager.trim_root_slash transport.auth.AuthorizationManager.is_root_url
   transport.auth.AuthorizationManager.check_resource_metadata_resource
   transport.auth.AuthorizationManager.is_resource_identifier_valid "
+# Likewise the mcp_headers.rs targets of translation patch 07 (all of G01-G04).
+PATCH07_TARGETS=" transport.common.mcp_headers.requires_base64
+  transport.common.mcp_headers.is_tchar transport.common.mcp_headers.encode_header_value
+  transport.common.mcp_headers.decode_header_value "
 case "${RMCP_TARGET_SET:-all}" in
   all) ;;
   phase2)
     phase2=()
     for t in "${TARGETS[@]}"; do
-      [[ "$t" == model.request_state* || "$(printf '%s' "$PATCH04_TARGETS$PATCH05_TARGETS$PATCH06_TARGETS" | tr '\n' ' ')" == *" $t "* ]] \
+      [[ "$t" == model.request_state* || "$(printf '%s' "$PATCH04_TARGETS$PATCH05_TARGETS$PATCH06_TARGETS$PATCH07_TARGETS" | tr '\n' ' ')" == *" $t "* ]] \
         || phase2+=("$t")
     done
     TARGETS=("${phase2[@]}")
@@ -306,9 +315,9 @@ check_output() {
   # target, i.e. PATCH04_TARGETS (here) and `patch04` (scripts/check-original-linkage.sh) disagree
   # with the call graph, and the ORIGINAL claim would silently skip checking it.
   if [[ "${RMCP_TARGET_SET:-all}" == phase2 ]]; then
-    for t in $PATCH04_TARGETS $PATCH05_TARGETS $PATCH06_TARGETS; do
+    for t in $PATCH04_TARGETS $PATCH05_TARGETS $PATCH06_TARGETS $PATCH07_TARGETS; do
       pat="^(noncomputable )?(private )?def ${t//./\\.}([[:space:]]|$)"
-      ! grep -Eq "$pat" <<<"$defs" || die "patch-04/05/06 target $t is translated from the unmodified source; update PATCH04_TARGETS/PATCH05_TARGETS/PATCH06_TARGETS and check-original-linkage.sh"
+      ! grep -Eq "$pat" <<<"$defs" || die "patch-04/05/06/07 target $t is translated from the unmodified source; update PATCH04_TARGETS/PATCH05_TARGETS/PATCH06_TARGETS/PATCH07_TARGETS and check-original-linkage.sh"
     done
   fi
   # Each `_` glob in [package.metadata.charon].start_from matches exactly one Rust item (plan

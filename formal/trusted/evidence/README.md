@@ -1643,3 +1643,217 @@ matches its pin, re-translation byte-identical to the committed output); `lake b
 Proofs Specs Rmcp RmcpExternal` exit 0; `scripts/lean-guard.sh` `build-log`, `sources` and
 `axioms` exit 0 (0 trusted axioms, 0 native-code axioms); `scripts/check-original-linkage.sh`
 exit 0 (65/42/37/10 blocks identical; 520 constants and 41 externals elaborated identically).
+
+## Header-value externals (translation patch 07, targets G01–G04)
+
+Translation patch 07 (`formal/trusted/patches/07-mcp-headers.patch`; human decisions GD1 and GD2,
+2026-11-27) lets the SEP-2243 header-value encoding of
+`crates/rmcp/src/transport/common/mcp_headers.rs` translate: G01 `requires_base64`, G02
+`is_tchar`, G03 `encode_header_value` and G04 `decode_header_value` (linkage `patch-07` for all
+four). It adds the private module `mcp_headers::prim` (eight functions, opaque in the translation,
+each the original expression) and makes the remaining code call only the standard-library
+functions below. Every model is a definition in `formal/trusted/Rmcp/FunsExternal.lean` (section
+"`mcp_headers.rs` header-value encoding"), with its source cited in its docstring;
+`TypesExternal.lean` is unchanged; there is no new `opaque` constant, and `axioms.lock` stays
+empty. Stated exceptions: none.
+
+Exact models, with their Rust source (`nightly-2026-09-17` `rust-src` unless stated; `Source:`
+lines of the `prim` functions refer to the patch-01..07 copy):
+
+| Model | Source |
+|---|---|
+| `prim::has_control_or_non_ascii` (`mcp_headers.rs` lines 415–419): some byte below `0x20` or above `0x7E` (`ExtModel.isControlOrNonAsciiByte`), on every `Str` (GD2) | `value.chars().any(\|c\| (c as u32) < 0x20 \|\| (c as u32) > 0x7E)`: `core/src/str/mod.rs` lines 1079–1081, `core/src/str/iter.rs` lines 35–43, `core/src/iter/traits/iterator.rs` lines 2897–2910 |
+| `prim::starts_with`, `prim::ends_with` (lines 421–427): byte prefix (`<+:`), byte suffix (`<:+`) | `core/src/str/mod.rs` lines 1420–1422 and 1445–1450, `core/src/str/pattern.rs` lines 983–985 and 1030–1035 |
+| `prim::strip_prefix`, `prim::strip_suffix` (lines 429–435): byte prefix then `drop`, byte suffix then `take` | `core/src/str/mod.rs` lines 2458–2460 and 2486–2491, `core/src/str/pattern.rs` lines 1019–1026 and 1030–1050 |
+| `prim::wrap_sentinel` (lines 437–439): `"=?base64?" ++ t ++ "?="` for the string `t` of the argument, `ExtModel.growString`; `fail undef` off UTF-8 | `format!`, `alloc/src/macros.rs` lines 113–119, `alloc/src/fmt.rs` lines 651–662; the constants, `crates/rmcp/src/transport/common/http_header.rs` lines 13–14 |
+| `prim::base64_encode` (lines 441–443): `ExtModel.b64StdPad` of the bytes, one ASCII `Char` per byte, `ExtModel.growString` | `base64-0.23.1`: `src/prelude.rs` line 19, `src/engine/general_purpose/mod.rs` lines 337–343, 436, 487, `src/engine/mod.rs` lines 148–164, `src/encode.rs` lines 101–146, `src/alphabet.rs` lines 251–262 |
+| `prim::base64_decode` (lines 445–447): `fail panic` if the buffer estimate `ExtModel.b64StdDecodedLenEstimate` exceeds `isize::MAX` (GD2), otherwise `ExtModel.b64StdPadDecode` of the bytes | `base64-0.23.1`: `src/engine/mod.rs` lines 277–301, `src/engine/general_purpose/decode.rs` lines 15–21, 37–90, 184–217, `src/engine/general_purpose/decode_suffix.rs` lines 13–170, `src/engine/general_purpose/mod.rs` lines 341–342 |
+| `char::is_ascii_alphanumeric`: code point in 48–57, 65–90 or 97–122 | `core/src/char/methods.rs` lines 2184–2186 |
+| `<[T]>::last`: `getLast?` | `core/src/slice/mod.rs` lines 283–285 |
+| `Option<&T>::copied`: the identity (a shared borrow is its value in the translation) | `core/src/option.rs` lines 2135–2145 |
+
+New trusted helpers (namespace `ExtModel`): `isControlOrNonAsciiByte`, `urlToStd`, `stdToUrl`,
+`b64StdPad`, `padBody`, `b64StdPadDecode`, `b64StdDecodedLenEstimate`, with the length lemmas
+`length_padBody_le` and `b64StdPadDecode_length_le`. Padded standard Base64 renames the alphabet of
+the reviewed Base64url models `ExtModel.b64` and `ExtModel.b64Decode`, which are unchanged (GD2):
+`STANDARD` and `URL_SAFE` share the 62 symbols of the values 0–61 and differ only in 62
+(`+`/`-`) and 63 (`/`/`_`), and the engine code is the same for both. Each external has a proved
+spec theorem `<generated name>_spec` in `Proofs.External.Base64Std` (no `sorry`; the
+models that can fail also have `_fail` theorems, and `wrap_sentinel_not_utf8` gives the
+`fail undef` of `prim::wrap_sentinel` off UTF-8), and the module proves the laws: the round trip
+`b64StdPadDecode_b64StdPad` (`b64StdPadDecode (b64StdPad x) = some x`), canonicity
+`b64StdPadDecode_eq_some_iff` (the decoder accepts exactly the outputs of `b64StdPad`),
+`visible_of_mem_b64StdPad` (every encoded byte is in `0x21`–`0x7E`), `length_b64StdPad`
+(`4 ⌈n / 3⌉` bytes, Rust's `encoded_len(n, true)`), and the byte-vs-char lemma
+`any_isControlOrNonAsciiByte_utf8`: on the UTF-8 bytes of a string the byte model equals the
+char-level test of Rust (GD2), so `has_control_or_non_ascii_spec_utf8` states the Rust behaviour
+for every `&str`. The root `formal/proofs/Proofs.lean` needs
+`public import Proofs.External.Base64Std`.
+
+**Base64 differential check** (2026-11-27, scratch program with `base64 = "=0.23.1"`, compiled
+with the repository toolchain 1.96, kept outside the repository): `BASE64_STANDARD` gives exactly
+the values of the `decide` vectors of `Proofs.External.Base64Std` (`""`, `Zg==`, `Zm8=`,
+`Zm9vYmFy`, `+/8=` from `[251, 255]`; `decode` of `""` is `Ok([])`, of `+/8=` is `[251, 255]`,
+and `Zg`, `Zg=`, `Z===`, `-_8=`, `Zh==`, `Zg==Zg==`, `====` are errors). Canonicity on the Rust
+side: for every input of length at most 7 over the bytes `AQgw+/-_=!` (11,111,111 inputs, 1,465
+accepted) and of length at most 8 over `Ag/=-!` (2,015,539 inputs, 8,611 accepted), whenever
+`decode(s)` is `Ok(y)`, `encode(y)` is `s`; and for 64 inputs of lengths 0–63, `encode` has
+`(n + 2) / 3 * 4` bytes, all in `0x21`–`0x7E`, and `decode` returns the input. This is the Rust
+side of `b64StdPadDecode_eq_some_iff` and `b64StdPadDecode_b64StdPad`.
+
+**Differential checks by the reviewers** (2026-11-27; a reviewer record: the reviewers' programs
+are not in the repository, and these figures were not re-run by the author of this record).
+Review round 1 of the translation stage: 586,638 outputs of the translated Lean functions
+G01–G04 and of the models above were byte-identical to those of `base64` 0.23.1 and of the Rust
+functions on the same inputs; and on 51,580 strings the Rust side satisfies
+`decode_header_value(&encode_header_value(v)) == Some(v)`, `HeaderValue::from_str` accepts every
+encoding, and no encoding starts or ends with SP or HTAB or has a byte outside `0x20`–`0x7E`.
+Review round 3, with fresh seeds 4242027 and 777001: 169,802 and 1,118,076 output lines of the
+translated Lean functions were byte-identical to those of the upstream Rust functions with
+`base64 = "=0.23.1"`; and the patched Rust functions (patches 01–07) against the upstream ones:
+1,188,404 comparisons, 0 differences.
+
+Blob ids of `crates/rmcp/src/transport/common/mcp_headers.rs` (`git hash-object`, abbreviated):
+upstream `9882884`; after patches 01–06 `4ee60aa` (patch 02 appends the five GD3 tests; patches
+01 and 03–06 do not touch the file); after patches 01–07 `a8f6185` (the `index` line of patch
+07).
+
+Tests (all in `crates/rmcp/src/transport/common/mcp_headers.rs`, `mod tests`: the upstream tests
+and the five GD3 tests `g07_*` that patch 02 appends; patch 07 changes no test). They pass on
+both patched copies. Recorded run (2026-11-27, repository toolchain 1.96): a copy of `.llbc/work/`
+after `scripts/apply-patches.sh`; the script deletes `Cargo.lock` in the copy, so the workspace
+`Cargo.lock` is copied into it (or `cargo generate-lockfile` is run there) before `cargo test
+--locked -p rmcp --lib --no-default-features --features
+request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth,macros`:
+865 passed, 0 failed with patches 01–07, and 865 passed, 0 failed with patches 01–06 (both
+copies carry patch 02 and so the GD3 tests); among them the 64 tests of `mcp_headers`, 5 of them
+GD3 tests. The integration test `rejects_decoded_base64_param_mismatch_with_32020` named in the
+table (`crates/rmcp/tests/`) is not part of these `--lib` runs.
+
+| Models (and target paths) | Exercised by |
+|---|---|
+| G01: `<[T]>::first`, `<[T]>::last`, `Option<&u8>::copied` (leading/trailing space or tab) | `encode_header_value::wraps_leading_whitespace`, `wraps_trailing_whitespace`; `decode_header_value::round_trips_with_encode` (`" padded "`); `g07_requires_base64_boundaries` (`""`, `" "`, `"\t"`, `"a b"`, `"a\tb"`); `g07_round_trip_and_header_safe` (`" a"`, `"a "`, `"\t"`) |
+| G01: `prim::has_control_or_non_ascii` | `encode_header_value::wraps_non_ascii` (`café`), `wraps_control_characters` (`\n`), `wraps_crlf_injection_attempt` (`\r\n`); `passes_plain_ascii_through`, `passes_internal_spaces_through` (false on printable ASCII); `g07_requires_base64_boundaries` (U+001F, DEL, U+0080, `é` true; `~` false) |
+| G01: `prim::starts_with`, `prim::ends_with` | `encode_header_value::wraps_sentinel_collision`; the passing cases above (false); `g07_requires_base64_boundaries` (sentinel exactly, with a payload, overlapping `=?base64?=`; prefix or suffix alone, prefix not at the start, suffix not at the end) |
+| G02: `char::is_ascii_alphanumeric`, `char::from(u8)` and the `==` chain | `validate_param_header_annotations::accepts_primitive_types` (`Region`, `Count`, `Flag`), `rejects_non_token_header_name` (`bad:name`); all fifteen punctuation tchars (`-` among them) are pinned by `g07_is_tchar_boundaries` (each punctuation tchar, the alphanumeric bounds, the delimiters and other non-tchars, the count 77 over ASCII); `g07_mutation_vectors` (the count 77 over all chars `U+0000`–`U+10FFFF`) |
+| G03: `prim::base64_encode`, `prim::wrap_sentinel`, `str::to_owned` | every `encode_header_value::*` test (`assert_wrapped` checks the prefix; the passing cases compare the value) and `decode_header_value::round_trips_with_encode` (six values, three of them wrapped: `café`, `" padded "`, `"line1\nline2"`; all six decoded back); `g07_round_trip_and_header_safe` (thirteen values, round trip and header safety); `g07_mutation_vectors` (the standard alphabet in encoding: `é?` gives `=?base64?w6k/?=`, `é>` gives `=?base64?w6k+?=`, `\t~~` gives `=?base64?CX5+?=`) |
+| G04: `prim::strip_prefix`, `prim::strip_suffix`, `prim::base64_decode`, `String::from_utf8`, `?` | `decode_header_value::round_trips_with_encode`, `decode_header_value::rejects_invalid_base64` (`!!!not-base64!!!` inside the sentinel gives `None`); the `validate_request_headers` tests (`accepts_matching_method_and_name`, `rejects_name_mismatch`, `accepts_matching_param`, `rejects_param_mismatch`, `accepts_matching_nested_param`) decode plain values (no sentinel); the integration test `rejects_decoded_base64_param_mismatch_with_32020` (`crates/rmcp/tests/test_streamable_http_standard_headers.rs`, sentinel `=?base64?ZXUtY2VudHJhbDE=?=`); `g07_decode_header_value_boundaries` (inner `None` arm, non-UTF-8, invalid and non-canonical Base64, untrimmed white space); `g07_round_trip_and_header_safe`; `g07_mutation_vectors` (standard alphabet `Pz8/`, `fn5+` decoded, URL-safe `Pz8_`, `fn5-` give `None`; suffix stripped at the end only, prefix stripped once; trailing NUL of `AA==` kept) |
+
+Paths that no upstream test reaches, and the GD3 test of patch 02 that pins each (expected values
+computed from the upstream source, not from the Lean model):
+
+- G01 on the empty string (`false` before any byte is read): `g07_requires_base64_boundaries`
+  (`""` is `false`); `g07_round_trip_and_header_safe` (`""` encodes to itself and decodes back).
+- G01 on U+001F (the bound of the control test): `g07_requires_base64_boundaries` (`"\u{1f}"`
+  and `"a\u{1f}b"` are `true`; also DEL, U+0080 and `é` `true`, `~` (0x7E) `false`).
+- G01 sentinel placement: `g07_requires_base64_boundaries` (`=?base64??=`, `=?base64?abc?=` and
+  the overlapping `=?base64?=` are `true`; `=?base64?abc`, `=?base64?`, `abc?=`,
+  `x=?base64?abc?=`, `=?base64?=x` and `=?base64?a?=b` are `false`: the prefix must start and
+  the suffix must end the value).
+- G02 for the fifteen punctuation chars (`!#$%&'*+-.^_\`|~`), in particular the quote of
+  the GD1 workaround `char::from(b'\'')`: `g07_is_tchar_boundaries` (each of the fifteen
+  punctuation tchars, the quote again on its own, the alphanumeric bounds, the delimiters
+  `"(),/:;<=>?@[\]{}`, space, tab, NUL, DEL, `é`, U+FF07, and exactly 77 tchars among the 128
+  ASCII chars).
+- G04 for a value with the prefix but without the suffix (the inner `None` arm of hunk M4):
+  `g07_decode_header_value_boundaries` (`=?base64?abc`, `=?base64?`, `=?base64?=` and
+  `=?base64?/w==` are returned unchanged, as are values without the prefix: `us-west1`, `""`,
+  `abc?=`, ` =?base64?YQ==?=`).
+- G04 for a sentinel whose Base64 decodes to bytes that are not UTF-8 (`String::from_utf8`
+  error): `g07_decode_header_value_boundaries` (`/w==` = `FF`, `wyg=` = `C3 28` give `None`).
+- G04 for invalid or non-canonical Base64: `g07_decode_header_value_boundaries` (`!!!!`, `abc`,
+  `YQ=`, `YQ===`, `YQ`, and the non-zero trailing bits `YR==`, `YWJ=` give `None`; the empty
+  payload gives `Some("")`, `YQ==` gives `Some("a")`).
+- G04 with white space around the payload (not trimmed before decoding):
+  `g07_decode_header_value_boundaries` (`=?base64? YQ==?=`, `=?base64?YQ== ?=` give `None`).
+- G01 sentinel placement, further look-alikes: `g07_mutation_vectors` (`=?base64?a=`, `=?x?=`,
+  `=?base64x?=` are `false`: the suffix is `?=`, not `=`, and the prefix is exactly `=?base64?`).
+- G03 and G04 with the two symbols of the standard alphabet that differ from Base64url (`+`,
+  `/`): `g07_mutation_vectors` (`é?` encodes to `=?base64?w6k/?=`, `é>` to `=?base64?w6k+?=`,
+  `\t~~` to `=?base64?CX5+?=`; `=?base64?Pz8/?=` decodes to `???`, `=?base64?fn5+?=` to `~~~`;
+  the URL-safe `=?base64?Pz8_?=` and `=?base64?fn5-?=` give `None`).
+- G04 suffix stripped at the end only, prefix stripped once: `g07_mutation_vectors`
+  (`=?base64?YQ==?=x` and `=?base64?YQ==?= ` are returned unchanged; `=?base64?YQ==?=?=` and
+  `=?base64?=?base64?YQ==?=` give `None`).
+- G04 with a trailing NUL byte in the decoded bytes: `g07_mutation_vectors` (`=?base64?AA==?=`
+  gives `Some("\0")`).
+- G02 over all chars: `g07_mutation_vectors` (exactly 77 of the chars `U+0000`–`U+10FFFF` are
+  tchars, so no non-ASCII char is one).
+- G03 with G04, round trip and header safety: `g07_round_trip_and_header_safe` (for `""`, `" a"`,
+  `"a "`, `"\t"`, `"\r\n"`, `"x\ny"`, `"é"`, four sentinel look-alikes, `"a'b"` and a 1200-byte
+  ASCII string: decoding the encoding gives the value back, the encoding has only bytes
+  `0x20`–`0x7E`, neither starts nor ends with SP or HTAB, is accepted by
+  `http::HeaderValue::from_str`, and differs from the value exactly when `requires_base64`
+  holds).
+
+Mutation check (the record of the header of `formal/trusted/patches/02-phase2-tests.patch`;
+re-run on 2026-11-27 after the last cases were added, scratch copy with patches 01–07, the same
+`cargo test` command filtered to `transport::common::mcp_headers`, 64 tests; each mutant alone;
+the failing tests are listed exactly). Kills of patch 07's rewrites: dropping the
+`c == char::from(b'\'')` disjunct of `is_tchar` fails `g07_is_tchar_boundaries` and
+`g07_mutation_vectors`; changing the inner `None` arm of `decode_header_value` to `None` fails
+`g07_decode_header_value_boundaries`, `g07_round_trip_and_header_safe` and
+`g07_mutation_vectors` (no upstream test); replacing `prim::strip_suffix` or `prim::strip_prefix`
+by `Some(s)` fails those three g07 tests and the upstream `round_trips_with_encode`; `> 0x7F` for
+`> 0x7E` in `prim::has_control_or_non_ascii` fails `g07_requires_base64_boundaries` alone; `||`
+for `&&` in the sentinel test of `requires_base64` fails `g07_requires_base64_boundaries` and
+`g07_mutation_vectors`. Three mutants of the `prim` bodies that a review mutation run found
+surviving every `mcp_headers` test are killed by cases added on 2026-11-27 (each fails exactly
+one test): `< 0x1F` for `< 0x20` in `prim::has_control_or_non_ascii` and `s.contains(suffix)`
+for `s.ends_with(suffix)` in `prim::ends_with` fail `g07_requires_base64_boundaries` (on
+`"\u{1f}"` and `"=?base64?=x"`); `BASE64_STANDARD.decode(value.trim())` in
+`prim::base64_decode` fails `g07_decode_header_value_boundaries` (on `"=?base64? YQ==?="`). Five
+further mutants that a second review mutation run found surviving are killed by
+`g07_mutation_vectors` (each fails it alone): `URL_SAFE` imported as `BASE64_STANDARD` in `prim`
+(encode and decode; on `é?`), `prim::strip_suffix` as `s.rfind(suffix).map(|i| &s[..i])` or as
+`s.find(suffix).map(|i| &s[..i])` (both on `"=?base64?YQ==?=x"`), `ends_with(value, "=")` for the
+suffix in `requires_base64` (on `"=?base64?a="`) and `prim::base64_decode` dropping trailing NUL
+bytes (on `AA==`). Seven further mutants are killed by the cases of the further round (each
+fails `g07_mutation_vectors` alone): in `prim::has_control_or_non_ascii`, `c as u8` for
+`c as u32` in the `> 0x7E` test or in both (truncating cast; on `Ł`; changing only the `< 0x20` cast is
+equivalent), the `> 0x7E` test limited to the BMP
+(`&& (c as u32) <= 0xFFFF`; on U+1F600), `.chars().take(256).any(..)` (on the 257-char value)
+and NUL allowed (`(1..0x20)` for `< 0x20`; on `"\0"`); `prim::starts_with` and
+`prim::strip_prefix` comparing the prefix ASCII-case-insensitively (on `=?BASE64?x?=` and
+`=?BASE64?YQ==?=`); `prim::base64_decode` removing CR and LF before decoding (on
+`=?base64?YQ\n==?=`). Ten mutants survive every test and are equivalent: in
+`prim::has_control_or_non_ascii`, `c.is_control() || !c.is_ascii()` and
+`c.is_ascii_control() || !c.is_ascii()` (the same set: below `0x20`, `0x7F`, above `0x7F`);
+`trim_start` before `starts_with` or `trim_end` before `ends_with` in `prim` (`requires_base64`
+has returned `true` before on any value whose first or last char is white space: space and tab
+are checked, every other white space char is a control or non-ASCII char); dropping the tab
+from the first-byte test, from the last-byte test, or from both, in `requires_base64` (a tab is
+below `0x20`, so `prim::has_control_or_non_ascii` returns `true` on any value holding one);
+dropping the `is_empty` early return of `requires_base64` (the empty value has no first or last
+byte, no char, and does not start with the prefix: `false` either way); stripping the suffix
+before the prefix in `decode_header_value` (both orders succeed exactly when the value is the
+9-byte prefix, then any text, then the 2-byte suffix, the two not overlapping, and give the same
+inner part; otherwise both return the value unchanged); and `value.trim().to_owned()` in the
+else branch of `encode_header_value` (reached only when `requires_base64` is false, so the value
+has no leading or trailing space or tab and no control or non-ASCII char, and `trim`, which
+removes Unicode White_Space chars, removes nothing).
+
+**Clippy.** The property checked is that patch 07 adds no warning. `cargo clippy --locked -p rmcp
+--lib --no-default-features --features
+request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
+(the translated feature configuration), with and without `macros`, on the patch-01..06 copy and
+on the patch-01..07 copy (2026-11-27): the same set of warnings on both copies (same lint, file
+and message), none of them in `mcp_headers.rs`. The totals depend on the toolchain, not on
+`macros`: 10 with the repository toolchain 1.96 (clippy 0.1.96: nine dead-code warnings and the
+patch-05 `redundant_closure`), 29 with the pinned `nightly-2026-09-17` (the same ten plus 18
+`clippy::result_large_err` and the patch-06 `clippy::question_mark`), each on both copies, with
+and without `macros` (as for patch 06).
+
+**Linkage of the header-value targets** (plan Section 19). G01–G04 are `PATCH07_TARGETS`
+(linkage `patch-07`, GD1). For the linkage run `scripts/check-original-linkage.sh` drops the four
+patch-07 start points and the opaque entry `rmcp::transport::common::mcp_headers::prim` from the
+copy's Charon settings. Runs (2026-11-27, Aeneas `nightly-2026.11.24-fb44cb4`, Charon `0.1.324`,
+Rust `nightly-2026-09-17`), in a scratch clone of the repository at `42b7ab9` with this change, the
+lead-owned Charon settings, script and pin changes and the root import committed on top
+(scratch commit `851c38aea391a15f3332aebaf7ab121f31b9494e`, without this run record):
+`scripts/apply-patches.sh` exit 0 (patches 01–07 apply with `-F 0`); `scripts/aeneas-translate.sh`
+exit 0 (all 104 targets defined, no `sorry`, `Funs.lean` matches its new pin, re-translation
+byte-identical to the committed output); `lake build --wfail Defs Proofs Specs Rmcp RmcpExternal`
+exit 0; `scripts/lean-guard.sh` `sources`, `build-log` and `axioms` exit 0 (0 trusted axioms, 0
+native-code axioms); `scripts/check-original-linkage.sh` exit 0 (65/42/37/10 blocks identical;
+520 constants and 41 externals elaborated identically, as before patch 07).

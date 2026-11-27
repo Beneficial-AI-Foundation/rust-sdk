@@ -1,0 +1,266 @@
+Translation patch: the SEP-2243 header-value encoding of
+crates/rmcp/src/transport/common/mcp_headers.rs, so that targets G01-G04 translate (G01
+requires_base64, G02 is_tchar, G03 encode_header_value, G04 decode_header_value; human
+decisions 2026-11-27: GD1 patch 07 with the private opaque module prim holding the original
+expressions verbatim, including the format!, and the quote written `char::from(b'\'')` with a
+comment, linkage patch-07 for all four targets; GD2 the external models: the control/non-ASCII
+test on the bytes of every Str with a proved lemma tying it to the char-level test on UTF-8,
+standard padded Base64 by renaming the alphabet of the reviewed Base64url models, and the
+buffer-size guard of the decoder)
+
+Applies to: the copy of upstream origin/main 7caec762799bece6fba38e4298b8ca7db8bac12c after
+01-request-state-wire.patch, 02-phase2-tests.patch, 03-request-state-public.patch,
+04-skill-public.patch, 05-metadata-resolver.patch and 06-auth-metadata.patch
+(scripts/apply-patches.sh applies formal/trusted/patches/*.patch in file-name order, patch -p1
+-F 0, only to the copy in .llbc/work/; the real source is never patched). File:
+crates/rmcp/src/transport/common/mcp_headers.rs only (blob 9882884 upstream; 4ee60aa after the
+GD3 tests of patch 02; a8f6185 after this patch). Generated with git diff from the patch-01..06
+copy. The patch body below is the authoritative content. Toolchain measured: Aeneas
+nightly-2026.11.24-fb44cb4, Charon 0.1.324, Rust nightly-2026-09-17.
+
+Not part of this patch (they stay in the repository): the Charon settings in
+crates/rmcp/Cargo.toml (four start_from entries
+rmcp::transport::common::mcp_headers::{requires_base64, is_tchar, encode_header_value,
+decode_header_value}; the opaque entry rmcp::transport::common::mcp_headers::prim), TARGETS and
+PATCH07_TARGETS of scripts/aeneas-translate.sh, the patch07 set of
+scripts/check-original-linkage.sh, the translation pin (formal/trusted/translation-pins.txt), and
+the external models of formal/trusted/Rmcp/FunsExternal.lean (section "mcp_headers.rs
+header-value encoding"). None of G01-G04 translates unmodified (linkage patch-07 for all four;
+G03 calls G01).
+
+Stays unverified (not translated, or translated only as an opaque model): the bodies of the eight
+prim functions (opaque, modelled exactly in Lean: the byte-level control/non-ASCII test, the &str
+pattern APIs on bytes, the format! as string concatenation, BASE64_STANDARD as padded standard
+Base64 with the alphabet renamed from the reviewed Base64url models). Stated exceptions: none.
+
+Change (non-test lines only; no test is added or changed). Every hunk replaces code that the
+translation cannot handle by calls to the new module `prim` or by an equivalent expression, and
+keeps the computed values:
+ prim  New private module `prim` at the end of mcp_headers.rs (before `mod tests`), opaque in
+       the translation and modelled in Lean, each the original expression with the same
+       arguments: has_control_or_non_ascii (`value.chars().any(|c| (c as u32) < 0x20 ||
+       (c as u32) > 0x7E)`), starts_with (`s.starts_with(prefix)`), ends_with
+       (`s.ends_with(suffix)`), strip_prefix (`s.strip_prefix(prefix)`), strip_suffix
+       (`s.strip_suffix(suffix)`), all with &str patterns; wrap_sentinel
+       (`format!("{BASE64_HEADER_PREFIX}{encoded}{BASE64_HEADER_SUFFIX}")`), base64_encode
+       (`BASE64_STANDARD.encode(value)`) and base64_decode (`BASE64_STANDARD.decode(value).ok()`).
+       The `use base64::{Engine, prelude::BASE64_STANDARD}` of G03 and G04 moves into prim. Used
+       by M1, M3 and M4.
+ M1  G01 requires_base64: `bytes.first().copied()` and `bytes.last().copied()` in the two
+     `matches!` (instead of matching `Some(b' ' | b'\t')` on the `Option<&u8>`), the
+     `chars().any(..)` test becomes `prim::has_control_or_non_ascii(value)`, and
+     starts_with/ends_with become `prim::starts_with`/`prim::ends_with`. rustfmt splits the
+     `if` condition over three lines.
+ M2  G02 is_tchar: the `matches!(c, '!' | '#' | ... | '~')` over the fifteen token
+     punctuation chars becomes a `||` chain of `c == '!'`, `c == '#'`, ... in the same order;
+     the quote is compared as `c == char::from(b'\'')`, with a comment saying why (GD1).
+ M3  G03 encode_header_value: `prim::wrap_sentinel(&prim::base64_encode(value))` for the
+     `format!` of the sentinel around `BASE64_STANDARD.encode(value)`.
+ M4  G04 decode_header_value: `value.strip_prefix(..).and_then(|inner|
+     inner.strip_suffix(..))` becomes two nested matches on `prim::strip_prefix` and
+     `prim::strip_suffix`, with the `None` arm `Some(value.to_owned())` written for each of the
+     two; `prim::base64_decode(inner)?` for `BASE64_STANDARD.decode(inner).ok()?`.
+
+Why each hunk is needed (measured 2026-11-27 in a scratch copy with the Charon settings and
+scripts above; each error is what Charon, Aeneas or the Lean build reports without the hunk):
+ prim, M1, M4  "[Error] Unimplemented" on the signatures of str::starts_with, ends_with,
+     strip_prefix and strip_suffix (the core::str::pattern::Pattern trait has a generic
+     associated type, as patches 04-06); `str::chars().any` with a closure and the `c as u32`
+     casts (see M2); the format! and the base64 Engine would need models of alloc::fmt::format,
+     core::fmt::Arguments and the Engine trait (the first run, with none of the hunks, also stopped
+     with "Fatal error: exception Aeneas.Errors.CFailure").
+ M1  "[Error] Internal error, please file an issue" on the `matches!` of `bytes.first()` and
+     `bytes.last()`: the pattern `Some(b' ' | b'\t')` is a switch on the byte behind the
+     reference in the `Some`.
+ M2  "[Error] Unsupported switch scrutinee" on the `matches!` over a `char`. The quote needs
+     the workaround because of two Aeneas defects (reproducers kept outside the repository,
+     2026-11-27, Aeneas nightly-2026.11.24-fb44cb4 and Charon 0.1.324): (1) a one-function crate
+     `fn is_quote(c: char) -> bool { c == '\'' }` translates to `ok (c = ''')`, and
+     `c == '\\'` to `ok (c = '\')`: Aeneas prints the char literal without escaping it, which
+     Lean rejects (in the rmcp translation: "unexpected token '''; expected term" at the
+     comparison in is_tchar); (2) the obvious alternative `c as u32 == 0x27` makes Aeneas fail
+     with "[Error] Unreachable" on the cast. `char::from(b'\'')` translates (to
+     `Char.Insts.CoreConvertFromU8.from 39#u8`, an existing exact model; `u32::from(c) == 0x27`
+     also translates but would need a new model). Remove the workaround when Aeneas escapes char literals.
+ M4  "[Error] Can't end abstraction ... as it is set as non-endable" on the closure passed to
+     and_then; a join `let inner = match .. { .. }` instead of the duplicated `None` arm gives
+     "[Error] Nested borrows are not supported yet".
+No upstream Charon or Aeneas issue has been filed (as of 2026-11-27).
+
+Why the behaviour is unchanged: every value computed is the same and in the same order. The prim
+functions are the original expressions with the same arguments (the same &str patterns, the same
+format string with the encoded value as an inline argument instead of a positional one, the same
+BASE64_STANDARD engine); `bytes.first().copied()` is `Some(b)` exactly when `bytes.first()` is
+`Some(&b)`, so each `matches!` holds for the same values; `c == x1 || .. || c == x15` is the
+`matches!` on the same fifteen chars, and `char::from(b'\'')` is `'\''` (U+0027, `u8 as char`);
+`a.and_then(f)` is `match a { Some(x) => f(x), None => None }`, and both `None` cases of the
+nested match return `Some(value.to_owned())` as the single `None` arm did; `?` on the Option
+returned by prim::base64_decode is the `?` on `BASE64_STANDARD.decode(inner).ok()`.
+Warnings: patch 07 adds no warning: cargo clippy -p rmcp --lib --no-default-features --features
+request-state,server,client,client-side-sse,transport-streamable-http-server,
+transport-streamable-http-client,auth (the translated feature configuration), with and without
+the feature macros, reports the same set of warnings (same lint, file and message) on the
+patch-01..06 copy and on the patch-01..07 copy (counts in formal/trusted/evidence/README.md). The
+crate does not deny warnings.
+Tests: scripts/apply-patches.sh deletes Cargo.lock in the copy, so the workspace Cargo.lock is
+copied into it (or cargo generate-lockfile is run there) before cargo test --locked -p rmcp --lib
+--no-default-features --features request-state,server,client,client-side-sse,
+transport-streamable-http-server,transport-streamable-http-client,auth,macros; recorded run
+(2026-11-27, repository toolchain 1.96): 865 passed, 0 failed on the patch-01..06 copy and on the
+patch-01..07 copy, among them the 64 mcp_headers tests (5 of them the GD3 tests of patch 02).
+The integration test rejects_decoded_base64_param_mismatch_with_32020 (crates/rmcp/tests/) is
+not part of these --lib runs. The test map and the mutation check are in
+formal/trusted/evidence/README.md.
+
+diff --git a/crates/rmcp/src/transport/common/mcp_headers.rs b/crates/rmcp/src/transport/common/mcp_headers.rs
+index 4ee60aa..a8f6185 100644
+--- a/crates/rmcp/src/transport/common/mcp_headers.rs
++++ b/crates/rmcp/src/transport/common/mcp_headers.rs
+@@ -64,39 +64,37 @@ fn requires_base64(value: &str) -> bool {
+         return false;
+     }
+     let bytes = value.as_bytes();
+-    if matches!(bytes.first(), Some(b' ' | b'\t')) || matches!(bytes.last(), Some(b' ' | b'\t')) {
++    if matches!(bytes.first().copied(), Some(b' ' | b'\t'))
++        || matches!(bytes.last().copied(), Some(b' ' | b'\t'))
++    {
+         return true;
+     }
+-    if value
+-        .chars()
+-        .any(|c| (c as u32) < 0x20 || (c as u32) > 0x7E)
+-    {
++    if prim::has_control_or_non_ascii(value) {
+         return true;
+     }
+-    value.starts_with(BASE64_HEADER_PREFIX) && value.ends_with(BASE64_HEADER_SUFFIX)
++    prim::starts_with(value, BASE64_HEADER_PREFIX) && prim::ends_with(value, BASE64_HEADER_SUFFIX)
+ }
+ 
+ /// RFC 9110 §5.6.2 token character.
+ #[cfg(feature = "client-side-sse")]
+ fn is_tchar(c: char) -> bool {
+     c.is_ascii_alphanumeric()
+-        || matches!(
+-            c,
+-            '!' | '#'
+-                | '$'
+-                | '%'
+-                | '&'
+-                | '\''
+-                | '*'
+-                | '+'
+-                | '-'
+-                | '.'
+-                | '^'
+-                | '_'
+-                | '`'
+-                | '|'
+-                | '~'
+-        )
++        || c == '!'
++        || c == '#'
++        || c == '$'
++        || c == '%'
++        || c == '&'
++        // `char::from(b'\'')`: the translation prints the literal `'\''` as `'''` (not Lean).
++        || c == char::from(b'\'')
++        || c == '*'
++        || c == '+'
++        || c == '-'
++        || c == '.'
++        || c == '^'
++        || c == '_'
++        || c == '`'
++        || c == '|'
++        || c == '~'
+ }
+ 
+ /// An `x-mcp-header` annotation on a property reached from the schema root
+@@ -240,12 +238,8 @@ fn subschema_has_off_chain_annotation(value: &Value, on_chain: bool) -> bool {
+ /// Wraps a value as `=?base64?<b64>?=` when it cannot travel as a bare header value.
+ #[cfg(feature = "client-side-sse")]
+ fn encode_header_value(value: &str) -> String {
+-    use base64::{Engine, prelude::BASE64_STANDARD};
+     if requires_base64(value) {
+-        format!(
+-            "{BASE64_HEADER_PREFIX}{}{BASE64_HEADER_SUFFIX}",
+-            BASE64_STANDARD.encode(value)
+-        )
++        prim::wrap_sentinel(&prim::base64_encode(value))
+     } else {
+         value.to_owned()
+     }
+@@ -254,15 +248,14 @@ fn encode_header_value(value: &str) -> String {
+ /// Reverses [`encode_header_value`]. Returns `None` if the sentinel wraps invalid Base64/UTF-8.
+ #[cfg(feature = "server-side-http")]
+ fn decode_header_value(value: &str) -> Option<String> {
+-    use base64::{Engine, prelude::BASE64_STANDARD};
+-    match value
+-        .strip_prefix(BASE64_HEADER_PREFIX)
+-        .and_then(|inner| inner.strip_suffix(BASE64_HEADER_SUFFIX))
+-    {
+-        Some(inner) => {
+-            let bytes = BASE64_STANDARD.decode(inner).ok()?;
+-            String::from_utf8(bytes).ok()
+-        }
++    match prim::strip_prefix(value, BASE64_HEADER_PREFIX) {
++        Some(rest) => match prim::strip_suffix(rest, BASE64_HEADER_SUFFIX) {
++            Some(inner) => {
++                let bytes = prim::base64_decode(inner)?;
++                String::from_utf8(bytes).ok()
++            }
++            None => Some(value.to_owned()),
++        },
+         None => Some(value.to_owned()),
+     }
+ }
+@@ -412,6 +405,48 @@ fn header_str<'a>(headers: &'a http::HeaderMap, name: &str) -> Result<Option<&'a
+         .map_err(|_| format!("{name} header contains invalid characters"))
+ }
+ 
++/// Wrappers that the verification translation keeps opaque, each the original expression:
++/// `str` pattern and character APIs, `format!` and the `base64` engine `BASE64_STANDARD`.
++mod prim {
++    use base64::{Engine, prelude::BASE64_STANDARD};
++
++    use super::{BASE64_HEADER_PREFIX, BASE64_HEADER_SUFFIX};
++
++    pub(super) fn has_control_or_non_ascii(value: &str) -> bool {
++        value
++            .chars()
++            .any(|c| (c as u32) < 0x20 || (c as u32) > 0x7E)
++    }
++
++    pub(super) fn starts_with(s: &str, prefix: &str) -> bool {
++        s.starts_with(prefix)
++    }
++
++    pub(super) fn ends_with(s: &str, suffix: &str) -> bool {
++        s.ends_with(suffix)
++    }
++
++    pub(super) fn strip_prefix<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
++        s.strip_prefix(prefix)
++    }
++
++    pub(super) fn strip_suffix<'a>(s: &'a str, suffix: &str) -> Option<&'a str> {
++        s.strip_suffix(suffix)
++    }
++
++    pub(super) fn wrap_sentinel(encoded: &str) -> String {
++        format!("{BASE64_HEADER_PREFIX}{encoded}{BASE64_HEADER_SUFFIX}")
++    }
++
++    pub(super) fn base64_encode(value: &str) -> String {
++        BASE64_STANDARD.encode(value)
++    }
++
++    pub(super) fn base64_decode(value: &str) -> Option<Vec<u8>> {
++        BASE64_STANDARD.decode(value).ok()
++    }
++}
++
+ #[cfg(all(test, feature = "client-side-sse", feature = "server-side-http"))]
+ mod tests {
+     use std::collections::HashMap;

@@ -5438,6 +5438,160 @@ def transport.common.client_side_sse.SseEventSizeLimiter.observe
       chunk
   transport.common.client_side_sse.SseEventSizeLimiter.observe_loop iter self
 
+/-- [rmcp::transport::common::http_header::BASE64_HEADER_PREFIX]
+    Source: 'crates/rmcp/src/transport/common/http_header.rs', lines 13:0-13:51
+    Visibility: public -/
+@[global_simps, irreducible]
+def transport.common.http_header.BASE64_HEADER_PREFIX : Str :=
+  toStr "=?base64?"
+
+/-- [rmcp::transport::common::http_header::BASE64_HEADER_SUFFIX]
+    Source: 'crates/rmcp/src/transport/common/http_header.rs', lines 14:0-14:44
+    Visibility: public -/
+@[global_simps, irreducible]
+def transport.common.http_header.BASE64_HEADER_SUFFIX : Str := toStr "?="
+
+/-- [rmcp::transport::common::mcp_headers::requires_base64]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 62:0-76:1 -/
+def transport.common.mcp_headers.requires_base64
+  (value : Str) : Result Bool := do
+  let b ← core.str.Str.is_empty value
+  if b
+  then ok false
+  else
+    let bytes ← core.str.Str.as_bytes value
+    let o ← core.slice.Slice.first bytes
+    let o1 ← core.option.OptionShared0T.copied core.marker.CopyU8 o
+    let b1 ←
+      match o1 with
+      | none => ok false
+      | some i =>
+        match i with
+        | 32#uscalar => ok true
+        | 9#uscalar => ok true
+        | _ => ok false
+    if b1
+    then ok true
+    else
+      let o2 ← core.slice.Slice.last bytes
+      let o3 ← core.option.OptionShared0T.copied core.marker.CopyU8 o2
+      let b2 ←
+        match o3 with
+        | none => ok false
+        | some i =>
+          match i with
+          | 32#uscalar => ok true
+          | 9#uscalar => ok true
+          | _ => ok false
+      if b2
+      then ok true
+      else
+        let b3 ←
+          transport.common.mcp_headers.prim.has_control_or_non_ascii value
+        if b3
+        then ok true
+        else
+          let b4 ←
+            transport.common.mcp_headers.prim.starts_with value
+              transport.common.http_header.BASE64_HEADER_PREFIX
+          if b4
+          then
+            transport.common.mcp_headers.prim.ends_with value
+              transport.common.http_header.BASE64_HEADER_SUFFIX
+          else ok false
+
+/-- [rmcp::transport::common::mcp_headers::is_tchar]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 80:0-98:1 -/
+def transport.common.mcp_headers.is_tchar (c : Char) : Result Bool := do
+  let b ← core.char.methods.Char.is_ascii_alphanumeric c
+  if b
+  then ok true
+  else
+    if c = '!'
+    then ok true
+    else
+      if c = '#'
+      then ok true
+      else
+        if c = '$'
+        then ok true
+        else
+          if c = '%'
+          then ok true
+          else
+            if c = '&'
+            then ok true
+            else
+              let c1 ← Char.Insts.CoreConvertFromU8.from 39#u8
+              if c = c1
+              then ok true
+              else
+                if c = '*'
+                then ok true
+                else
+                  if c = '+'
+                  then ok true
+                  else
+                    if c = '-'
+                    then ok true
+                    else
+                      if c = '.'
+                      then ok true
+                      else
+                        if c = '^'
+                        then ok true
+                        else
+                          if c = '_'
+                          then ok true
+                          else
+                            if c = '`'
+                            then ok true
+                            else if c = '|'
+                                 then ok true
+                                 else ok (c = '~')
+
+/-- [rmcp::transport::common::mcp_headers::encode_header_value]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 240:0-246:1 -/
+def transport.common.mcp_headers.encode_header_value
+  (value : Str) : Result String := do
+  let b ← transport.common.mcp_headers.requires_base64 value
+  if b
+  then
+    let s ← transport.common.mcp_headers.prim.base64_encode value
+    let s1 ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref s
+    transport.common.mcp_headers.prim.wrap_sentinel s1
+  else Str.Insts.AllocBorrowToOwnedString.to_owned value
+
+/-- [rmcp::transport::common::mcp_headers::decode_header_value]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 250:0-261:1 -/
+def transport.common.mcp_headers.decode_header_value
+  (value : Str) : Result (Option String) := do
+  let o ←
+    transport.common.mcp_headers.prim.strip_prefix value
+      transport.common.http_header.BASE64_HEADER_PREFIX
+  match o with
+  | none =>
+    let s ← Str.Insts.AllocBorrowToOwnedString.to_owned value
+    ok (some s)
+  | some rest =>
+    let o1 ←
+      transport.common.mcp_headers.prim.strip_suffix rest
+        transport.common.http_header.BASE64_HEADER_SUFFIX
+    match o1 with
+    | none =>
+      let s ← Str.Insts.AllocBorrowToOwnedString.to_owned value
+      ok (some s)
+    | some inner =>
+      let o2 ← transport.common.mcp_headers.prim.base64_decode inner
+      let cf ← core.option.Option.Insts.CoreOpsTry_traitTry.branch o2
+      match cf with
+      | core.ops.control_flow.ControlFlow.Continue val =>
+        let r ← alloc.string.String.from_utf8 val
+        core.result.Result.ok r
+      | core.ops.control_flow.ControlFlow.Break residual =>
+        core.option.Option.Insts.CoreOpsTry_traitFromResidualOptionNever.from_residual
+          String residual
+
 /-- [rmcp::transport::streamable_http_server::tower::default_port]:
     Source: 'crates/rmcp/src/transport/streamable_http_server/tower.rs', lines 1146:0-1152:1 -/
 def transport.streamable_http_server.tower.default_port

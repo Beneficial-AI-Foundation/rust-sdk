@@ -128,6 +128,12 @@ start_from = [
   "rmcp::transport::auth::_::check_authorization_response_issuer",  # A08 (patch 06)
   "rmcp::transport::auth::_::check_authorization_metadata_issuer",  # A09 (patch 06)
   "rmcp::transport::auth::_::check_resource_metadata_resource",  # A10 (patch 06)
+  # SEP-2243 header-value encoding of mcp_headers.rs (G01-G04): all need translation patch 07
+  # (formal/trusted/patches/07-mcp-headers.patch).
+  "rmcp::transport::common::mcp_headers::requires_base64",  # G01 (patch 07)
+  "rmcp::transport::common::mcp_headers::is_tchar",  # G02 (patch 07)
+  "rmcp::transport::common::mcp_headers::encode_header_value",  # G03 (patch 07)
+  "rmcp::transport::common::mcp_headers::decode_header_value",  # G04 (patch 07)
 ]
 hide_marker_traits = true
 exclude = [
@@ -184,6 +190,10 @@ opaque = [
   # str::trim, the url rewriting of an issuer (Url::set_query/set_fragment/set_path/to_string) and
   # the four tracing events of resolve_resource_metadata_url; Lean models: FunsExternal.lean.
   "rmcp::transport::auth::prim",
+  # Created by translation patch 07: one-line wrappers of the str Pattern APIs (B2), of
+  # str::chars().any, of format! and of the base64 engine BASE64_STANDARD (B3); Lean models:
+  # formal/trusted/Rmcp/FunsExternal.lean.
+  "rmcp::transport::common::mcp_headers::prim",
   # Phase 2, human decision H4: the type only. A01-A03 are associated functions of
   # AuthorizationManager that never use `self`; translating the type makes Charon fail (a hax
   # panic on the fields `Arc<dyn CredentialStore>` and `Arc<dyn StateStore>`, auth.rs:1252-1253;
