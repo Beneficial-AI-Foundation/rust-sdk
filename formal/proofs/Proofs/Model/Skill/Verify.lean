@@ -18,12 +18,14 @@ public import Proofs.Model.Skill.Common
 /-!
 # Spec theorems for `verify`, `with_field`, `skill_name_from_uri` and `is_sha256_digest`
 
-The public `skill.rs` targets K06 (`SkillResource::verify`), K09 (`SkillFrontmatter::with_field`
-and its corollary), K14 (`skill_name_from_uri`) and K15 (`is_sha256_digest`), and the
-compositions `SkillResource.verify_from_bytes_self`, `SkillResource.verify_from_bytes` (K05 then
-K06), `SkillResource.verify_eq_ok_iff` (K06 cor.) and `is_sha256_digest_sha256_digest` (K07 then
-K15). Statements as signed off on 2026-11-25 (restated in
-`formal/specs/Specs/Model/Skill.lean`). K05 and K07 are used through `Proofs.Model.Skill.Basic`.
+The public `skill.rs` targets K06 (`SkillResource::verify`), K09 (`SkillFrontmatter::with_field` and
+its corollary), K14 (`skill_name_from_uri`) and K15 (`is_sha256_digest`), and the compositions
+`SkillResource.verify_from_bytes_self`, `SkillResource.verify_from_bytes` (K05 then K06),
+`SkillResource.verify_eq_ok_iff` (K06 cor.) and `is_sha256_digest_sha256_digest` (K07 then K15).
+Statements as signed off on 2026-11-25 (restated in `formal/specs/Specs/Model/Skill.lean`; K14, K15
+and `is_sha256_digest_sha256_digest`, which involve intermediate public functions, in
+`formal/proofs/Proofs/Internal/Model/Skill.lean` since 2026-11-28). K05 and K07 are used through
+`Proofs.Model.Skill.Basic`.
 
 * `verify` compares the size first, then the digest computed by `sha256_digest` (K07).
 * `with_field` inserts into the `serde_json::Map` model (`ExtModel.mapInsert`); the lookups hold

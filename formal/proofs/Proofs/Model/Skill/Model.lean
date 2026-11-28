@@ -14,9 +14,10 @@ public import Proofs.Model.Skill.Common
 # Consequences of the model of the public `skill.rs` API (K01–K20)
 
 The pure consequences of the definitions `Defs.Skill` (signed off 2026-11-25; restated in
-`formal/specs/Specs/Model/Skill.lean`, section "Consequences of the model"): what `skillNameOfUri`
-accepts, the skill-name rule as words, the characterisation of every result of `validateResult`
-and of `Ok` of `validateSkillsResult`, sublists and prefixes of listings, and the bridge lemma
+`formal/proofs/Proofs/Internal/Model/Skill.lean`, section "Consequences of the model", since
+2026-11-28; before, in `formal/specs/Specs/Model/Skill.lean`): what `skillNameOfUri` accepts, the
+skill-name rule as words, the characterisation of every result of `validateResult` and of `Ok` of
+`validateSkillsResult`, sublists and prefixes of listings, and the bridge lemma
 `NfkcFits.of_utf8ByteSize_le`. No translated function appears; the opaque `ExtModel.nfkc`,
 `ExtModel.sha256` and `ExtModel.generalCategory` are never opened.
 -/

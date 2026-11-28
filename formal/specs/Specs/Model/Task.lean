@@ -5,7 +5,8 @@ Authors: Hoang Le Truong
 -/
 module
 public import Defs
-public import Proofs.Model.Task
+public import Rmcp.Funs
+import Proofs.Model.Task
 
 @[expose] public section
 

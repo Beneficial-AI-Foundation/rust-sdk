@@ -84,6 +84,7 @@ public import Proofs.Internal.External
 public import Proofs.Internal.Model
 public import Proofs.Internal.Model.RequestState
 public import Proofs.Internal.Model.RequestStateWire
+public import Proofs.Internal.Model.Skill
 public import Proofs.Internal.Transport.Common.ClientSideSse
 public import Proofs.Internal.Transport.AsyncRw
 public import Proofs.Internal.Transport.StreamableHttpServer.Tower
@@ -134,6 +135,7 @@ laws of `Defs.McpHeaders` and the compositions; statements signed off 2026-11-28
 the laws of the Base64 and string models are in `Proofs.External.Base64Std`.
 
 Since 2026-11-24 it also imports the definitions used only by internal statements
-(`Proofs.Defs.*`) and the internal spec files (`Proofs.Internal.*`: statements about private,
-crate-internal and patch-only functions and the model laws, in the format of `formal/specs/Specs/`).
+(`Proofs.Defs.*`) and the internal spec files (`Proofs.Internal.*`: statements about intermediate
+public functions (called by a top-level one; since 2026-11-28), private, crate-internal and
+patch-only functions and the model laws, in the format of `formal/specs/Specs/`).
 -/

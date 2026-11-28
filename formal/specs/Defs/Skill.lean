@@ -57,6 +57,11 @@ up to line 103; translation patch 04 (hunks H1–H9) changes `verify`, `sha256_d
 values they compute (patch header, "Behaviour"), except the patch-induced capacity panics that
 `NfkcFits` and `UriFits` exclude.
 -/
+-- Since 2026-11-28 the statements of the top-level K01–K03, K05, K06, K08–K11, K16–K20 are
+-- restated in `formal/specs/Specs/Model/Skill.lean`; those of the intermediate K04, K07, K12–K15
+-- and the consequences of the model (including `NfkcFits.of_utf8ByteSize_le`, cited in the
+-- docstring of `NfkcFits`) in `formal/proofs/Proofs/Internal/Model/Skill.lean`. The signed-off
+-- docstrings are left unchanged.
 
 namespace Defs.Skill
 
