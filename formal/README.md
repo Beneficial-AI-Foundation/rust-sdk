@@ -35,11 +35,12 @@ in a spec file with a `#guard_msgs` axiom check.
 | Public `skill.rs` API | K01–K20 (51 statements) | all twenty public functions of `model/skill.rs` | K01–K04, K08–K12, K17–K20 `ORIGINAL`; K05–K07, K13–K16 `patch-04` |
 | Metadata address resolver | N01, N03–N11 (64 statements) | `AddressClass::of` (N01), `MetadataAddressResolver::{new, with_lookup, with_proxy_hosts, allowing_private_addresses, allows_url, is_allowed}`, its `Resolve::resolve` (address filtering part), `literal_ip`, `normalize_host` (N11), and `AuthorizationManager::is_loopback_metadata_host` | N01, N08 `ORIGINAL`; the others `patch-05` |
 | OAuth metadata-URL and issuer checks | A04–A10 (81 statements) | `AuthorizationManager::{is_http_url, is_disallowed_metadata_host, is_allowed_metadata_url, resolve_resource_metadata_url}`, the checks of `validate_authorization_response_issuer`, `validate_authorization_metadata_issuer`, `validate_resource_metadata_resource` (as the patch-06 helpers `check_*`; the one-line `validate_*` wrappers are not verified), with their callees | `patch-06` |
+| SEP-2243 header-value encoding | G01–G04 (39 statements) | `transport::common::mcp_headers::{requires_base64, is_tchar, encode_header_value, decode_header_value}`, with the round trip (decode after encode gives the value back) and header safety of every encoded value | `patch-07` |
 
 Public statements are in `specs/Specs/`; the statements about private, crate-internal and
-patch-only functions (including M06, M07, T01–T08, A01–A10 and the N group) and the laws of the
-external models are in `proofs/Proofs/Internal/` (see "Layout"). E05 and E06 are unassigned IDs
-(they belonged to `mac_v1`/`mac_v2`, which patch 01 deletes).
+patch-only functions (including M06, M07, T01–T08, A01–A10, G01–G04 and the N group) and the
+laws of the external models are in `proofs/Proofs/Internal/` (see "Layout"). E05 and E06 are
+unassigned IDs (they belonged to `mac_v1`/`mac_v2`, which patch 01 deletes).
 
 **What `patch-0N` means for the claim.** The `patch-01` results are about upstream plus the
 `request_state_wire` refactor of translation patch 01 (rule **D2**, the "D2 fallback": the
@@ -48,7 +49,7 @@ translated copy). The link between the patched and the unpatched code is tested,
 patch's byte-identity regression tests run on the patched copy (`patched-tests.yml`), and a
 differential run of upstream against the patched copy found no difference. If the refactor
 lands upstream, patch 01 can be deleted and these targets can become `ORIGINAL`. Patches 03, 04,
-05 and 06 are small behaviour-preserving rewrites (each hunk is explained in the patch header).
+05, 06 and 07 are small behaviour-preserving rewrites (each hunk is explained in the patch header).
 
 **Axioms.** Every `#print axioms` list is within `[propext, Classical.choice, Quot.sound]` (Lean's
 standard axioms; some lists are shorter). `trusted/axioms.lock` and `trusted/native-axioms.lock`
@@ -57,11 +58,14 @@ are empty: the project declares no trusted axiom, and no constant depends on a n
 
 ### Bugs found
 
-Ten bugs, all in upstream `7caec76`, none **reported upstream yet** (reporting needs the project
+Twelve bugs, all in upstream `7caec76`, none **reported upstream yet** (reporting needs the project
 owner's go-ahead; H9 is to be reported privately first). The statements describe the code as it
 is. H9–H16 were found in the A04–A10 specification cycle of `auth.rs` (human decisions
 2026-11-27); their statements were signed off and proved on 2026-11-27
-(`proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean`).
+(`proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean`). H17–H18 (low severity) were found in
+the G01–G04 specification cycle of `transport/common/mcp_headers.rs` (human decisions 2026-11-27);
+their statements were signed off and proved on 2026-11-28
+(`proofs/Proofs/Internal/Transport/Common/McpHeaders.lean`).
 
 - **H7: the `async_rw` method lists miss six core MCP names.** `is_standard_method` /
   `is_standard_notification` (`crates/rmcp/src/transport/async_rw.rs` lines 396–433) do not list
@@ -105,6 +109,25 @@ is. H9–H16 were found in the A04–A10 specification cycle of `auth.rs` (human
 - **H16: the cloud-metadata host-name list has three names.** Names such as `instance-data` or
   `metadata.goog` are not rejected by A05; this matters with a custom HTTP client or a proxy, where
   the name check is the only guard.
+- **H17: `decode_header_value` is not the exact inverse of `encode_header_value`.** The decoder
+  (`transport/common/mcp_headers.rs` lines 256–268) accepts a Base64 sentinel around a value that
+  needs no wrapping (CD1: `=?base64?dXMtd2VzdDE=?=` and `us-west1` both decode to `us-west1`). A
+  second cause, recorded as a note (CD2), is that it also passes through a bare value the encoder
+  (lines 62–77, 242–252) would wrap (`a⇥b` and `=?base64?YQli?=` both decode to `a⇥b`, ⇥ = HTAB).
+  rmcp compares the decoded header with the request body, so the server itself is consistent, but
+  an intermediary that filters on the raw, undecoded `Mcp-Name` or `Mcp-Param-*` value can be
+  bypassed by the wrapped form. SEP-2243 (final text in `modelcontextprotocol/modelcontextprotocol`,
+  `seps/2243-http-standardization.md`, and the 2026-07-28 Streamable HTTP page, read 2026-11-27)
+  does not forbid an unneeded wrap and says that servers and intermediaries that inspect these
+  values MUST decode them. Rejecting both forms makes decoding the exact inverse of encoding on
+  UTF-8 values; either rejection alone does not (`requires_base64` would have to be built for the
+  server too, it is `client-side-sse` only, line 61).
+- **H18: list characters travel bare.** `,` and `"` do not by themselves make `requires_base64`
+  true (lines 62–77), so a value such as `a, b` is sent unwrapped. This follows SEP-2243's encoding
+  rule, which does not list them, so it is a candidate for both the SDK and the SEP. A proxy may
+  combine duplicate field lines joined by `, ` (RFC 9110 §5.3); a merged duplicate pair cannot be
+  told apart from a single bare value containing `, `, and `header_str` (lines 394–413) rejects
+  duplicates only before such a merge.
 
 No bug was found in the request-state codec or `skill.rs`. Recorded
 behaviours, not bugs: a single-key codec built with `new_unchecked` or the deprecated `new`
@@ -502,7 +525,7 @@ Accepted residual limits (human decision, 2026-11-22):
 | `README.md` | — | this file: results, configuration, commands, trusted base |
 | `CONTRIBUTING.md` | — | how to contribute: workflow, style, PR format, review checklist |
 | `translation/` | `Rmcp` | generated by Aeneas, never edited by hand |
-| `trusted/` | `RmcpExternal` | `patches/` (translation patches 01, 03, 04, 05, 06 and the test-only patch 02); `Rmcp/` (hand-written external models: definitions, structures and `opaque` constants, no axiom); `evidence/README.md` (justification of each external model, its Rust sources and tests, and the map of upstream tests); `aeneas-bundle.sha256` (expected digests of the Aeneas release assets); `axioms.lock`, `native-axioms.lock` (both empty); `translation-pins.txt` |
+| `trusted/` | `RmcpExternal` | `patches/` (translation patches 01, 03, 04, 05, 06, 07 and the test-only patch 02); `Rmcp/` (hand-written external models: definitions, structures and `opaque` constants, no axiom); `evidence/README.md` (justification of each external model, its Rust sources and tests, and the map of upstream tests); `aeneas-bundle.sha256` (expected digests of the Aeneas release assets); `axioms.lock`, `native-axioms.lock` (both empty); `translation-pins.txt` |
 | `specs/` | `Defs`, `Specs` | the public API only: `README.md` (index of every guarantee), the definitions used by public statements (`Defs/`), the public spec files (`Specs/`); `Drafts/` is in no library |
 | `proofs/` | `Proofs` | proofs; laws of the external models (`Proofs/External/`); internal spec files for private, crate-internal and patch-only functions and the model laws (`Proofs/Internal/`, same format as `specs/Specs/`); definitions used only by them (`Proofs/Defs/`) |
 
@@ -572,9 +595,15 @@ upstream):
   back to `AuthError`, or read `&self`, are not verified. `a != b` is written `!(a == b)` (with
   `#[allow(clippy::nonminimal_bool)]`), so that Aeneas does not regenerate every `PartialEq`
   instance.
+- `07-mcp-headers.patch` (hunks prim, M1–M4 on `transport/common/mcp_headers.rs`): the opaque
+  module `mcp_headers::prim` (the control/non-ASCII test, `str` prefix/suffix helpers, the
+  `format!` of the Base64 sentinel, `BASE64_STANDARD` encode/decode, each the original expression)
+  and rewrites of `requires_base64` (G01), `is_tchar` (G02, the quote written
+  `c == char::from(b'\'')` to avoid an Aeneas printing defect), `encode_header_value` (G03) and
+  `decode_header_value` (G04).
 
 Each patch header explains every hunk: the error it avoids and why the computed values are
-unchanged. Patches 03–06 add and change no test.
+unchanged. Patches 03–07 add and change no test.
 
 **Charon settings** (`[package.metadata.charon]` of `crates/rmcp/Cargo.toml`). Opaque (signature
 kept, contract given by a model): `rmcp::model::request_state_wire::prim` (HMAC and base64 `Engine`
@@ -614,6 +643,7 @@ cannot compute is one of 24 `opaque` constants, which add no axiom:
 | Patch 04 | the 12 `skill::prim` wrappers; 28 `core`/`alloc`/`std`/`serde_json`/`unicode-general-category` functions; types `array::IntoIter`, `str::Bytes`, `HashSet` (element list), `serde_json::Map` (the `BTreeMap` entries ascending by key) | `sha256`, `nfkc`, `generalCategory` |
 | Patch 05 | the 5 `metadata_resolver::prim` functions, `url::Url::{parse, host, host_str}`, 8 `core`/`alloc` functions; structures `SocketAddrV4`, `SocketAddrV6`; abstract `url::Url`, `Lookup` | `UrlCarrier`, `LookupCarrier : NonemptyType`, `urlParse`, `urlHost`, `urlHostStr`, `systemLookup`, `proxyEnvValues` |
 | Patch 06 | the `auth::prim` functions (exact byte models; `trim` as Unicode `White_Space`; the log events `ok ()`), `url::Url::{scheme, path, fragment, join, port_or_known_default, clone, eq}`, `Option::zip`, `str::eq_ignore_ascii_case` | `urlScheme`, `urlPath`, `urlFragment`, `urlJoin`, `urlSerialization`, `urlPort`, `issuerUrl` |
+| Patch 07 | the 8 `mcp_headers::prim` functions (the control test byte-level on every string; standard padded Base64 as the reviewed URL-safe `b64`/`b64Decode` with the alphabet renamed, decoder with Rust's buffer-size guard), `char::is_ascii_alphanumeric`, `slice::last`, `Option::copied` | none |
 
 `Borrow::borrow` (blanket), `Option::ok_or`, `Result::map_err` and `Vec::is_empty` are defined in
 the Aeneas library and belong to the Aeneas trust item (lead decision **N8**). The model citations
@@ -645,7 +675,8 @@ may promise a result where Rust panics or behaves otherwise.
 - **`Ipv6Addr`** is stored as eight segments instead of sixteen octets.
 - **`MaybeUninit`** partial initialisation is not modelled.
 - **`Str`** may hold non-UTF-8 bytes in the model; `push_str` of such bytes is `fail undef`, and
-  `to_ascii_lowercase` fails on them (`to_ascii_lowercase_eq_fail`).
+  `to_ascii_lowercase` fails on them (`to_ascii_lowercase_eq_fail`); so does the `format!` model
+  `mcp_headers::prim::wrap_sentinel` (patch 07).
 - **`HashMap::get`, `contains_key`, `entry`** assume `Hash` and `Eq` agree and do not fail (only
   `String` keys with `str`/`String` queries occur).
 - **`serde_json::from_slice`**: a `Deserialize` impl that panics, aborts or does not terminate, or
@@ -765,6 +796,10 @@ review; other files cite them by name.
   (url.host.Host.Domain d)`, `ExtModel.IsUtf8 h.val` for `ExtModel.urlHostStr u = some h`). That a
   `Str` computed from such values is UTF-8 is proved (`isUtf8_dropTrailingDots`,
   `isUtf8_map_asciiLowercase` in `Proofs.External.MetadataResolver`).
+  Approved exception (spec owner, 2026-11-27): G04 `decode_header_value` assumes the conditional
+  form `Defs.McpHeaders.sentinelInner? value.val = none → ExtModel.IsUtf8 value.val` (UTF-8 only on
+  the non-sentinel path, where it is needed), which is weaker than `ExtModel.IsUtf8 value.val` and
+  shown exact by `Theorems.mcp_headers.decode_header_value_fail_undef`.
 - `systemLookup` is only stored; no rule is needed.
 
 ### Namespace rule for `trusted/`
@@ -800,8 +835,11 @@ trusted root imports passes both layers (`RmcpExternal` should import only `Aene
 | H7 | T05/T06 are stated as "in the core list and not in `codeOmits`"; the gap is a bug. |
 | H8 | A01–A03: blocking all of `64:ff9b:1::/48` is intended; `240.0.0.0/4` not blocked is a bug; other special-purpose ranges were a scope note, now partly recorded as H11. |
 | H9–H16 | Bugs recorded in the A04–A10 specification cycle (2026-11-27), see "Bugs found"; H9 to be reported privately before publication. |
+| H17–H18 | Bugs recorded in the G01–G04 specification cycle (2026-11-27), see "Bugs found"; low severity, may be public. |
 | T4, P1, R1, T1 | The `proxyEnvValues` rules under "Review rules". |
 | AD1–AD8 | Translation patch 06 (`auth.rs` A04–A10, 2026-11-26 and 2026-11-27): the `check_*` helpers and the private `IssuerError` mirror are the verified targets, the `validate_*` wrappers unverified glue, A04 linkage `patch-06` (AD1); the moved tracing events keep `target: "rmcp::transport::auth"` (AD2); `#[allow(clippy::nonminimal_bool)]` for `!(a == b)` (AD3); seven new `opaque` constants, `str::trim` exact (AD4); boundary tests for the rewritten paths in patch 02 (AD5); `#[allow(clippy::enum_variant_names)]` on `IssuerError` (AD6); the `issuer_url` panic above `u32::MAX` bytes stays a stated exception, with a premise in A09 (AD7); the `Url::join` drive-letter panic likewise, with an `http`/`https` base premise in A07 (AD8). |
+| GD1–GD3 | Translation patch 07 (`mcp_headers.rs` G01–G04, 2026-11-27): adopted as drafted with an opaque `prim` module and the quote workaround (GD1); exact models: byte-level control test, Base64 by alphabet renaming, buffer guard kept (GD2); boundary tests in patch 02 (GD3); lead decision: the identity model of `Option::copied` is allowed although its Lean type merges `Option<&T>` and `Option<T>` (its value does not depend on which). |
+| G spec | G01–G04 specification cycle (2026-11-27 and 2026-11-28): the main specs keep the exact premises (E), (U), (D) with plain corollaries, and the conditional UTF-8 premise (U) of G04 is an approved exception to the UTF-8 rule (i) (see "Review rules"); CD1 (unneeded wrap accepted) is H17, CD7 (list characters bare) is H18; CD2 (bare value the encoder would wrap accepted) is a note, recorded in H17 as its second cause; CD3 (encoder stricter than RFC 9110) and CD4 (case-sensitive sentinel, strict padded standard Base64) are intended, matching SEP-2243; CD5 (error text "not valid Base64" for a non-UTF-8 payload) and CD6 (empty value sent as an empty header) are notes. Signed off 2026-11-28. |
 | N1, N5, N8, N9, N10, N11 | Lead decisions of the Aeneas upgrade: Charon options checked through `translation.json` (N1), native lock empty (N5), four std models moved to the Aeneas library (N8), model citations re-checked (N9), `--wfail` build gate with an empty allowlist (N10), kernel replay with `Lean.Kernel.Environment.replay` (N11). |
 
 ### Tools

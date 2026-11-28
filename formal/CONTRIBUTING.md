@@ -520,7 +520,9 @@ integer parsing; IP addresses), plus later sections for later targets.
   opaque value: `def hmac_sha256 k m := ok (hmacSha256 k m)` with `opaque hmacSha256`.
 - **No models on merged types.** Do not model or axiomatise a function whose Lean type merges
   distinct Rust types (for example `size_of`, where `T` and `&T` share a Lean type); state the fact
-  as a hypothesis on the spec instead.
+  as a hypothesis on the spec instead. Exception (lead decision, patch 07): a model whose value does
+  not depend on which of the merged Rust types is meant is allowed, e.g. the identity model of
+  `Option::copied` (`Option<&T>` and `Option<T>` share a Lean type).
 - **Own terms.** Each model describes its primitive on its own terms, never by referring to a target
   function, and never assumes that a target function is correct.
 - **As few and as weak as possible.** State only what the proofs need.

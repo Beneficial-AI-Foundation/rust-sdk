@@ -50,6 +50,11 @@ Translation patch 06 (human decisions 2026-11-26 and 2026-11-27, AD1–AD8, targ
 functions, seven functions of `url::Url` and two of `core`, with seven more `opaque` constants (no
 axiom): `ExtModel.urlScheme`, `ExtModel.urlPath`, `ExtModel.urlFragment`, `ExtModel.urlPort`,
 `ExtModel.urlSerialization`, `ExtModel.urlJoin` and `ExtModel.issuerUrl`.
+Translation patch 07 (human decisions GD1 and GD2, 2026-11-27, targets G01–G04 of
+`mcp_headers.rs`) added the models of the section "`mcp_headers.rs` header-value encoding": the
+eight `mcp_headers::prim` functions (padded standard Base64 by renaming the alphabet of the
+Base64url models, which are unchanged) and three functions of `core`, with no `opaque` constant
+and no axiom.
 The conventions below apply to all models.
 
 Ordering note (S21): the generated external `core.result.Result.ok` shadows Aeneas' `ok` for
@@ -128,7 +133,10 @@ domain `d` of the argument `host : Host<&str>` of `AuthorizationManager::is_loop
 `IsUtf8 d.val` for `urlHost u = some (url.host.Host.Domain d)` and `IsUtf8 h.val` for
 `urlHostStr u = some h`. That a `Str` computed from such values is UTF-8 is proved, not assumed
 (`isUtf8_dropTrailingDots`, `isUtf8_map_asciiLowercase` in `Proofs.External.MetadataResolver`).
-No axiom or model asserts it. -/
+No axiom or model asserts it. Approved exception (spec owner, 2026-11-27): G04
+`decode_header_value` assumes the conditional form `Defs.McpHeaders.sentinelInner? value.val =
+none → IsUtf8 value.val`, weaker than `IsUtf8 value.val` and shown exact by
+`Theorems.mcp_headers.decode_header_value_fail_undef` (both in the `Proofs` library). -/
 def IsUtf8 (l : List Std.U8) : Prop := ∃ t : String, l = utf8 t
 
 /-- The `String` whose UTF-8 encoding is `l`, or `none` if `l` is not valid UTF-8 (Lean's
@@ -3347,3 +3355,261 @@ target `rmcp::transport::auth` whose message formats both URLs, is not modelled,
 def transport.auth.prim.warn_disallowed_resource_metadata (_url : url.Url) (_base_url : url.Url) :
     Result Unit :=
   ok ()
+
+/-! ## `mcp_headers.rs` header-value encoding (G01–G04, translation patch 07)
+
+External functions reached by the targets G01 `requires_base64`, G02 `is_tchar`, G03
+`encode_header_value` and G04 `decode_header_value` of
+`crates/rmcp/src/transport/common/mcp_headers.rs` (SEP-2243 header values; human decisions GD1
+and GD2, 2026-11-27). Translation patch 07 adds the private module `mcp_headers::prim`, whose
+eight functions (`Source:` lines refer to the patched copy, patch 07 on top of patches 01–06) are
+opaque in the translation and modelled here, each the original expression: the control/non-ASCII
+test, four `str` pattern wrappers, the `format!` of the sentinel and the `base64` engine
+`BASE64_STANDARD` (encode and decode). The remaining code calls `char::is_ascii_alphanumeric`,
+`<[u8]>::last` and `Option<&u8>::copied` (models below), and functions modelled in earlier
+sections (`str::is_empty`, `str::as_bytes`, `<[T]>::first`, `char::from(u8)`, `str::to_owned`,
+`String::deref`, `String::from_utf8`, `Option`'s `?`).
+Every model is an exact definition; there is no new `opaque` constant and no axiom (GD2).
+Standard padded Base64 is modelled by renaming the alphabet of the reviewed URL-safe models
+`ExtModel.b64` and `ExtModel.b64Decode` (which are unchanged): `ExtModel.b64StdPad` and
+`ExtModel.b64StdPadDecode`; their laws (round trip, the decoder accepts exactly the padded
+encodings, every encoded byte is visible ASCII) are theorems in `Proofs.External.Base64Std`.
+The control/non-ASCII test is modelled on the bytes of every `Str`
+(`ExtModel.isControlOrNonAsciiByte`); on valid UTF-8 (every Rust `&str`) it equals Rust's
+char-level test (theorem `Proofs.External.Base64Std.any_isControlOrNonAsciiByte_utf8`).
+Stated exceptions: none (beyond the conventions above: memory, `Str`, size).
+
+Crates cited (pinned in `scripts/aeneas-translate.sh`, `PINNED_DEPS`): `base64 0.23.1`. -/
+
+namespace ExtModel
+
+/-- A byte below `0x20` or above `0x7E`: on the bytes of a `&str`, the test of
+`mcp_headers::prim::has_control_or_non_ascii`. A char `c` with `(c as u32) < 0x20` is the one byte
+`c as u8 < 0x20`; a char with `(c as u32) > 0x7E` is either `U+007F` (the byte `0x7F`) or a
+non-ASCII char, all of whose UTF-8 bytes are at least `0x80`; and every byte of valid UTF-8 below
+`0x20` or above `0x7E` belongs to such a char. -/
+def isControlOrNonAsciiByte (b : Std.U8) : Bool := decide (b.val < 0x20 ∨ 0x7E < b.val)
+
+/-- The standard-alphabet symbol for a URL-safe symbol: `-` (45) ↦ `+` (43), `_` (95) ↦ `/`
+(47), every other byte unchanged (`base64-0.23.1` `src/alphabet.rs` lines 251–262: `STANDARD`
+and `URL_SAFE` list the same 62 symbols for the values 0–61 and differ only in the symbols for 62
+and 63). -/
+def urlToStd (c : Std.U8) : Std.U8 :=
+  if c.val = 45 then byte 43 else if c.val = 95 then byte 47 else c
+
+/-- The inverse renaming, `+` (43) ↦ `-` (45), `/` (47) ↦ `_` (95), every other byte unchanged. -/
+def stdToUrl (c : Std.U8) : Std.U8 :=
+  if c.val = 43 then byte 45 else if c.val = 47 then byte 95 else c
+
+/-- **Padded standard Base64** (RFC 4648 Section 4): the output of `base64-0.23.1`
+`BASE64_STANDARD.encode` (`src/prelude.rs` line 19: `BASE64_STANDARD` is
+`general_purpose::STANDARD`; `src/engine/general_purpose/mod.rs` line 436:
+`STANDARD = GeneralPurpose::new(&alphabet::STANDARD, PAD)`; line 487 and lines 337–343:
+`PAD = GeneralPurposeConfig::new()`, `encode_padding = true`). `Engine::encode`
+(`src/engine/mod.rs` lines 148–164) writes the unpadded symbols with `encode_with_padding`
+(`src/encode.rs`) and then `=` (61) up to a multiple of 4 (`add_padding`, `src/encode.rs` lines
+136–146: `(4 - unpadded_len % 4) % 4` bytes). The unpadded symbols are those of the reviewed
+URL-safe model `b64` (the same engine code with the alphabet `URL_SAFE`, `NO_PAD`), renamed to
+the standard alphabet by `urlToStd`. -/
+def b64StdPad (x : List Std.U8) : List Std.U8 :=
+  (b64 x).map urlToStd ++ List.replicate ((4 - (b64 x).length % 4) % 4) (byte 61)
+
+/-- The symbols before the padding: `s` without a final `==`, or else without a final `=`, or
+else `s`. -/
+def padBody (s : List Std.U8) : List Std.U8 :=
+  if s.drop (s.length - 2) = [byte 61, byte 61] then s.take (s.length - 2)
+  else if s.drop (s.length - 1) = [byte 61] then s.take (s.length - 1) else s
+
+/-- **Strict padded standard Base64 decoding**, as `base64-0.23.1` `BASE64_STANDARD.decode`
+(`Engine::decode`, `src/engine/mod.rs` lines 277–301; `decode_helper` and `complete_quads_len`,
+`src/engine/general_purpose/decode.rs` lines 37–90 and 184–217; `decode_suffix`,
+`src/engine/general_purpose/decode_suffix.rs` lines 13–170), with the error collapsed to `none`
+(`.ok()`). `PAD` has `decode_padding_mode = RequireCanonical` and
+`decode_allow_trailing_bits = false` (`src/engine/general_purpose/mod.rs` lines 341–342). The
+decoder decodes every quad but the last as four symbols (`=` there is `InvalidByte`), and the
+last 1–4 bytes in `decode_suffix`: `=` at index 0 or 1 of that group is `InvalidByte` (line 50),
+a symbol after `=` is `InvalidByte` (line 73), fewer than 2 symbols is `InvalidLength` (line 97),
+`(padding + symbols) % 4 ≠ 0` is `InvalidPadding` (`RequireCanonical`, line 105), and non-zero
+unused low bits of the last symbol are `InvalidLastSymbol` (line 141). So the input must have a
+length divisible by 4, end in no padding, `=` or `==` after at least two symbols of the last
+quad, and otherwise contain only symbols of the standard alphabet with zero trailing bits. The
+model: length divisible by 4; drop the padding (`padBody`); reject the URL-safe symbols `-` and
+`_` (which `stdToUrl` would otherwise accept); rename to the URL-safe alphabet and decode with the
+reviewed strict model `b64Decode` (which rejects any remaining `=`, any other foreign byte, a body
+length `≡ 1 (mod 4)` and non-zero trailing bits). The theorem
+`Proofs.External.Base64Std.b64StdPadDecode_eq_some_iff` shows that it accepts exactly the outputs
+of `b64StdPad`. -/
+def b64StdPadDecode (s : List Std.U8) : Option (List Std.U8) :=
+  if s.length % 4 ≠ 0 then none
+  else if (padBody s).any (fun c => c.val = 45 || c.val = 95) then none
+  else b64Decode ((padBody s).map stdToUrl)
+
+/-- `padBody` only removes bytes. -/
+theorem length_padBody_le (s : List Std.U8) : (padBody s).length ≤ s.length := by
+  unfold padBody; split_ifs <;> simp
+
+/-- Decoding never produces more bytes than it reads (so the result fits in a `Vec`). -/
+theorem b64StdPadDecode_length_le (s l : List Std.U8) (h : b64StdPadDecode s = some l) :
+    l.length ≤ s.length := by
+  unfold b64StdPadDecode at h
+  split_ifs at h
+  have := b64Decode_length_le _ _ h
+  simp only [List.length_map] at this
+  exact this.trans (length_padBody_le s)
+
+/-- The buffer that `BASE64_STANDARD.decode` allocates for an input of `n` bytes: the
+conservative estimate `(n / 4 + (n % 4 > 0)) * 3` (`GeneralPurposeEstimate::new`,
+`base64-0.23.1/src/engine/general_purpose/decode.rs` lines 15–21). -/
+def b64StdDecodedLenEstimate (n : Nat) : Nat := (n / 4 + (if n % 4 > 0 then 1 else 0)) * 3
+
+end ExtModel
+
+/-- [core::char::methods::{char}::is_ascii_alphanumeric]:
+    Source: '/rustc/library/core/src/char/methods.rs', lines 2184:4-2184:53
+    Name pattern: [core::char::methods::{char}::is_ascii_alphanumeric]
+    Visibility: public
+
+**Model:** whether the code point is in `'0'..='9'` (48–57), `'A'..='Z'` (65–90) or
+`'a'..='z'` (97–122) (`matches!(*self, '0'..='9') | matches!(*self, 'A'..='Z') |
+matches!(*self, 'a'..='z')`, lines 2184–2186). -/
+@[rust_fun "core::char::methods::{char}::is_ascii_alphanumeric"]
+def core.char.methods.Char.is_ascii_alphanumeric (self : Char) : Result Bool :=
+  ok (decide ((48 ≤ self.toNat ∧ self.toNat ≤ 57) ∨ (65 ≤ self.toNat ∧ self.toNat ≤ 90) ∨
+    (97 ≤ self.toNat ∧ self.toNat ≤ 122)))
+
+/-- [core::slice::{[T]}::last]:
+    Source: '/rustc/library/core/src/slice/mod.rs', lines 283:4-283:42
+    Name pattern: [core::slice::{[@T]}::last]
+    Visibility: public
+
+**Model:** the last element, `None` for the empty slice
+(`if let [.., last] = self { Some(last) } else { None }`, lines 283–285). -/
+@[rust_fun "core::slice::{[@T]}::last"]
+def core.slice.Slice.last {T : Type} (self : Slice T) : Result (Option T) :=
+  ok self.val.getLast?
+
+/-- [core::option::{core::option::Option<&'_0 T>}::copied]:
+    Source: '/rustc/library/core/src/option.rs', lines 2135:4-2137:16
+    Name pattern: [core::option::{core::option::Option<&'0 @T>}::copied]
+    Visibility: public
+
+**Model:** the same option (`match self { Some(&v) => Some(v), None => None }`, lines
+2135–2145). A shared borrow `&T` is its value in the translation, so `Option<&T>` and
+`Option<T>` are both `Option T` here; the model is the identity on it. Its Lean type thus merges
+`Option<&T>` and `Option<T>`; the `formal/CONTRIBUTING.md` rule "No models on merged types"
+targets models whose value depends on which Rust type is meant (such as `size_of`), and `copied`
+is the identity on the value, so the merge is harmless (lead decision, review round 1). -/
+@[rust_fun "core::option::{core::option::Option<&'0 @T>}::copied"]
+def core.option.OptionShared0T.copied {T : Type} (_markerCopyInst : core.marker.Copy T)
+    (self : Option T) : Result (Option T) :=
+  ok self
+
+/-- [rmcp::transport::common::mcp_headers::prim::has_control_or_non_ascii]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 415:4-419:5
+
+**Model:** whether some byte of `value` is below `0x20` or above `0x7E`
+(`ExtModel.isControlOrNonAsciiByte`). Rust: `value.chars().any(|c| (c as u32) < 0x20 ||
+(c as u32) > 0x7E)` (`str::chars`, `core/src/str/mod.rs` lines 1079–1081; `Chars::next`,
+`core/src/str/iter.rs` lines 35–43, decodes one UTF-8 char; `Iterator::any`,
+`core/src/iter/traits/iterator.rs` lines 2897–2910, stops at the first `true`; `c as u32` is the
+code point). Defined on every `Str` (GD2); on valid UTF-8 (every Rust `&str`) it equals the
+char-level test (`Proofs.External.Base64Std.any_isControlOrNonAsciiByte_utf8`). -/
+def transport.common.mcp_headers.prim.has_control_or_non_ascii (value : Str) : Result Bool :=
+  ok (value.val.any ExtModel.isControlOrNonAsciiByte)
+
+/-- [rmcp::transport::common::mcp_headers::prim::starts_with]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 421:4-423:5
+
+**Model:** whether the bytes of `pre` are a prefix of the bytes of `s` (`s.starts_with(prefix)`
+with a `&str` pattern: `core/src/str/mod.rs` lines 1420–1422, `pat.is_prefix_of(self)`, and
+`core/src/str/pattern.rs` lines 983–985: `haystack.as_bytes().starts_with(self.as_bytes())`).
+Defined on every `Str`. -/
+def transport.common.mcp_headers.prim.starts_with (s : Str) (pre : Str) : Result Bool :=
+  ok (decide (pre.val <+: s.val))
+
+/-- [rmcp::transport::common::mcp_headers::prim::ends_with]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 425:4-427:5
+
+**Model:** whether the bytes of `suffix` are a suffix of the bytes of `s` (`s.ends_with(suffix)`
+with a `&str` pattern: `core/src/str/mod.rs` lines 1445–1450, `pat.is_suffix_of(self)`, and
+`core/src/str/pattern.rs` lines 1030–1035: `haystack.as_bytes().ends_with(self.as_bytes())`).
+Defined on every `Str`. -/
+def transport.common.mcp_headers.prim.ends_with (s : Str) (suffix : Str) : Result Bool :=
+  ok (decide (suffix.val <:+ s.val))
+
+/-- [rmcp::transport::common::mcp_headers::prim::strip_prefix]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 429:4-431:5
+
+**Model:** `Some` of the bytes after `prefix` if the bytes of `prefix` are a prefix of the bytes
+of `s`, otherwise `None` (`s.strip_prefix(prefix)` with a `&str` pattern: `core/src/str/mod.rs`
+lines 2458–2460, `prefix.strip_prefix_of(self)`, and `core/src/str/pattern.rs` lines 1019–1026:
+`is_prefix_of`, then `haystack[self.len()..]`). Defined on every `Str`. -/
+def transport.common.mcp_headers.prim.strip_prefix (s : Str) (pre : Str) : Result (Option Str) :=
+  if pre.val <+: s.val then
+    ok (some (Slice.from (s.val.drop pre.val.length) (ExtModel.length_drop_le_max s _)))
+  else ok none
+
+/-- [rmcp::transport::common::mcp_headers::prim::strip_suffix]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 433:4-435:5
+
+**Model:** `Some` of all but the last `suffix.len()` bytes if the bytes of `suffix` are a suffix
+of the bytes of `s`, otherwise `None` (`s.strip_suffix(suffix)` with a `&str` pattern:
+`core/src/str/mod.rs` lines 2486–2491, `suffix.strip_suffix_of(self)`, and
+`core/src/str/pattern.rs` lines 1030–1050: `is_suffix_of`, then
+`haystack[..haystack.len() - self.len()]`). Defined on every `Str`. -/
+def transport.common.mcp_headers.prim.strip_suffix (s : Str) (suffix : Str) :
+    Result (Option Str) :=
+  if suffix.val <:+ s.val then
+    ok (some (Slice.from (s.val.take (s.val.length - suffix.val.length))
+      (ExtModel.length_take_le_max s _)))
+  else ok none
+
+/-- [rmcp::transport::common::mcp_headers::prim::wrap_sentinel]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 437:4-439:5
+
+**Model:** the string `"=?base64?" ++ t ++ "?="` for the string `t` with the bytes of `encoded`
+(`format!("{BASE64_HEADER_PREFIX}{encoded}{BASE64_HEADER_SUFFIX}")`; the constants are
+`"=?base64?"` and `"?="`, `crates/rmcp/src/transport/common/http_header.rs` lines 13–14;
+`format!`, `alloc/src/macros.rs` lines 113–119, is `alloc::fmt::format`, `alloc/src/fmt.rs`
+lines 651–662, which writes the three `&str` pieces in order into a new `String` with
+`write_str`, i.e. `push_str`). Subject to the `String` length limit (`ExtModel.growString`).
+`fail undef` if `encoded` is not UTF-8, which no Rust `&str` is (convention `Str` above). -/
+def transport.common.mcp_headers.prim.wrap_sentinel (encoded : Str) : Result String :=
+  match ExtModel.strOfBytes? encoded.val with
+  | some t => ExtModel.growString ("=?base64?" ++ t ++ "?=")
+  | none => fail undef
+
+/-- [rmcp::transport::common::mcp_headers::prim::base64_encode]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 441:4-443:5
+
+**Model:** the padded standard Base64 symbols `ExtModel.b64StdPad` of the bytes of `value`
+(ASCII, one `Char` per byte), as `BASE64_STANDARD.encode(value)` (`Engine::encode`,
+`base64-0.23.1/src/engine/mod.rs` lines 148–164: a buffer of `encoded_len(len, true)` bytes,
+`src/encode.rs` lines 101–129, filled by `encode_with_padding`, then
+`String::from_utf8(buf).expect(..)`, which cannot fail on ASCII). `fail panic` if the result is
+longer than `isize::MAX` bytes (`ExtModel.growString`): Rust then panics, either in the
+`expect` of `encoded_len` (which is `None` only beyond `usize::MAX`) or in `vec![0; encoded_size]`
+("capacity overflow", convention Memory above). Defined on every `Str` (it reads only the
+bytes). -/
+def transport.common.mcp_headers.prim.base64_encode (value : Str) : Result String :=
+  ExtModel.growString
+    (String.ofList ((ExtModel.b64StdPad value.val).map (fun b => Char.ofNat b.val)))
+
+/-- [rmcp::transport::common::mcp_headers::prim::base64_decode]:
+    Source: 'crates/rmcp/src/transport/common/mcp_headers.rs', lines 445:4-447:5
+
+**Model:** `ExtModel.b64StdPadDecode` of the bytes of `value`, as
+`BASE64_STANDARD.decode(value).ok()` (`Engine::decode`, `base64-0.23.1/src/engine/mod.rs` lines
+277–301; the `unreachable!` on `OutputSliceTooSmall` cannot be reached, the buffer being the
+conservative estimate). `fail panic` if that buffer, `ExtModel.b64StdDecodedLenEstimate` bytes
+(`vec![0; estimate.decoded_len_estimate()]`, line 283, allocated before any byte is read), is
+longer than `isize::MAX` bytes ("capacity overflow", convention Memory above): human decision
+GD2 keeps this guard. Defined on every `Str` (it reads only the bytes). -/
+def transport.common.mcp_headers.prim.base64_decode (value : Str) :
+    Result (Option (alloc.vec.Vec Std.U8)) :=
+  if ExtModel.maxStringBytes < ExtModel.b64StdDecodedLenEstimate value.val.length then fail panic
+  else
+    match h : ExtModel.b64StdPadDecode value.val with
+    | none => ok none
+    | some l => ok (some (alloc.vec.Vec.from l
+        ((ExtModel.b64StdPadDecode_length_le _ _ h).trans value.property)))

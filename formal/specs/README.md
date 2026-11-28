@@ -340,6 +340,24 @@ at most `u32::MAX` bytes (no-failure statements only). Bugs H9–H16: formal/REA
 | A09 | `check_authorization_metadata_issuer` | Compares the metadata issuer with the explicit or derived (RFC 8414 / OIDC form) expected issuer up to a root `/` (H15): `MissingIssuer` if the metadata has none (unless `allow_missing_issuer`), `Mismatch` with both strings if they differ (H9: recorded issue under private disclosure). | (U), (S), (D), (AD7) | [`…AuthorizationManager.check_authorization_metadata_issuer`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
 | A10 | `check_resource_metadata_resource` | `MissingResource`, `ResourceNotAUrl`, `ResourceHasFragment`, `ResourceMismatch` in that order; `Ok` iff it parses as a URL without fragment that is valid for the base (H13). | (S) | [`…AuthorizationManager.check_resource_metadata_resource`](../proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean) |
 
+**SEP-2243 header-value encoding (patch 07)** —
+[`Internal/Transport/Common/McpHeaders.lean`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean)
+(private functions of `transport/common/mcp_headers.rs`; 39 statements, signed off and proved
+2026-11-28; readable model `Defs.McpHeaders`). The file also has the failure companions, the laws
+of the model and the compositions (round trip, header safety, unchanged exactly when not wrapped,
+the 77 `tchar`s, exactly which header values decode). Assumption keys as in the file: **(E)** the
+wrapped value fits in `isize::MAX` bytes (corollary (E'): length at most `isize::MAX / 2`),
+**(U)** a value that is not a Base64 sentinel is UTF-8 (approved conditional form; corollary
+(U*): UTF-8), **(D)** the decode buffer fits (corollary (D'): length at most `isize::MAX`). Bugs
+H17–H18: formal/README.md "Bugs found".
+
+| ID | Rust function | Guarantee | Assumptions | Lean theorem |
+| --- | --- | --- | --- | --- |
+| G01 | `requires_base64` | `true` exactly for a non-empty value with a leading or trailing SP/HTAB, a byte outside printable ASCII, or the sentinel shape `=?base64?`…`?=`. | none | [`Theorems.mcp_headers.requires_base64`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean) |
+| G02 | `is_tchar` | `true` exactly for the 77 RFC 9110 `tchar`s (VCHAR minus the 17 delimiters). | none | [`Theorems.mcp_headers.is_tchar`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean) |
+| G03 | `encode_header_value` | the value unchanged if G01 is `false`, else `=?base64?` + padded standard Base64 + `?=`; never rejected by `HeaderValue::from_str`; injective; panics exactly when the wrapped value exceeds `isize::MAX` bytes. | (E) | [`Theorems.mcp_headers.encode_header_value`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean) |
+| G04 | `decode_header_value` | for a sentinel, `Some` of the decoded value if it is strict padded standard Base64 of UTF-8, else `None`; any other value unchanged; decoding an encoded value gives it back (H17: accepts more than the encoder produces). | (U), (D) | [`Theorems.mcp_headers.decode_header_value`](../proofs/Proofs/Internal/Transport/Common/McpHeaders.lean) |
+
 **Request-state codec, Phase 1 (patched copy)** —
 [`Internal/Model/RequestState.lean`](../proofs/Proofs/Internal/Model/RequestState.lean)
 (private associated functions of `RequestStateCodec`; E09a `rs1_fallbacks_verify` exists only in
@@ -441,35 +459,41 @@ Rust documentation. Used by: the proofs of all statements above.
 >   `resolve` split into helpers (`with_base_url`, `proxy_host`, `allowed_addresses`), which are
 >   what is verified; the async shells are not. Not proved equivalent to the unpatched code
 >   (differential tests). N01 and N08 do not depend on it (linkage `ORIGINAL`).
-> - **Translation patch 06** (A04–A10 of `auth.rs`): a private opaque module `prim` (string
->   helpers, `str::trim`, the issuer-URL rewrite, the four tracing events with their original
->   target) and rewrites that keep the computed values. `AuthError` cannot be translated (a
->   `Box<dyn Error>` field), so the targets of A08/A09 are `check_*` helpers returning a private
->   `IssuerError` with the same three variants and payloads, and that of A10 a `check_*` helper
->   taking the base URL; the one-line `validate_*` wrappers (the map to `AuthError`, the `&self` reads)
->   are unverified glue. The tracing events' callsite metadata (module path, line) differs. Not
->   proved equivalent to the unpatched code: backed by the patch-02 boundary tests (decision AD5)
->   and the review differentials. Every A04–A10 target is `patch-06` (none `ORIGINAL`).
-> - **The models in [`formal/trusted/`](../trusted/)** of the external functions (standard
->   library, `core::net`, integer parsing, HMAC-SHA256, Base64url, `zeroize`, and for `skill.rs`
->   the `prim` wrappers, `HashSet` and `serde_json::Map`, the latter as the `BTreeMap` it is):
->   definitions, structures and 24 `opaque` constants (patch 04 adds SHA-256, NFKC and the
->   Unicode General_Category, whose laws enter statements only as premises; patches 05 and 06 the
->   abstract `url::Url` and its accessors, the DNS lookup, the proxy settings and the issuer-URL
->   rewrite; list in [`../README.md`](../README.md), "Trusted base"), no trusted axiom (`axioms.lock` is empty). They do
->   not appear in `#print axioms`; their fidelity rests on review and their cited sources.
->   Stated exceptions (`formal/trusted/Rmcp/FunsExternal.lean`, module docstring, "Memory" and
->   "Size convention"): the models make no claim about inputs of `2^61` bytes or more, which
->   cannot exist on `x86_64` (address space at most `2^57` bytes); in particular HMAC's
->   bit-length counter overflow (a message of at least `2^61 − 64` bytes or a key of at least
->   `2^61` bytes, equally impossible) and a `Vec` above `isize::MAX` bytes are not modelled;
->   allocation failure is not modelled. For such inputs a statement may promise a result where
->   Rust panics.
->   The models also state representation choices that change no result of the targets (`Arc`
->   equality checks pointer equality first; `Ipv6Addr` as eight segments; `MaybeUninit` partial
->   initialisation; non-UTF-8 `Str` bytes; `HashMap::get` assumes `Hash`/`Eq` agree; the clock is
->   opaque): complete list in [`../README.md`](../README.md), "Stated exceptions of the
->   external models".
+> - **Translation patch 06** (A04–A10 of `auth.rs`): a private opaque module `prim` (string helpers,
+>   `str::trim`, the issuer-URL rewrite, the four tracing events with their original target) and
+>   rewrites that keep the computed values. `AuthError` cannot be translated (a `Box<dyn Error>`
+>   field), so the targets of A08/A09 are `check_*` helpers returning a private `IssuerError` with
+>   the same three variants and payloads, and that of A10 a `check_*` helper taking the base URL;
+>   the one-line `validate_*` wrappers (the map to `AuthError`, the `&self` reads) are unverified
+>   glue. The tracing events' callsite metadata (module path, line) differs. Not proved equivalent
+>   to the unpatched code: backed by the patch-02 boundary tests (decision AD5) and the review
+>   differentials. Every A04–A10 target is `patch-06` (none `ORIGINAL`).
+> - **Translation patch 07** (G01–G04 of `transport/common/mcp_headers.rs`): a private opaque
+>   module `prim` (string helpers, the `format!` of the Base64 sentinel, `BASE64_STANDARD`
+>   encode/decode, each the original expression) and rewrites that keep the computed values; the
+>   quote check of `is_tchar` is written `c == char::from(b'\'')` because Aeneas prints `'\''`
+>   as invalid Lean. Not proved equivalent to the unpatched code: backed by the patch-02 boundary
+>   tests (decision GD3). Every G target is `patch-07`.
+> - **The models in [`formal/trusted/`](../trusted/)** of the external functions (standard library,
+>   `core::net`, integer parsing, HMAC-SHA256, Base64url, standard padded Base64 (an alphabet
+>   renaming of the Base64url model, patch 07), `zeroize`, the `mcp_headers.rs` `prim` wrappers, and
+>   for `skill.rs` the `prim` wrappers, `HashSet` and `serde_json::Map`, the latter as the
+>   `BTreeMap` it is): definitions, structures and 24 `opaque` constants (patch 04 adds SHA-256,
+>   NFKC and the Unicode General_Category, whose laws enter statements only as premises; patches 05
+>   and 06 the abstract `url::Url` and its accessors, the DNS lookup, the proxy settings and the
+>   issuer-URL rewrite; list in [`../README.md`](../README.md), "Trusted base"), no trusted axiom
+>   (`axioms.lock` is empty). They do not appear in `#print axioms`; their fidelity rests on review
+>   and their cited sources. Stated exceptions (`formal/trusted/Rmcp/FunsExternal.lean`, module
+>   docstring, "Memory" and "Size convention"): the models make no claim about inputs of `2^61`
+>   bytes or more, which cannot exist on `x86_64` (address space at most `2^57` bytes); in
+>   particular HMAC's bit-length counter overflow (a message of at least `2^61 − 64` bytes or a key
+>   of at least `2^61` bytes, equally impossible) and a `Vec` above `isize::MAX` bytes are not
+>   modelled; allocation failure is not modelled. For such inputs a statement may promise a result
+>   where Rust panics. The models also state representation choices that change no result of the
+>   targets (`Arc` equality checks pointer equality first; `Ipv6Addr` as eight segments;
+>   `MaybeUninit` partial initialisation; non-UTF-8 `Str` bytes; `HashMap::get` assumes `Hash`/`Eq`
+>   agree; the clock is opaque): complete list in [`../README.md`](../README.md), "Stated exceptions
+>   of the external models".
 > - **The clock** (human decisions 2026-11-24, extended 2026-11-25; [`../README.md`](../README.md),
 >   "Trusted base"): the clock is one opaque reading `ExtModel.nowMs`, which makes `open`,
 >   `open_with`, `open_json`, `open_json_with`, `seal` and `seal_with` pure in the model. Only

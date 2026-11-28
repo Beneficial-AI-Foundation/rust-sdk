@@ -30,6 +30,7 @@ public import Proofs.External.Prim
 public import Proofs.External.Skill
 public import Proofs.External.MetadataResolver
 public import Proofs.External.Auth
+public import Proofs.External.Base64Std
 public import Proofs.External.Std
 public import Proofs.External.Iter
 public import Proofs.External.Byte
@@ -70,10 +71,13 @@ public import Proofs.Transport.MetadataResolver.Common
 public import Proofs.Transport.MetadataResolver
 public import Proofs.Transport.AuthMetadata.Common
 public import Proofs.Transport.AuthMetadata
+public import Proofs.Transport.McpHeaders.Common
+public import Proofs.Transport.McpHeaders
 public import Proofs.Defs.Sse
 public import Proofs.Defs.Net
 public import Proofs.Defs.MetadataResolver
 public import Proofs.Defs.AuthMetadata
+public import Proofs.Defs.McpHeaders
 public import Proofs.Defs.Methods
 public import Proofs.Defs.Tower
 public import Proofs.Internal.External
@@ -86,6 +90,7 @@ public import Proofs.Internal.Transport.StreamableHttpServer.Tower
 public import Proofs.Internal.Transport.Auth
 public import Proofs.Internal.Transport.Auth.MetadataResolver
 public import Proofs.Internal.Transport.Auth.AuthMetadata
+public import Proofs.Internal.Transport.Common.McpHeaders
 
 @[expose] public section
 
@@ -121,6 +126,12 @@ OAuth metadata URL and issuer checks (2026-11-27): `Proofs.Transport.AuthMetadat
 `Proofs.Internal.Transport.Auth.AuthMetadata`, with their definitions in
 `Proofs.Defs.AuthMetadata`; the law `trimWhitespace_utf8Bytes` of the `str::trim` model is in
 `Proofs.External.Auth`, restated in `Proofs.Internal.External`.
+
+SEP-2243 header-value encoding (2026-11-28): `Proofs.Transport.McpHeaders.Common` and
+`Proofs.Transport.McpHeaders` (G01–G04 of `transport/common/mcp_headers.rs` through patch 07, the
+laws of `Defs.McpHeaders` and the compositions; statements signed off 2026-11-28), restated in
+`Proofs.Internal.Transport.Common.McpHeaders`, with their definitions in `Proofs.Defs.McpHeaders`;
+the laws of the Base64 and string models are in `Proofs.External.Base64Std`.
 
 Since 2026-11-24 it also imports the definitions used only by internal statements
 (`Proofs.Defs.*`) and the internal spec files (`Proofs.Internal.*`: statements about private,
