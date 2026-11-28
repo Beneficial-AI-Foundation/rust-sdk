@@ -34,9 +34,10 @@ in a spec file with a `#guard_msgs` axiom check.
 | | R09–R15 (and internal R10a, R10b) | `seal`, `seal_with`, `with_rs1_signing`, `with_rs1_fallback`, `open_json`, `open_json_with`, `new_with_keyring`; R10a the private `seal_at` at an explicit time, R10b `seal_at` then `open_at` | `patch-03` |
 | Public `skill.rs` API | K01–K20 (51 statements) | all twenty public functions of `model/skill.rs` | K01–K04, K08–K12, K17–K20 `ORIGINAL`; K05–K07, K13–K16 `patch-04` |
 | Metadata address resolver | N01, N03–N11 (64 statements) | `AddressClass::of` (N01), `MetadataAddressResolver::{new, with_lookup, with_proxy_hosts, allowing_private_addresses, allows_url, is_allowed}`, its `Resolve::resolve` (address filtering part), `literal_ip`, `normalize_host` (N11), and `AuthorizationManager::is_loopback_metadata_host` | N01, N08 `ORIGINAL`; the others `patch-05` |
+| OAuth metadata-URL and issuer checks | A04–A10 (81 statements) | `AuthorizationManager::{is_http_url, is_disallowed_metadata_host, is_allowed_metadata_url, resolve_resource_metadata_url}`, the checks of `validate_authorization_response_issuer`, `validate_authorization_metadata_issuer`, `validate_resource_metadata_resource` (as the patch-06 helpers `check_*`; the one-line `validate_*` wrappers are not verified), with their callees | `patch-06` |
 
 Public statements are in `specs/Specs/`; the statements about private, crate-internal and
-patch-only functions (including M06, M07, T01–T08, A01–A03 and the N group) and the laws of the
+patch-only functions (including M06, M07, T01–T08, A01–A10 and the N group) and the laws of the
 external models are in `proofs/Proofs/Internal/` (see "Layout"). E05 and E06 are unassigned IDs
 (they belonged to `mac_v1`/`mac_v2`, which patch 01 deletes).
 
@@ -46,8 +47,8 @@ refactor did not land in the SDK source, so it is a translation patch applied on
 translated copy). The link between the patched and the unpatched code is tested, not proved: the
 patch's byte-identity regression tests run on the patched copy (`patched-tests.yml`), and a
 differential run of upstream against the patched copy found no difference. If the refactor
-lands upstream, patch 01 can be deleted and these targets can become `ORIGINAL`. Patches 03, 04
-and 05 are small behaviour-preserving rewrites (each hunk is explained in the patch header).
+lands upstream, patch 01 can be deleted and these targets can become `ORIGINAL`. Patches 03, 04,
+05 and 06 are small behaviour-preserving rewrites (each hunk is explained in the patch header).
 
 **Axioms.** Every `#print axioms` list is within `[propext, Classical.choice, Quot.sound]` (Lean's
 standard axioms; some lists are shorter). `trusted/axioms.lock` and `trusted/native-axioms.lock`
@@ -56,8 +57,11 @@ are empty: the project declares no trusted axiom, and no constant depends on a n
 
 ### Bugs found
 
-Two bugs, both in upstream `7caec76`, both **not yet reported upstream** (reporting needs the
-project owner's go-ahead). The statements describe the code as it is.
+Ten bugs, all in upstream `7caec76`, none **reported upstream yet** (reporting needs the project
+owner's go-ahead; H9 is to be reported privately first). The statements describe the code as it
+is. H9–H16 were found in the A04–A10 specification cycle of `auth.rs` (human decisions
+2026-11-27); their statements were signed off and proved on 2026-11-27
+(`proofs/Proofs/Internal/Transport/Auth/AuthMetadata.lean`).
 
 - **H7: the `async_rw` method lists miss six core MCP names.** `is_standard_method` /
   `is_standard_notification` (`crates/rmcp/src/transport/async_rw.rs` lines 396–433) do not list
@@ -73,8 +77,36 @@ project owner's go-ahead). The statements describe the code as it is.
   URL passes the SSRF check, and a resolved address in it is classed `Public` by
   `AddressClass::of` (`auth/metadata_resolver.rs` lines 42–74), although the module doc (lines 8–9)
   says reserved addresses are never allowed.
+- **H9: a recorded issue in the authorization-server metadata issuer check (A09), under private
+  disclosure; details withheld until it is reported.**
+- **H10: with private addresses allowed, cloud metadata endpoints in private ranges pass.**
+  `is_allowed_metadata_url` (A06) with `allow_private`, and the resolver whenever it grants
+  `Private`, accept e.g. `100.100.100.200` (100.64/10) and `fd00:ec2::254` (fc00::/7).
+- **H11: some special-purpose IPv6 and IPv4 forms are `Public`.** The IPv4-translated range
+  `::ffff:0:0:0/96` (RFC 2765), `100::/64` and `192.0.0.192` are neither rejected by A05 nor
+  filtered by the resolver.
+- **H12: the URL check (A06) falsely refuses targets the resolver policy accepts.** For some
+  targets (IP literals, and a `localhost` name from a base that is an IPv6 embedding of 127/8) A06
+  refuses what the resolver allows, e.g. a private authorization server from a private base
+  without `allow_private`; it is never looser for IP-literal targets. (Context: the doc of
+  `AuthorizationManager::new` describes the resolver's policy and gives only a necessary condition.)
+- **H13: the resource-identifier check is looser than RFC 9728 §3.3.**
+  `is_resource_identifier_valid` (A10) accepts an ancestor path, a different query and different
+  user information. Upstream chose this: the query rule is commented at line 3013 and the ancestor
+  rule is asserted by the test at lines 7148–7215.
+- **H14: the resolver allows a blocked base literal's own address.** `allows_url`
+  (`auth/metadata_resolver.rs` line 167) allows the base URL's own IP literal even when it is
+  link-local or reserved (e.g. `169.254.1.1`, `0.0.0.0`), contradicting the module doc and the doc
+  of `new` ("always rejected"); the method doc of `allows_url` (lines 162–163) states the exemption
+  on purpose, so the client can reach the base itself.
+- **H15: the issuer comparison tolerates a root trailing `/`.** `issuer_identifiers_match` treats
+  `https://as.example` and `https://as.example/` (and a `/` ending a query or fragment) as equal,
+  while RFC 8414 §3.3 requires identical issuers; an upstream test asserts the tolerance.
+- **H16: the cloud-metadata host-name list has three names.** Names such as `instance-data` or
+  `metadata.goog` are not rejected by A05; this matters with a custom HTTP client or a proxy, where
+  the name check is the only guard.
 
-No bug was found in the request-state codec, `skill.rs` or the metadata resolver. Recorded
+No bug was found in the request-state codec or `skill.rs`. Recorded
 behaviours, not bugs: a single-key codec built with `new_unchecked` or the deprecated `new`
 accepts a key of any length (only `try_new` checks it); `rs1_fallbacks_verify` panics (`expect`)
 if an rs1 fallback id is not a key, which the keyring constructors prevent.
@@ -470,7 +502,7 @@ Accepted residual limits (human decision, 2026-11-22):
 | `README.md` | — | this file: results, configuration, commands, trusted base |
 | `CONTRIBUTING.md` | — | how to contribute: workflow, style, PR format, review checklist |
 | `translation/` | `Rmcp` | generated by Aeneas, never edited by hand |
-| `trusted/` | `RmcpExternal` | `patches/` (translation patches 01, 03, 04, 05 and the test-only patch 02); `Rmcp/` (hand-written external models: definitions, structures and `opaque` constants, no axiom); `evidence/README.md` (justification of each external model, its Rust sources and tests, and the map of upstream tests); `aeneas-bundle.sha256` (expected digests of the Aeneas release assets); `axioms.lock`, `native-axioms.lock` (both empty); `translation-pins.txt` |
+| `trusted/` | `RmcpExternal` | `patches/` (translation patches 01, 03, 04, 05, 06 and the test-only patch 02); `Rmcp/` (hand-written external models: definitions, structures and `opaque` constants, no axiom); `evidence/README.md` (justification of each external model, its Rust sources and tests, and the map of upstream tests); `aeneas-bundle.sha256` (expected digests of the Aeneas release assets); `axioms.lock`, `native-axioms.lock` (both empty); `translation-pins.txt` |
 | `specs/` | `Defs`, `Specs` | the public API only: `README.md` (index of every guarantee), the definitions used by public statements (`Defs/`), the public spec files (`Specs/`); `Drafts/` is in no library |
 | `proofs/` | `Proofs` | proofs; laws of the external models (`Proofs/External/`); internal spec files for private, crate-internal and patch-only functions and the model laws (`Proofs/Internal/`, same format as `specs/Specs/`); definitions used only by them (`Proofs/Defs/`) |
 
@@ -494,7 +526,7 @@ spec statement means (see "What CI checks").
 
 Summary: Charon, Aeneas and Lean (see "Tools"); the translated configuration; the translation
 patches; the external models; the codec-state premises; the statements in `specs/` and
-`proofs/Proofs/Internal/`; the exclusions. **0 trusted axioms, 0 native-code axioms, 17 `opaque`
+`proofs/Proofs/Internal/`; the exclusions. **0 trusted axioms, 0 native-code axioms, 24 `opaque`
 constants.**
 
 **Patches** (`trusted/patches/`, applied by `scripts/apply-patches.sh` with `patch -p1 -F 0` in
@@ -528,9 +560,21 @@ upstream):
   `with_proxy_hosts` and `resolve`; rewrites of `new`, `allowing_private_addresses`,
   `normalize_host`, `is_loopback_metadata_host`, and parameter renames in
   `literal_ip`/`allows_url`. The Charon `opaque` entry `url` is narrowed to `url::Url`.
+- `06-auth-metadata.patch` (hunks prim, H1–H10 on `transport/auth.rs`): the opaque module
+  `auth::prim` (string helpers, `str::trim`, the issuer-URL rewrite, and the four tracing events
+  of `resolve_resource_metadata_url`, with their original `target`); the constant
+  `CLOUD_METADATA_HOSTS` inlined; parameter renames (`url` shadows the crate in Lean); private
+  helpers `is_allowed_disallowed_host`, `trim_root_slash`, `is_root_url`; and the checks of
+  A08–A10 moved into helpers `check_authorization_response_issuer`,
+  `check_authorization_metadata_issuer`, `check_resource_metadata_resource`. A08/A09 return a
+  private `IssuerError` with the three `AuthError` variants they produce, because `AuthError`
+  (a `Box<dyn Error>` field) cannot be translated; the one-line `validate_*` wrappers that map
+  back to `AuthError`, or read `&self`, are not verified. `a != b` is written `!(a == b)` (with
+  `#[allow(clippy::nonminimal_bool)]`), so that Aeneas does not regenerate every `PartialEq`
+  instance.
 
 Each patch header explains every hunk: the error it avoids and why the computed values are
-unchanged. Patches 03–05 add and change no test.
+unchanged. Patches 03–06 add and change no test.
 
 **Charon settings** (`[package.metadata.charon]` of `crates/rmcp/Cargo.toml`). Opaque (signature
 kept, contract given by a model): `rmcp::model::request_state_wire::prim` (HMAC and base64 `Engine`
@@ -560,7 +604,7 @@ per model in [`trusted/evidence/README.md`](trusted/evidence/README.md)). Each e
 `structure` (or an abstract type over an `opaque` carrier), each external function a definition
 with the generated name and signature (keeping the template's `@[rust_type]`/`@[rust_fun]`
 attribute where it has one). They declare **no axiom** (human decision 2026-11-23). What a model
-cannot compute is one of 17 `opaque` constants, which add no axiom:
+cannot compute is one of 24 `opaque` constants, which add no axiom:
 
 | Area | Models | `opaque` constants |
 |---|---|---|
@@ -569,6 +613,7 @@ cannot compute is one of 17 `opaque` constants, which add no axiom:
 | Patch 03 | 14 functions (`Duration::as_millis`, `str::to_owned`, `HashMap::{contains_key, is_empty, new, entry}`, `VacantEntry::insert`, `Hash for str`, `Borrow<str>`/`PartialEq<str>` for `String`, `slice::Iter::any`, `Iterator::any`, `serde_json::from_slice`, `Error::source`); types `OccupiedEntry`, `VacantEntry` | `randomState`, `serdeJsonFromSlice` |
 | Patch 04 | the 12 `skill::prim` wrappers; 28 `core`/`alloc`/`std`/`serde_json`/`unicode-general-category` functions; types `array::IntoIter`, `str::Bytes`, `HashSet` (element list), `serde_json::Map` (the `BTreeMap` entries ascending by key) | `sha256`, `nfkc`, `generalCategory` |
 | Patch 05 | the 5 `metadata_resolver::prim` functions, `url::Url::{parse, host, host_str}`, 8 `core`/`alloc` functions; structures `SocketAddrV4`, `SocketAddrV6`; abstract `url::Url`, `Lookup` | `UrlCarrier`, `LookupCarrier : NonemptyType`, `urlParse`, `urlHost`, `urlHostStr`, `systemLookup`, `proxyEnvValues` |
+| Patch 06 | the `auth::prim` functions (exact byte models; `trim` as Unicode `White_Space`; the log events `ok ()`), `url::Url::{scheme, path, fragment, join, port_or_known_default, clone, eq}`, `Option::zip`, `str::eq_ignore_ascii_case` | `urlScheme`, `urlPath`, `urlFragment`, `urlJoin`, `urlSerialization`, `urlPort`, `issuerUrl` |
 
 `Borrow::borrow` (blanket), `Option::ok_or`, `Result::map_err` and `Vec::is_empty` are defined in
 the Aeneas library and belong to the Aeneas trust item (lead decision **N8**). The model citations
@@ -614,7 +659,17 @@ may promise a result where Rust panics or behaves otherwise.
 - **`HashSet`** stores `randomState`; its iteration order (and so the random source) is not
   modelled, and statements do not depend on element order (K13, K16).
 - **`serde_json::Map`** is the `BTreeMap` without the `preserve_order` feature (K09 order clauses).
-- **`url::Url::{parse, host, host_str}`** are assumed to return and not to panic.
+- **`url::Url::{parse, host, host_str}`** are assumed to return and not to panic; so are
+  `Url::join` and the setters inside `auth::prim::issuer_url` (patch 06). Exception for the setters of
+  `issuer_url`: for a discovery URL of more than `u32::MAX` bytes with no query and no fragment
+  (which `Url::parse` accepts), they can panic (`to_u32(..).unwrap()`, url-2.5.9 `src/lib.rs`
+  1768); A09 statements take a premise bounding the URL (decision AD7). Exception for
+  `Url::join`: with debug assertions on (the translated configuration), it can panic at
+  url-2.5.9 `src/parser.rs` 1304 for a `file:` base whose last path segment is a normalized
+  Windows drive letter, joined with an input whose first segment is `..` or a percent-encoded
+  double dot; A07 statements assume the base URL's scheme is `http` or `https` (decision AD8).
+- **Tracing events** (`auth::prim` log functions, patch 06) are `ok ()`: the logging side effect
+  is not modelled.
 - **Caller code**: caller conversions or closures with side effects outside their state are not
   covered (K04, K05, K08–K10; key (I) of `specs/README.md` for R04–R06, R11, R12, R15).
 - **Patch-induced premises** of K13/K16 (`NfkcFits`, `hlen`), under "Patches" above.
@@ -743,8 +798,10 @@ trusted root imports passes both layers (`RmcpExternal` should import only `Aene
 | H5 | Project owner and budget: **open**. |
 | H6 | The T05/T06 method lists are the union of the method names in the official MCP `schema.ts` of the five known versions; core protocol only (extensions out of scope). |
 | H7 | T05/T06 are stated as "in the core list and not in `codeOmits`"; the gap is a bug. |
-| H8 | A01–A03: blocking all of `64:ff9b:1::/48` is intended; `240.0.0.0/4` not blocked is a bug; other special-purpose ranges are a scope note. |
+| H8 | A01–A03: blocking all of `64:ff9b:1::/48` is intended; `240.0.0.0/4` not blocked is a bug; other special-purpose ranges were a scope note, now partly recorded as H11. |
+| H9–H16 | Bugs recorded in the A04–A10 specification cycle (2026-11-27), see "Bugs found"; H9 to be reported privately before publication. |
 | T4, P1, R1, T1 | The `proxyEnvValues` rules under "Review rules". |
+| AD1–AD8 | Translation patch 06 (`auth.rs` A04–A10, 2026-11-26 and 2026-11-27): the `check_*` helpers and the private `IssuerError` mirror are the verified targets, the `validate_*` wrappers unverified glue, A04 linkage `patch-06` (AD1); the moved tracing events keep `target: "rmcp::transport::auth"` (AD2); `#[allow(clippy::nonminimal_bool)]` for `!(a == b)` (AD3); seven new `opaque` constants, `str::trim` exact (AD4); boundary tests for the rewritten paths in patch 02 (AD5); `#[allow(clippy::enum_variant_names)]` on `IssuerError` (AD6); the `issuer_url` panic above `u32::MAX` bytes stays a stated exception, with a premise in A09 (AD7); the `Url::join` drive-letter panic likewise, with an `http`/`https` base premise in A07 (AD8). |
 | N1, N5, N8, N9, N10, N11 | Lead decisions of the Aeneas upgrade: Charon options checked through `translation.json` (N1), native lock empty (N5), four std models moved to the Aeneas library (N8), model citations re-checked (N9), `--wfail` build gate with an empty allowlist (N10), kernel replay with `Lean.Kernel.Environment.replay` (N11). |
 
 ### Tools

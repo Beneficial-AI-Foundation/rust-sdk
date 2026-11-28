@@ -38,8 +38,7 @@ source order, each restated as a theorem `Theorems.async_rw.<function>` proved b
 theorem in `Proofs/Transport/AsyncRw.lean` and followed by the assumptions its proof depends on,
 checked by `#print axioms` under `#guard_msgs`; the composition theorem C05 last (plan Section
 16.4). The statements were signed off by the spec owner on 2026-11-24 (S24/S25 spec cycle,
-`STATUS.md` at 9047c72); their signed-off text was in `specs/Drafts/Transport.lean`, removed at
-incorporation.
+`STATUS.md` at 9047c72); their signed-off statements are the ones in this project file.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,

@@ -13,8 +13,8 @@ public import Proofs.External.Byte
 # Laws of the Phase 2 external models: Net (plan steps S26/S27, stage 6)
 
 Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27),
-restated in `formal/proofs/Proofs/Internal/External.lean` (Phase 2 part); the draft file was removed at
-incorporation. For this group (spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
+restated in `formal/proofs/Proofs/Internal/External.lean` (Phase 2 part), the project
+file that holds them. For this group (spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
 -/
 
 open Aeneas Aeneas.Std Result

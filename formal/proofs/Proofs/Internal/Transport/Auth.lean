@@ -43,8 +43,7 @@ source order, each restated as a theorem `Theorems.auth.AuthorizationManager.<fu
 by the spec theorem in `Proofs/Transport/Auth.lean` and followed by the assumptions its proof
 depends on, checked by `#print axioms` under `#guard_msgs`; then the composition theorem C04
 (plan Section 16.4) and its corollary. Signed off by the spec owner on 2026-11-24 (S24/S25 spec
-cycle, `STATUS.md` at 9047c72); the signed-off text was in `specs/Drafts/Auth.lean`, removed at
-incorporation.
+cycle, `STATUS.md` at 9047c72); the signed-off statements are the ones in this project file.
 
 Translated configuration (the proofs hold only for it): target `x86_64-unknown-linux-gnu`,
 `--no-default-features` with the features `request-state`, `server`, `client`, `client-side-sse`,

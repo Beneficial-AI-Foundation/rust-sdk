@@ -21,7 +21,7 @@ The keyring builders of `RequestStateCodec`: check that the codec is a keyring a
 `&str` id names a key (`HashMap::contains_key` through `Borrow<str> for String`,
 `Proofs.External.HashMap.find_borrowStr_eq`), then append the owned id to the rs1 fallbacks
 unless already present (`slice::Iter::any`, `sliceIterAny_eq`). Statements signed off by the spec
-owner on 2026-11-25 (draft outside the repository).
+owner on 2026-11-25.
 
 Source: "crates/rmcp/src/model/request_state.rs", lines 373–432 in the patched copy (patches 01,
 02 and 03 on origin/main `7caec76`); ten lines lower upstream.

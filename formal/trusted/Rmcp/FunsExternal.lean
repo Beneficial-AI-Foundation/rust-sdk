@@ -45,6 +45,11 @@ added the models of the section "`metadata_resolver.rs` address policy": the fiv
 with five more `opaque` constants (no axiom): `ExtModel.urlParse`, `ExtModel.urlHost`,
 `ExtModel.urlHostStr`, `ExtModel.systemLookup` and `ExtModel.proxyEnvValues` (an environment
 reading, under the review rule of `ExtModel.nowMs`).
+Translation patch 06 (human decisions 2026-11-26 and 2026-11-27, AD1–AD8, targets A04–A10 of
+`auth.rs`) added the models of the section "`auth.rs` OAuth metadata URL and issuer checks": the ten `auth::prim`
+functions, seven functions of `url::Url` and two of `core`, with seven more `opaque` constants (no
+axiom): `ExtModel.urlScheme`, `ExtModel.urlPath`, `ExtModel.urlFragment`, `ExtModel.urlPort`,
+`ExtModel.urlSerialization`, `ExtModel.urlJoin` and `ExtModel.issuerUrl`.
 The conventions below apply to all models.
 
 Ordering note (S21): the generated external `core.result.Result.ok` shadows Aeneas' `ok` for
@@ -2843,3 +2848,502 @@ with a `&str` pattern: `core/src/str/mod.rs` lines 1445–1450, `pat.is_suffix_o
 Defined on every `Str`. -/
 def transport.auth.metadata_resolver.prim.ends_with (s : Str) (suffix : Str) : Result Bool :=
   ok (decide (suffix.val <:+ s.val))
+
+/-! ## `auth.rs` OAuth metadata URL and issuer checks (A04–A10, translation patch 06)
+
+External functions reached by the targets A04 `is_http_url`, A05 `is_disallowed_metadata_host`,
+A06 `is_allowed_metadata_url`, A07 `resolve_resource_metadata_url`, A08
+`check_authorization_response_issuer`, A09 `check_authorization_metadata_issuer` and A10
+`check_resource_metadata_resource` of `crates/rmcp/src/transport/auth.rs` and their helpers
+(human decisions 2026-11-26 and 2026-11-27, AD1–AD8). Translation patch 06 adds the private
+module `auth::prim`, whose ten functions (`Source:` lines refer to the patched copy, patch 06 on top of patches
+01–05) are opaque in the translation and modelled here: five `str` wrappers, the `url` rewriting
+of an issuer and four `tracing` events. The remaining code calls `Option::zip`,
+`str::eq_ignore_ascii_case` and seven functions of the opaque type `url::Url` of `url 2.5.9`.
+Human decision AD4 (2026-11-26) fixes which values are opaque: the URL components
+`ExtModel.urlScheme`, `ExtModel.urlPath`, `ExtModel.urlFragment`, `ExtModel.urlPort` and
+`ExtModel.urlSerialization`, the URL resolution `ExtModel.urlJoin` and the rewritten issuer
+`ExtModel.issuerUrl`; they add no axiom. Every other model is an exact definition:
+`Url::port_or_known_default` over `urlPort` and `urlScheme` with the default-port table of the
+`url` crate (`ExtModel.defaultPort`), `Url` equality over `urlSerialization`, `Url::clone` the
+identity, `prim::trim` over the Unicode `White_Space` code points (`ExtModel.trimWhitespace`), and
+the other `str` wrappers on the bytes. No law relating the opaque values (for example that
+`urlScheme` and `urlSerialization` agree, or that `urlPort` is never the default port of the
+scheme) is stated; a statement that needs one takes it as a hypothesis (as for patch 05, human
+decision 2026-11-25).
+Stated exceptions (the same three in the header of patch 06, the section docstring of
+FunsExternal.lean and the module docstring of Proofs.External.Auth): (1) AD7: the `issuer_url`
+setters can panic for a discovery URL longer than `u32::MAX` bytes; the model returns `ok`. (2) AD8:
+the `debug_assert!` of `Url::join` (url-2.5.9 `src/parser.rs` line 1304) can panic for a `file:`
+base whose last path segment is a normalized Windows drive letter; the model returns `ok`. (3)
+The `tracing` side effect of the four log functions is not modelled; they return `()`. Details in the
+docstrings of `transport.auth.prim.issuer_url` and `url.Url.join`, and in `formal/README.md`,
+"Stated exceptions of the external models".
+
+Crates cited (pinned in `scripts/aeneas-translate.sh`, `PINNED_DEPS`): `url 2.5.9`. -/
+
+namespace ExtModel
+
+/-- **Scheme of a URL** (opaque, human decision AD4 2026-11-26): `urlScheme u` is the value of
+`url::Url::scheme` on `u` (`url-2.5.9/src/lib.rs` lines 902–904: `self.slice(..self.scheme_end)`,
+the serialization before the first `:`, lowercase ASCII for every URL the parser builds). Opaque
+because `url.Url` is abstract. Placeholder for compiled evaluation: the empty string (see
+`urlParse`). -/
+opaque urlScheme : url.Url → Str :=
+  fun _ => Slice.new Std.U8
+
+/-- **Path of a URL** (opaque, human decision AD4 2026-11-26): `urlPath u` is the value of
+`url::Url::path` on `u` (`url-2.5.9/src/lib.rs` lines 1390–1397: the serialization from
+`path_start` up to the query or fragment, or to the end). Opaque because `url.Url` is abstract.
+Placeholder for compiled evaluation: the empty string (see `urlParse`). -/
+opaque urlPath : url.Url → Str :=
+  fun _ => Slice.new Std.U8
+
+/-- **Fragment of a URL** (opaque, human decision AD4 2026-11-26): `urlFragment u` is the value of
+`url::Url::fragment` on `u` (`url-2.5.9/src/lib.rs` lines 1544–1549: `None` without a fragment,
+otherwise the serialization after the `#`; the `debug_assert!` of line 1546 holds for every URL
+the parser builds). Opaque because `url.Url` is abstract. Placeholder for compiled evaluation:
+`None` (see `urlParse`). -/
+opaque urlFragment : url.Url → Option Str :=
+  fun _ => none
+
+/-- **Explicit port of a URL** (opaque, human decision AD4 2026-11-26): `urlPort u` is the field
+`port` of `u`, the value of `url::Url::port` (`url-2.5.9/src/lib.rs` lines 1268–1270:
+`self.port`; the field, line 245, is `None` when the URL has no port or the port is the default
+port of a special scheme, which the parser drops). Opaque because `url.Url` is abstract.
+Placeholder for compiled evaluation: `None` (see `urlParse`). -/
+opaque urlPort : url.Url → Option Std.U16 :=
+  fun _ => none
+
+/-- **Serialization of a URL** (opaque, human decision AD4 2026-11-26): `urlSerialization u` is
+the field `serialization : String` of `u` (`url-2.5.9/src/lib.rs` line 237), which `Url::as_str`
+(lines 652–654) and `Display` (lines 2794–2799) return and on which `PartialEq` compares (lines
+2830–2836). Opaque because `url.Url` is abstract; its relation to `urlScheme`, `urlPath`,
+`urlFragment`, `urlPort`, `urlHost` and `urlHostStr` (all slices or parts of it) is not stated.
+Placeholder for compiled evaluation: the empty string (see `urlParse`). -/
+opaque urlSerialization : url.Url → String :=
+  fun _ => ""
+
+/-- **URL resolution** (opaque, human decision AD4 2026-11-26): `urlJoin base input` is the value
+of `url::Url::join` on the base URL `base` and the string with the UTF-8 bytes `input`
+(`url-2.5.9/src/lib.rs` lines 470–472: `Self::options().base_url(Some(self)).parse(input)`, the
+WHATWG parser of `src/parser.rs` relative to `base`). Opaque because the parser is not modelled
+(as `urlParse`). Placeholder for compiled evaluation: `Err(EmptyHost)` for every input (see
+`urlParse`). -/
+opaque urlJoin : url.Url → List Std.U8 → core.result.Result url.Url url.parser.ParseError :=
+  fun _ _ => core.result.Result.Err url.parser.ParseError.EmptyHost
+
+/-- **Issuer of a discovery URL** (opaque, human decision AD4 2026-11-26): `issuerUrl u path` is
+the value of `auth::prim::issuer_url` on the URL `u` and the string with the UTF-8 bytes `path`
+(`crates/rmcp/src/transport/auth.rs` lines 4567–4577 of the patched copy: a clone of `u` with
+`set_query(None)`, `set_fragment(None)` and `set_path("")` if `path` is empty, otherwise
+`set_path(&format!("/{path}"))`, then `to_string()`, the new serialization; `url-2.5.9/src/lib.rs`
+`set_query`, `set_fragment`, `set_path`, which re-serialize through the parser). Opaque because
+the `url` setters are not modelled. Placeholder for compiled evaluation: the empty string (see
+`urlParse`). -/
+opaque issuerUrl : url.Url → List Std.U8 → String :=
+  fun _ _ => ""
+
+/-- The default port of a URL scheme known to the `url` crate, `None` for any other scheme
+(`url-2.5.9/src/parser.rs` lines 185–192, `default_port`: `"http" | "ws" => Some(80)`,
+`"https" | "wss" => Some(443)`, `"ftp" => Some(21)`, `_ => None`; a `match` on `&str` compares
+the bytes). -/
+def defaultPort (scheme : List Std.U8) : Option Std.U16 :=
+  if scheme = utf8 "http" ∨ scheme = utf8 "ws" then some 80#u16
+  else if scheme = utf8 "https" ∨ scheme = utf8 "wss" then some 443#u16
+  else if scheme = utf8 "ftp" then some 21#u16
+  else none
+
+/-- The Unicode code points with the property `White_Space` (Unicode 17.0.0, the version of the
+pinned `core`, `core/src/unicode/unicode_data.rs` line 148), the chars for which
+`char::is_whitespace` is `true` (`core/src/char/methods.rs` lines 1088–1094: `' '` and
+`'\x09'..='\x0d'`, `false` for the rest of `'\0'..='\u{84}'`, otherwise
+`unicode::White_Space(c)`, which is `core/src/unicode/unicode_data.rs` lines 906–929: the bits of
+`WHITESPACE_MAP` give U+0085 and U+00A0 in page 0 and U+2000–U+200A, U+2028, U+2029, U+202F,
+U+205F in page 0x20, plus U+1680 and U+3000): U+0009–U+000D, U+0020, U+0085, U+00A0, U+1680,
+U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000 (25 code points). -/
+def whitespaceCodePoints : List Nat :=
+  [0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0x85, 0xA0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004,
+    0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000]
+
+/-- The UTF-8 encodings of `whitespaceCodePoints`, in the same order (one byte below U+0080, two
+bytes `0xC2 x` below U+0800, three bytes `0xE1`/`0xE2`/`0xE3 x y` for the rest;
+`Proofs.External.Auth.whitespaceUtf8_eq` proves that each is `utf8` of the one-char string). -/
+def whitespaceUtf8 : List (List Std.U8) :=
+  [[0x09#u8], [0x0A#u8], [0x0B#u8], [0x0C#u8], [0x0D#u8], [0x20#u8],
+    [0xC2#u8, 0x85#u8], [0xC2#u8, 0xA0#u8], [0xE1#u8, 0x9A#u8, 0x80#u8],
+    [0xE2#u8, 0x80#u8, 0x80#u8], [0xE2#u8, 0x80#u8, 0x81#u8], [0xE2#u8, 0x80#u8, 0x82#u8],
+    [0xE2#u8, 0x80#u8, 0x83#u8], [0xE2#u8, 0x80#u8, 0x84#u8], [0xE2#u8, 0x80#u8, 0x85#u8],
+    [0xE2#u8, 0x80#u8, 0x86#u8], [0xE2#u8, 0x80#u8, 0x87#u8], [0xE2#u8, 0x80#u8, 0x88#u8],
+    [0xE2#u8, 0x80#u8, 0x89#u8], [0xE2#u8, 0x80#u8, 0x8A#u8], [0xE2#u8, 0x80#u8, 0xA8#u8],
+    [0xE2#u8, 0x80#u8, 0xA9#u8], [0xE2#u8, 0x80#u8, 0xAF#u8], [0xE2#u8, 0x81#u8, 0x9F#u8],
+    [0xE3#u8, 0x80#u8, 0x80#u8]]
+
+/-- The length of the first of the byte strings `encs` that is a prefix of `l`, `0` if none
+is. -/
+def matchedPrefixLength (encs : List (List Std.U8)) (l : List Std.U8) : Nat :=
+  match encs.find? (fun w => w.isPrefixOf l) with
+  | some w => w.length
+  | none => 0
+
+/-- `l` without the longest run of leading byte strings of `encs` (taken greedily, the first
+match of `encs` each time), with at most `n` steps. Each step drops at least one byte or stops,
+so `n = l.length` steps remove the whole run. -/
+def dropEncodedPrefixes (encs : List (List Std.U8)) : Nat → List Std.U8 → List Std.U8
+  | 0, l => l
+  | n + 1, l =>
+    match matchedPrefixLength encs l with
+    | 0 => l
+    | k + 1 => dropEncodedPrefixes encs n (l.drop (k + 1))
+
+/-- `str::trim` on the bytes `l`: `l` without its leading and its trailing UTF-8-encoded
+`White_Space` chars (`whitespaceUtf8`). The leading run is dropped from the front, then the
+trailing run of the rest from the back (the reversed encodings matched against the reversed
+bytes). On a valid UTF-8 `l` (every Rust `&str`) this is exactly the char-level trim: at a char
+boundary the bytes of `l` begin with the encoding of a char `c` exactly when the char there is
+`c` (UTF-8 is prefix-free), and they end with it exactly when the last char is `c` (the encoding
+begins with a lead byte and continues with continuation bytes only). -/
+def trimWhitespace (l : List Std.U8) : List Std.U8 :=
+  let front := dropEncodedPrefixes whitespaceUtf8 l.length l
+  (dropEncodedPrefixes (whitespaceUtf8.map List.reverse) front.length front.reverse).reverse
+
+/-- `dropEncodedPrefixes` returns a list no longer than its input. -/
+theorem length_dropEncodedPrefixes_le (encs : List (List Std.U8)) :
+    ∀ (n : Nat) (l : List Std.U8), (dropEncodedPrefixes encs n l).length ≤ l.length
+  | 0, l => le_refl _
+  | n + 1, l => by
+    unfold dropEncodedPrefixes
+    split
+    · exact le_refl _
+    · exact le_trans (length_dropEncodedPrefixes_le encs n _) (by rw [List.length_drop]; omega)
+
+/-- `trimWhitespace` returns a list no longer than its input. -/
+theorem length_trimWhitespace_le (l : List Std.U8) : (trimWhitespace l).length ≤ l.length := by
+  unfold trimWhitespace
+  simp only [List.length_reverse]
+  refine le_trans (length_dropEncodedPrefixes_le _ _ _) ?_
+  rw [List.length_reverse]
+  exact length_dropEncodedPrefixes_le _ _ _
+
+/-- A trimmed slice fits in a slice. -/
+theorem length_trimWhitespace_le_max (s : Slice Std.U8) :
+    (trimWhitespace s.val).length ≤ Usize.max :=
+  le_trans (length_trimWhitespace_le s.val) s.property
+
+/-- A slice without its leading `/` bytes fits in a slice. -/
+theorem length_dropWhile_le_max (s : Slice Std.U8) (p : Std.U8 → Bool) :
+    (s.val.dropWhile p).length ≤ Usize.max :=
+  le_trans (List.dropWhile_sublist p).length_le s.property
+
+end ExtModel
+
+/-- [core::option::{core::option::Option<T>}::zip]:
+    Source: '/rustc/library/core/src/option.rs', lines 1983:4-1986:28
+    Name pattern: [core::option::{core::option::Option<@T>}::zip]
+    Visibility: public
+
+**Model:** `Some((a, b))` if both are `Some`, otherwise `None` (lines 1983–1992:
+`match (self, other) { (Some(a), Some(b)) => Some((a, b)), _ => None }`). -/
+@[rust_fun "core::option::{core::option::Option<@T>}::zip"]
+def core.option.Option.zip {T : Type} {U : Type} (self : Option T) (other : Option U) :
+    Result (Option (T × U)) :=
+  match self, other with
+  | some a, some b => ok (some (a, b))
+  | _, _ => ok none
+
+/-- [core::str::{str}::eq_ignore_ascii_case]:
+    Source: '/rustc/library/core/src/str/mod.rs', lines 2859:4-2859:65
+    Name pattern: [core::str::{str}::eq_ignore_ascii_case]
+    Visibility: public
+
+**Model:** whether the bytes are equal after mapping `A`–`Z` to `a`–`z`
+(`ExtModel.asciiLowercase`; lines 2859–2861:
+`self.as_bytes().eq_ignore_ascii_case(other.as_bytes())`, `core/src/slice/ascii.rs` lines
+66–87: `false` for different lengths; otherwise, on `x86_64` with `sse2` and on `aarch64` with
+`neon` (the `cfg` of lines 71–74; the translated target `x86_64-unknown-linux-gnu` has `sse2`
+in its baseline, and an `aarch64` test host has `neon`) and for at least 16 bytes, the chunked
+path `eq_ignore_ascii_case_chunks::<16>`, lines 125–171, and in every other case the simple loop
+`eq_ignore_ascii_case_simple`, lines 92–109; both compare pairs with `u8::eq_ignore_ascii_case`, `core/src/num/mod.rs` lines 737–739:
+`self.to_ascii_lowercase() == other.to_ascii_lowercase()`). The model covers both paths: the
+simple loop returns `true` exactly when every pair of bytes at the same index is equal after
+lowercasing; the chunked path compares every full 16-byte chunk pairwise (lines 145–152) and
+then, if bytes remain, the last 16 bytes of both slices (lines 162–168: `last_chunk::<16>` is
+`Some`, both lengths being at least 16, the same condition as its `debug_assert!` at line 158),
+so it too compares every index of the equal-length slices (some twice) with the same per-byte
+test and returns `true` exactly when all of them are equal. Equal mapped lists have equal
+lengths, so the length test is part of the list equality. Defined on every `Str`. -/
+@[rust_fun "core::str::{str}::eq_ignore_ascii_case"]
+def core.str.Str.eq_ignore_ascii_case (self : Str) (other : Str) : Result Bool :=
+  ok (decide (self.val.map ExtModel.asciiLowercase = other.val.map ExtModel.asciiLowercase))
+
+/-- [url::{impl core::clone::Clone for url::Url}::clone]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 226:9-226:14
+    Name pattern: [url::{core::clone::Clone<url::Url>}::clone]
+    Visibility: public
+
+**Model:** `ok self` (line 226: `#[derive(Clone)]` on `struct Url`, lines 227–249: clones the
+`serialization` string and copies the other fields, so the clone equals the original in every
+component; `url.Url` is abstract, so the model value is the same value). Allocation failure is
+not modelled (memory convention). -/
+@[rust_fun "url::{core::clone::Clone<url::Url>}::clone"]
+def url.Url.Insts.CoreCloneClone.clone (self : url.Url) : Result url.Url :=
+  ok self
+
+/-- [url::{url::Url}::join]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 470:4-470:70
+    Name pattern: [url::{url::Url}::join]
+    Visibility: public
+
+**Model:** `ok (urlJoin self input.val)`, an opaque value (lines 470–472; human decision AD4
+2026-11-26). Stated assumption (part of the trusted base, not established; as for `Url::parse`):
+`Url::join` returns (`Ok` or `Err`) and does not panic. What the source shows: the parser
+converts every offset it stores with `to_u32(..)?` (`src/parser.rs` lines 1752–1758, used at
+lines 427, 476, 522, 837, 844, 885, 896, 909, 926, 942, 1515, 1528 and 1630), so a component
+that starts beyond `u32::MAX` bytes gives `Err(ParseError::Overflow)`, not a panic (the total
+length is not checked: the last component may end beyond `u32::MAX`). Its explicit panic sites
+in `src/parser.rs` are internal invariants that the assumption covers: `unwrap` at lines 554,
+905, 941, 1053 and 1405, `assert!` at lines 1465 and 1485, `panic!` at line 1525, and the
+`debug_assert!`s at lines 404, 445, 509, 710, 754, 1620 and 1626, active in the translated
+configuration; slicing and indexing, and the callees in `src/host.rs` and the `idna` crate, are
+covered by the same general assumption.
+
+**Stated exception (human decision AD8, 2026-11-27):** the `debug_assert!` at `src/parser.rs`
+line 1304 (`self.serialization.as_bytes()[segment_start - 1] == b'/'`, in the double-dot arm of
+`parse_path`), active in the translated configuration, is not an invariant: for a `file:` base
+whose last path segment is a normalized Windows drive letter (`pop_path`, lines 1403–1415, does
+not pop it), joined with an input whose first segment is `..` or a percent-encoded form of it
+(`%2e%2e`, `.%2e`, ...), `Url::join` can panic there; for example
+`Url::parse("file://h/x/C:").unwrap().join("..")` and `.join("%2e%2e")` panic (reproduced
+2026-11-27 with url 2.5.9 in a debug build; a release build, without debug assertions, returns
+`Ok(file://h/x/C:)`). The condition is a superset description, not an exact one: for example
+`Url::parse("file:///C:").unwrap().join("..")` does not panic (it returns `Ok(file:///C:/)`). A reviewer's fuzzing found 595 such panics, all with a `file:` base, all at
+line 1304, none for another scheme. Rust panics and the model returns `ok`; statements about A07
+assume that the base URL's scheme is `http` or `https` (AD8). -/
+@[rust_fun "url::{url::Url}::join"]
+def url.Url.join (self : url.Url) (input : Str) :
+    Result (core.result.Result url.Url url.parser.ParseError) :=
+  ok (ExtModel.urlJoin self input.val)
+
+/-- [url::{url::Url}::scheme]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 902:4-902:32
+    Name pattern: [url::{url::Url}::scheme]
+    Visibility: public
+
+**Model:** `ok (urlScheme self)`, an opaque value (lines 902–904: a slice of the serialization,
+in bounds for every `Url` the parser builds, so the function does not panic). -/
+@[rust_fun "url::{url::Url}::scheme"]
+def url.Url.scheme (self : url.Url) : Result Str :=
+  ok (ExtModel.urlScheme self)
+
+/-- [url::{url::Url}::port_or_known_default]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 1300:4-1300:54
+    Name pattern: [url::{url::Url}::port_or_known_default]
+    Visibility: public
+
+**Model:** the explicit port `urlPort self` if there is one, otherwise the default port of the
+scheme `urlScheme self` (`ExtModel.defaultPort`) (lines 1300–1302:
+`self.port.or_else(|| parser::default_port(self.scheme()))`; `parser::default_port`,
+`src/parser.rs` lines 185–192). Exact over the opaque values `urlPort` and `urlScheme` (human
+decision AD4 2026-11-26); never panics. -/
+@[rust_fun "url::{url::Url}::port_or_known_default"]
+def url.Url.port_or_known_default (self : url.Url) : Result (Option Std.U16) :=
+  match ExtModel.urlPort self with
+  | some p => ok (some p)
+  | none => ok (ExtModel.defaultPort (ExtModel.urlScheme self).val)
+
+/-- [url::{url::Url}::path]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 1390:4-1390:30
+    Name pattern: [url::{url::Url}::path]
+    Visibility: public
+
+**Model:** `ok (urlPath self)`, an opaque value (lines 1390–1397: a slice of the serialization,
+in bounds for every `Url` the parser builds, so the function does not panic). -/
+@[rust_fun "url::{url::Url}::path"]
+def url.Url.path (self : url.Url) : Result Str :=
+  ok (ExtModel.urlPath self)
+
+/-- [url::{url::Url}::fragment]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 1544:4-1544:42
+    Name pattern: [url::{url::Url}::fragment]
+    Visibility: public
+
+**Model:** `ok (urlFragment self)`, an opaque value (lines 1544–1549: `None` or the slice of the
+serialization after `#`; the `debug_assert!` at line 1546, active in the translated
+configuration, holds for every `Url` the parser builds, so the function does not panic). -/
+@[rust_fun "url::{url::Url}::fragment"]
+def url.Url.fragment (self : url.Url) : Result (Option Str) :=
+  ok (ExtModel.urlFragment self)
+
+/-- [url::{impl core::cmp::PartialEq<url::Url> for url::Url}::eq]:
+    Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/url-2.5.9/src/lib.rs', lines 2833:4-2833:38
+    Name pattern: [url::{core::cmp::PartialEq<url::Url, url::Url>}::eq]
+    Visibility: public
+
+**Model:** equality of the serializations `urlSerialization` (lines 2830–2836: "URLs compare like
+their serialization", `self.serialization == other.serialization`, `String` equality, i.e. equality
+of the bytes). Exact over the opaque value `urlSerialization` (human decision AD4 2026-11-26). -/
+@[rust_fun "url::{core::cmp::PartialEq<url::Url, url::Url>}::eq"]
+def url.Url.Insts.CoreCmpPartialEqUrl.eq (self : url.Url) (other : url.Url) : Result Bool :=
+  ok (decide (ExtModel.urlSerialization self = ExtModel.urlSerialization other))
+
+/-- [rmcp::transport::auth::prim::trim]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4545:4-4547:5
+
+**Model:** the bytes of `s` without leading and trailing `White_Space` chars
+(`ExtModel.trimWhitespace`; `s.trim()`: `core/src/str/mod.rs` lines 2186–2188,
+`self.trim_matches(char::is_whitespace)`, lines 2377–2394: the slice from the start of the first
+char the searcher rejects (`next_reject`, `core/src/str/pattern.rs` lines 265–273) to the end of
+the last one (`next_reject_back`, lines 330–338), empty if every char matches; the searcher of a
+`char` predicate, lines 902–933 and 943–948, forwards (`searcher_methods!`, lines 775–808) to
+`MultiCharEqSearcher`, lines 684–721, which decodes the chars; `char::is_whitespace`,
+`core/src/char/methods.rs` lines 1088–1094, and the code points at
+`ExtModel.whitespaceCodePoints`). Defined on every `Str`; it equals the char-level trim on valid
+UTF-8 (every Rust `&str`; see `ExtModel.trimWhitespace`). -/
+def transport.auth.prim.trim (s : Str) : Result Str :=
+  ok (Slice.from (ExtModel.trimWhitespace s.val) (ExtModel.length_trimWhitespace_le_max s))
+
+/-- [rmcp::transport::auth::prim::starts_with]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4549:4-4551:5
+
+**Model:** whether the bytes of `pre` are a prefix of the bytes of `s` (`s.starts_with(prefix)`
+with a `&str` pattern: `core/src/str/mod.rs` lines 1420–1422, `pat.is_prefix_of(self)`, and
+`core/src/str/pattern.rs` lines 983–985: `haystack.as_bytes().starts_with(self.as_bytes())`).
+Defined on every `Str`. -/
+def transport.auth.prim.starts_with (s : Str) (pre : Str) : Result Bool :=
+  ok (decide (pre.val <+: s.val))
+
+/-- [rmcp::transport::auth::prim::strip_suffix]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4553:4-4555:5
+
+**Model:** `Some` of all but the last `suffix.len()` bytes if the bytes of `suffix` are a suffix
+of the bytes of `s`, otherwise `None` (`s.strip_suffix(suffix)` with a `&str` pattern:
+`core/src/str/mod.rs` lines 2486–2491, `suffix.strip_suffix_of(self)`, and
+`core/src/str/pattern.rs` lines 1030–1050: `is_suffix_of`, i.e.
+`haystack.as_bytes().ends_with(self.as_bytes())`, then `haystack[..haystack.len() - self.len()]`).
+Defined on every `Str`. -/
+def transport.auth.prim.strip_suffix (s : Str) (suffix : Str) : Result (Option Str) :=
+  if suffix.val <:+ s.val then
+    ok (some (Slice.from (s.val.take (s.val.length - suffix.val.length))
+      (ExtModel.length_take_le_max s _)))
+  else ok none
+
+/-- [rmcp::transport::auth::prim::strip_dir_prefix]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4558:4-4560:5
+
+**Model:** `Some` of the bytes after the first `pre.len() + 1` if `s` starts with the bytes of
+`pre` followed by `/` (47), otherwise `None` (`path.strip_prefix(&format!("{prefix}/"))`:
+`format!` builds the `String` of the bytes of `prefix` and `/` (`str`'s `Display` writes the
+bytes); `strip_prefix` with the pattern `&String`, `core/src/str/mod.rs` lines 2458–2460,
+`prefix.strip_prefix_of(self)`, which the `Pattern` impl for `&String`,
+`alloc/src/string.rs` lines 2691–2711, forwards to the `&str` pattern (`self[..]`, lines
+2709–2711), `core/src/str/pattern.rs` lines 1019–1026 and 983–985: `is_prefix_of`, i.e.
+`haystack.as_bytes().starts_with(self.as_bytes())`, then `haystack[self.len()..]`).
+The `String` of `pre.len() + 1` bytes exceeds `isize::MAX` only for a prefix of `isize::MAX`
+bytes, outside the size convention (module docstring). Defined on every `Str`. -/
+def transport.auth.prim.strip_dir_prefix (path : Str) (pre : Str) : Result (Option Str) :=
+  if pre.val ++ [47#u8] <+: path.val then
+    ok (some (Slice.from (path.val.drop (pre.val.length + 1))
+      (ExtModel.length_drop_le_max path _)))
+  else ok none
+
+/-- [rmcp::transport::auth::prim::trim_start_slashes]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4562:4-4564:5
+
+**Model:** the bytes of `s` without its leading `/` bytes (47) (`s.trim_start_matches('/')`:
+`core/src/str/mod.rs` lines 2424–2431, the suffix from the start of the first char that the
+`CharSearcher` for `'/'` rejects, `core/src/str/pattern.rs` lines 265–273 and 401–477, the whole
+`s` consumed if there is none; `'/'` is the single byte 47, which in UTF-8 occurs only as that
+char). Defined on every `Str`. -/
+def transport.auth.prim.trim_start_slashes (s : Str) : Result Str :=
+  ok (Slice.from (s.val.dropWhile (fun b => decide (b.val = 47)))
+    (ExtModel.length_dropWhile_le_max s _))
+
+/-- [rmcp::transport::auth::prim::issuer_url]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4567:4-4577:5
+
+**Model:** `ok (issuerUrl discovery_url issuer_path.val)`, an opaque value (human decision AD4
+2026-11-26; the body at `ExtModel.issuerUrl`).
+
+Panics (`url-2.5.9/src/lib.rs`). The setters store lengths with
+`to_u32(self.serialization.len()).unwrap()` (`to_u32`, `src/parser.rs` lines 1752–1758), which
+panics above `u32::MAX` bytes. With `None`, `set_query` (lines 1636–1666) and `set_fragment`
+(lines 1581–1596) only truncate: their unwraps at lines 1646 and 1589 are on the `Some`
+branches, and the one at line 1610 (`restore_already_parsed_fragment`, lines 1607–1614, which
+puts back the fragment `set_query` took off) converts the length truncated at the old query or
+fragment start, a `u32`. `set_path` (lines 1766–1789) converts at line 1768 the length `L` of
+the URL without query and fragment, and `restore_after_path` (lines 1803–1816) at line 1804 the
+length with the new path. Line 1804 cannot panic when line 1768 did not: in each branch of
+`expected_issuer_for_authorization_metadata_url` the new path is `""` or `/` followed by a
+substring of the old path `discovery_url.path()` that lacks the well-known segment
+(`/.well-known/oauth-authorization-server/`, 40 bytes, or `/.well-known/openid-configuration`,
+33 bytes, with or without the `/` after it); the setter's parser writes the bytes of a serialized
+path back unchanged (they are already percent-encoded, and `%` is not encoded again), only
+removes dot segments, and adds at most two bytes (`%2F` for the leading `/` of an opaque path,
+line 1775, or the `/` of an empty special path), so the new length is below `L`. Line 1768
+panics exactly when `L > u32::MAX`. With a query or a fragment, `L` is at most its start offset,
+a `u32`. Without them, `L` is the whole length (minus the trailing spaces of an opaque path,
+lines 386–410, which a URL parsed without query and fragment does not have), and `Url::parse`
+and `Url::join` accept such URLs longer than `u32::MAX` bytes, since they check only the start
+offsets of the components (see `url.Url.join`). For such a discovery URL `issuer_url` panics at
+line 1768.
+
+**Stated exception (human decision AD7):** for a discovery URL with neither query nor fragment
+whose serialization is longer than `u32::MAX` bytes (4 GiB, inside the size convention), Rust
+panics and the model returns `ok`; a statement that A09 does not fail holds in Rust only for
+discovery URLs of at most `u32::MAX` bytes or with a query or fragment, and A09 statements take a
+premise bounding the URL (AD7). The other panic sites cannot fire: the
+`debug_assert!`s at lines 1584, 1600 and 1641 (active in the translated configuration;
+`byte_at`, lines 2770–2772, reads `#` at the stored fragment start and `?` at the stored query
+start) and the `assert!` at line 1609 (`take_fragment`, lines 1598–1605, has just cleared the
+fragment start) hold for every `Url` the parser and the setters build; the `adjust` closure of
+`restore_after_path` is not called (query and fragment starts are both `None` by then); the
+path parser that `set_path` runs is covered by the stated assumption of `url.Url.join` (its AD8
+exception at `src/parser.rs` line 1304 is not known to be reachable here: the new path is `/`
+followed by a substring of a serialized path; a scratch fuzz run on 2026-11-27, url 2.5.9 debug
+build, of this setter sequence on `file:` URLs built from drive letters and dot segments, about
+2.9 million paths, found no panic).
+`to_string` writes the serialization (`Display`, lines 2794–2799). Allocation failure is not
+modelled (memory convention). -/
+def transport.auth.prim.issuer_url (discovery_url : url.Url) (issuer_path : Str) :
+    Result String :=
+  ok (ExtModel.issuerUrl discovery_url issuer_path.val)
+
+/-- [rmcp::transport::auth::prim::debug_empty_resource_metadata]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4579:4-4581:5
+
+**Model:** `ok ()`. Stated exception: the side effect, a `tracing` event at level `DEBUG` with
+target `rmcp::transport::auth` (`debug!(target: …, …)`; it reaches the subscriber only if the
+level and target are enabled), is not modelled; the function returns `()` and the event does not
+change any value of the translated code. A subscriber that panics or blocks is not modelled. -/
+def transport.auth.prim.debug_empty_resource_metadata : Result Unit :=
+  ok ()
+
+/-- [rmcp::transport::auth::prim::debug_unparsable_resource_metadata]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4583:4-4588:5
+
+**Model:** `ok ()`. Stated exception: the side effect, a `tracing` event at level `DEBUG` with
+target `rmcp::transport::auth` whose message formats `value` and `error` (`ParseError`'s
+`Display`), is not modelled, as at `debug_empty_resource_metadata`. -/
+def transport.auth.prim.debug_unparsable_resource_metadata (_value : Str)
+    (_error : url.parser.ParseError) : Result Unit :=
+  ok ()
+
+/-- [rmcp::transport::auth::prim::warn_downgraded_resource_metadata]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4590:4-4595:5
+
+**Model:** `ok ()`. Stated exception: the side effect, a `tracing` event at level `WARN` with
+target `rmcp::transport::auth` whose message formats both URLs (`Url`'s `Display`, the
+serialization), is not modelled, as at `debug_empty_resource_metadata`. -/
+def transport.auth.prim.warn_downgraded_resource_metadata (_url : url.Url) (_base_url : url.Url) :
+    Result Unit :=
+  ok ()
+
+/-- [rmcp::transport::auth::prim::warn_disallowed_resource_metadata]:
+    Source: 'crates/rmcp/src/transport/auth.rs', lines 4597:4-4602:5
+
+**Model:** `ok ()`. Stated exception: the side effect, a `tracing` event at level `WARN` with
+target `rmcp::transport::auth` whose message formats both URLs, is not modelled, as at
+`debug_empty_resource_metadata`. -/
+def transport.auth.prim.warn_disallowed_resource_metadata (_url : url.Url) (_base_url : url.Url) :
+    Result Unit :=
+  ok ()

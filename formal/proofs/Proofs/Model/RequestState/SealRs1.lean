@@ -49,8 +49,8 @@ theorem utf8_rs1 : utf8 "rs1" = versionV1 := by decide +kernel
 The `rs1` token `"rs1." ++ b64 body ++ "." ++ b64 tag`, as UTF-8 bytes, where
 `tag = hmacSha256 key (transcriptV1 associated_data body)` (W10). Preconditions: the transcript
 fits in `Usize.max` bytes (`h_len`) and the capacity sum of lines 574–576 is at most
-`ExtModel.maxStringBytes` (`h_cap`). The statement is that of the draft spec file
-`formal/specs/Drafts/RequestState.lean`. -/
+`ExtModel.maxStringBytes` (`h_cap`). The statement is restated in
+`formal/proofs/Proofs/Internal/Model/RequestState.lean`. -/
 @[step]
 theorem seal_rs1_spec (key : Slice Std.U8) (associated_data : Slice Std.U8)
     (body : Slice Std.U8)

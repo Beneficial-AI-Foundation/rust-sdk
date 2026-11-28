@@ -49,8 +49,8 @@ theorem utf8_rs2 : utf8 "rs2" = versionV2 := by decide +kernel
 The `rs2` token `"rs2." ++ b64 kid ++ "." ++ b64 body ++ "." ++ b64 tag`, as UTF-8 bytes, where
 `tag = hmacSha256 key (transcriptV2 kid associated_data body)` (W11); any kid is accepted.
 Preconditions: the transcript fits in `Usize.max` bytes (`h_len`) and the capacity sum of
-lines 590–596 is at most `ExtModel.maxStringBytes` (`h_cap`). The statement is that of the
-draft spec file `formal/specs/Drafts/RequestState.lean`. -/
+lines 590–596 is at most `ExtModel.maxStringBytes` (`h_cap`). The statement is restated in
+`formal/proofs/Proofs/Internal/Model/RequestState.lean`. -/
 @[step]
 theorem seal_rs2_spec (kid : Str) (key : Slice Std.U8) (associated_data : Slice Std.U8)
     (body : Slice Std.U8)

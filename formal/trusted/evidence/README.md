@@ -896,14 +896,14 @@ Phase 1: the facts later proofs needed (72 statements, success and failure cases
 `formal/proofs/Proofs/External/` (`Base64.lean`, `String.lean`, `Prim.lean`, `Std.lean`);
 `formal/specs/Specs/External.lean` restates them as theorems `Theorems.External.*` and checks
 their axioms with `#print axioms` (each at most `propext`, `Classical.choice`, `Quot.sound`).
-Their draft file (`formal/specs/Drafts/External.lean` at the time) was never committed: the
-statements entered git already incorporated, in commit `af41799` (`git show
-af41799:formal/specs/Specs/External.lean`).
+The statements entered git already incorporated, in commit `af41799` (`git show
+af41799:formal/specs/Specs/External.lean`); they are now restated in
+`formal/proofs/Proofs/Internal/External.lean`.
 
 Phase 2: 43 statements, drafted by an AI agent (Claude Code `mcp-spec`, `claude-opus-5-5`), reviewed
 (round 1: two agents, no blocking finding), signed off by the spec owner on 2026-11-23, proved by
-separate `mcp-lean` agents and restated in `formal/specs/Specs/External.lean`; the draft file
-(uncommitted) was removed at incorporation. Each law depends on at most `propext`,
+separate `mcp-lean` agents and restated in the project file (now
+`formal/proofs/Proofs/Internal/External.lean`). Each law depends on at most `propext`,
 `Classical.choice` and `Quot.sound`.
 
 ## Skills externals (translation patch 04, targets K01–K20)
@@ -1455,3 +1455,191 @@ s16_prim_rfc4231_verify_accepts_only_the_exact_tag}` and
 rs2_known_answer_matches_wire_specification}` (RFC 4231 cases 1–7 and the codec known answers)
 and the five SHA-256 tests `model::skill::tests::sha256_digest::matches_the_digest_in_the_spec_example`
 and `model::skill::tests::skill_resource_verify::*` (4).
+
+## Auth metadata externals (translation patch 06, targets A04–A10)
+
+Translation patch 06 (`formal/trusted/patches/06-auth-metadata.patch`; human decisions
+2026-11-26 and 2026-11-27, AD1–AD8) lets the OAuth metadata URL and issuer checks of
+`crates/rmcp/src/transport/auth.rs` translate: A04 `is_http_url`, A05
+`is_disallowed_metadata_host`, A06 `is_allowed_metadata_url`, A07
+`resolve_resource_metadata_url`, and A08–A10 through the patch-06 helpers
+`check_authorization_response_issuer`, `check_authorization_metadata_issuer` and
+`check_resource_metadata_resource` (the `validate_*` wrappers, which map the mirror enum
+`IssuerError` to `AuthError` or read a field of the opaque `AuthorizationManager`, stay
+unverified glue, AD1). It adds the module `auth::prim` (ten functions, opaque in the translation)
+and makes the remaining code call only the standard-library and `url` functions below. Every
+model is a definition in `formal/trusted/Rmcp/FunsExternal.lean` (section "`auth.rs` OAuth
+metadata URL and issuer checks"), with its source cited in its docstring; `TypesExternal.lean`
+is unchanged; `axioms.lock` stays empty. Seven new `opaque` constants (human decision AD4), which
+add no axiom; their laws are not stated and are taken as hypotheses by the statements that need
+them (as for patch 05):
+
+| Opaque constant | Stands for | Why it is not computed |
+|---|---|---|
+| `ExtModel.urlScheme : Url → Str` | `Url::scheme` (`url-2.5.9/src/lib.rs` lines 902–904) | `url.Url` is abstract |
+| `ExtModel.urlPath : Url → Str` | `Url::path` (lines 1390–1397) | as above |
+| `ExtModel.urlFragment : Url → Option Str` | `Url::fragment` (lines 1544–1549) | as above |
+| `ExtModel.urlPort : Url → Option U16` | the field `port`, `Url::port` (lines 1268–1270) | as above |
+| `ExtModel.urlSerialization : Url → String` | the field `serialization` (line 237) | as above; its relation to the other components is not stated |
+| `ExtModel.urlJoin : Url → List U8 → Result Url ParseError` | `Url::join` (lines 470–472) | the URL parser is not modelled (as `urlParse`) |
+| `ExtModel.issuerUrl : Url → List U8 → String` | `auth::prim::issuer_url` (clone, `set_query(None)`, `set_fragment(None)`, `set_path`, `to_string`) | the `url` setters are not modelled |
+
+Exact models (computable, so they can be evaluated; examples in
+`formal/proofs/Proofs/External/Auth.lean`), with their Rust source (`nightly-2026-09-17` `rust-src` unless stated):
+
+| Model | Source |
+|---|---|
+| `Url::port_or_known_default`: `urlPort`, else `ExtModel.defaultPort (urlScheme)` (`http`/`ws` 80, `https`/`wss` 443, `ftp` 21, else `None`) | `url-2.5.9/src/lib.rs` lines 1300–1302, `src/parser.rs` lines 185–192 |
+| `<Url as PartialEq>::eq`: equality of `urlSerialization` | `url-2.5.9/src/lib.rs` lines 2830–2836 |
+| `<Url as Clone>::clone`: the same value | `url-2.5.9/src/lib.rs` line 226 (`#[derive(Clone)]`) |
+| `Url::scheme`, `path`, `fragment`, `join`: `ok` of the opaque value | `url-2.5.9/src/lib.rs` as in the table above |
+| `Option::zip` | `core/src/option.rs` lines 1983–1992 |
+| `str::eq_ignore_ascii_case`: equal bytes after `ExtModel.asciiLowercase` | `core/src/str/mod.rs` lines 2859–2861; `core/src/slice/ascii.rs` lines 66–87 (length test, then the path chosen by the `cfg` of lines 71–74), both paths: the chunked `eq_ignore_ascii_case_chunks::<16>`, lines 125–171, taken for at least 16 bytes on `x86_64` with `sse2` (the translated target) and `aarch64` with `neon`, and the simple loop `eq_ignore_ascii_case_simple`, lines 92–109, otherwise; `core/src/num/mod.rs` lines 737–739. The model covers both: each compares every index of the equal-length slices with `u8::eq_ignore_ascii_case` (the chunked path all full chunks, lines 145–152, then the last 16 bytes, lines 162–168) and returns `true` exactly when all pairs match |
+| `prim::trim`: `ExtModel.trimWhitespace` (strip the UTF-8 encodings `ExtModel.whitespaceUtf8` of the 25 `White_Space` code points `ExtModel.whitespaceCodePoints` from both ends) | `core/src/str/mod.rs` lines 2186–2188 and 2377–2394, `core/src/str/pattern.rs` lines 265–273, 330–338, 684–721, 775–808, 902–933, 943–948, `core/src/char/methods.rs` lines 1088–1094, `core/src/unicode/unicode_data.rs` lines 148 and 906–929 |
+| `prim::starts_with`: byte prefix (`<+:`) | `core/src/str/mod.rs` lines 1420–1422, `core/src/str/pattern.rs` lines 983–985 |
+| `prim::strip_suffix`: byte suffix, then `take` | `core/src/str/mod.rs` lines 2486–2491, `core/src/str/pattern.rs` lines 1030–1050 |
+| `prim::strip_dir_prefix`: byte prefix `prefix ++ "/"`, then `drop` | `format!` of `prefix` and `/`; `core/src/str/mod.rs` lines 2458–2460 with the pattern `&String`, whose `Pattern` impl, `alloc/src/string.rs` lines 2691–2711, forwards to the `&str` pattern (`strip_prefix_of`, lines 2709–2711); `core/src/str/pattern.rs` lines 1019–1026 and 983–985 |
+| `prim::trim_start_slashes`: `dropWhile` of the byte 47 | `core/src/str/mod.rs` lines 2424–2431, `core/src/str/pattern.rs` lines 265–273 and 401–477; `'/'` is the single UTF-8 byte 47 |
+| `prim::issuer_url`: `ok` of the opaque `issuerUrl` | `crates/rmcp/src/transport/auth.rs` lines 4567–4577 of the patched copy |
+| `prim::debug_empty_resource_metadata`, `debug_unparsable_resource_metadata`, `warn_downgraded_resource_metadata`, `warn_disallowed_resource_metadata`: `ok ()` | `crates/rmcp/src/transport/auth.rs` lines 4579–4602 of the patched copy (`debug!`/`warn!` with `target: "rmcp::transport::auth"`, AD2) |
+
+New trusted helpers (namespace `ExtModel`): `defaultPort`, `whitespaceCodePoints`,
+`whitespaceUtf8`, `matchedPrefixLength`, `dropEncodedPrefixes`, `trimWhitespace`, with the
+length lemmas `length_dropEncodedPrefixes_le`, `length_trimWhitespace_le`,
+`length_trimWhitespace_le_max` and `length_dropWhile_le_max`. Stated exceptions (also in the
+docstrings): the four logging functions do not model their side effect (a `tracing` event, which
+changes no value of the translated code; a subscriber that panics or blocks is not modelled);
+`Url::join` is assumed to return and not to panic (as `Url::parse`): its parser stores every
+offset with `to_u32(..)?` (`url-2.5.9/src/parser.rs` lines 1752–1758), so an offset beyond
+`u32::MAX` gives `Err(Overflow)`, and the assumption covers its internal panic sites
+(`unwrap` at lines 554, 905, 941, 1053, 1405, `assert!` at 1465, 1485, `panic!` at 1525,
+`debug_assert!`s at 404, 445, 509, 710, 754, 1620, 1626), with one stated exception (human
+decision AD8, 2026-11-27): the `debug_assert!` at `src/parser.rs` line 1304
+(`self.serialization.as_bytes()[segment_start - 1] == b'/'`, double-dot arm of `parse_path`),
+active in the translated configuration, fails for a `file:` base whose last path segment is a
+normalized Windows drive letter (`pop_path`, lines 1403–1415, does not pop it) joined with a
+leading `..` or `%2e%2e` (or other percent-encoded double-dot) segment, so `Url::join` panics
+where the model returns `ok`. Reproduced 2026-11-27 (scratch program, url 2.5.9, kept outside the
+repository): `Url::parse("file://h/x/C:").unwrap().join("..")` and `.join("%2e%2e")` panic at
+`parser.rs:1304:21` in a debug build and return `Ok(file://h/x/C:)` in a release build; a
+reviewer's fuzzing found 595 such panics, all with a `file:` base, all at line 1304, none for
+another scheme. A07 statements assume that the base URL's scheme is `http` or `https` (AD8).
+`prim::issuer_url` returns `ok` also where Rust panics, for a discovery URL with neither query
+nor fragment whose serialization is longer than `u32::MAX` bytes (stated exception, human
+decision AD7; A09 statements take a premise bounding the URL). The setters
+store lengths with `to_u32(self.serialization.len()).unwrap()` (`url-2.5.9/src/lib.rs` lines
+1589, 1610, 1768, 1804). With `None`, `set_query` and `set_fragment` only truncate (1646 and 1589
+are on the `Some` branches; 1610 converts a length cut at the old query or fragment start, a
+`u32`); `set_path` converts at 1768 the length `L` without query and fragment and at 1804 the
+length with the new path, which is shorter than the old one in every branch (the new path is
+`""` or `/` and a substring of the old path without the 33- or 40-byte well-known segment; the
+path parser writes serialized bytes back unchanged, only removes dot segments, and adds at most
+two bytes), so 1804 never panics after 1768 passed. 1768 panics exactly when `L > u32::MAX`,
+possible only without query and fragment, because `Url::parse` and `Url::join` check only the
+start offsets of the components, not the total length. The `debug_assert!`s of the setters
+(lines 1584, 1600, 1641: `#` and `?` at the stored starts) and the `assert!` of line 1609 hold
+for every `Url` the parser and the setters build; `restore_after_path`'s `adjust` is not called.
+The AD8 panic is not known to be reachable through the path parser that `set_path` runs: the new
+path is `/` followed by a substring of a serialized path, and a scratch fuzz run (2026-11-27, url
+2.5.9 debug build) of the `issuer_url` setter sequence on `file:` URLs built from drive letters
+and dot segments, about 2.9 million paths, found no panic.
+`prim::trim` is defined on every `Str` and equals Rust's char-level trim on valid
+UTF-8 (every Rust `&str`): at a char boundary the bytes begin with the encoding of a char exactly
+when that char is there (UTF-8 is prefix-free), and they end with it exactly when it is the last
+char (an encoding is a lead byte followed by continuation bytes). Each external has a proved spec
+theorem `<generated name>_spec` in `Proofs.External.Auth` (no `sorry`; the axiom audit accepts
+the build with 0 trusted axioms), plus `whitespaceUtf8_eq` (the byte strings of
+`whitespaceUtf8` are `utf8` of the one-char strings of `whitespaceCodePoints`, by kernel
+evaluation) and `decide` examples of `trimWhitespace` and `defaultPort`. The root
+`formal/proofs/Proofs.lean` needs `public import Proofs.External.Auth`.
+
+**White_Space table check** (2026-11-26, scratch program compiled with the pinned
+`rustc 1.100.0-nightly (923c95cdf 2026-09-16)`, kept outside the repository): the set of all
+`char`s `c` (U+0000–U+10FFFF) with `c.is_whitespace()` equals the 25 code points of
+`ExtModel.whitespaceCodePoints`, in order; `char::encode_utf8` of each gives exactly the bytes of
+`ExtModel.whitespaceUtf8`; and `str::trim` of `"{l}{r}a\u{200b}b{r}{l}"` is `"a\u{200b}b"` for
+all 625 pairs `l`, `r` of these chars (U+200B, not `White_Space`, kept).
+
+Tests (all in `crates/rmcp/src/transport/auth.rs`, `mod tests`, unchanged by patch 06; the
+`d5_*` tests are the boundary tests that `02-phase2-tests.patch` adds for these targets, AD5;
+they pass on the patched copy: `cargo test --locked -p rmcp --lib --features
+request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth,macros`
+in a copy of `.llbc/work/` after `scripts/apply-patches.sh` with patches 01–06, 2026-11-27, repository toolchain 1.96: 860
+passed, 0 failed, including the thirteen AD5 tests; the same 860 pass on the patch-01..05 copy and
+on the upstream copy with patches 01 and 02 only):
+
+| Models | Exercised by |
+|---|---|
+| `Url::scheme`, `Url::host_str` (A04 `is_http_url`) | `rejects_non_http_resource_metadata_parameter` (`file:`), `parses_resource_metadata_parameter` |
+| `Option::zip`, `str::eq_ignore_ascii_case`, `Url::port_or_known_default` (`is_same_origin`, A07) | `parses_resource_metadata_parameter`, `parses_cross_origin_resource_metadata_parameter`, `parses_loopback_resource_metadata_parameter_for_loopback_resource` (explicit ports 9000 and 8080), `discovery_get_follows_same_origin_redirects` |
+| `prim::trim`, `Url::parse`, `Url::join` (A07) | `parses_relative_resource_metadata_parameter`, `keeps_same_origin_resource_metadata_parameter_for_private_resource` (relative values joined to the base) |
+| `prim::warn_downgraded_resource_metadata` (A07) | `rejects_http_resource_metadata_parameter_for_https_resource`, `resource_metadata_parameter_rejects_https_downgrade` (5 cases) |
+| `prim::warn_disallowed_resource_metadata`; A05/A06 hosts, `metadata_resolver::prim::{ends_with, trim_end_dots}` | `rejects_disallowed_host_resource_metadata_parameter` (4 cases, among them `localhost`), `cross_origin_private_resource_metadata_parameter_follows_policy`, `metadata_url_checks_bracketed_ipv6_literals`, `metadata_url_allows_private_literals_only_when_opted_in`, `metadata_url_allows_http_authorization_server_for_https_resource` |
+| A08: `IssuerError` and its mapping, `str::to_owned` | `validate_authorization_response_issuer_accepts_valid_cases`, `validate_authorization_response_issuer_rejects_invalid_cases`, `invalid_issuer_does_not_consume_authorization_state` |
+| A09: `prim::strip_dir_prefix`, `prim::strip_suffix`, `prim::trim_start_slashes`, `prim::issuer_url`, `trim_root_slash`/`is_root_url` | `authorization_metadata_accepts_oidc_path_inserted_issuer`, `authorization_metadata_accepts_oidc_path_appended_issuer`, `authorization_metadata_rejects_mismatched_issuer`, `authorization_metadata_allows_missing_issuer_when_configured`, `authorization_metadata_rejects_missing_issuer_by_default`, `authorization_metadata_allows_only_root_trailing_slash_equivalence`, `protected_resource_metadata_preserves_non_root_issuer_trailing_slash`, `protected_resource_metadata_supports_authorization_server_path_insertion` |
+| A10: `Url::fragment`, `<Url as PartialEq>::eq`, `<Url as Clone>::clone`, `prim::starts_with`, `metadata_resolver::prim::ends_with` | `protected_resource_discovery_rejects_{mismatched_resource, missing_resource, resource_that_is_not_a_url, resource_with_fragment}`, `resource_identifier_matching_allows_matching_host_or_parent_path` |
+
+Boundary tests of patch 02 (AD5; a mutation of the code, such as a renamed host or an
+ASCII-only trim, makes them fail): `d5_a05_metadata_host_names` (the cloud-metadata host names
+and the `.localhost` suffix of hunks H1/H2), `d5_a07_resolve_trim_empty_unparsable`
+(`prim::trim` on a value with surrounding whitespace, also checked above against `str::trim`;
+`prim::debug_empty_resource_metadata` and `prim::debug_unparsable_resource_metadata`),
+`d5_a07_same_origin` (hosts that differ only in ASCII case, and the port cases of
+`is_same_origin`), `d5_a09_issuer_root_slash` (`trim_root_slash`, `is_root_url`),
+`d5_a08_response_issuer_paths` and `d5_a09_metadata_issuer_paths` (every `IssuerError` and
+`AuthError` path of A08 and A09, including the OIDC path-appended form),
+`d5_a09_expected_issuer_forms` (every discovery-URL form of
+`expected_issuer_for_authorization_metadata_url`, including repeated leading slashes for
+`prim::trim_start_slashes`), `d5_a06_private_ip_targets` (private and loopback IPv4/IPv6 literals
+through H4, with and without `allow_private`), `d5_a10_resource_identifier_port` (the port
+clause of `is_resource_identifier_valid`, and the exact `ResourceMismatch` payload),
+`d5_a06_non_http_target` (an `ftp:` target is refused by A06 with and without `allow_private`,
+and an absolute `ftp:` parameter makes A07 return `None`: the `is_http_url` check of the
+target), `d5_a06_loopback_base_target` (with a loopback base, a cloud-metadata IP literal or
+host name is still refused, while a loopback target is allowed: the order of the metadata-host
+check and the loopback exemption), `d5_a07_resolve_parse_before_join` (the parameter
+`https:public.example/x`, which `Url::parse` accepts as an absolute URL and `Url::join` would
+resolve against the base, gives `https://public.example/x`: H5 tries `Url::parse` first and
+joins only on its error) and `d5_a10_resource_identifier_scheme` (an `http:` resource for an
+`https:` base with the same host, port and path is refused: the scheme clause of
+`is_resource_identifier_valid`). Reviewers' mutation runs (2026-11-27; one run of 60 mutants of
+the patch-06 targets plus earlier, smaller runs): after the AD5 extensions every non-equivalent
+mutant tried is killed. The surviving mutants are equivalent: m01 (`host_str().is_some()` in
+A04: every `http(s)` URL has a host), m18 (`is_http_url` in A07's same-origin branch: equivalent
+under the AD8 premise that the base is `http` or `https`), m20 (the downgrade check written
+`== "http"`: the same return value; it differs only in which `tracing` event is emitted, a
+stated exception), m39 (`set_path("/")` for an empty issuer path: for special schemes the path
+is never empty), m40 (`|| path == oidc_prefix`), m51 and m60 (equality fast paths), and the
+unreachable `None` arm of H4. The opaque values are not
+checked by any test (they are not computed); the tests exercise the Rust functions on the paths
+the targets take.
+
+**Clippy.** The property checked is that patch 06 adds no warning. `cargo clippy -p rmcp --lib
+--no-default-features --features
+request-state,server,client,client-side-sse,transport-streamable-http-server,transport-streamable-http-client,auth`
+(the translated feature configuration), with and without `macros`, on the patch-01..05 copy and
+on the patch-01..06 copy (2026-11-26, with the AD5 tests in patch 02): the same set of warnings
+on both copies (same lint, file and message; only line numbers in `auth.rs` move), none of them
+`clippy::nonminimal_bool` (AD3) or `clippy::enum_variant_names` (AD6: `IssuerError`'s variants
+copy the names of the `AuthError` variants exactly, so all begin with `Authorization`; without
+the allow clippy reports "all variants have the same prefix"). The totals depend on the
+toolchain, not on `macros`: 10 with the repository toolchain 1.96 (clippy 0.1.96; nine dead-code
+warnings and the patch-05 `redundant_closure`), 29 with the pinned `nightly-2026-09-17` (the
+same ten plus 18 `clippy::result_large_err` and one `clippy::question_mark` on the
+`else { return None; }` chain of `expected_issuer_for_authorization_metadata_url`, which H7
+keeps), each on both copies, with and without `macros`.
+
+**Linkage of the auth metadata targets** (plan Section 19). A04–A10 and their helpers are
+`PATCH06_TARGETS` (linkage `patch-06`, AD1; A04 and `is_same_origin` translate unmodified, but
+A04's Lean does not build without hunk H3 and `is_same_origin` is reached only from A07). For the
+linkage run `scripts/check-original-linkage.sh` drops the seven patch-06 start points and the
+opaque entry `rmcp::transport::auth::prim` from the copy's Charon settings. Runs (2026-11-26,
+Aeneas `nightly-2026.11.24-fb44cb4`, Charon `0.1.324`, Rust `nightly-2026-09-17`), in a scratch
+clone of the repository at `94a3c1b` with this change and the lead-owned Charon settings,
+script and pin changes committed on top (scratch commit
+`70d7787619defc3e0e88886b277db0b1720f00b7`, without this evidence section): `scripts/apply-patches.sh`
+exit 0; `scripts/aeneas-translate.sh` exit 0 (all 100 targets defined, no `sorry`, `Funs.lean`
+matches its pin, re-translation byte-identical to the committed output); `lake build --wfail Defs
+Proofs Specs Rmcp RmcpExternal` exit 0; `scripts/lean-guard.sh` `build-log`, `sources` and
+`axioms` exit 0 (0 trusted axioms, 0 native-code axioms); `scripts/check-original-linkage.sh`
+exit 0 (65/42/37/10 blocks identical; 520 constants and 41 externals elaborated identically).

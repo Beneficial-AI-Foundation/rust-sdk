@@ -29,6 +29,7 @@ public import Proofs.External.IntParse
 public import Proofs.External.Prim
 public import Proofs.External.Skill
 public import Proofs.External.MetadataResolver
+public import Proofs.External.Auth
 public import Proofs.External.Std
 public import Proofs.External.Iter
 public import Proofs.External.Byte
@@ -67,9 +68,12 @@ public import Proofs.Transport.Tower
 public import Proofs.Transport.Auth
 public import Proofs.Transport.MetadataResolver.Common
 public import Proofs.Transport.MetadataResolver
+public import Proofs.Transport.AuthMetadata.Common
+public import Proofs.Transport.AuthMetadata
 public import Proofs.Defs.Sse
 public import Proofs.Defs.Net
 public import Proofs.Defs.MetadataResolver
+public import Proofs.Defs.AuthMetadata
 public import Proofs.Defs.Methods
 public import Proofs.Defs.Tower
 public import Proofs.Internal.External
@@ -81,6 +85,7 @@ public import Proofs.Internal.Transport.AsyncRw
 public import Proofs.Internal.Transport.StreamableHttpServer.Tower
 public import Proofs.Internal.Transport.Auth
 public import Proofs.Internal.Transport.Auth.MetadataResolver
+public import Proofs.Internal.Transport.Auth.AuthMetadata
 
 @[expose] public section
 
@@ -109,6 +114,13 @@ OAuth metadata address policy (2026-11-26): `Proofs.Transport.MetadataResolver.C
 `Proofs.Transport.MetadataResolver` (N01, N03–N11 of `transport/auth/metadata_resolver.rs`, the
 laws of `Defs.MetadataResolver` and the compositions; statements signed off 2026-11-26), restated
 in `Proofs.Internal.Transport.Auth.MetadataResolver`.
+
+OAuth metadata URL and issuer checks (2026-11-27): `Proofs.Transport.AuthMetadata.Common` and
+`Proofs.Transport.AuthMetadata` (A04–A10 of `transport/auth.rs` through patch 06, the laws of
+`Defs.AuthMetadata` and the compositions; statements signed off 2026-11-27), restated in
+`Proofs.Internal.Transport.Auth.AuthMetadata`, with their definitions in
+`Proofs.Defs.AuthMetadata`; the law `trimWhitespace_utf8Bytes` of the `str::trim` model is in
+`Proofs.External.Auth`, restated in `Proofs.Internal.External`.
 
 Since 2026-11-24 it also imports the definitions used only by internal statements
 (`Proofs.Defs.*`) and the internal spec files (`Proofs.Internal.*`: statements about private,

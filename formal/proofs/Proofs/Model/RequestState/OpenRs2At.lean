@@ -46,8 +46,8 @@ open core.result.Result.Insts open_rs2_at.closure.Insts
 `resultBytes result = openRs2 …`: the result is exactly the expected result of
 `Defs.CodecState.openRs2`. Preconditions: fewer than `Usize.max` `.` bytes in the token
 (`h_count`, W09 domain) and, for a token whose kid and body decode, a W11 transcript of at most
-`Usize.max` bytes (`h_len`). No codec-state premise. The statement is that of the draft spec
-file `formal/specs/Drafts/RequestState.lean`. -/
+`Usize.max` bytes (`h_len`). No codec-state premise. The statement is restated in
+`formal/proofs/Proofs/Internal/Model/RequestState.lean`. -/
 @[step]
 theorem open_rs2_at_spec (self : RequestStateCodec) (sealed : Str)
     (associated_data : Slice Std.U8) (now_ms : Std.I64)

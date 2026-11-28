@@ -12,8 +12,8 @@ public import Rmcp.Funs
 # Laws of the Phase 2 external models: Option (plan steps S26/S27, stage 6)
 
 Proofs of the Phase 2 laws signed off by the spec owner on 2026-11-23 (plan steps S26/S27),
-restated in `formal/proofs/Proofs/Internal/External.lean` (Phase 2 part); the draft file was removed at
-incorporation. For this group (spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
+restated in `formal/proofs/Proofs/Internal/External.lean` (Phase 2 part), the project
+file that holds them. For this group (spec owner sign-off 2026-11-23). Filled in by the stage-6 prover.
 `core.option.Option.or_else_spec` was added on 2026-11-25 (human decision: every external reached
 by the translation has a `_spec` theorem).
 -/

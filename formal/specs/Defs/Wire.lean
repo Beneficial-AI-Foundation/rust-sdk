@@ -19,7 +19,7 @@ transcripts, the frame layout and the expiry predicate.
 Rust source: `crates/rmcp/src/model/request_state_wire.rs` in the patched copy (patch 01 on
 origin/main 7caec76, `formal/trusted/patches/01-request-state-wire.patch`, D2 fallback
 2026-11-23; the file exists only there); line numbers below refer to it. The translation the
-drafts are checked against was generated from it plus the Charon settings of
+statements are checked against was generated from it plus the Charon settings of
 `crates/rmcp/Cargo.toml` (the seven derived `Debug` impls excluded). Every definition is stated on
 mathematical objects (`List U8`, `Nat`, `Int`) and does not refer to the translated code.
 Everything lives in the namespace `Defs.Wire`.
