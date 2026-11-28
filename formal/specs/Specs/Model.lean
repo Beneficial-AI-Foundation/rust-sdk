@@ -5,9 +5,10 @@ Authors: Hoang Le Truong
 -/
 module
 public import Defs
-public import Proofs.Model.JsonRpcMessage
-public import Proofs.Model.SamplingContent
-public import Proofs.Model.Reference
+public import Rmcp.Funs
+import Proofs.Model.JsonRpcMessage
+import Proofs.Model.SamplingContent
+import Proofs.Model.Reference
 
 @[expose] public section
 

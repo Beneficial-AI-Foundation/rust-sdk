@@ -5,44 +5,48 @@ Authors: Hoang Le Truong
 -/
 module
 public import Defs
-public import Proofs.Model.Skill.Basic
-public import Proofs.Model.Skill.Verify
-public import Proofs.Model.Skill.Model
-public import Proofs.Model.Skill.Validate
+public import Rmcp.Funs
+import Proofs.Model.Skill.Basic
+import Proofs.Model.Skill.Verify
+import Proofs.Model.Skill.Model
+import Proofs.Model.Skill.Validate
 
 @[expose] public section
 
 /-!
-# Public API of `crates/rmcp/src/model/skill.rs` (K01–K20)
+# Public API of `crates/rmcp/src/model/skill.rs`: top-level functions
+
+This file states only the **top-level** public functions of `skill.rs`: those that no other
+verified function calls (human decision 2026-11-28). The six public functions that a top-level
+one calls are verified too: K04 `SkillResource::new` and K07 `sha256_digest` (called by K05
+`from_bytes`; K07 also by K06 `verify`), K13 `Skill::validate` (called by K16 `validate_skills`)
+and K12 `Skill::name`, K14 `skill_name_from_uri`, K15 `is_sha256_digest` (called by K13). Their
+statements, the compositions that involve them, and the consequences of the model `Defs.Skill`
+(statements with no Rust call, including the bridge lemma for (N)) are in
+`formal/proofs/Proofs/Internal/Model/Skill.lean`. The theorem docstrings below are unchanged
+signed-off text: where one names K04, K07, K12–K15, K13's corollary, `Skill.validate_with_meta` or
+`firstFileFault_ne_malformedDigest`, that statement is in the internal file.
 
 One row per theorem below; the theorem is `Theorems.skill.<Theorem>`. In the ID column, `Kxx cor.`
-is a corollary of one spec theorem (K06 cor., K09 cor., K13 cor., K16 cor.); a composition is
-labelled by the spec theorems it uses (`K05+K06`; `K05 (K07)` for `from_bytes` described with the
-digest of K07; `K05 (model)` for `from_bytes` combined with a consequence of the model); `model` is
-a consequence of the model (a statement about the definitions of `Defs.Skill` only, with no Rust
-call). The keys of the last two columns are explained in "Premises" and "Not covered" below; they
-are local to this file (`Specs/Model/RequestState.lean` uses some of the same letters with other
-meanings).
+is a corollary of one spec theorem (K06 cor., K09 cor., K16 cor.); a composition is labelled by
+the spec theorems it uses (`K05+K06`; `K05 (K07)` for `from_bytes` described with the digest of
+K07; `K05 (model)` for `from_bytes` combined with a consequence of the model). The keys of the
+last two columns are explained in "Premises" and "Not covered" below; they are local to this file
+and its internal companion (`Specs/Model/RequestState.lean` uses some of the same letters with
+other meanings).
 
 | ID | Function | Theorem | Guarantee | Premises (caller must ensure) | Not covered (Rust may panic or behave otherwise; the model does not) |
 |---|---|---|---|---|---|
 | K01 | `Resource::is_directory` | `Resource.is_directory` | `true` iff the MIME type is `Some("inode/directory")` | (Z) | none |
 | K02 | `SkillsCapability::new` | `SkillsCapability.new` | `directory_read = false` | none | none |
 | K03 | `SkillsCapability::with_directory_read` | `SkillsCapability.with_directory_read` | `directory_read = true` (its only field) | none | none |
-| K04 | `SkillResource::new` | `SkillResource.new` | the entry with the converted URI and digest and the size | caller code | (I) |
 | K05 | `SkillResource::from_bytes` | `SkillResource.from_bytes` | the converted URI, `sha256Digest bytes`, the byte length | caller code | (I), (S) |
 | K06 | `SkillResource::verify` | `SkillResource.verify` | `Ok` iff length and digest match; else `Size` (length first), else `Digest`, with payloads | none | (S) |
-| K07 | `sha256_digest` | `sha256_digest` | `sha256:` and the lowercase hex of the SHA-256 digest (`sha256Digest`) | none | (S) |
 | K08 | `SkillFrontmatter::new` | `SkillFrontmatter.new` | the converted name and description, no extra field | caller code | (I) |
 | K09 | `SkillFrontmatter::with_field` | `SkillFrontmatter.with_field` | `extra` with `key ↦ value` set, other keys and fields unchanged; still sorted if it was | caller code | (I), (P) |
 | K09 cor. | same | `SkillFrontmatter.with_field_extra_entries_eq_mapInsert` | `extra` is `ExtModel.mapInsert k v self.extra.entries` (the model of `BTreeMap::insert`) | caller code | (I), (P) |
 | K10 | `Skill::new` | `Skill.new` | the converted URI, the frontmatter and resources given, no `_meta` | caller code | (I) |
 | K11 | `Skill::with_meta` | `Skill.with_meta` | `_meta = Some(meta)`, other fields unchanged | none | none |
-| K12 | `Skill::name` | `Skill.name` | the bytes of the frontmatter name | (Z) | none |
-| K13 | `Skill::validate` | `Skill.validate` | `validateResult self`: the first failing check in the Rust order, with payloads | (V), (N) | (H) |
-| K13 cor. | same | `Skill.validate_eq_ok_iff` | `Ok` iff `ValidSkill self` | (V), (N) | (H) |
-| K14 | `skill_name_from_uri` | `skill_name_from_uri` | `skillNameOfUri uri` | none | none |
-| K15 | `is_sha256_digest` | `is_sha256_digest` | `isSha256Digest digest` | none | none |
 | K16 | `validate_skills` | `validate_skills` | `validateSkillsResult skills`: the first skill error or `DuplicateSkill` | (V), (N), (U) for each skill | (H) |
 | K16 cor. | same | `validate_skills_eq_ok_iff` | `Ok` iff every skill is valid and the normalised URIs are distinct (`ValidSkills`) | as K16 | (H) |
 | K17 | `GetSkillResult::new` | `GetSkillResult.new` | `result_type = Some(COMPLETE)`, the skill, no TTL, cache scope or `_meta` | none | none |
@@ -54,40 +58,17 @@ meanings).
 | K05 (K07) | `from_bytes` | `SkillResource.from_bytes_eq` | the computation `uri.into()`, then the entry with digest `sha256Digest bytes` and size `bytes.len()` | none | (S) |
 | K05 (model) | `from_bytes` | `SkillResource.isSha256Digest_from_bytes` | the entry's digest is well-formed (`isSha256Digest`; so never `MalformedDigest`) | caller code | (I), (S) |
 | K06 cor. | `verify` | `SkillResource.verify_eq_ok_iff` | `Ok` iff the length is `size` and `sha256Digest bytes = digest` | none | (S) |
-| K07+K15 | `sha256_digest`, then `is_sha256_digest` | `is_sha256_digest_sha256_digest` | a computed digest is well-formed | none | (S) |
-| K11+K13 | `Skill::with_meta`, then `validate` | `Skill.validate_with_meta` | `validate` ignores `_meta`: the result is `validateResult self` | (V), (N) for `self` | (H) |
-| K13+K14 | `skill_name_from_uri`, `validate` | `Skill.skill_name_from_uri_eq_none_iff_validate_eq_err` | `None` iff `validate` returns `UriNotSkillMd(uri)` | (V), (N) | (H) |
-| K13+K14 | `skill_name_from_uri`, `validate` | `Skill.exists_skill_name_from_uri_eq_some_of_validate_eq_ok` | if `validate` returns `Ok(())`, `Some(segment)` with a segment that matches the name | (V), (N) | (H) |
-| K16+K13 | `validate_skills`, `validate` | `validate_skills_singleton` | on one skill, `validate_skills` returns what `validate` returns | (V), (N), (U) for the skill | (H) |
-| model | — | `skillNameOfUri_eq_some_iff` | what `skillNameOfUri` accepts: no `?`/`#`, `dir ++ segment ++ "/SKILL.md"` | none | none |
-| model | — | `skillNameOfUri_billing` | example: `billing/SKILL.md` names the skill `billing` | none | none |
-| model | — | `isSha256Digest_sha256Digest` | `sha256Digest` of any bytes is well-formed (71 ASCII bytes) | none | none |
-| model | — | `nameCharsValid_iff_words` | the name rule as words joined by single `-` | none | none |
-| model | — | `validateResult_eq_ok_iff` | `validateResult s = Ok` iff `ValidSkill s` | none | none |
-| model | — | `validateResult_eq_err_uriNotSkillMd_iff` | `UriNotSkillMd u` iff the URI names no skill, `u = s.uri` | none | none |
-| model | — | `validateResult_eq_err_invalidName_iff` | `InvalidName n` iff the URI names a skill, the name is invalid, `n` is the name | none | none |
-| model | — | `validateResult_eq_err_nameMismatch_iff` | `NameMismatch u n` iff the URI names a skill, the name is valid, the segment does not match, with payloads | none | none |
-| model | — | `validateResult_eq_err_missingSkillMd_iff` | `MissingSkillMd u` iff checks 1–3 pass, `resources` is a manifest without the skill's URI, `u = s.uri` | none | none |
-| model | — | `validateResult_eq_err_iff_firstFileFault_eq_some` | a per-file error `e` iff checks 1–5 pass and `e` is the first file fault (`firstFileFault`) | none | none |
-| model | — | `validateResult_ne_err_duplicateSkill` | `validateResult` never gives `DuplicateSkill` | none | none |
-| model | — | `validateResult_with_meta` | `validateResult` does not depend on `_meta` | none | none |
-| model | — | `firstFileFault_ne_malformedDigest` | files with well-formed digests never give `MalformedDigest` | none | none |
-| model | — | `validateSkillsResult_eq_ok_iff` | `validateSkillsResult l = Ok` iff `ValidSkills l` | none | none |
-| model | — | `validateSkillsResult_singleton` | `validateSkillsResult [s] = validateResult s` | none | none |
-| model | — | `ValidSkills.sublist` | a sublist (e.g. a prefix) of a valid listing is valid | none | none |
-| model | — | `validateSkillsResult_append_of_eq_err` | an error of a prefix is the error of the whole listing | none | none |
-| model | — | `NfkcFits.of_utf8ByteSize_le` | (N) from the NFKC expansion law and `72 * bytes ≤ isize::MAX` for the name and the URI | the expansion law (a premise about `ExtModel.nfkc`, see (N)) | none |
 
 ## What this file promises
 
 `skill.rs` describes a skill (a directory of files served as resources): its `SKILL.md`
 frontmatter, its manifest of files with their `sha256:` digests and sizes, and the result of
-`skills/get`. For each of the twenty public functions, a statement below says that the call, in
-the Lean model, terminates without panicking, and what it returns: the value built (K02–K05,
-K08–K11, K17–K20), the bytes or digest computed (K07, K12, K14, K15), or, for a `Result`, the
-`Ok` case and every `Err` case with its payload in the Rust order of checks (K06, K13, K16).
+`skills/get`. For each of the fourteen top-level public functions, a statement below says that
+the call, in the Lean model, terminates without panicking, and what it returns: the value built
+(K02, K03, K05, K08–K11, K17–K20), the truth value computed (K01), or, for a `Result`, the `Ok`
+case and every `Err` case with its payload in the Rust order of checks (K06, K16).
 The `Result`-returning functions are stated by an expected result written in `Defs.Skill`
-(`validateResult`, `validateSkillsResult`) or by a `match result with` whose arms are in the Rust
+(`validateSkillsResult`) or by a `match result with` whose arms are in the Rust
 order; each postcondition determines `result` uniquely (K09: when `self.extra` is sorted
 (`KeysSorted`), the sorted entries of the result are fixed by their lookups, and K09 cor. gives
 them for any entry list; K05: a `U64` is fixed by its value). Each holds under its premises, only
@@ -111,13 +92,12 @@ Rust strings are read as their UTF-8 bytes (`Defs.utf8Bytes`, the `val` of a `St
 opaque constants `ExtModel.sha256`, `ExtModel.nfkc` and `ExtModel.generalCategory` appear only
 unopened, inside `sha256Digest`, `isSkillName`, `nameMatchesSegment`, `NfkcFits` and directly in
 `verify_from_bytes`, as the values the Rust code computes. No statement assumes a law about them,
-except `NfkcFits.of_utf8ByteSize_le`, which takes the NFKC expansion bound as an explicit
-premise in law (implication) form (review rule of `formal/README.md`, "Trusted base").
+except `NfkcFits.of_utf8ByteSize_le` (in the internal file), which takes the NFKC expansion bound as
+an explicit premise in law (implication) form (review rule of `formal/README.md`, "Trusted base").
 
 Translated functions are written in full (`rmcp.model.skill.…`), as a bare name would resolve to
-a restated theorem. The model consequences (`model` rows) are about the definitions of
-`Defs.Skill` only; they keep the names of their proofs, `Defs.Skill.<name>`, under
-`Theorems.skill.<name>`.
+a restated theorem. The keys of "Premises" and "Not covered" below also serve the statements in
+`formal/proofs/Proofs/Internal/Model/Skill.lean` (K04, K07, K12–K15 and their compositions).
 
 ## Premises (caller must ensure)
 
@@ -131,15 +111,15 @@ a restated theorem. The model consequences (`model` rows) are about the definiti
   memory meets it (address space at most `2^57` bytes). Partly patch-induced (the `Vec`s of
   `prim::split_slash`/`split_percent`).
 * **(N)** `NfkcFits self`, **patch-induced**, a declared domain restriction (translation patch 04,
-  hunks H2 and H4; evidence `formal/trusted/evidence/README.md`): the NFKC forms of the name and
-  of the decoded URI segment, where `validate` computes them, have at most `isize::MAX / 4`
-  characters. The patched copy collects them into a `Vec<char>` (`prim::nfkc`) and panics above
-  that, the original streams them and does not. By the bridge lemma
-  `Theorems.skill.NfkcFits.of_utf8ByteSize_le` (last below) it follows from `72 * n ≤ isize::MAX`
-  for the `n` UTF-8 bytes of the name and of the URI (so it excludes no name or URI of at most
-  `2^56` bytes), given the law that NFKC expands a character sequence of length `m` to at most
-  `18 * m` characters (the largest expansion is `U+FDFA`, 18 characters), which the caller
-  supplies as a premise.
+  hunks H2 and H4; evidence `formal/trusted/evidence/README.md`): the NFKC forms of the name and of
+  the decoded URI segment, where `validate` computes them, have at most `isize::MAX / 4` characters.
+  The patched copy collects them into a `Vec<char>` (`prim::nfkc`) and panics above that, the
+  original streams them and does not. By the bridge lemma
+  `Theorems.skill.NfkcFits.of_utf8ByteSize_le` (`formal/proofs/Proofs/Internal/Model/Skill.lean`) it
+  follows from `72 * n ≤ isize::MAX` for the `n` UTF-8 bytes of the name and of the URI (so it
+  excludes no name or URI of at most `2^56` bytes), given the law that NFKC expands a character
+  sequence of length `m` to at most `18 * m` characters (the largest expansion is `U+FDFA`, 18
+  characters), which the caller supplies as a premise.
 * **(U)** `UriFits s.uri` for each skill of `validate_skills` (its URI is percent-normalised).
 
 ## Not covered (inherited exceptions)
@@ -175,24 +155,26 @@ a restated theorem. The model consequences (`model` rows) are about the definiti
 ## Provenance
 
 *Scope.* The public API of `skill.rs` (functions `pub` in upstream rmcp; human decision
-2026-11-24): the twenty public functions K01–K20 (human decision of 2026-11-25), with corollaries,
-compositions and the consequences of the model `Defs.Skill`.
+2026-11-24): of the twenty public functions K01–K20 (human decision of 2026-11-25), the fourteen
+top-level ones (K01–K03, K05, K06, K08–K11, K16–K20; human decision 2026-11-28), with their
+corollaries and the compositions of top-level functions. The intermediate K04, K07, K12–K15,
+their corollary and compositions, and the consequences of the model `Defs.Skill` are in
+`formal/proofs/Proofs/Internal/Model/Skill.lean`.
 
-*Order.* K01–K20 are in Rust source order (= ID order), each corollary after its statement; then
-the compositions, then the consequences of the model.
+*Order.* The top-level functions are in Rust source order (= ID order), each corollary after its
+statement; then the compositions.
 
-*Proofs.* Each statement is restated as a theorem `Theorems.skill.<Type>.<function>` (free
-functions `Theorems.skill.<function>`; corollaries, compositions and model consequences keep the
-descriptive name of their proof), proved by its spec theorem in
-`Proofs/Model/Skill/{Basic,Verify,Model,Validate}.lean` (with the helpers of `Common` and
-`ValidateHelpers`), and followed by the assumptions its proof depends on, checked by
-`#print axioms` under `#guard_msgs`. The restated text is that of the signed-off statements
-(function names written in full).
+*Proofs.* Each statement is restated as a theorem `Theorems.skill.<Type>.<function>` (free functions
+`Theorems.skill.<function>`; corollaries and compositions keep the descriptive name of their proof),
+proved by its spec theorem in `Proofs/Model/Skill/{Basic,Verify,Model,Validate}.lean` (with the
+helpers of `Common` and `ValidateHelpers`), and followed by the assumptions its proof depends on,
+checked by `#print axioms` under `#guard_msgs`. The restated text is that of the signed-off
+statements (function names written in full).
 
-*Sign-off.* The 51 statements: signed off by the spec owner (Hoang Le Truong) on 2026-11-25
-(the signed-off statements are the ones in this project file). Translation
-stage (patch 04 and its external models): signed off on 2026-11-25. Incorporation approved by the
-human on 2026-11-25.
+*Sign-off.* The 51 statements (21 here, 30 in the internal file): signed off by the spec owner
+(Hoang Le Truong) on 2026-11-25 (the signed-off statements are the ones in this file and in
+`formal/proofs/Proofs/Internal/Model/Skill.lean`). Translation stage (patch 04 and its external
+models): signed off on 2026-11-25. Incorporation approved by the human on 2026-11-25.
 
 *Linkage.* K01–K04, K08–K12 and K17–K20 are ORIGINAL: they translate from code of upstream
 `7caec76` that translation patch 04 leaves unmodified (checked by
@@ -291,30 +273,7 @@ info: 'Theorems.skill.SkillsCapability.with_directory_read' depends on axioms: [
 #guard_msgs in
 #print axioms Theorems.skill.SkillsCapability.with_directory_read
 
-/-! ## K04–K06: `SkillResource` -/
-
-/-- K04 `SkillResource::new`: the entry with URI `u = uri.into()`, digest `d = digest.into()` and
-the given size, unchecked (upstream and patched lines 76–82; the conversions in this order).
-
-Premise: caller code. Not covered: (I). -/
-theorem Theorems.skill.SkillResource.new {UriLike DigestLike : Type}
-    (uriInto : core.convert.Into UriLike String)
-    (digestInto : core.convert.Into DigestLike String) (uri : UriLike) (digest : DigestLike)
-    (size : U64) (u d : String) (h_uri_into : uriInto.into uri = ok u)
-    (h_digest_into : digestInto.into digest = ok d) :
-    rmcp.model.skill.SkillResource.new uriInto digestInto uri digest size ⦃
-      (result : SkillResource) =>
-      result.uri = u ∧
-      result.digest = d ∧
-      result.size = size ⦄ :=
-  rmcp.model.skill.SkillResource.new_spec uriInto digestInto uri digest size u d h_uri_into
-    h_digest_into
-
-/--
-info: 'Theorems.skill.SkillResource.new' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.SkillResource.new
+/-! ## K05, K06: `SkillResource` -/
 
 /-- K05 `SkillResource::from_bytes`: the entry for `bytes` at URI `u = uri.into()`; its digest is
 `sha256Digest bytes` (K07) and its size the byte length
@@ -367,24 +326,6 @@ info: 'Theorems.skill.SkillResource.verify' depends on axioms: [propext, Classic
 -/
 #guard_msgs in
 #print axioms Theorems.skill.SkillResource.verify
-
-/-! ## K07: `sha256_digest` -/
-
-/-- K07 `sha256_digest`: `sha256:` followed by the 64 lowercase hexadecimal digits of the SHA-256
-digest of `bytes` (`sha256Digest`, with `ExtModel.sha256` unopened; upstream lines 116–128,
-patched lines 116–125 and `lower_hex_digit`, lines 128–130, hunk H1).
-
-No premise. Not covered: (S). -/
-theorem Theorems.skill.sha256_digest (bytes : Slice U8) :
-    rmcp.model.skill.sha256_digest bytes ⦃ (result : String) =>
-      result = sha256Digest bytes.val ⦄ :=
-  rmcp.model.skill.sha256_digest_spec bytes
-
-/--
-info: 'Theorems.skill.sha256_digest' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.sha256_digest
 
 /-! ## K08, K09: `SkillFrontmatter` -/
 
@@ -473,7 +414,7 @@ info: 'Theorems.skill.SkillFrontmatter.with_field_extra_entries_eq_mapInsert' de
 #guard_msgs in
 #print axioms Theorems.skill.SkillFrontmatter.with_field_extra_entries_eq_mapInsert
 
-/-! ## K10–K13: `Skill` -/
+/-! ## K10, K11: `Skill` -/
 
 /-- K10 `Skill::new`: the skill with URI `u = uri.into()`, the given frontmatter and resources,
 and no `_meta`, unchecked (upstream lines 247–258, patched lines 249–260). It fixes all four fields
@@ -513,110 +454,7 @@ info: 'Theorems.skill.Skill.with_meta' depends on axioms: [propext, Classical.ch
 #guard_msgs in
 #print axioms Theorems.skill.Skill.with_meta
 
-/-- K12 `Skill::name`: the frontmatter name, as its UTF-8 bytes (`&self.frontmatter.name`,
-upstream lines 266–268, patched lines 268–270).
-
-Premise: (Z) on the name. -/
-theorem Theorems.skill.Skill.name (self : Skill) (h_name_fits : UsizeFits self.frontmatter.«name») :
-    rmcp.model.skill.Skill.name self ⦃ (result : Str) =>
-      result.val = utf8Bytes self.frontmatter.«name» ⦄ :=
-  rmcp.model.skill.Skill.name_spec self h_name_fits
-
-/--
-info: 'Theorems.skill.Skill.name' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.Skill.name
-
-/-- K13 `Skill::validate`: returns `validateResult self` (`Defs.Skill`): the error of the first
-failing check, in the Rust order, with its payload, else `Ok(())` (upstream lines 277–319; patched
-lines 279–338, hunk H2):
-
-1. `UriNotSkillMd(uri)` if the URI names no skill (`skillNameOfUri`, K14);
-2. `InvalidName(name)` if the NFKC form of the name is not 1 to 64 characters, each a letter of
-   Unicode General_Category `Ll`, `Lm` or `Lo` or a number of category `Nd`, `Nl` or `No`
-   (`isNameAlnum`, upstream lines 343–349), or a `-` between two such characters (single inner
-   hyphens; `isSkillName`, upstream lines 335–355);
-3. `NameMismatch { uri, name }` if the percent-decoded URI segment is not UTF-8 or its NFKC form
-   differs from the name's (`nameMatchesSegment`);
-4. `Ok(())` if `resources` is `"dynamic"`;
-5. `MissingSkillMd(uri)` if no manifest file has exactly the skill's URI;
-6. for the first file, in manifest order, that is faulty (`firstFileFault`):
-   `ResourceOutsideSkill { uri: file.uri, skill_uri }` (`manifest_resource_key` returns `None`:
-   the URI is not a file inside the skill's directory; `manifestKey`),
-   `DuplicateResource(file.uri)` (an earlier file has the same key),
-   `MalformedDigest { uri: file.uri, digest }` (`isSha256Digest` fails);
-7. otherwise `Ok(())`.
-
-Premises: (V) `h_sizes`; (N) `h_nfkc` (patch-induced; see `NfkcFits.of_utf8ByteSize_le`). Not
-covered: (H). -/
-theorem Theorems.skill.Skill.validate (self : Skill) (h_sizes : SkillFits self)
-    (h_nfkc : NfkcFits self) :
-    rmcp.model.skill.Skill.validate self ⦃
-      (result : core.result.Result Unit SkillValidationError) =>
-      result = validateResult self ⦄ :=
-  rmcp.model.skill.Skill.validate_spec self h_sizes h_nfkc
-
-/--
-info: 'Theorems.skill.Skill.validate' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.Skill.validate
-
-/-- K13, corollary: `validate` returns `Ok(())` exactly for a valid skill (`ValidSkill`): the URI
-has no query or fragment and ends in `<segment>/SKILL.md`, with the segment non-empty, without
-`/`, and at the start of the URI or after a `/` (so `billing/SKILL.md` is accepted); the decoded
-segment matches the name in NFKC form; the name is a valid skill name; and, unless `resources`
-is `"dynamic"`, the manifest lists the skill's own `SKILL.md`, every file lies within the skill's
-directory and has a well-formed digest, and no two files have the same key (`ValidManifest`).
-
-Premises as K13. Not covered: (H). -/
-theorem Theorems.skill.Skill.validate_eq_ok_iff (self : Skill) (h_sizes : SkillFits self)
-    (h_nfkc : NfkcFits self) :
-    rmcp.model.skill.Skill.validate self ⦃
-      (result : core.result.Result Unit SkillValidationError) =>
-      (result = .Ok () ↔ ValidSkill self) ⦄ :=
-  rmcp.model.skill.Skill.validate_eq_ok_iff self h_sizes h_nfkc
-
-/--
-info: 'Theorems.skill.Skill.validate_eq_ok_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.Skill.validate_eq_ok_iff
-
-/-! ## K14–K16: free functions -/
-
-/-- K14 `skill_name_from_uri`: the bytes of the returned slice are `skillNameOfUri uri`: `None`
-for a URI with `?` or `#`; otherwise, for a URI ending in `/SKILL.md`, the non-empty segment before
-it, still percent-encoded; `None` in every other case (upstream lines 326–333; patched lines
-345–352, hunk H3).
-
-Defined on every `Str`; no premise. -/
-theorem Theorems.skill.skill_name_from_uri (uri : Str) :
-    rmcp.model.skill.skill_name_from_uri uri ⦃ (result : Option Str) =>
-      result.map (·.val) = skillNameOfUri uri.val ⦄ :=
-  rmcp.model.skill.skill_name_from_uri_spec uri
-
-/--
-info: 'Theorems.skill.skill_name_from_uri' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.skill_name_from_uri
-
-/-- K15 `is_sha256_digest`: `true` exactly when `digest` is `sha256:` followed by 64 lowercase
-hexadecimal digits (`isSha256Digest`; upstream lines 417–421, patched lines 481–485, hunk H7).
-
-No premise. -/
-theorem Theorems.skill.is_sha256_digest (digest : Str) :
-    rmcp.model.skill.is_sha256_digest digest ⦃ (result : Bool) =>
-      result = isSha256Digest digest.val ⦄ :=
-  rmcp.model.skill.is_sha256_digest_spec digest
-
-/--
-info: 'Theorems.skill.is_sha256_digest' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.is_sha256_digest
+/-! ## K16: `validate_skills` -/
 
 /-- K16 `validate_skills`: returns `validateSkillsResult skills` (`Defs.Skill`): walking the
 skills in order, the `validate` error (K13) of the first skill that does not validate, or
@@ -853,388 +691,3 @@ info: 'Theorems.skill.SkillResource.verify_eq_ok_iff' depends on axioms: [propex
 -/
 #guard_msgs in
 #print axioms Theorems.skill.SkillResource.verify_eq_ok_iff
-
-/-- K07+K15, **a computed digest is well-formed**: `is_sha256_digest` returns `true` on the bytes
-of the string that `sha256_digest` returns, whatever the bytes hashed. Nothing is assumed about
-`ExtModel.sha256` beyond its type (32 bytes).
-
-No premise. Not covered: (S). -/
-theorem Theorems.skill.is_sha256_digest_sha256_digest (bytes : Slice U8) :
-    rmcp.model.skill.sha256_digest bytes ⦃ (d : String) =>
-      ∀ s : Str, s.val = utf8Bytes d →
-        rmcp.model.skill.is_sha256_digest s ⦃ (result : Bool) => result = true ⦄ ⦄ :=
-  rmcp.model.skill.is_sha256_digest_sha256_digest bytes
-
-/--
-info: 'Theorems.skill.is_sha256_digest_sha256_digest' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.is_sha256_digest_sha256_digest
-
-/-- K11+K13, **`validate` ignores `_meta`**: `validate` of the skill that `with_meta` returns
-gives `validateResult self`, what `validate self` gives (K13); `validateResult` reads only the URI,
-the frontmatter name and the resources (`validateResult_with_meta`).
-
-Premises: (V), (N) for `self` (`with_meta` keeps the fields they constrain). Not covered: (H). -/
-theorem Theorems.skill.Skill.validate_with_meta (self : Skill) (m : rmcp.model.meta.MetaObject)
-    (h_sizes : SkillFits self) (h_nfkc : NfkcFits self) :
-    rmcp.model.skill.Skill.with_meta self m ⦃ (s : Skill) =>
-      rmcp.model.skill.Skill.validate s ⦃
-        (result : core.result.Result Unit SkillValidationError) =>
-        result = validateResult self ⦄ ⦄ :=
-  rmcp.model.skill.Skill.validate_with_meta self m h_sizes h_nfkc
-
-/--
-info: 'Theorems.skill.Skill.validate_with_meta' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.Skill.validate_with_meta
-
-/-- K13+K14, **`skill_name_from_uri` returns `None` exactly when `validate` reports
-`UriNotSkillMd`**: on the bytes of the skill's URI.
-
-Premises as K13. Not covered: (H). -/
-theorem Theorems.skill.Skill.skill_name_from_uri_eq_none_iff_validate_eq_err (self : Skill)
-    (uri : Str) (h_uri : uri.val = utf8Bytes self.uri) (h_sizes : SkillFits self)
-    (h_nfkc : NfkcFits self) :
-    rmcp.model.skill.skill_name_from_uri uri ⦃ (segment : Option Str) =>
-      rmcp.model.skill.Skill.validate self ⦃
-        (result : core.result.Result Unit SkillValidationError) =>
-        (segment = none ↔ result = .Err (.UriNotSkillMd self.uri)) ⦄ ⦄ :=
-  rmcp.model.skill.Skill.skill_name_from_uri_eq_none_iff_validate_eq_err self uri h_uri h_sizes
-    h_nfkc
-
-/--
-info: 'Theorems.skill.Skill.skill_name_from_uri_eq_none_iff_validate_eq_err' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.Skill.skill_name_from_uri_eq_none_iff_validate_eq_err
-
-/-- K13+K14, **a skill that validates has a name segment that matches its name**: when `validate`
-returns `Ok(())`, `skill_name_from_uri` on the bytes of the skill's URI returns `Some(segment)`
-with a segment that matches the frontmatter name (`nameMatchesSegment`).
-
-Premises as K13. Not covered: (H). -/
-theorem Theorems.skill.Skill.exists_skill_name_from_uri_eq_some_of_validate_eq_ok (self : Skill)
-    (uri : Str) (h_uri : uri.val = utf8Bytes self.uri) (h_sizes : SkillFits self)
-    (h_nfkc : NfkcFits self) :
-    rmcp.model.skill.skill_name_from_uri uri ⦃ (segment : Option Str) =>
-      rmcp.model.skill.Skill.validate self ⦃
-        (result : core.result.Result Unit SkillValidationError) =>
-        (result = .Ok () →
-          ∃ seg, segment = some seg ∧ nameMatchesSegment seg.val self.frontmatter.«name» = true) ⦄
-      ⦄ :=
-  rmcp.model.skill.Skill.exists_skill_name_from_uri_eq_some_of_validate_eq_ok self uri h_uri
-    h_sizes h_nfkc
-
-/--
-info: 'Theorems.skill.Skill.exists_skill_name_from_uri_eq_some_of_validate_eq_ok' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.Skill.exists_skill_name_from_uri_eq_some_of_validate_eq_ok
-
-/-- K16+K13, **one skill: `validate_skills` is `validate`**: for a listing of exactly one skill
-`s`, `validate_skills` returns what `validate s` returns (no duplicate is possible).
-
-Premises: (V), (N), (U) for `s`. They are sufficient, not exact: (U) is used only when `validate`
-succeeds, the file premises of (V) only up to the first faulty file, and every value held in
-memory meets them. Not covered: (H). -/
-theorem Theorems.skill.validate_skills_singleton (skills : Slice Skill) (s : Skill)
-    (h_one : skills.val = [s]) (h_sizes : SkillFits s) (h_uri_fits : UriFits s.uri)
-    (h_nfkc : NfkcFits s) :
-    rmcp.model.skill.validate_skills skills ⦃
-      (result : core.result.Result Unit SkillValidationError) =>
-      rmcp.model.skill.Skill.validate s ⦃
-        (result' : core.result.Result Unit SkillValidationError) =>
-        result = result' ⦄ ⦄ :=
-  rmcp.model.skill.validate_skills_singleton skills s h_one h_sizes h_uri_fits h_nfkc
-
-/--
-info: 'Theorems.skill.validate_skills_singleton' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validate_skills_singleton
-
-/-! ## Consequences of the model (statements about `Defs.Skill` only) -/
-
-/-- Model, **what `skillNameOfUri` accepts**: it returns `some segment` exactly when the URI has
-no `?` or `#`, and is `dir ++ segment ++ "/SKILL.md"` for a non-empty `segment` without `/` and a
-`dir` that is empty or ends in `/`. So a URI that names a skill ends in `<segment>/SKILL.md`, with
-the segment at the start or after a `/`. -/
-theorem Theorems.skill.skillNameOfUri_eq_some_iff (uri segment : List U8) :
-    skillNameOfUri uri = some segment ↔
-      (∀ b ∈ uri, isQueryOrFragmentStart b = false) ∧ segment ≠ [] ∧ asciiByte '/' ∉ segment ∧
-        ∃ dir, uri = dir ++ segment ++ utf8Bytes "/SKILL.md" ∧
-          (dir = [] ∨ dir.getLast? = some (asciiByte '/')) :=
-  Defs.Skill.skillNameOfUri_eq_some_iff uri segment
-
-/--
-info: 'Theorems.skill.skillNameOfUri_eq_some_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.skillNameOfUri_eq_some_iff
-
-/-- Model, **a URI without a scheme or directory names a skill**: `billing/SKILL.md` names the
-skill `billing` (the segment is at the start of the URI). -/
-theorem Theorems.skill.skillNameOfUri_billing :
-    skillNameOfUri (utf8Bytes "billing/SKILL.md") = some (utf8Bytes "billing") :=
-  Defs.Skill.skillNameOfUri_billing
-
-/--
-info: 'Theorems.skill.skillNameOfUri_billing' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.skillNameOfUri_billing
-
-/-- Model, **a computed digest is well-formed**: `sha256Digest` of any bytes passes
-`isSha256Digest`. In particular it is 71 ASCII bytes: `sha256:` and 64 lowercase hexadecimal
-digits. -/
-theorem Theorems.skill.isSha256Digest_sha256Digest (bytes : List U8) :
-    isSha256Digest (utf8Bytes (sha256Digest bytes)) = true :=
-  Defs.Skill.isSha256Digest_sha256Digest bytes
-
-/--
-info: 'Theorems.skill.isSha256Digest_sha256Digest' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.isSha256Digest_sha256Digest
-
-/-- Model, **the skill-name rule as words**: `cs` passes `nameCharsValid alnum` exactly when it has
-at most 64 characters and is one or more non-empty words of `alnum` characters joined by single
-`-`. -/
-theorem Theorems.skill.nameCharsValid_iff_words (alnum : Char → Bool) (cs : List Char) :
-    nameCharsValid alnum cs = true ↔
-      cs.length ≤ 64 ∧ ∃ words : List (List Char), words ≠ [] ∧
-        (∀ w ∈ words, w ≠ [] ∧ ∀ c ∈ w, alnum c = true) ∧ cs = List.intercalate ['-'] words :=
-  Defs.Skill.nameCharsValid_iff_words alnum cs
-
-/--
-info: 'Theorems.skill.nameCharsValid_iff_words' depends on axioms: [propext, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.nameCharsValid_iff_words
-
-/-- Model, **`validateResult` is `Ok` exactly for a valid skill** (`ValidSkill`): the order of the
-checks matters only for which error is returned. -/
-theorem Theorems.skill.validateResult_eq_ok_iff (s : Skill) :
-    validateResult s = .Ok () ↔ ValidSkill s :=
-  Defs.Skill.validateResult_eq_ok_iff s
-
-/--
-info: 'Theorems.skill.validateResult_eq_ok_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateResult_eq_ok_iff
-
-/-- Model, **when `validate` reports `UriNotSkillMd`** (check 1): exactly when the URI names no
-skill, with the skill's URI as payload. -/
-theorem Theorems.skill.validateResult_eq_err_uriNotSkillMd_iff (s : Skill) (u : String) :
-    validateResult s = .Err (.UriNotSkillMd u) ↔
-      skillNameOfUri (utf8Bytes s.uri) = none ∧ u = s.uri :=
-  Defs.Skill.validateResult_eq_err_uriNotSkillMd_iff s u
-
-/--
-info: 'Theorems.skill.validateResult_eq_err_uriNotSkillMd_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateResult_eq_err_uriNotSkillMd_iff
-
-/-- Model, **when `validate` reports `InvalidName`** (check 2): exactly when the URI names a skill
-and the frontmatter name is not a valid skill name, with the name as payload. -/
-theorem Theorems.skill.validateResult_eq_err_invalidName_iff (s : Skill) (n : String) :
-    validateResult s = .Err (.InvalidName n) ↔
-      (skillNameOfUri (utf8Bytes s.uri)).isSome ∧ isSkillName s.frontmatter.«name» = false ∧
-        n = s.frontmatter.«name» :=
-  Defs.Skill.validateResult_eq_err_invalidName_iff s n
-
-/--
-info: 'Theorems.skill.validateResult_eq_err_invalidName_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateResult_eq_err_invalidName_iff
-
-/-- Model, **when `validate` reports `NameMismatch`** (check 3): exactly when the URI names a skill
-with segment `encoded`, the name is valid, and the segment does not match the name, with the
-skill's URI and name as payload. -/
-theorem Theorems.skill.validateResult_eq_err_nameMismatch_iff (s : Skill) (u n : String) :
-    validateResult s = .Err (.NameMismatch u n) ↔
-      ∃ encoded, skillNameOfUri (utf8Bytes s.uri) = some encoded ∧
-        isSkillName s.frontmatter.«name» = true ∧
-        nameMatchesSegment encoded s.frontmatter.«name» = false ∧
-        u = s.uri ∧ n = s.frontmatter.«name» :=
-  Defs.Skill.validateResult_eq_err_nameMismatch_iff s u n
-
-/--
-info: 'Theorems.skill.validateResult_eq_err_nameMismatch_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateResult_eq_err_nameMismatch_iff
-
-/-- Model, **when `validate` reports `MissingSkillMd`** (check 5): exactly when the URI names a
-skill with segment `encoded`, the name is valid and matches the segment, `resources` is a manifest
-`files` (not `"dynamic"`), and no file of it has exactly the skill's URI, with the skill's URI as
-payload (upstream lines 297–299, patched lines 300–311). -/
-theorem Theorems.skill.validateResult_eq_err_missingSkillMd_iff (s : Skill) (u : String) :
-    validateResult s = .Err (.MissingSkillMd u) ↔
-      ∃ encoded files, skillNameOfUri (utf8Bytes s.uri) = some encoded ∧
-        isSkillName s.frontmatter.«name» = true ∧
-        nameMatchesSegment encoded s.frontmatter.«name» = true ∧
-        s.resources = .Files files ∧ (∀ f ∈ files.val, f.uri ≠ s.uri) ∧ u = s.uri :=
-  Defs.Skill.validateResult_eq_err_missingSkillMd_iff s u
-
-/--
-info: 'Theorems.skill.validateResult_eq_err_missingSkillMd_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateResult_eq_err_missingSkillMd_iff
-
-/-- Model, **when `validate` reports a per-file error** (check 6): for an error `e` of the kind
-`ResourceOutsideSkill`, `DuplicateResource` or `MalformedDigest`, `validate` reports `e` exactly
-when checks 1–5 pass (the URI names a skill with segment `encoded`, the name is valid and matches
-the segment, `resources` is a manifest `files` that has a file with exactly the skill's URI) and
-`e` is the fault of the first faulty file of the manifest (`firstFileFault`, with its payload;
-upstream lines 300–317, patched lines 312–337). -/
-theorem Theorems.skill.validateResult_eq_err_iff_firstFileFault_eq_some (s : Skill)
-    (e : SkillValidationError)
-    (he : (∃ uri skillUri, e = .ResourceOutsideSkill uri skillUri) ∨
-      (∃ uri, e = .DuplicateResource uri) ∨ (∃ uri digest, e = .MalformedDigest uri digest)) :
-    validateResult s = .Err e ↔
-      ∃ encoded files, skillNameOfUri (utf8Bytes s.uri) = some encoded ∧
-        isSkillName s.frontmatter.«name» = true ∧
-        nameMatchesSegment encoded s.frontmatter.«name» = true ∧
-        s.resources = .Files files ∧ (∃ f ∈ files.val, f.uri = s.uri) ∧
-        firstFileFault s.uri [] files.val = some e :=
-  Defs.Skill.validateResult_eq_err_iff_firstFileFault_eq_some s e he
-
-/--
-info: 'Theorems.skill.validateResult_eq_err_iff_firstFileFault_eq_some' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateResult_eq_err_iff_firstFileFault_eq_some
-
-/-- Model, **`validate` never reports `DuplicateSkill`**: that error belongs to `validate_skills`
-(upstream line 429, patched line 493). With the five `validateResult_eq_err_…` statements above,
-every `Err` case of `validateResult` is characterised. -/
-theorem Theorems.skill.validateResult_ne_err_duplicateSkill (s : Skill) (u : String) :
-    validateResult s ≠ .Err (.DuplicateSkill u) :=
-  Defs.Skill.validateResult_ne_err_duplicateSkill s u
-
-/--
-info: 'Theorems.skill.validateResult_ne_err_duplicateSkill' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateResult_ne_err_duplicateSkill
-
-/-- Model, **`validateResult` does not depend on `_meta`**. -/
-theorem Theorems.skill.validateResult_with_meta (s : Skill)
-    (m : Option rmcp.model.meta.MetaObject) :
-    validateResult { s with «meta» := m } = validateResult s :=
-  Defs.Skill.validateResult_with_meta s m
-
-/--
-info: 'Theorems.skill.validateResult_with_meta' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateResult_with_meta
-
-/-- Model, **well-formed digests never give `MalformedDigest`**: if every file of `files` has a
-well-formed digest (e.g. an entry made by `from_bytes`, `SkillResource.isSha256Digest_from_bytes`),
-the first file fault is not a `MalformedDigest`. -/
-theorem Theorems.skill.firstFileFault_ne_malformedDigest (skillUri : String)
-    (earlier files : List SkillResource)
-    (h : ∀ f ∈ files, isSha256Digest (utf8Bytes f.digest) = true) (uri digest : String) :
-    firstFileFault skillUri earlier files ≠ some (.MalformedDigest uri digest) :=
-  Defs.Skill.firstFileFault_ne_malformedDigest skillUri earlier files h uri digest
-
-/--
-info: 'Theorems.skill.firstFileFault_ne_malformedDigest' depends on axioms: [propext]
--/
-#guard_msgs in
-#print axioms Theorems.skill.firstFileFault_ne_malformedDigest
-
-/-- Model, **`validateSkillsResult` is `Ok` exactly for a valid listing** (`ValidSkills`). -/
-theorem Theorems.skill.validateSkillsResult_eq_ok_iff (skills : List Skill) :
-    validateSkillsResult skills = .Ok () ↔ ValidSkills skills :=
-  Defs.Skill.validateSkillsResult_eq_ok_iff skills
-
-/--
-info: 'Theorems.skill.validateSkillsResult_eq_ok_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateSkillsResult_eq_ok_iff
-
-/-- Model, **one skill**: the expected result of `validate_skills` on `[s]` is that of
-`validate s`. -/
-theorem Theorems.skill.validateSkillsResult_singleton (s : Skill) :
-    validateSkillsResult [s] = validateResult s :=
-  Defs.Skill.validateSkillsResult_singleton s
-
-/--
-info: 'Theorems.skill.validateSkillsResult_singleton' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateSkillsResult_singleton
-
-/-- Model, **a sublist of a valid listing is valid**, in particular a prefix `l₁` of `l₁ ++ l₂`:
-each skill stays valid and distinct keys stay distinct. The concatenation of two valid listings
-need not be valid: they can share a key. -/
-theorem Theorems.skill.ValidSkills.sublist {l₁ l₂ : List Skill} (h : l₁.Sublist l₂)
-    (hv : ValidSkills l₂) :
-    ValidSkills l₁ :=
-  Defs.Skill.ValidSkills.sublist h hv
-
-/--
-info: 'Theorems.skill.ValidSkills.sublist' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.ValidSkills.sublist
-
-/-- Model, **an error of a prefix is the error of the listing**: the walk reaches the faulty skill
-of `l₁` before any skill of `l₂`. -/
-theorem Theorems.skill.validateSkillsResult_append_of_eq_err {l₁ : List Skill} (l₂ : List Skill)
-    {e : SkillValidationError} (h : validateSkillsResult l₁ = .Err e) :
-    validateSkillsResult (l₁ ++ l₂) = .Err e :=
-  Defs.Skill.validateSkillsResult_append_of_eq_err l₂ h
-
-/--
-info: 'Theorems.skill.validateSkillsResult_append_of_eq_err' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.validateSkillsResult_append_of_eq_err
-
-/-- Model, **the NFKC premise (N) from the NFKC expansion bound** (bridge lemma). The premise
-`hexp` is a law about the opaque `ExtModel.nfkc`, over every input: the NFKC form of `m` characters
-has at most `18 * m` characters. It is true of the real function: NFKC is the full compatibility
-decomposition of each character, then canonical ordering (a permutation), then canonical
-composition (which only merges characters) (UAX #15, "Unicode Normalization Forms"), so it is at
-most as long as the sum of the decompositions of the characters, and the longest compatibility
-decomposition has 18 characters (`U+FDFA` ARABIC LIGATURE SALLALLAHOU ALAYHE WASALLAM; the
-Unicode Normalization FAQ gives 18 as the maximum NFKC expansion factor in code points). Evidence
-for the pinned `unicode-normalization 0.1.26` (Unicode 18.0.0 tables, `src/tables.rs` line 18;
-`nfkc` is `Recompositions` over `Decompositions`, `src/recompose.rs`, `src/decompose.rs`), a Rust
-run of 2026-11-25 against the pinned crate: over all 1,112,064 scalar values the largest
-`c.to_string().nfkc().count()` and `nfkd().count()` are 18, attained at `U+FDFA`; over
-2,000,000 random strings of 1 to 12 characters drawn from the 14,670 characters that decompose,
-compose or combine (Hangul included), `nfkc().count() ≤ nfkd().count()`, `nfkd().count()` is the
-sum over the characters and is at most `18 *` the length, with no exception. The byte premises
-give `4 * 18 * chars ≤ isize::MAX` for the name, and for the URI segment, whose decoded string
-has at most as many characters as bytes, at most as many as the encoded segment, at most as many
-as the URI. A name and a URI of at most `isize::MAX / 72` bytes each (more than `2^56` bytes,
-64 PiB) meet them. -/
-theorem Theorems.skill.NfkcFits.of_utf8ByteSize_le (s : Skill)
-    (hexp : ∀ cs, (ExtModel.nfkc cs).length ≤ 18 * cs.length)
-    (hname : 72 * s.frontmatter.«name».utf8ByteSize ≤ ExtModel.maxStringBytes)
-    (huri : 72 * s.uri.utf8ByteSize ≤ ExtModel.maxStringBytes) : NfkcFits s :=
-  Defs.Skill.NfkcFits.of_utf8ByteSize_le s hexp hname huri
-
-/--
-info: 'Theorems.skill.NfkcFits.of_utf8ByteSize_le' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in
-#print axioms Theorems.skill.NfkcFits.of_utf8ByteSize_le

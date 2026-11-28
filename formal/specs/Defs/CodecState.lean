@@ -520,6 +520,11 @@ any other `rs1` token opened by a keyring returns an error (`MalformedFormat`, `
 def FallbacksKnownForToken (codec : RequestStateCodec) (token : List U8) : Prop :=
   (components token).head? = some versionV1 → CodecFallbacksKnown codec
 
+-- Since 2026-11-28 `TranscriptV1Fits` and `TranscriptV2Fits` are used only by internal statements
+-- (R08, R14 in `formal/proofs/Proofs/Internal/Model/RequestState.lean`, section "Intermediate
+-- public functions"); they stay here by a recorded exception (`formal/CONTRIBUTING.md`,
+-- "Definitions (`Defs`)").
+
 /-- **Premise (T), `rs1` tokens**: if `token` splits on `.` into `["rs1", b, t]` and `b` decodes
 (`ExtModel.b64Decode`) to `body`, the MAC transcript `transcriptV1 ad body` has at most
 `usize::MAX` bytes. This is the domain of the Lean model of `Vec::extend_from_slice` (an Aeneas

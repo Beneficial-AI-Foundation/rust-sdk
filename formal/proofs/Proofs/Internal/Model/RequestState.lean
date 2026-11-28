@@ -20,16 +20,20 @@ public import Proofs.Model.RequestState.Rs1FallbacksVerify
 public import Proofs.Model.RequestState.OpenRs2At
 public import Proofs.Model.RequestState.Seal
 public import Proofs.Model.RequestState.Roundtrip
+public import Proofs.Model.RequestState.Public
+public import Proofs.Model.RequestState.OpenJson
 
 @[expose] public section
 
 /-!
-# Internal spec file for crates/rmcp/src/model/request_state.rs (E01–E11, round trips, R10a, R10b)
+# Internal spec file for model/request_state.rs (E01–E11, S15, R10a, R10b, R05, R08, R10, R14)
 
-These are guarantees about private associated functions of `RequestStateCodec` (without `pub`),
-kept out of `formal/specs/`, which holds only the public API (human decision 2026-11-24); the
-public wrappers (`seal`, `open`, `try_new`, …) are in `formal/specs/Specs/Model/RequestState.lean`
-(R01–R15). E09a `rs1_fallbacks_verify` is
+These are guarantees about private associated functions of `RequestStateCodec` (without `pub`)
+and, in the last section, about the intermediate public functions R05 `new_unchecked`, R08
+`open_with`, R10 `seal_with` and R14 `open_json_with` (called by a top-level public function),
+kept out of `formal/specs/`, which holds only the top-level public API (human decisions
+2026-11-24, 2026-11-28); the top-level public functions (`seal`, `open`, `try_new`, …) are in
+`formal/specs/Specs/Model/RequestState.lean`. E09a `rs1_fallbacks_verify` is
 patch-only: patch 01 moves the rs1 fallback loop of `open_rs1_at` into it, so it has no upstream
 counterpart. Index of all guarantees: `formal/specs/README.md`.
 
@@ -49,9 +53,10 @@ counterpart. Index of all guarantees: `formal/specs/README.md`.
 | S15 | `rs2_roundtrip` | `seal_rs2`, then `open_rs2_at` (same `ad`): `Ok(body[8..])` | (R2) |
 | S15 | `open_at_roundtrip_rs1` | `seal_rs1`, then `open_at` (same `ad`): `Ok(body[8..])` | (R1) |
 | S15 | `open_at_roundtrip_rs2` | `seal_rs2`, then `open_at` (same `ad`): `Ok(body[8..])` | (R2) |
-| R10a | `seal_at` | `sealAt` at an explicit time | (S), (D) (last section) |
+| R10a | `seal_at` | `sealAt` at an explicit time | (S), (D) (section "R10a, R10b …") |
 | R10b | `seal_at_roundtrip` | `seal_at` at `now`, then `open_at` at `now'` (same `ad`): `Ok(payload)` | `CodecValid`, `h_rs1`, (D), not expired |
 | R10b model | `openAt_eq_ok_of_sealAt_eq_some` | `openAt` of a `sealAt` token is the payload | `CodecValid`, `h_rs1`, not expired |
+| R05, R08, R10, R14 | `new_unchecked`, `open_with`, `seal_with`, `open_json_with` | as stated in the section "Intermediate public functions", with its own table | (last section) |
 
 Each row says that the call (for the round trips: sealing, then opening any `str` holding the
 token's bytes) does not panic and that its result satisfies the guarantee, within the HMAC and
@@ -77,9 +82,11 @@ token starting with `rs1`), of the arguments (`FallbacksKnown`) for E09a (else t
 least 8 bytes, not expired at `now_ms`, the key is the codec's single key or the key of one of
 its rs1 fallback ids, and (F); (R2) the same associated data in both calls; (T), (C), body of at
 least 8 bytes, not expired at `now_ms`, the kid is UTF-8 of 1 to 255 bytes and the codec is a
-keyring that maps it to the key. Used by (upstream names): `open`/`open_with` (E11 and below;
-E09a through E09, in the patched copy), `seal`/`seal_with` through the excluded `seal_at` (E07,
-E08, E02), `try_new` and `new_with_keyring` (E03, E04); those wrappers are not verified.
+keyring that maps it to the key. Used by (upstream names): `open`/`open_with` (E11 and below; E09a
+through E09, in the patched copy), `seal`/`seal_with` through the excluded `seal_at` (E07, E08,
+E02), `try_new` and `new_with_keyring` (E03, E04); those public functions are verified too (R01–R15:
+top-level ones in `formal/specs/Specs/Model/RequestState.lean`, intermediate ones in the last
+section).
 
 Statements of the codec functions of `RequestStateCodec` (plan Section 2.2), in Rust source
 order, each restated as a theorem `Theorems.request_state.RequestStateCodec.<function>` proved by
@@ -599,3 +606,226 @@ info: 'Theorems.request_state.openAt_eq_ok_of_sealAt_eq_some' depends on axioms:
 -/
 #guard_msgs in
 #print axioms Theorems.request_state.openAt_eq_ok_of_sealAt_eq_some
+
+/-!
+## Intermediate public functions (R05, R08, R10, R14)
+
+Four public functions of `request_state.rs` are not top-level: each is called by another public
+function that `formal/specs/` states, so their statements are here, not in
+`formal/specs/Specs/Model/RequestState.lean`, which holds only the top-level public functions
+(human decision 2026-11-28). The statements, their text, IDs, proofs and sign-off (R05, R08 and
+its corollary on 2026-11-24, R10, its corollary and R14 on 2026-11-25; readability rewrite
+2026-11-25) are unchanged; only their place changed.
+
+| ID | Function | Theorem | Guarantee | Premises (caller must ensure) | Not covered (Rust may panic or behave otherwise; the model does not) |
+|---|---|---|---|---|---|
+| R05 | `Codec::new_unchecked` | `RSC.new_unchecked` | the single-key codec of `key.into()`, for a key of any length | caller code | (I) |
+| R08 | `Codec::open_with` | `RSC.open_with` | the payload or error of opening the token with associated data `associated_data` at the clock reading (`openAt`) | (T), (F) | (K), (H), (V) |
+| R08 cor. | `Codec::open_with` | `RSC.open_with_of_length_le` | as R08 | (L), (F) | (K), (H), (V) |
+| R10 | `Codec::seal_with` | `RSC.seal_with` | the token sealed with the options at the clock reading (`sealAt`) | (S), (D) | (K), (H), (V) |
+| R10 cor. | `Codec::seal_with` | `RSC.seal_with_of_length_le` | as R10 | `CodecValid`, (Ls) | (K), (H) |
+| R14 | `Codec::open_json_with` | `RSC.open_json_with` | the error of opening as in R08, or the `serde_json::from_slice` outcome on the opened payload, an error mapped to `Deserialization` | (T), (F) | (K), (H), (V), (J) |
+
+Called by: R05 `new_unchecked` by R04 `new`; R08 `open_with` by R07 `open` and R14 `open_json_with`
+(so by R13 `open_json` through R14); R10 `seal_with` by R09 `seal`; R14 `open_json_with` by R13
+`open_json` (`Codec::` abbreviates `RequestStateCodec::`, `RSC.` the theorem prefix
+`Theorems.request_state.RequestStateCodec.`).
+
+The keys of this section are local to it (the header above gives (D) another meaning and (T) a more
+general one, as in the R10a section): (F), (S), (D), (Ls), caller code, (K), (H), (J) and (I) are
+those of `formal/specs/Specs/Model/RequestState.lean` ("Premises", "Not covered", "The clock"; the
+clock rule there also covers `open_with`, `seal_with` and `open_json_with`). The keys used only
+here:
+
+* **(T)** premise `h_transcript_v1 : TranscriptV1Fits …`, `h_transcript_v2 : TranscriptV2Fits …`:
+  the MAC transcript of the token's decoded components and `ad` fits in `usize::MAX` bytes (the
+  bound of the Lean model of `Vec::extend_from_slice`). It holds for every token when `ad` is
+  empty, so R07 and R13 do not take it.
+* **(L)** premise `h_length : ad.len() + sealed.len() + 36 ≤ usize::MAX`; it implies (T).
+* **(V)** not covered, `open_with`, `open_json_with`, `seal_with` only: the transcript `Vec` is
+  modelled up to `usize::MAX` bytes, while Rust panics above `isize::MAX` bytes. It does not arise
+  without associated data (`open`, `open_json`: a transcript has at most `42 + 3n/4` bytes for a
+  token of `n ≤ isize::MAX` bytes; `seal`: (D) bounds it), nor under (Ls).
+
+Here `ad` is the associated data (`associated_data`; `options.associated_data` for `seal_with`), and
+the spec theorems are in `Proofs/Model/RequestState/{Public,Seal,OpenJson}.lean`. Unlike the header
+above (patch-01 copy), the translated configuration, line citations ("patched" is the copy with
+patches 01–03, "upstream" is `7caec76`, "patch-01 copy" the copy with patch 01 only) of this section
+are those of `formal/specs/Specs/Model/RequestState.lean`, "Provenance"; its linkage is R05, R08
+`patch-01` and R10, R14 `patch-03` (`formal/README.md`, "Results"). The statements are in ID order
+and use the abbreviations of `Defs.CodecState` and readable binder names (renaming map: "Proofs" in
+that file), under the two spec-owner exceptions of `formal/CONTRIBUTING.md`, "Spec files", widened
+to this section by human decision 2026-11-28. `TranscriptV1Fits` and `TranscriptV2Fits` (premise
+(T)) are used only here but stay in `formal/specs/Defs/CodecState.lean` (recorded exception, same
+decision).
+-/
+
+open Aeneas Aeneas.Std Result
+open Defs.CodecState (CodecValid openAt resultBytes sealAt CodecSealKeyKnown SealFits strBytes
+  FallbacksKnownForToken TranscriptV1Fits TranscriptV2Fits mapErrDeserialization)
+open rmcp.model.request_state (SealOptions RequestStateCodec Keys RequestStateError)
+
+/-- R05 `RequestStateCodec::new_unchecked`: returns the single-key codec whose key is the vector
+`v` that `key.into()` returns, whatever its length (`Keys::Single(Zeroizing::new(key.into()))`,
+patched lines 286–290, upstream 296–300). The codec satisfies `CodecValid`.
+
+Premise: caller code, `h_into`. Not covered: (I). -/
+theorem Theorems.request_state.RequestStateCodec.new_unchecked {KeyLike : Type}
+    (intoBytes : core.convert.Into KeyLike (alloc.vec.Vec Std.U8)) (key : KeyLike)
+    (v : alloc.vec.Vec Std.U8) (h_into : intoBytes.into key = ok v) :
+    rmcp.model.request_state.RequestStateCodec.new_unchecked intoBytes key ⦃
+      (result : RequestStateCodec) =>
+      result.keys = Keys.Single { inner := v } ∧
+      CodecValid result ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.new_unchecked_spec intoBytes key v h_into
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.new_unchecked' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.new_unchecked
+
+/-- R08 `RequestStateCodec::open_with`: opens the token `sealed` with the associated data
+`associated_data` at the clock reading and returns the payload or the error that
+`openAt self (strBytes sealed) associated_data.val ExtModel.nowMs.val` gives
+(`self.open_at(sealed, associated_data, Self::now_ms())`, patched lines 495–501, upstream
+505–511). One clock reading, parametric; nothing about two calls (see "The clock").
+
+Premises: (T) `h_transcript_v1`, `h_transcript_v2`; (F) `h_fallbacks`. Not covered: (K), (H),
+(V). -/
+theorem Theorems.request_state.RequestStateCodec.open_with (self : RequestStateCodec)
+    (sealed : Str) (associated_data : Slice Std.U8)
+    (h_transcript_v1 : TranscriptV1Fits (strBytes sealed) associated_data.val)
+    (h_transcript_v2 : TranscriptV2Fits (strBytes sealed) associated_data.val)
+    (h_fallbacks : FallbacksKnownForToken self (strBytes sealed)) :
+    rmcp.model.request_state.RequestStateCodec.open_with self sealed associated_data ⦃
+      (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+      resultBytes result =
+        openAt self (strBytes sealed) associated_data.val ExtModel.nowMs.val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_with_spec self sealed associated_data
+    h_transcript_v1 h_transcript_v2 h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_with' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_with
+
+/-- R08, corollary: `open_with` returns what R08 says (`openAt … ExtModel.nowMs.val`), with the
+transcript premises (T) replaced by the simpler length premise (L):
+`associated_data.len() + sealed.len() + 36 ≤ usize::MAX` (via the bound
+`ExtModel.b64Decode_length_le`).
+One clock reading, parametric; nothing about two calls (see "The clock").
+
+Premises: (L) `h_length`; (F) `h_fallbacks`. Not covered: (K), (H), (V). -/
+theorem Theorems.request_state.RequestStateCodec.open_with_of_length_le
+    (self : RequestStateCodec) (sealed : Str) (associated_data : Slice Std.U8)
+    (h_length : associated_data.val.length + (strBytes sealed).length + 36 ≤ Usize.max)
+    (h_fallbacks : FallbacksKnownForToken self (strBytes sealed)) :
+    rmcp.model.request_state.RequestStateCodec.open_with self sealed associated_data ⦃
+      (result : core.result.Result (alloc.vec.Vec Std.U8) RequestStateError) =>
+      resultBytes result =
+        openAt self (strBytes sealed) associated_data.val ExtModel.nowMs.val ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_with_spec_of_length_le self sealed
+    associated_data h_length h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_with_of_length_le' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_with_of_length_le
+
+/-- R10 `RequestStateCodec::seal_with`: returns the token that seals `payload` with the options'
+associated data and time-to-live at the clock reading; its UTF-8 bytes are
+`sealAt self payload.val options.associated_data.val options.ttl ExtModel.nowMs.val`
+(`self.seal_at(payload, options, Self::now_ms())`, patched lines 441–443, upstream 451–453); the
+reading matters only with a time-to-live.
+One clock reading, parametric; nothing about two calls (see "The clock").
+
+Premises: (S) `h_seal_key`; (D) `h_seal_fits`. Not covered: (K), (H), (V). -/
+theorem Theorems.request_state.RequestStateCodec.seal_with (self : RequestStateCodec)
+    (payload : Slice Std.U8)
+    (options : SealOptions)
+    (h_seal_key : CodecSealKeyKnown self)
+    (h_seal_fits : SealFits self payload.val.length options.associated_data.val.length) :
+    rmcp.model.request_state.RequestStateCodec.seal_with self payload options ⦃ (result : String) =>
+      sealAt self payload.val options.associated_data.val options.ttl ExtModel.nowMs.val =
+        some (ExtModel.utf8 result) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_with_spec self payload options h_seal_key
+    h_seal_fits
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal_with' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal_with
+
+/-- R10, corollary: `seal_with` returns what R10 says (`sealAt … ExtModel.nowMs.val`), with (S)
+and (D) replaced by `CodecValid self` and (Ls)
+`associated_data.len() + 2 * payload.len() + 512 ≤ isize::MAX`.
+One clock reading, parametric; nothing about two calls (see "The clock").
+
+Premises: `h_valid`; (Ls) `h_length`. Not covered: (K), (H); (V) does not arise under (Ls). -/
+theorem Theorems.request_state.RequestStateCodec.seal_with_of_length_le (self : RequestStateCodec)
+    (payload : Slice Std.U8)
+    (options : SealOptions)
+    (h_valid : CodecValid self)
+    (h_length : options.associated_data.val.length + 2 * payload.val.length + 512 ≤
+      ExtModel.maxStringBytes) :
+    rmcp.model.request_state.RequestStateCodec.seal_with self payload options ⦃ (result : String) =>
+      sealAt self payload.val options.associated_data.val options.ttl ExtModel.nowMs.val =
+        some (ExtModel.utf8 result) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.seal_with_spec_of_length_le self payload options
+    h_valid h_length
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.seal_with_of_length_le' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.seal_with_of_length_le
+
+/-- R14 `RequestStateCodec::open_json_with`: opens the token `sealed` with the associated data
+`associated_data` at the clock reading and parses the payload as JSON of type `T` (patched lines
+521–531, upstream 531–538):
+
+* if opening fails, i.e. `openAt self (strBytes sealed) associated_data.val ExtModel.nowMs.val`
+  is an error `e`, the result is `Err e`, unchanged (`self.open_with(sealed,
+  associated_data)?`, patched line 526);
+* otherwise, for the opened payload, the result is the outcome of `serde_json::from_slice`
+  (`ExtModel.serdeJsonFromSlice`, line 527) with an error mapped to `Deserialization`
+  (`mapErrDeserialization`, lines 527–530; upstream `.map_err(RequestStateError::Deserialization)`,
+  line 537).
+
+`deserializeInst.DeserializeInst` is the caller's `Deserialize` impl for `T`, which
+`serde_json::from_slice` uses (as in R13). The statement says only that the result is the opaque
+outcome `ExtModel.serdeJsonFromSlice` gives for that impl and the payload, at one clock reading,
+parametric; it relates no two calls (neither two parses nor two clock readings; see "The
+clock").
+
+Premises: (T) `h_transcript_v1`, `h_transcript_v2`; (F) `h_fallbacks`. Not covered: (K), (H),
+(V), (J). -/
+theorem Theorems.request_state.RequestStateCodec.open_json_with {T : Type}
+    (deserializeInst : rmcp.serde_core.de.DeserializeOwned T) (self : RequestStateCodec)
+    (sealed : Str) (associated_data : Slice Std.U8)
+    (h_transcript_v1 : TranscriptV1Fits (strBytes sealed) associated_data.val)
+    (h_transcript_v2 : TranscriptV2Fits (strBytes sealed) associated_data.val)
+    (h_fallbacks : FallbacksKnownForToken self (strBytes sealed)) :
+    rmcp.model.request_state.RequestStateCodec.open_json_with deserializeInst self sealed
+      associated_data ⦃ (result : core.result.Result T RequestStateError) =>
+      match openAt self (strBytes sealed) associated_data.val ExtModel.nowMs.val with
+      | .error e => result = .Err e
+      | .ok payload =>
+        result = mapErrDeserialization
+          (ExtModel.serdeJsonFromSlice deserializeInst.DeserializeInst payload) ⦄ :=
+  rmcp.model.request_state.RequestStateCodec.open_json_with_spec deserializeInst self sealed
+    associated_data h_transcript_v1 h_transcript_v2 h_fallbacks
+
+/--
+info: 'Theorems.request_state.RequestStateCodec.open_json_with' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in
+#print axioms Theorems.request_state.RequestStateCodec.open_json_with

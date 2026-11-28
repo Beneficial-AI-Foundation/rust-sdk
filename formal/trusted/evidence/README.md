@@ -1058,7 +1058,7 @@ the repository:
   unmodified source; update PATCH04_TARGETS and check-original-linkage.sh` and `[linkage] error:
   translation of the unmodified source failed`.
 
-### NFKC expansion bound (premise `hexp` of `Defs.Skill.NfkcFits.of_utf8ByteSize_le`, K13/K16; restated in `formal/specs/Specs/Model/Skill.lean`)
+### NFKC expansion bound (premise `hexp` of `Defs.Skill.NfkcFits.of_utf8ByteSize_le`, K13/K16; restated in `formal/proofs/Proofs/Internal/Model/Skill.lean`)
 
 The bridge lemma takes the law `∀ cs, (ExtModel.nfkc cs).length ≤ 18 * cs.length` as an explicit
 premise (implication-form law, STATUS "Trusted base" rule U3). It is not a Unicode stability
